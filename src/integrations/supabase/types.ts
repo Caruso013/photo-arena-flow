@@ -14,16 +14,210 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      campaigns: {
+        Row: {
+          cover_image_url: string | null
+          created_at: string
+          description: string | null
+          event_date: string | null
+          id: string
+          is_active: boolean
+          location: string | null
+          photographer_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          cover_image_url?: string | null
+          created_at?: string
+          description?: string | null
+          event_date?: string | null
+          id?: string
+          is_active?: boolean
+          location?: string | null
+          photographer_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          cover_image_url?: string | null
+          created_at?: string
+          description?: string | null
+          event_date?: string | null
+          id?: string
+          is_active?: boolean
+          location?: string | null
+          photographer_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaigns_photographer_id_fkey"
+            columns: ["photographer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      photos: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          id: string
+          is_available: boolean
+          original_url: string
+          photographer_id: string
+          price: number
+          thumbnail_url: string | null
+          title: string | null
+          updated_at: string
+          watermarked_url: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          id?: string
+          is_available?: boolean
+          original_url: string
+          photographer_id: string
+          price?: number
+          thumbnail_url?: string | null
+          title?: string | null
+          updated_at?: string
+          watermarked_url: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          id?: string
+          is_available?: boolean
+          original_url?: string
+          photographer_id?: string
+          price?: number
+          thumbnail_url?: string | null
+          title?: string | null
+          updated_at?: string
+          watermarked_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "photos_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "photos_photographer_id_fkey"
+            columns: ["photographer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          email: string
+          full_name: string | null
+          id: string
+          role: Database["public"]["Enums"]["user_role"]
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          email: string
+          full_name?: string | null
+          id: string
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string
+          full_name?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      purchases: {
+        Row: {
+          amount: number
+          buyer_id: string
+          created_at: string
+          id: string
+          photo_id: string
+          photographer_id: string
+          status: string
+          stripe_payment_intent_id: string | null
+        }
+        Insert: {
+          amount: number
+          buyer_id: string
+          created_at?: string
+          id?: string
+          photo_id: string
+          photographer_id: string
+          status?: string
+          stripe_payment_intent_id?: string | null
+        }
+        Update: {
+          amount?: number
+          buyer_id?: string
+          created_at?: string
+          id?: string
+          photo_id?: string
+          photographer_id?: string
+          status?: string
+          stripe_payment_intent_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchases_buyer_id_fkey"
+            columns: ["buyer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchases_photo_id_fkey"
+            columns: ["photo_id"]
+            isOneToOne: false
+            referencedRelation: "photos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchases_photographer_id_fkey"
+            columns: ["photographer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["user_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      user_role: "user" | "photographer" | "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +344,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      user_role: ["user", "photographer", "admin"],
+    },
   },
 } as const
