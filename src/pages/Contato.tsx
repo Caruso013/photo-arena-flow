@@ -32,25 +32,25 @@ const Contato = () => {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-12">
+      <main className="container mx-auto px-4 py-8 md:py-12">
         <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-12">
-            <h1 className="text-4xl font-bold mb-4">Entre em Contato</h1>
-            <p className="text-xl text-muted-foreground">
+          <div className="text-center mb-8 md:mb-12">
+            <h1 className="text-2xl md:text-4xl font-bold mb-4">Entre em Contato</h1>
+            <p className="text-base md:text-xl text-muted-foreground px-4">
               Estamos aqui para ajudar você com suas dúvidas e necessidades
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
             {/* Informações de Contato */}
-            <div className="space-y-6">
+            <div className="space-y-4 md:space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Mail className="h-5 w-5 text-primary" />
+                  <CardTitle className="flex items-center gap-2 text-lg md:text-xl">
+                    <Mail className="h-4 w-4 md:h-5 md:w-5 text-primary" />
                     Informações de Contato
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-sm md:text-base">
                     Entre em contato conosco através dos canais abaixo
                   </CardDescription>
                 </CardHeader>
@@ -58,25 +58,25 @@ const Contato = () => {
                   <div className="flex items-center gap-3">
                     <Mail className="h-4 w-4 text-primary" />
                     <div>
-                      <p className="font-medium">E-mail</p>
-                      <p className="text-muted-foreground">contato@stafotos.com.br</p>
+                      <p className="font-medium text-sm md:text-base">E-mail</p>
+                      <p className="text-muted-foreground text-sm md:text-base">contato@stafotos.com.br</p>
                     </div>
                   </div>
                   
                   <div className="flex items-center gap-3">
                     <Phone className="h-4 w-4 text-primary" />
                     <div>
-                      <p className="font-medium">Telefone/WhatsApp</p>
-                      <p className="text-muted-foreground">(11) 95771-9467</p>
+                      <p className="font-medium text-sm md:text-base">Telefone/WhatsApp</p>
+                      <p className="text-muted-foreground text-sm md:text-base">(11) 95771-9467</p>
                     </div>
                   </div>
                   
                   <div className="flex items-center gap-3">
                     <Clock className="h-4 w-4 text-primary" />
                     <div>
-                      <p className="font-medium">Horário de Atendimento</p>
-                      <p className="text-muted-foreground">Segunda à Sexta: 9h às 18h</p>
-                      <p className="text-muted-foreground">Sábado: 9h às 12h</p>
+                      <p className="font-medium text-sm md:text-base">Horário de Atendimento</p>
+                      <p className="text-muted-foreground text-sm">Segunda à Sexta: 9h às 18h</p>
+                      <p className="text-muted-foreground text-sm">Sábado: 9h às 12h</p>
                     </div>
                   </div>
                 </CardContent>
@@ -84,12 +84,12 @@ const Contato = () => {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Como Podemos Ajudar?</CardTitle>
+                  <CardTitle className="text-lg md:text-xl">Como Podemos Ajudar?</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="space-y-2">
-                    <h4 className="font-medium">Para Fotógrafos:</h4>
-                    <ul className="text-sm text-muted-foreground space-y-1 ml-4">
+                    <h4 className="font-medium text-sm md:text-base">Para Fotógrafos:</h4>
+                    <ul className="text-xs md:text-sm text-muted-foreground space-y-1 ml-4">
                       <li>• Cadastro na plataforma</li>
                       <li>• Upload e gerenciamento de fotos</li>
                       <li>• Configuração de eventos</li>
@@ -98,8 +98,8 @@ const Contato = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <h4 className="font-medium">Para Clientes:</h4>
-                    <ul className="text-sm text-muted-foreground space-y-1 ml-4">
+                    <h4 className="font-medium text-sm md:text-base">Para Clientes:</h4>
+                    <ul className="text-xs md:text-sm text-muted-foreground space-y-1 ml-4">
                       <li>• Ajuda com compras</li>
                       <li>• Problemas com downloads</li>
                       <li>• Dúvidas sobre eventos</li>
@@ -113,44 +113,45 @@ const Contato = () => {
             {/* Formulário de Contato */}
             <Card>
               <CardHeader>
-                <CardTitle>Envie sua Mensagem</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-lg md:text-xl">Envie sua Mensagem</CardTitle>
+                <CardDescription className="text-sm md:text-base">
                   Preencha o formulário abaixo e responderemos em breve
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <form className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="nome">Nome</Label>
-                      <Input id="nome" placeholder="Seu nome completo" />
+                      <Label htmlFor="nome" className="text-sm font-medium">Nome</Label>
+                      <Input id="nome" placeholder="Seu nome completo" className="text-base" />
                     </div>
                     <div>
-                      <Label htmlFor="email">E-mail</Label>
-                      <Input id="email" type="email" placeholder="seu@email.com" />
+                      <Label htmlFor="email" className="text-sm font-medium">E-mail</Label>
+                      <Input id="email" type="email" placeholder="seu@email.com" className="text-base" />
                     </div>
                   </div>
                   
                   <div>
-                    <Label htmlFor="telefone">Telefone (opcional)</Label>
-                    <Input id="telefone" placeholder="(11) 99999-9999" />
+                    <Label htmlFor="telefone" className="text-sm font-medium">Telefone (opcional)</Label>
+                    <Input id="telefone" placeholder="(11) 99999-9999" className="text-base" />
                   </div>
                   
                   <div>
-                    <Label htmlFor="assunto">Assunto</Label>
-                    <Input id="assunto" placeholder="Como podemos ajudar?" />
+                    <Label htmlFor="assunto" className="text-sm font-medium">Assunto</Label>
+                    <Input id="assunto" placeholder="Como podemos ajudar?" className="text-base" />
                   </div>
                   
                   <div>
-                    <Label htmlFor="mensagem">Mensagem</Label>
+                    <Label htmlFor="mensagem" className="text-sm font-medium">Mensagem</Label>
                     <Textarea 
                       id="mensagem" 
                       placeholder="Descreva sua dúvida ou solicitação..."
                       rows={5}
+                      className="text-base"
                     />
                   </div>
                   
-                  <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
+                  <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 h-12 text-base font-medium">
                     Enviar Mensagem
                   </Button>
                 </form>
@@ -159,15 +160,15 @@ const Contato = () => {
           </div>
 
           {/* FAQ Rápido */}
-          <div className="mt-16">
-            <h2 className="text-2xl font-bold text-center mb-8">Perguntas Frequentes</h2>
-            <div className="grid md:grid-cols-2 gap-6">
+          <div className="mt-12 md:mt-16">
+            <h2 className="text-xl md:text-2xl font-bold text-center mb-6 md:mb-8">Perguntas Frequentes</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">Como comprar fotos?</CardTitle>
+                  <CardTitle className="text-base md:text-lg">Como comprar fotos?</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-muted-foreground">
+                  <p className="text-sm md:text-base text-muted-foreground">
                     Navegue pelos eventos, encontre suas fotos, adicione ao carrinho e finalize a compra com pagamento seguro.
                   </p>
                 </CardContent>
@@ -175,10 +176,10 @@ const Contato = () => {
 
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">Como me tornar fotógrafo?</CardTitle>
+                  <CardTitle className="text-base md:text-lg">Como me tornar fotógrafo?</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-muted-foreground">
+                  <p className="text-sm md:text-base text-muted-foreground">
                     Cadastre-se como fotógrafo na plataforma, aguarde aprovação e comece a criar seus eventos esportivos.
                   </p>
                 </CardContent>
@@ -186,10 +187,10 @@ const Contato = () => {
 
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">Problemas com download?</CardTitle>
+                  <CardTitle className="text-base md:text-lg">Problemas com download?</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-muted-foreground">
+                  <p className="text-sm md:text-base text-muted-foreground">
                     Entre em contato conosco imediatamente. Nosso suporte resolverá qualquer problema de download.
                   </p>
                 </CardContent>
@@ -197,10 +198,10 @@ const Contato = () => {
 
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">Qualidade das fotos?</CardTitle>
+                  <CardTitle className="text-base md:text-lg">Qualidade das fotos?</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-muted-foreground">
+                  <p className="text-sm md:text-base text-muted-foreground">
                     Todas as fotos são entregues em alta resolução, sem marca d'água, prontas para impressão.
                   </p>
                 </CardContent>
@@ -211,9 +212,9 @@ const Contato = () => {
       </main>
 
       {/* Footer */}
-      <footer className="bg-secondary text-secondary-foreground py-8 mt-16">
+      <footer className="bg-secondary text-secondary-foreground py-6 md:py-8 mt-12 md:mt-16">
         <div className="container mx-auto px-4 text-center">
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground text-sm md:text-base">
             © 2024 STA Fotos. Todos os direitos reservados.
           </p>
         </div>

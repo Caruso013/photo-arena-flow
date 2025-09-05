@@ -23,32 +23,32 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4">
+        <div className="container mx-auto px-4 py-3 md:py-4">
           <div className="flex items-center justify-between">
             {/* Logo */}
             <Link to="/dashboard" className="flex items-center gap-2">
               <img 
                 src="/lovable-uploads/6fdfc5d2-230c-4142-bf7c-3a326e5e45a8.png" 
                 alt="STA Fotos Logo" 
-                className="h-10 w-auto"
+                className="h-8 md:h-10 w-auto"
               />
             </Link>
 
             {/* User Menu */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 md:gap-4">
               <Link to="/">
-                <Button variant="ghost" size="sm" className="gap-2">
-                  <Home className="h-4 w-4" />
-                  Início
+                <Button variant="ghost" size="sm" className="gap-1 md:gap-2 text-xs md:text-sm">
+                  <Home className="h-3 w-3 md:h-4 md:w-4" />
+                  <span className="hidden sm:inline">Início</span>
                 </Button>
               </Link>
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                    <Avatar className="h-10 w-10">
+                  <Button variant="ghost" className="relative h-8 w-8 md:h-10 md:w-10 rounded-full">
+                    <Avatar className="h-8 w-8 md:h-10 md:w-10">
                       <AvatarImage src={profile?.avatar_url} alt={profile?.full_name} />
-                      <AvatarFallback>
+                      <AvatarFallback className="text-xs md:text-sm">
                         {profile?.full_name?.charAt(0)?.toUpperCase() || profile?.email?.charAt(0)?.toUpperCase() || 'U'}
                       </AvatarFallback>
                     </Avatar>
@@ -94,7 +94,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-4 md:py-8">
         {children}
       </main>
     </div>
