@@ -60,10 +60,11 @@ const Auth = () => {
     <div className="min-h-screen bg-gradient-subtle flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="flex items-center gap-2 mb-8 justify-center">
-          <Camera className="h-8 w-8 text-primary" />
-          <span className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-            PhotoArena
-          </span>
+          <img 
+            src="/lovable-uploads/63d072bf-33d2-4f05-be2c-27e2edf44927.png" 
+            alt="STA Fotos Logo" 
+            className="h-8 w-auto"
+          />
         </div>
 
         <Card className="backdrop-blur-sm bg-card/80 border-border/50 shadow-elegant">

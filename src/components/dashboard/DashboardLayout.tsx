@@ -27,10 +27,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
           <div className="flex items-center justify-between">
             {/* Logo */}
             <Link to="/dashboard" className="flex items-center gap-2">
-              <Camera className="h-8 w-8 text-primary" />
-              <span className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-                PhotoArena
-              </span>
+              <img 
+                src="/lovable-uploads/63d072bf-33d2-4f05-be2c-27e2edf44927.png" 
+                alt="STA Fotos Logo" 
+                className="h-8 w-auto"
+              />
             </Link>
 
             {/* User Menu */}
