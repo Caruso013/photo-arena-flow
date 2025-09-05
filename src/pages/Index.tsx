@@ -298,6 +298,7 @@ const Index = () => {
                 <div><Link to="/duvidas" className="hover:text-primary transition-colors">Dúvidas frequentes</Link></div>
                 <div><Link to="/contato" className="hover:text-primary transition-colors">Contato</Link></div>
                 <div><Link to="/sobre" className="hover:text-primary transition-colors">Sobre nós</Link></div>
+                <div><Link to="/admin" className="hover:text-primary transition-colors text-xs opacity-70">Área Admin</Link></div>
               </div>
             </div>
 
