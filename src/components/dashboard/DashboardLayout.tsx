@@ -28,9 +28,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
             {/* Logo */}
             <Link to="/dashboard" className="flex items-center gap-2">
               <img 
-                src="/lovable-uploads/63d072bf-33d2-4f05-be2c-27e2edf44927.png" 
+                src="/lovable-uploads/6fdfc5d2-230c-4142-bf7c-3a326e5e45a8.png" 
                 alt="STA Fotos Logo" 
-                className="h-8 w-auto"
+                className="h-10 w-auto"
               />
             </Link>
 
