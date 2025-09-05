@@ -59,12 +59,11 @@ const Index = () => {
           <div className="flex items-center justify-between">
             {/* Logo */}
             <div className="flex items-center gap-3">
-              <div className="bg-primary rounded-full p-2">
-                <Camera className="h-6 w-6 text-primary-foreground" />
-              </div>
-              <span className="text-2xl font-bold text-primary">
-                PhotoArena
-              </span>
+              <img 
+                src="/lovable-uploads/d2134873-3a5c-4ca6-81a5-d571abe98a3d.png" 
+                alt="STA Fotos Logo" 
+                className="h-10 w-auto"
+              />
             </div>
 
             {/* Search + Auth Buttons */}
@@ -310,7 +309,7 @@ const Index = () => {
 
           {/* Copyright */}
           <div className="border-t border-gray-700 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center text-sm text-gray-400">
-            <p>© 2024 PhotoArena. Todos os direitos reservados.</p>
+            <p>© 2024 STA Fotos. Todos os direitos reservados.</p>
             <div className="flex items-center gap-2 mt-4 md:mt-0">
               <span>Pagamentos seguros via</span>
               <div className="bg-primary px-2 py-1 rounded text-primary-foreground text-xs font-semibold">
