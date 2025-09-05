@@ -1,241 +1,323 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Camera, Users, Shield, Trophy, Star, ArrowRight, LogIn } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Camera, Users, Shield, Trophy, Star, ArrowRight, LogIn, Search, User, MapPin, Calendar } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
+interface Campaign {
+  id: string;
+  title: string;
+  description: string;
+  event_date: string;
+  location: string;
+  cover_image_url: string;
+  photographer: {
+    full_name: string;
+  };
+}
+
 const Index = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchFeaturedCampaigns();
+  }, []);
+
+  const fetchFeaturedCampaigns = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('campaigns')
+        .select(`
+          *,
+          photographer:profiles(full_name)
+        `)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(6);
+
+      if (error) throw error;
+      setCampaigns(data || []);
+    } catch (error) {
+      console.error('Error fetching campaigns:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-subtle">
-      {/* Header */}
-      <header className="border-b bg-card/50 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-4">
+    <div className="min-h-screen bg-background">
+      {/* Header STA Style - Preto com logo dourado */}
+      <header className="bg-secondary text-secondary-foreground">
+        <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Camera className="h-8 w-8 text-primary" />
-              <span className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+            {/* Logo */}
+            <div className="flex items-center gap-3">
+              <div className="bg-primary rounded-full p-2">
+                <Camera className="h-6 w-6 text-primary-foreground" />
+              </div>
+              <span className="text-2xl font-bold text-primary">
                 PhotoArena
               </span>
             </div>
+
+            {/* Search + Auth Buttons */}
             <div className="flex items-center gap-4">
+              {/* Search */}
+              <div className="relative hidden md:block">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  placeholder="Pesquisar evento..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 bg-background/10 border-gray-600 text-white placeholder:text-gray-400 w-64"
+                />
+              </div>
+
+              {/* Auth Buttons */}
               {user ? (
                 <Link to="/dashboard">
-                  <Button className="gap-2">
-                    <ArrowRight className="h-4 w-4" />
+                  <Button variant="outline" className="gap-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground">
+                    <User className="h-4 w-4" />
                     Dashboard
                   </Button>
                 </Link>
               ) : (
-                <Link to="/auth">
-                  <Button className="gap-2">
-                    <LogIn className="h-4 w-4" />
-                    Entrar / Cadastrar
-                  </Button>
-                </Link>
+                <div className="flex gap-2">
+                  <Link to="/auth">
+                    <Button variant="outline" className="gap-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground">
+                      <User className="h-4 w-4" />
+                      Cadastrar
+                    </Button>
+                  </Link>
+                  <Link to="/auth">
+                    <Button className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
+                      <LogIn className="h-4 w-4" />
+                      Entrar
+                    </Button>
+                  </Link>
+                </div>
               )}
             </div>
           </div>
         </div>
+
+        {/* Navigation */}
+        <nav className="border-t border-gray-700">
+          <div className="container mx-auto px-4">
+            <div className="flex items-center space-x-8 py-3 text-sm">
+              <Link to="/" className="text-primary font-medium">HOME</Link>
+              <Link to="/events" className="hover:text-primary transition-colors">EVENTOS</Link>
+              <Link to="/fotografos" className="hover:text-primary transition-colors">FOTÓGRAFOS</Link>
+              <Link to="/contato" className="hover:text-primary transition-colors">CONTATO</Link>
+              {profile?.role === 'photographer' && (
+                <Link to="/cadastro-fotografos" className="hover:text-primary transition-colors">ÁREA DO FOTÓGRAFO</Link>
+              )}
+            </div>
+          </div>
+        </nav>
       </header>
 
-      {/* Hero Section */}
-      <section className="py-24 px-4">
-        <div className="container mx-auto text-center">
-          <Badge variant="secondary" className="mb-4">
-            Plataforma de Fotos Esportivas
-          </Badge>
-          <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-primary bg-clip-text text-transparent">
-            Capture. Venda. Reviva.
-          </h1>
-          <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            A plataforma definitiva para fotógrafos esportivos venderem suas fotos e 
-            para atletas e fãs comprarem memórias inesquecíveis dos seus eventos favoritos.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            {!user && (
-              <Link to="/auth">
-                <Button size="lg" className="gap-2">
-                  <Camera className="h-5 w-5" />
-                  Começar Agora
-                </Button>
-              </Link>
-            )}
-            <Button variant="outline" size="lg" className="gap-2">
-              <Trophy className="h-5 w-5" />
-              Ver Eventos
-            </Button>
-          </div>
+      {/* Mobile Search */}
+      <div className="md:hidden bg-secondary border-t border-gray-700 p-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <Input
+            placeholder="Pesquisar evento..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 bg-background/10 border-gray-600 text-white placeholder:text-gray-400"
+          />
+        </div>
+      </div>
+
+      {/* Featured Campaigns - STA Style */}
+      <section className="py-12 px-4">
+        <div className="container mx-auto">
+          {loading ? (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="aspect-video bg-muted animate-pulse rounded-lg" />
+              ))}
+            </div>
+          ) : campaigns.length > 0 ? (
+            <>
+              <div className="text-center mb-8">
+                <h2 className="text-3xl font-bold text-foreground mb-2">Eventos em Destaque</h2>
+                <p className="text-muted-foreground">Navegue pelos principais campeonatos esportivos</p>
+              </div>
+              
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {campaigns.map((campaign) => (
+                  <Card key={campaign.id} className="overflow-hidden hover:shadow-lg transition-shadow group cursor-pointer border-2 hover:border-primary/20">
+                    <div className="aspect-video bg-gradient-dark relative">
+                      {campaign.cover_image_url ? (
+                        <img
+                          src={campaign.cover_image_url}
+                          alt={campaign.title}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-secondary">
+                          <div className="text-center text-secondary-foreground">
+                            <Camera className="h-16 w-16 mx-auto mb-4 text-primary" />
+                            <h3 className="text-xl font-bold mb-2">{campaign.title}</h3>
+                          </div>
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                      <div className="absolute bottom-4 left-4 right-4 text-white">
+                        <h3 className="text-xl font-bold mb-1">{campaign.title}</h3>
+                        <div className="flex items-center gap-4 text-sm">
+                          <div className="flex items-center gap-1">
+                            <MapPin className="h-3 w-3" />
+                            <span>{campaign.location}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            <span>{new Date(campaign.event_date).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="text-sm text-muted-foreground">
+                            Por: {campaign.photographer?.full_name}
+                          </p>
+                        </div>
+                        <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90">
+                          Ver Fotos
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="text-center py-16">
+              <Camera className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-xl font-medium mb-2">Em breve novos eventos!</h3>
+              <p className="text-muted-foreground">
+                Fotógrafos estão preparando eventos incríveis para você
+              </p>
+              {!user && (
+                <Link to="/auth">
+                  <Button className="mt-4 bg-primary text-primary-foreground hover:bg-primary/90">
+                    Cadastre-se para ser notificado
+                  </Button>
+                </Link>
+              )}
+            </div>
+          )}
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="py-16 px-4">
+      {/* About Section - STA Style */}
+      <section className="py-16 px-4 bg-muted/20">
         <div className="container mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">Para Todos os Perfis</h2>
-            <p className="text-lg text-muted-foreground">
-              Uma plataforma completa que atende fotógrafos, usuários e administradores
+            <h2 className="text-3xl font-bold mb-4">Como Funciona</h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Conectamos fotógrafos esportivos com atletas e fãs que querem guardar seus melhores momentos
             </p>
           </div>
           
           <div className="grid md:grid-cols-3 gap-8">
-            {/* Fotógrafos */}
-            <Card className="text-center hover:shadow-elegant transition-shadow">
-              <CardHeader>
-                <div className="mx-auto mb-4 p-3 rounded-full bg-primary/10">
-                  <Camera className="h-8 w-8 text-primary" />
-                </div>
-                <CardTitle>Para Fotógrafos</CardTitle>
-                <CardDescription>
-                  Venda suas fotos com facilidade e gerencie seus eventos
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="text-sm text-muted-foreground space-y-2">
-                  <li>• Upload de fotos com marca d'água automática</li>
-                  <li>• Dashboard com relatórios de vendas</li>
-                  <li>• Gestão de eventos e campanhas</li>
-                  <li>• Pagamentos via Stripe integrado</li>
-                </ul>
-              </CardContent>
-            </Card>
-
-            {/* Usuários */}
-            <Card className="text-center hover:shadow-elegant transition-shadow">
-              <CardHeader>
-                <div className="mx-auto mb-4 p-3 rounded-full bg-primary/10">
-                  <Users className="h-8 w-8 text-primary" />
-                </div>
-                <CardTitle>Para Usuários</CardTitle>
-                <CardDescription>
-                  Encontre e compre fotos dos seus eventos favoritos
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="text-sm text-muted-foreground space-y-2">
-                  <li>• Navegação intuitiva por eventos</li>
-                  <li>• Visualização com marca d'água</li>
-                  <li>• Compra segura com Stripe</li>
-                  <li>• Download de fotos em alta qualidade</li>
-                </ul>
-              </CardContent>
-            </Card>
-
-            {/* Administradores */}
-            <Card className="text-center hover:shadow-elegant transition-shadow">
-              <CardHeader>
-                <div className="mx-auto mb-4 p-3 rounded-full bg-primary/10">
-                  <Shield className="h-8 w-8 text-primary" />
-                </div>
-                <CardTitle>Para Administradores</CardTitle>
-                <CardDescription>
-                  Controle total sobre a plataforma e usuários
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="text-sm text-muted-foreground space-y-2">
-                  <li>• Gestão completa de usuários</li>
-                  <li>• Supervisão de todos os eventos</li>
-                  <li>• Relatórios de vendas globais</li>
-                  <li>• Controle de permissões e roles</li>
-                </ul>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Benefits Section */}
-      <section className="py-16 px-4 bg-card/20">
-        <div className="container mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">Por que escolher a PhotoArena?</h2>
-          </div>
-          
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="text-center">
-              <div className="mx-auto mb-4 p-3 rounded-full bg-primary/10 w-fit">
-                <Star className="h-6 w-6 text-primary" />
+              <div className="mx-auto mb-6 p-4 rounded-full bg-primary/10 w-fit">
+                <Camera className="h-8 w-8 text-primary" />
               </div>
-              <h3 className="font-semibold mb-2">Mobile First</h3>
-              <p className="text-sm text-muted-foreground">
-                Interface otimizada para dispositivos móveis
+              <h3 className="text-xl font-semibold mb-3">1. Fotógrafo Cria Evento</h3>
+              <p className="text-muted-foreground">
+                Fotógrafos cadastram seus eventos esportivos e fazem upload das fotos com proteção automática
               </p>
             </div>
             
             <div className="text-center">
-              <div className="mx-auto mb-4 p-3 rounded-full bg-primary/10 w-fit">
-                <Shield className="h-6 w-6 text-primary" />
+              <div className="mx-auto mb-6 p-4 rounded-full bg-primary/10 w-fit">
+                <Search className="h-8 w-8 text-primary" />
               </div>
-              <h3 className="font-semibold mb-2">Seguro</h3>
-              <p className="text-sm text-muted-foreground">
-                Pagamentos seguros e proteção contra pirataria
+              <h3 className="text-xl font-semibold mb-3">2. Usuário Encontra</h3>
+              <p className="text-muted-foreground">
+                Atletas e fãs navegam pelos eventos, visualizam fotos com marca d'água e escolhem suas favoritas
               </p>
             </div>
             
             <div className="text-center">
-              <div className="mx-auto mb-4 p-3 rounded-full bg-primary/10 w-fit">
-                <Users className="h-6 w-6 text-primary" />
+              <div className="mx-auto mb-6 p-4 rounded-full bg-primary/10 w-fit">
+                <Trophy className="h-8 w-8 text-primary" />
               </div>
-              <h3 className="font-semibold mb-2">Fácil de Usar</h3>
-              <p className="text-sm text-muted-foreground">
-                Interface intuitiva para todos os perfis
-              </p>
-            </div>
-            
-            <div className="text-center">
-              <div className="mx-auto mb-4 p-3 rounded-full bg-primary/10 w-fit">
-                <Trophy className="h-6 w-6 text-primary" />
-              </div>
-              <h3 className="font-semibold mb-2">Especializado</h3>
-              <p className="text-sm text-muted-foreground">
-                Feito especialmente para eventos esportivos
+              <h3 className="text-xl font-semibold mb-3">3. Compra Segura</h3>
+              <p className="text-muted-foreground">
+                Pagamento seguro via Stripe e download imediato das fotos em alta qualidade sem marca d'água
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* CTA Section */}
-      {!user && (
-        <section className="py-16 px-4">
-          <div className="container mx-auto text-center">
-            <Card className="max-w-2xl mx-auto bg-gradient-primary text-white border-0">
-              <CardContent className="p-8">
-                <h2 className="text-3xl font-bold mb-4">
-                  Pronto para começar?
-                </h2>
-                <p className="text-lg opacity-90 mb-6">
-                  Cadastre-se agora e comece a vender ou comprar fotos esportivas
-                </p>
-                <Link to="/auth">
-                  <Button size="lg" variant="secondary" className="gap-2">
-                    <Camera className="h-5 w-5" />
-                    Criar Conta Grátis
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
-          </div>
-        </section>
-      )}
+      {/* Footer - STA Style */}
+      <footer className="bg-secondary text-secondary-foreground py-12">
+        <div className="container mx-auto px-4">
+          <div className="grid md:grid-cols-4 gap-8">
+            {/* Sobre nós */}
+            <div>
+              <h3 className="text-lg font-semibold mb-4 text-primary">Sobre nós</h3>
+              <div className="space-y-2 text-sm">
+                <p>contato@photoarena.com.br</p>
+                <p>(11) 99999-9999</p>
+              </div>
+            </div>
 
-      {/* Footer */}
-      <footer className="border-t bg-card/50 py-8">
-        <div className="container mx-auto px-4 text-center">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <Camera className="h-6 w-6 text-primary" />
-            <span className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-              PhotoArena
-            </span>
+            {/* Links */}
+            <div>
+              <h3 className="text-lg font-semibold mb-4 text-primary">Links</h3>
+              <div className="space-y-2 text-sm">
+                <div><Link to="/auth" className="hover:text-primary transition-colors">Login</Link></div>
+                <div><Link to="/auth" className="hover:text-primary transition-colors">Cadastro</Link></div>
+                <div><Link to="/recuperacao" className="hover:text-primary transition-colors">Recuperação de acesso</Link></div>
+              </div>
+            </div>
+
+            {/* Ajuda */}
+            <div>
+              <h3 className="text-lg font-semibold mb-4 text-primary">Ajuda</h3>
+              <div className="space-y-2 text-sm">
+                <div><Link to="/duvidas" className="hover:text-primary transition-colors">Dúvidas frequentes</Link></div>
+                <div><Link to="/contato" className="hover:text-primary transition-colors">Contato</Link></div>
+                <div><Link to="/sobre" className="hover:text-primary transition-colors">Sobre nós</Link></div>
+              </div>
+            </div>
+
+            {/* Redes Sociais */}
+            <div>
+              <h3 className="text-lg font-semibold mb-4 text-primary">Redes sociais</h3>
+              <div className="flex gap-4">
+                <div className="w-8 h-8 bg-gray-600 rounded"></div>
+              </div>
+            </div>
           </div>
-          <p className="text-sm text-muted-foreground">
-            © 2024 PhotoArena. A plataforma definitiva para fotos esportivas.
-          </p>
+
+          {/* Copyright */}
+          <div className="border-t border-gray-700 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center text-sm text-gray-400">
+            <p>© 2024 PhotoArena. Todos os direitos reservados.</p>
+            <div className="flex items-center gap-2 mt-4 md:mt-0">
+              <span>Pagamentos seguros via</span>
+              <div className="bg-primary px-2 py-1 rounded text-primary-foreground text-xs font-semibold">
+                STRIPE
+              </div>
+            </div>
+          </div>
         </div>
       </footer>
     </div>
