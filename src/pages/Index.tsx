@@ -273,8 +273,8 @@ const Index = () => {
             <div>
               <h3 className="text-lg font-semibold mb-4 text-primary">Sobre nós</h3>
               <div className="space-y-2 text-sm">
-                <p>contato@photoarena.com.br</p>
-                <p>(11) 99999-9999</p>
+                <p>contato@stafotos.com.br</p>
+                <p>(11) 95771-9467</p>
               </div>
             </div>
 
