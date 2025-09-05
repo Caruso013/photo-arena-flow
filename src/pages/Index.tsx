@@ -60,7 +60,7 @@ const Index = () => {
             {/* Logo */}
             <div className="flex items-center gap-3">
               <img 
-                src="/lovable-uploads/d2134873-3a5c-4ca6-81a5-d571abe98a3d.png" 
+                src="/lovable-uploads/6fdfc5d2-230c-4142-bf7c-3a326e5e45a8.png" 
                 alt="STA Fotos Logo" 
                 className="h-10 w-auto"
               />
