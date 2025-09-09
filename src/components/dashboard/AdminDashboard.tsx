@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, Camera, DollarSign, Shield, Settings, Eye, Edit, Trash2 } from 'lucide-react';
+import { Users, Camera, DollarSign, Shield, Settings, Eye, Edit, Trash2, Image, CreditCard, CheckCircle, XCircle } from 'lucide-react';
 import DashboardLayout from './DashboardLayout';
 
 interface User {
@@ -44,6 +44,43 @@ interface Purchase {
   };
 }
 
+interface Photo {
+  id: string;
+  title: string;
+  watermarked_url: string;
+  thumbnail_url: string;
+  is_available: boolean;
+  price: number;
+  created_at: string;
+  photographer: {
+    full_name: string;
+  };
+  campaign: {
+    title: string;
+  };
+}
+
+interface PayoutRequest {
+  id: string;
+  amount: number;
+  status: string;
+  requested_at: string;
+  processed_at: string | null;
+  notes: string | null;
+  photographer: {
+    full_name: string;
+  } | null;
+}
+
+interface PhotographerRevenue {
+  id: string;
+  full_name: string;
+  total_sales: number;
+  commission: number;
+  available_balance: number;
+  total_photos: number;
+}
+
 interface Stats {
   totalUsers: number;
   totalPhotographers: number;
@@ -56,6 +93,9 @@ const AdminDashboard = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [purchases, setPurchases] = useState<Purchase[]>([]);
+  const [photos, setPhotos] = useState<Photo[]>([]);
+  const [payoutRequests, setPayoutRequests] = useState<PayoutRequest[]>([]);
+  const [photographerRevenue, setPhotographerRevenue] = useState<PhotographerRevenue[]>([]);
   const [stats, setStats] = useState<Stats>({
     totalUsers: 0,
     totalPhotographers: 0,
@@ -73,6 +113,9 @@ const AdminDashboard = () => {
       fetchUsers(),
       fetchCampaigns(),
       fetchPurchases(),
+      fetchPhotos(),
+      fetchPayoutRequests(),
+      fetchPhotographerRevenue(),
       fetchStats()
     ]);
     setLoading(false);
@@ -163,6 +206,133 @@ const AdminDashboard = () => {
       });
     } catch (error) {
       console.error('Error fetching stats:', error);
+    }
+  };
+
+  const fetchPhotos = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('photos')
+        .select(`
+          *,
+          photographer:profiles(full_name),
+          campaign:campaigns(title)
+        `)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (error) throw error;
+      setPhotos(data || []);
+    } catch (error) {
+      console.error('Error fetching photos:', error);
+    }
+  };
+
+  const fetchPayoutRequests = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('payout_requests')
+        .select(`
+          *,
+          photographer:profiles(full_name)
+        `)
+        .order('requested_at', { ascending: false });
+
+      if (error) throw error;
+      setPayoutRequests((data || []).map(item => ({
+        id: item.id,
+        amount: item.amount,
+        status: item.status,
+        requested_at: item.requested_at,
+        processed_at: item.processed_at,
+        notes: item.notes,
+        photographer: item.photographer && 
+          typeof item.photographer === 'object' && 
+          !Array.isArray(item.photographer) &&
+          'full_name' in item.photographer
+          ? { full_name: (item.photographer as any).full_name }
+          : null
+      })));
+    } catch (error) {
+      console.error('Error fetching payout requests:', error);
+    }
+  };
+
+  const fetchPhotographerRevenue = async () => {
+    try {
+      // Get all photographers
+      const { data: photographers, error: photoError } = await supabase
+        .from('profiles')
+        .select('id, full_name')
+        .eq('role', 'photographer');
+
+      if (photoError) throw photoError;
+
+      const revenueData = await Promise.all(
+        (photographers || []).map(async (photographer) => {
+          // Get total sales for this photographer
+          const { data: sales } = await supabase
+            .from('purchases')
+            .select('amount')
+            .eq('photographer_id', photographer.id)
+            .eq('status', 'completed');
+
+          // Get total photos for this photographer
+          const { count: totalPhotos } = await supabase
+            .from('photos')
+            .select('*', { count: 'exact', head: true })
+            .eq('photographer_id', photographer.id);
+
+          const totalSales = sales?.reduce((sum, sale) => sum + Number(sale.amount), 0) || 0;
+          const commission = totalSales * 0.7; // 70% for photographer
+          
+          return {
+            id: photographer.id,
+            full_name: photographer.full_name,
+            total_sales: totalSales,
+            commission,
+            available_balance: commission, // In a real app, subtract already paid amounts
+            total_photos: totalPhotos || 0
+          };
+        })
+      );
+
+      setPhotographerRevenue(revenueData);
+    } catch (error) {
+      console.error('Error fetching photographer revenue:', error);
+    }
+  };
+
+  const updatePhotoStatus = async (photoId: string, isAvailable: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('photos')
+        .update({ is_available: isAvailable })
+        .eq('id', photoId);
+
+      if (error) throw error;
+      await fetchPhotos();
+    } catch (error) {
+      console.error('Error updating photo status:', error);
+    }
+  };
+
+  const processPayoutRequest = async (requestId: string, action: 'approved' | 'rejected', notes?: string) => {
+    try {
+      const { error } = await supabase
+        .from('payout_requests')
+        .update({
+          status: action,
+          processed_at: new Date().toISOString(),
+          processed_by: profile?.id,
+          notes: notes
+        })
+        .eq('id', requestId);
+
+      if (error) throw error;
+      await fetchPayoutRequests();
+    } catch (error) {
+      console.error('Error processing payout request:', error);
     }
   };
 
@@ -261,6 +431,9 @@ const AdminDashboard = () => {
           <TabsList>
             <TabsTrigger value="users">Usuários</TabsTrigger>
             <TabsTrigger value="campaigns">Eventos</TabsTrigger>
+            <TabsTrigger value="photos">Fotos</TabsTrigger>
+            <TabsTrigger value="revenue">Receitas</TabsTrigger>
+            <TabsTrigger value="payouts">Repasses</TabsTrigger>
             <TabsTrigger value="purchases">Vendas</TabsTrigger>
           </TabsList>
 
@@ -356,6 +529,183 @@ const AdminDashboard = () => {
                       </div>
                     </div>
                   ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="photos" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Gerenciar Fotos</CardTitle>
+                <CardDescription>
+                  Visualize e modere todas as fotos da plataforma
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {photos.map((photo) => (
+                    <div key={photo.id} className="flex items-center gap-4 p-4 border rounded-lg">
+                      <div className="w-20 h-20 rounded-lg overflow-hidden bg-muted">
+                        <img 
+                          src={photo.thumbnail_url || photo.watermarked_url} 
+                          alt={photo.title || 'Foto'}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="font-medium">{photo.title || 'Foto sem título'}</h3>
+                          <Badge variant={photo.is_available ? "default" : "secondary"}>
+                            {photo.is_available ? "Disponível" : "Indisponível"}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          Por: {photo.photographer?.full_name} • Evento: {photo.campaign?.title}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Preço: R$ {Number(photo.price).toFixed(2)} • {new Date(photo.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => updatePhotoStatus(photo.id, !photo.is_available)}
+                        >
+                          {photo.is_available ? 'Ocultar' : 'Mostrar'}
+                        </Button>
+                        <Button size="sm" variant="outline">
+                          <Eye className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="revenue" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Receitas por Fotógrafo</CardTitle>
+                <CardDescription>
+                  Visualize o desempenho financeiro individual de cada fotógrafo
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {photographerRevenue.map((photographer) => (
+                    <div key={photographer.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex-1">
+                        <h3 className="font-medium">{photographer.full_name}</h3>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2 text-sm">
+                          <div>
+                            <p className="text-muted-foreground">Total de Fotos</p>
+                            <p className="font-medium">{photographer.total_photos}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Vendas Totais</p>
+                            <p className="font-medium">R$ {photographer.total_sales.toFixed(2)}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Comissão (70%)</p>
+                            <p className="font-medium text-primary">R$ {photographer.commission.toFixed(2)}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Saldo Disponível</p>
+                            <p className="font-medium text-green-600">R$ {photographer.available_balance.toFixed(2)}</p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline">
+                          <Eye className="h-3 w-3 mr-1" />
+                          Detalhes
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="payouts" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Solicitações de Repasse</CardTitle>
+                <CardDescription>
+                  Gerencie as solicitações de pagamento dos fotógrafos
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {payoutRequests.map((request) => (
+                    <div key={request.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="font-medium">{request.photographer?.full_name}</h3>
+                          <Badge variant={
+                            request.status === 'approved' ? 'default' :
+                            request.status === 'pending' ? 'secondary' : 'destructive'
+                          }>
+                            {request.status === 'approved' ? 'Aprovado' :
+                             request.status === 'pending' ? 'Pendente' : 'Rejeitado'}
+                          </Badge>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                          <div>
+                            <p className="text-muted-foreground">Valor Solicitado</p>
+                            <p className="font-medium text-primary">R$ {Number(request.amount).toFixed(2)}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Data da Solicitação</p>
+                            <p className="font-medium">{new Date(request.requested_at).toLocaleDateString()}</p>
+                          </div>
+                          {request.processed_at && (
+                            <div>
+                              <p className="text-muted-foreground">Processado em</p>
+                              <p className="font-medium">{new Date(request.processed_at).toLocaleDateString()}</p>
+                            </div>
+                          )}
+                        </div>
+                        {request.notes && (
+                          <p className="text-sm text-muted-foreground mt-2">
+                            Observações: {request.notes}
+                          </p>
+                        )}
+                      </div>
+                      {request.status === 'pending' && (
+                        <div className="flex gap-2">
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            className="text-green-600 border-green-600 hover:bg-green-50"
+                            onClick={() => processPayoutRequest(request.id, 'approved', 'Pagamento aprovado pelo admin')}
+                          >
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            Aprovar
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            className="text-red-600 border-red-600 hover:bg-red-50"
+                            onClick={() => processPayoutRequest(request.id, 'rejected', 'Rejeitado pelo admin')}
+                          >
+                            <XCircle className="h-3 w-3 mr-1" />
+                            Rejeitar
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {payoutRequests.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      Nenhuma solicitação de repasse encontrada
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
