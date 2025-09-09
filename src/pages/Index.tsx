@@ -119,7 +119,7 @@ const Index = () => {
               <Link to="/fotografos" className="hover:text-primary transition-colors whitespace-nowrap">FOTÓGRAFOS</Link>
               <Link to="/contato" className="hover:text-primary transition-colors whitespace-nowrap">CONTATO</Link>
               {profile?.role === 'photographer' && (
-                <Link to="/cadastro-fotografos" className="hover:text-primary transition-colors whitespace-nowrap">ÁREA DO FOTÓGRAFO</Link>
+                <Link to="/dashboard" className="hover:text-primary transition-colors whitespace-nowrap">ÁREA DO FOTÓGRAFO</Link>
               )}
             </div>
           </div>
