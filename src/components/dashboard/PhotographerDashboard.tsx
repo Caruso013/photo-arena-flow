@@ -9,6 +9,7 @@ import { Upload, Camera, DollarSign, BarChart3, Plus, Eye, Edit } from 'lucide-r
 import DashboardLayout from './DashboardLayout';
 import UploadPhotoModal from '@/components/modals/UploadPhotoModal';
 import CreateCampaignModal from '@/components/modals/CreateCampaignModal';
+import AntiScreenshotProtection from '@/components/security/AntiScreenshotProtection';
 
 interface Campaign {
   id: string;
@@ -148,8 +149,9 @@ const PhotographerDashboard = () => {
   }
 
   return (
-    <DashboardLayout>
-      <div className="space-y-8">
+    <AntiScreenshotProtection>
+      <DashboardLayout>
+        <div className="space-y-8">
         {/* Welcome Section */}
         <div className="bg-gradient-primary rounded-lg p-8 text-white">
           <h1 className="text-3xl font-bold mb-2">
@@ -380,7 +382,8 @@ const PhotographerDashboard = () => {
           onCampaignCreated={fetchData}
         />
       )}
-    </DashboardLayout>
+      </DashboardLayout>
+    </AntiScreenshotProtection>
   );
 };
 
