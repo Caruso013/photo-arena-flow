@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Camera, Users, Shield, Trophy, Star, ArrowRight, LogIn, Search, User, MapPin, Calendar } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import WatermarkedPhoto from '@/components/WatermarkedPhoto';
 
 interface Campaign {
   id: string;
@@ -160,10 +161,11 @@ const Index = () => {
                   <Card key={campaign.id} className="overflow-hidden hover:shadow-lg transition-shadow group cursor-pointer border-2 hover:border-primary/20">
                     <div className="aspect-video bg-gradient-dark relative">
                       {campaign.cover_image_url ? (
-                        <img
+                        <WatermarkedPhoto
                           src={campaign.cover_image_url}
                           alt={campaign.title}
-                          className="w-full h-full object-cover"
+                          position="corner"
+                          opacity={0.5}
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-secondary">
@@ -196,9 +198,11 @@ const Index = () => {
                             Por: {campaign.photographer?.full_name}
                           </p>
                         </div>
-                        <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90">
-                          Ver Fotos
-                        </Button>
+                        <Link to={`/campaign/${campaign.id}`}>
+                          <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90">
+                            Ver Fotos
+                          </Button>
+                        </Link>
                       </div>
                     </CardContent>
                   </Card>

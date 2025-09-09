@@ -201,9 +201,11 @@ const Events = () => {
                           Por: {campaign.photographer?.full_name}
                         </p>
                       </div>
-                      <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90 text-xs md:text-sm">
-                        Ver Fotos
-                      </Button>
+                      <Link to={`/campaign/${campaign.id}`}>
+                        <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90 text-xs md:text-sm">
+                          Ver Fotos
+                        </Button>
+                      </Link>
                     </div>
                   </CardContent>
                 </Card>
