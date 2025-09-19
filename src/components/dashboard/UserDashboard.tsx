@@ -5,7 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Search, Camera, ShoppingCart, Download } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { toast } from '@/components/ui/use-toast';
+import { Search, Camera, ShoppingCart, Download, FileImage } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import DashboardLayout from './DashboardLayout';
 
 interface Campaign {
@@ -20,28 +23,102 @@ interface Campaign {
   };
 }
 
-interface Photo {
+interface PurchasedPhoto {
   id: string;
-  title: string;
-  watermarked_url: string;
-  thumbnail_url: string;
-  price: number;
-  campaign: {
+  amount: number;
+  created_at: string;
+  status: string;
+  photo: {
+    id: string;
     title: string;
+    original_url: string;
+    thumbnail_url: string;
+    watermarked_url: string;
+    campaign: {
+      title: string;
+    };
   };
 }
 
 const UserDashboard = () => {
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-  const [photos, setPhotos] = useState<Photo[]>([]);
+  const [purchasedPhotos, setPurchasedPhotos] = useState<PurchasedPhoto[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchCampaigns();
-    fetchPhotos();
-  }, []);
+    if (user) {
+      fetchPurchasedPhotos();
+    }
+  }, [user]);
+
+  const fetchPurchasedPhotos = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('purchases')
+        .select(`
+          id,
+          amount,
+          created_at,
+          status,
+          photo:photos (
+            id,
+            title,
+            original_url,
+            thumbnail_url,
+            watermarked_url,
+            campaign:campaigns (title)
+          )
+        `)
+        .eq('buyer_id', user.id)
+        .eq('status', 'completed')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setPurchasedPhotos(data || []);
+    } catch (error) {
+      console.error('Error fetching purchased photos:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDownload = async (photo: PurchasedPhoto) => {
+    try {
+      if (!photo.photo.original_url) {
+        toast({
+          title: "Erro no download",
+          description: "URL da foto não encontrada.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Criar um link de download
+      const link = document.createElement('a');
+      link.href = photo.photo.original_url;
+      link.download = `${photo.photo.title || 'foto'}_original.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast({
+        title: "Download iniciado",
+        description: "Sua foto está sendo baixada.",
+      });
+    } catch (error) {
+      console.error('Error downloading photo:', error);
+      toast({
+        title: "Erro no download",
+        description: "Não foi possível baixar a foto.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const fetchCampaigns = async () => {
     try {
@@ -62,30 +139,9 @@ const UserDashboard = () => {
     }
   };
 
-  const fetchPhotos = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('photos')
-        .select(`
-          *,
-          campaign:campaigns(title)
-        `)
-        .eq('is_available', true)
-        .order('created_at', { ascending: false })
-        .limit(12);
-
-      if (error) throw error;
-      setPhotos(data || []);
-      setLoading(false);
-    } catch (error) {
-      console.error('Error fetching photos:', error);
-      setLoading(false);
-    }
-  };
-
-  const filteredPhotos = photos.filter(photo =>
-    photo.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    photo.campaign?.title?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredCampaigns = campaigns.filter(campaign =>
+    campaign.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    campaign.location.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (loading) {
@@ -115,7 +171,7 @@ const UserDashboard = () => {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
               <Input
-                placeholder="Buscar fotos por evento ou título..."
+                placeholder="Buscar eventos..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -124,90 +180,129 @@ const UserDashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Featured Campaigns */}
-        <div>
-          <h2 className="text-2xl font-bold mb-4">Eventos em Destaque</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {campaigns.map((campaign) => (
-              <Card key={campaign.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                <div className="aspect-video bg-gradient-subtle relative">
-                  {campaign.cover_image_url ? (
-                    <img
-                      src={campaign.cover_image_url}
-                      alt={campaign.title}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Camera className="h-12 w-12 text-muted-foreground" />
-                    </div>
-                  )}
-                </div>
-                <CardContent className="p-4">
-                  <CardTitle className="text-lg mb-2">{campaign.title}</CardTitle>
-                  <CardDescription className="text-sm mb-2">
-                    {campaign.description}
-                  </CardDescription>
-                  <div className="flex justify-between items-center text-sm text-muted-foreground">
-                    <span>{campaign.location}</span>
-                    <span>{new Date(campaign.event_date).toLocaleDateString()}</span>
-                  </div>
-                  <p className="text-xs mt-2">Por: {campaign.photographer?.full_name}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
+        {/* Main Content Tabs */}
+        <Tabs defaultValue="events" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="events">Eventos Disponíveis</TabsTrigger>
+            <TabsTrigger value="purchases">Minhas Fotos Compradas</TabsTrigger>
+          </TabsList>
 
-        {/* Photos Grid */}
-        <div>
-          <h2 className="text-2xl font-bold mb-4">
-            Fotos Disponíveis {searchTerm && `(${filteredPhotos.length} resultados)`}
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {filteredPhotos.map((photo) => (
-              <Card key={photo.id} className="overflow-hidden hover:shadow-lg transition-shadow group">
-                <div className="aspect-square bg-gradient-subtle relative">
-                  <img
-                    src={photo.watermarked_url}
-                    alt={photo.title || 'Foto'}
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                    <Button size="sm" className="gap-2">
-                      <ShoppingCart className="h-4 w-4" />
-                      Comprar
-                    </Button>
+          <TabsContent value="events" className="space-y-4">
+            <h2 className="text-2xl font-bold">
+              Eventos em Destaque {searchTerm && `(${filteredCampaigns.length} resultados)`}
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredCampaigns.map((campaign) => (
+                <Card key={campaign.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                  <div className="aspect-video bg-gradient-subtle relative">
+                    {campaign.cover_image_url ? (
+                      <img
+                        src={campaign.cover_image_url}
+                        alt={campaign.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Camera className="h-12 w-12 text-muted-foreground" />
+                      </div>
+                    )}
                   </div>
-                </div>
-                <CardContent className="p-4">
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex-1">
-                      <p className="font-medium text-sm">{photo.title || 'Foto sem título'}</p>
-                      <p className="text-xs text-muted-foreground">{photo.campaign?.title}</p>
+                  <CardContent className="p-4">
+                    <CardTitle className="text-lg mb-2">{campaign.title}</CardTitle>
+                    <CardDescription className="text-sm mb-2">
+                      {campaign.description}
+                    </CardDescription>
+                    <div className="flex justify-between items-center text-sm text-muted-foreground mb-3">
+                      <span>{campaign.location}</span>
+                      <span>{new Date(campaign.event_date).toLocaleDateString()}</span>
                     </div>
-                    <Badge variant="secondary" className="ml-2">
-                      R$ {photo.price.toFixed(2)}
-                    </Badge>
-                  </div>
-                </CardContent>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm">Por: {campaign.photographer?.full_name}</span>
+                      <Link to={`/campaign/${campaign.id}`}>
+                        <Button size="sm" className="gap-1">
+                          <Camera className="h-3 w-3" />
+                          Ver Fotos
+                        </Button>
+                      </Link>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {filteredCampaigns.length === 0 && (
+              <Card className="p-12 text-center">
+                <Camera className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium mb-2">Nenhum evento encontrado</h3>
+                <p className="text-muted-foreground">
+                  {searchTerm 
+                    ? `Não encontramos eventos para "${searchTerm}"`
+                    : "Não há eventos disponíveis no momento"
+                  }
+                </p>
               </Card>
-            ))}
-          </div>
-          
-          {filteredPhotos.length === 0 && (
-            <Card className="p-12 text-center">
-              <Camera className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium mb-2">Nenhuma foto encontrada</h3>
-              <p className="text-muted-foreground">
-                {searchTerm 
-                  ? 'Tente buscar com outros termos'
-                  : 'Ainda não há fotos disponíveis para compra'
-                }
-              </p>
-            </Card>
-          )}
-        </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="purchases" className="space-y-4">
+            <h2 className="text-2xl font-bold">
+              Minhas Fotos Compradas ({purchasedPhotos.length})
+            </h2>
+            
+            {purchasedPhotos.length === 0 ? (
+              <Card className="p-12 text-center">
+                <FileImage className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium mb-2">Nenhuma foto comprada ainda</h3>
+                <p className="text-muted-foreground">
+                  Explore os eventos e compre suas fotos favoritas!
+                </p>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                {purchasedPhotos.map((purchase) => (
+                  <Card key={purchase.id} className="overflow-hidden">
+                    <div className="aspect-square bg-gradient-subtle relative">
+                      <img
+                        src={purchase.photo.thumbnail_url || purchase.photo.watermarked_url}
+                        alt={purchase.photo.title || 'Foto'}
+                        className="w-full h-full object-cover"
+                      />
+                      <Badge className="absolute top-2 right-2 bg-green-600 text-white">
+                        Comprada
+                      </Badge>
+                    </div>
+                    <CardContent className="p-3">
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium truncate">
+                          {purchase.photo.title || 'Foto'}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {purchase.photo.campaign?.title}
+                        </p>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-green-600 font-medium">
+                            R$ {purchase.amount.toFixed(2)}
+                          </span>
+                          <Button 
+                            size="sm" 
+                            className="gap-1"
+                            onClick={() => handleDownload(purchase)}
+                          >
+                            <Download className="h-3 w-3" />
+                            Baixar
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Comprada em {new Date(purchase.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     </DashboardLayout>
   );

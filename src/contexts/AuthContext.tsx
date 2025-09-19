@@ -4,12 +4,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 
 export type UserRole = 'user' | 'photographer' | 'admin';
+export type OrganizationRole = 'admin' | 'organization' | 'photographer' | 'user';
 
 export interface UserProfile {
   id: string;
   email: string;
   full_name?: string;
   role: UserRole;
+  organization_role?: OrganizationRole;
+  organization_id?: string;
   avatar_url?: string;
 }
 
@@ -18,10 +21,10 @@ interface AuthContextType {
   session: Session | null;
   profile: UserProfile | null;
   loading: boolean;
-  signUp: (email: string, password: string, fullName?: string) => Promise<{ error: any }>;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, fullName?: string) => Promise<{ error: Error | null }>;
+  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
-  updateProfile: (updates: Partial<UserProfile>) => Promise<{ error: any }>;
+  updateProfile: (updates: Partial<UserProfile>) => Promise<{ error: Error | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -40,7 +43,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = async (userId: string): Promise<UserProfile | null> => {
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -49,7 +52,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .maybeSingle();
 
       if (error) throw error;
-      return data;
+      
+      if (!data) return null;
+      
+      return {
+        id: data.id,
+        email: data.email,
+        full_name: data.full_name,
+        role: data.role as UserRole,
+        organization_role: data.organization_role as OrganizationRole,
+        organization_id: data.organization_id,
+        avatar_url: data.avatar_url
+      };
     } catch (error) {
       console.error('Error fetching profile:', error);
       return null;

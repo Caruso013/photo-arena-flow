@@ -122,6 +122,9 @@ const Index = () => {
               {profile?.role === 'photographer' && (
                 <Link to="/dashboard" className="hover:text-primary transition-colors whitespace-nowrap">ÁREA DO FOTÓGRAFO</Link>
               )}
+              {profile?.role === 'photographer' && (
+                <Link to="/eventos-proximos" className="hover:text-primary transition-colors whitespace-nowrap">EVENTOS PRÓXIMOS</Link>
+              )}
             </div>
           </div>
         </nav>
@@ -164,8 +167,8 @@ const Index = () => {
                         <WatermarkedPhoto
                           src={campaign.cover_image_url}
                           alt={campaign.title}
-                          position="corner"
-                          opacity={0.5}
+                          position="full"
+                          opacity={0.3}
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-secondary">
@@ -265,7 +268,7 @@ const Index = () => {
               </div>
               <h3 className="text-xl font-semibold mb-3">3. Compra Segura</h3>
               <p className="text-muted-foreground">
-                Pagamento seguro via Stripe e download imediato das fotos em alta qualidade sem marca d'água
+                Pagamento seguro via Mercado Pago e download imediato das fotos em alta qualidade sem marca d'água
               </p>
             </div>
           </div>
@@ -321,7 +324,7 @@ const Index = () => {
             <div className="flex items-center gap-2 mt-4 md:mt-0">
               <span>Pagamentos seguros via</span>
               <div className="bg-primary px-2 py-1 rounded text-primary-foreground text-xs font-semibold">
-                STRIPE
+                MERCADO PAGO
               </div>
             </div>
           </div>

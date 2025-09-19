@@ -12,6 +12,7 @@ import Contato from "./pages/Contato";
 import AdminLogin from "./pages/AdminLogin";
 import Fotografos from "./pages/Fotografos";
 import Campaign from "./pages/Campaign";
+import EventosProximos from "./pages/EventosProximos";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/events" element={<Events />} />
+            <Route path="/eventos-proximos" element={<EventosProximos />} />
             <Route path="/campaign/:id" element={<Campaign />} />
             <Route path="/contato" element={<Contato />} />
             <Route path="/admin" element={<AdminLogin />} />

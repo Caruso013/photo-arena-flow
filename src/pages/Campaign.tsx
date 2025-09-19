@@ -1,16 +1,23 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Camera } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { toast } from '@/components/ui/use-toast';
+import { Camera, ShoppingCart, Download } from 'lucide-react';
 import WatermarkedPhoto from '@/components/WatermarkedPhoto';
+import { sendPurchaseConfirmationEmail } from '@/lib/email';
 
 interface Photo {
   id: string;
   title?: string;
   watermarked_url: string;
   thumbnail_url?: string;
+  original_url?: string;
+  price?: number;
+  is_available?: boolean;
 }
 
 interface CampaignData {
@@ -20,17 +27,143 @@ interface CampaignData {
   description?: string;
 }
 
+interface Purchase {
+  id: string;
+  photo_id: string;
+  status: string;
+}
+
 const Campaign = () => {
   const { id } = useParams();
+  const { user } = useAuth();
   const [campaign, setCampaign] = useState<CampaignData | null>(null);
   const [photos, setPhotos] = useState<Photo[]>([]);
+  const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [loading, setLoading] = useState(true);
   const [openPhoto, setOpenPhoto] = useState<Photo | null>(null);
+  const [purchasingPhoto, setPurchasingPhoto] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
     fetchData(id);
   }, [id]);
+
+  useEffect(() => {
+    if (user) {
+      fetchUserPurchases();
+    }
+  }, [user]);
+
+  const fetchUserPurchases = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('purchases')
+        .select('id, photo_id, status')
+        .eq('buyer_id', user.id)
+        .eq('status', 'completed');
+
+      if (error) throw error;
+      setPurchases(data || []);
+    } catch (error) {
+      console.error('Error fetching purchases:', error);
+    }
+  };
+
+  const handlePurchase = async (photo: Photo) => {
+    if (!user) {
+      toast({
+        title: "Login necessário",
+        description: "Você precisa estar logado para comprar fotos.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!photo.price) {
+      toast({
+        title: "Preço não definido",
+        description: "Esta foto não está disponível para compra.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setPurchasingPhoto(photo.id);
+
+    try {
+      // Aqui você implementaria a integração com Mercado Pago
+      // Por enquanto, vamos simular uma compra bem-sucedida
+      
+      const { error } = await supabase
+        .from('purchases')
+        .insert({
+          photo_id: photo.id,
+          buyer_id: user.id,
+          photographer_id: photos.find(p => p.id === photo.id)?.id || '', // Precisará ser ajustado
+          amount: photo.price,
+          status: 'completed',
+          mercado_pago_payment_id: 'simulated_' + Date.now()
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Compra realizada!",
+        description: "Foto comprada com sucesso. Verifique seu e-mail e dashboard.",
+      });
+
+      // Atualizar lista de compras
+      await fetchUserPurchases();
+      
+      // Enviar e-mail com a foto
+      await sendPhotoByEmail(photo);
+
+    } catch (error) {
+      console.error('Error purchasing photo:', error);
+      toast({
+        title: "Erro na compra",
+        description: "Não foi possível processar a compra. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setPurchasingPhoto(null);
+    }
+  };
+
+  const sendPhotoByEmail = async (photo: Photo) => {
+    if (!user?.email || !campaign) return;
+
+    try {
+      const result = await sendPurchaseConfirmationEmail(
+        user.email,
+        user.user_metadata?.full_name || 'Cliente',
+        {
+          photoTitle: photo.title || 'Foto sem título',
+          photoUrl: photo.original_url || photo.watermarked_url,
+          campaignTitle: campaign.title,
+          amount: photo.price || 0,
+          purchaseDate: new Date().toISOString()
+        }
+      );
+
+      if (result.success) {
+        toast({
+          title: "E-mail enviado!",
+          description: "Verifique sua caixa de entrada para baixar a foto.",
+        });
+      } else {
+        console.log('Erro ao enviar e-mail:', result.message);
+      }
+    } catch (error) {
+      console.error('Error sending email:', error);
+    }
+  };
+
+  const isPhotoPurchased = (photoId: string) => {
+    return purchases.some(purchase => purchase.photo_id === photoId);
+  };
 
   const fetchData = async (campaignId: string) => {
     setLoading(true);
@@ -46,7 +179,7 @@ const Campaign = () => {
 
       const { data: photosData, error: photosErr } = await supabase
         .from('photos')
-        .select('id, title, watermarked_url, thumbnail_url')
+        .select('id, title, watermarked_url, thumbnail_url, original_url, price, is_available')
         .eq('campaign_id', campaignId)
         .order('created_at', { ascending: false });
 
@@ -97,16 +230,48 @@ const Campaign = () => {
                       <WatermarkedPhoto
                         src={photo.thumbnail_url || photo.watermarked_url}
                         alt={photo.title || 'Foto'}
-                        position="corner"
-                        opacity={0.5}
+                        position="full"
+                        opacity={0.4}
                       />
                     </div>
                     <CardContent className="p-3">
                       <div className="flex justify-between items-center">
                         <div className="flex-1">
                           <p className="text-sm truncate">{photo.title || 'Foto'}</p>
+                          {photo.price && (
+                            <p className="text-sm font-medium text-green-600">
+                              R$ {photo.price.toFixed(2)}
+                            </p>
+                          )}
                         </div>
-                        <Button size="sm" variant="ghost" onClick={() => setOpenPhoto(photo)}>Abrir</Button>
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="ghost" onClick={() => setOpenPhoto(photo)}>
+                            Ver
+                          </Button>
+                          {isPhotoPurchased(photo.id) ? (
+                            <Badge variant="default" className="text-xs">
+                              Comprada
+                            </Badge>
+                          ) : photo.price && photo.is_available ? (
+                            <Button 
+                              size="sm" 
+                              className="gap-1"
+                              onClick={() => handlePurchase(photo)}
+                              disabled={purchasingPhoto === photo.id}
+                            >
+                              {purchasingPhoto === photo.id ? (
+                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white" />
+                              ) : (
+                                <ShoppingCart className="h-3 w-3" />
+                              )}
+                              {purchasingPhoto === photo.id ? 'Comprando...' : 'Comprar'}
+                            </Button>
+                          ) : (
+                            <Badge variant="secondary" className="text-xs">
+                              Indisponível
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -131,10 +296,10 @@ const Campaign = () => {
             <WatermarkedPhoto
               src={openPhoto.watermarked_url}
               alt={openPhoto.title || 'Foto'}
-              position="center"
-              opacity={0.9}
+              position="full"
+              opacity={0.3}
               imgClassName="max-w-full max-h-[90vh] object-contain block"
-              watermarkClassName="max-w-[70%] max-h-[70%] object-contain"
+              watermarkClassName=""
             />
 
             {/* Close button */}
@@ -145,6 +310,40 @@ const Campaign = () => {
             >
               ✕
             </button>
+
+            {/* Purchase button in modal */}
+            {openPhoto && (
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+                {isPhotoPurchased(openPhoto.id) ? (
+                  <Badge variant="default" className="bg-green-600 text-white px-4 py-2">
+                    <Download className="h-4 w-4 mr-2" />
+                    Foto Comprada
+                  </Badge>
+                ) : openPhoto.price && openPhoto.is_available ? (
+                  <Button 
+                    className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+                    onClick={() => handlePurchase(openPhoto)}
+                    disabled={purchasingPhoto === openPhoto.id}
+                  >
+                    {purchasingPhoto === openPhoto.id ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                        Comprando...
+                      </>
+                    ) : (
+                      <>
+                        <ShoppingCart className="h-4 w-4" />
+                        Comprar por R$ {openPhoto.price.toFixed(2)}
+                      </>
+                    )}
+                  </Button>
+                ) : (
+                  <Badge variant="secondary" className="px-4 py-2">
+                    Foto não disponível para compra
+                  </Badge>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
