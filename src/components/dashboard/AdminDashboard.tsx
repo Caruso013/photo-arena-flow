@@ -3,355 +3,147 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, Camera, DollarSign, Shield, Settings, Eye, Edit, Trash2, Image, CreditCard, CheckCircle, XCircle } from 'lucide-react';
+import { toast } from '@/components/ui/use-toast';
+import { 
+  Settings, 
+  Building2, 
+  Users, 
+  DollarSign,
+  Save,
+  BarChart3,
+  Camera,
+  Shield
+} from 'lucide-react';
 import DashboardLayout from './DashboardLayout';
+
+interface Organization {
+  id: string;
+  name: string;
+  description: string | null;
+  admin_percentage: number;
+  is_active: boolean;
+  created_at: string;
+}
 
 interface User {
   id: string;
   email: string;
-  full_name: string;
+  full_name: string | null;
   role: string;
+  organization_role: string | null;
   created_at: string;
 }
 
 interface Campaign {
   id: string;
   title: string;
-  description: string;
-  event_date: string;
-  location: string;
+  location: string | null;
+  event_date: string | null;
   is_active: boolean;
-  photographer: {
-    full_name: string;
-  };
-}
-
-interface Purchase {
-  id: string;
-  amount: number;
-  status: string;
   created_at: string;
-  photo: {
-    title: string;
-  };
-  buyer: {
-    full_name: string;
-  };
-  photographer: {
-    full_name: string;
-  };
-}
-
-interface Photo {
-  id: string;
-  title: string;
-  watermarked_url: string;
-  thumbnail_url: string;
-  is_available: boolean;
-  price: number;
-  created_at: string;
-  photographer: {
-    full_name: string;
-  };
-  campaign: {
-    title: string;
-  };
-}
-
-interface PayoutRequest {
-  id: string;
-  amount: number;
-  status: string;
-  requested_at: string;
-  processed_at: string | null;
-  notes: string | null;
-  photographer: {
-    full_name: string;
-  } | null;
-}
-
-interface PhotographerRevenue {
-  id: string;
-  full_name: string;
-  total_sales: number;
-  commission: number;
-  available_balance: number;
-  total_photos: number;
-}
-
-interface Stats {
-  totalUsers: number;
-  totalPhotographers: number;
-  totalCampaigns: number;
-  totalRevenue: number;
 }
 
 const AdminDashboard = () => {
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-  const [purchases, setPurchases] = useState<Purchase[]>([]);
-  const [photos, setPhotos] = useState<Photo[]>([]);
-  const [payoutRequests, setPayoutRequests] = useState<PayoutRequest[]>([]);
-  const [photographerRevenue, setPhotographerRevenue] = useState<PhotographerRevenue[]>([]);
-  const [stats, setStats] = useState<Stats>({
-    totalUsers: 0,
-    totalPhotographers: 0,
-    totalCampaigns: 0,
-    totalRevenue: 0
-  });
   const [loading, setLoading] = useState(true);
+  const [editingOrg, setEditingOrg] = useState<string | null>(null);
+  const [newPercentages, setNewPercentages] = useState<{ [key: string]: number }>({});
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (user && profile?.organization_role === 'admin') {
+      fetchAdminData();
+    }
+  }, [user, profile]);
 
-  const fetchData = async () => {
-    await Promise.all([
-      fetchUsers(),
-      fetchCampaigns(),
-      fetchPurchases(),
-      fetchPhotos(),
-      fetchPayoutRequests(),
-      fetchPhotographerRevenue(),
-      fetchStats()
-    ]);
-    setLoading(false);
-  };
-
-  const fetchUsers = async () => {
+  const fetchAdminData = async () => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
+      setLoading(true);
+      
+      const { data: orgsData, error: orgsError } = await supabase
+        .from('organizations')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setUsers(data || []);
-    } catch (error) {
-      console.error('Error fetching users:', error);
-    }
-  };
+      if (orgsError) throw orgsError;
+      setOrganizations(orgsData || []);
 
-  const fetchCampaigns = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('campaigns')
-        .select(`
-          *,
-          photographer:profiles(full_name)
-        `)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setCampaigns(data || []);
-    } catch (error) {
-      console.error('Error fetching campaigns:', error);
-    }
-  };
-
-  const fetchPurchases = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('purchases')
-        .select(`
-          *,
-          photo:photos(title),
-          buyer:profiles!purchases_buyer_id_fkey(full_name),
-          photographer:profiles!purchases_photographer_id_fkey(full_name)
-        `)
+      const { data: usersData, error: usersError } = await supabase
+        .from('profiles')
+        .select('*')
         .order('created_at', { ascending: false })
-        .limit(10);
+        .limit(50);
 
-      if (error) throw error;
-      setPurchases(data || []);
-    } catch (error) {
-      console.error('Error fetching purchases:', error);
-    }
-  };
+      if (usersError) throw usersError;
+      setUsers(usersData || []);
 
-  const fetchStats = async () => {
-    try {
-      // Total users
-      const { count: usersCount } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true });
-
-      // Total photographers
-      const { count: photographersCount } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
-        .eq('role', 'photographer');
-
-      // Total campaigns
-      const { count: campaignsCount } = await supabase
+      const { data: campaignsData, error: campaignsError } = await supabase
         .from('campaigns')
-        .select('*', { count: 'exact', head: true });
-
-      // Total revenue
-      const { data: revenueData } = await supabase
-        .from('purchases')
-        .select('amount')
-        .eq('status', 'completed');
-
-      const totalRevenue = revenueData?.reduce((sum, purchase) => sum + Number(purchase.amount), 0) || 0;
-
-      setStats({
-        totalUsers: usersCount || 0,
-        totalPhotographers: photographersCount || 0,
-        totalCampaigns: campaignsCount || 0,
-        totalRevenue
-      });
-    } catch (error) {
-      console.error('Error fetching stats:', error);
-    }
-  };
-
-  const fetchPhotos = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('photos')
-        .select(`
-          *,
-          photographer:profiles(full_name),
-          campaign:campaigns(title)
-        `)
+        .select('*')
         .order('created_at', { ascending: false })
         .limit(20);
 
-      if (error) throw error;
-      setPhotos(data || []);
+      if (campaignsError) throw campaignsError;
+      setCampaigns(campaignsData || []);
+
     } catch (error) {
-      console.error('Error fetching photos:', error);
+      console.error('Error fetching admin data:', error);
+      toast({
+        title: "Erro ao carregar dados",
+        description: "Não foi possível carregar os dados administrativos.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const fetchPayoutRequests = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('payout_requests')
-        .select(`
-          *,
-          photographer:profiles(full_name)
-        `)
-        .order('requested_at', { ascending: false });
-
-      if (error) throw error;
-      setPayoutRequests((data || []).map(item => ({
-        id: item.id,
-        amount: item.amount,
-        status: item.status,
-        requested_at: item.requested_at,
-        processed_at: item.processed_at,
-        notes: item.notes,
-        photographer: item.photographer && 
-          typeof item.photographer === 'object' && 
-          !Array.isArray(item.photographer) &&
-          'full_name' in item.photographer
-          ? { full_name: (item.photographer as any).full_name }
-          : null
-      })));
-    } catch (error) {
-      console.error('Error fetching payout requests:', error);
-    }
-  };
-
-  const fetchPhotographerRevenue = async () => {
-    try {
-      // Get all photographers
-      const { data: photographers, error: photoError } = await supabase
-        .from('profiles')
-        .select('id, full_name')
-        .eq('role', 'photographer');
-
-      if (photoError) throw photoError;
-
-      const revenueData = await Promise.all(
-        (photographers || []).map(async (photographer) => {
-          // Get total sales for this photographer
-          const { data: sales } = await supabase
-            .from('purchases')
-            .select('amount')
-            .eq('photographer_id', photographer.id)
-            .eq('status', 'completed');
-
-          // Get total photos for this photographer
-          const { count: totalPhotos } = await supabase
-            .from('photos')
-            .select('*', { count: 'exact', head: true })
-            .eq('photographer_id', photographer.id);
-
-          const totalSales = sales?.reduce((sum, sale) => sum + Number(sale.amount), 0) || 0;
-          const commission = totalSales * 0.7; // 70% for photographer
-          
-          return {
-            id: photographer.id,
-            full_name: photographer.full_name,
-            total_sales: totalSales,
-            commission,
-            available_balance: commission, // In a real app, subtract already paid amounts
-            total_photos: totalPhotos || 0
-          };
-        })
-      );
-
-      setPhotographerRevenue(revenueData);
-    } catch (error) {
-      console.error('Error fetching photographer revenue:', error);
-    }
-  };
-
-  const updatePhotoStatus = async (photoId: string, isAvailable: boolean) => {
+  const handleUpdateOrganizationPercentage = async (orgId: string, newPercentage: number) => {
     try {
       const { error } = await supabase
-        .from('photos')
-        .update({ is_available: isAvailable })
-        .eq('id', photoId);
+        .from('organizations')
+        .update({ admin_percentage: newPercentage })
+        .eq('id', orgId);
 
       if (error) throw error;
-      await fetchPhotos();
+
+      toast({
+        title: "Porcentagem atualizada!",
+        description: "A porcentagem da organização foi atualizada com sucesso.",
+      });
+
+      setEditingOrg(null);
+      setNewPercentages({});
+      fetchAdminData();
     } catch (error) {
-      console.error('Error updating photo status:', error);
+      console.error('Error updating organization percentage:', error);
+      toast({
+        title: "Erro ao atualizar",
+        description: "Não foi possível atualizar a porcentagem.",
+        variant: "destructive",
+      });
     }
   };
 
-  const processPayoutRequest = async (requestId: string, action: 'approved' | 'rejected', notes?: string) => {
-    try {
-      const { error } = await supabase
-        .from('payout_requests')
-        .update({
-          status: action,
-          processed_at: new Date().toISOString(),
-          processed_by: profile?.id,
-          notes: notes
-        })
-        .eq('id', requestId);
-
-      if (error) throw error;
-      await fetchPayoutRequests();
-    } catch (error) {
-      console.error('Error processing payout request:', error);
-    }
-  };
-
-  const updateUserRole = async (userId: string, newRole: 'user' | 'photographer' | 'admin') => {
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ role: newRole })
-        .eq('id', userId);
-
-      if (error) throw error;
-      
-      // Refresh users list
-      await fetchUsers();
-      await fetchStats();
-    } catch (error) {
-      console.error('Error updating user role:', error);
-    }
-  };
+  if (!user || profile?.organization_role !== 'admin') {
+    return (
+      <DashboardLayout>
+        <div className="text-center p-8">
+          <Shield className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+          <h2 className="text-2xl font-bold mb-2">Acesso Restrito</h2>
+          <p className="text-muted-foreground">
+            Esta área é exclusiva para administradores.
+          </p>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   if (loading) {
     return (
@@ -364,387 +156,226 @@ const AdminDashboard = () => {
   return (
     <DashboardLayout>
       <div className="space-y-8">
-        {/* Welcome Section */}
         <div className="bg-gradient-primary rounded-lg p-8 text-white">
-          <div className="flex items-center gap-3 mb-2">
-            <Shield className="h-8 w-8" />
-            <h1 className="text-3xl font-bold">Painel Administrativo</h1>
+          <div className="flex items-center gap-4 mb-4">
+            <Shield className="h-12 w-12" />
+            <div>
+              <h1 className="text-3xl font-bold">Painel Administrativo</h1>
+              <p className="text-blue-100">Gerencie organizações e porcentagens do sistema</p>
+            </div>
           </div>
-          <p className="text-lg opacity-90">
-            Olá, {profile?.full_name}! Gerencie toda a plataforma aqui.
-          </p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-white/10 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Building2 className="h-5 w-5" />
+                <span className="text-sm">Organizações</span>
+              </div>
+              <p className="text-2xl font-bold">{organizations.filter(o => o.is_active).length}</p>
+            </div>
+            
+            <div className="bg-white/10 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Users className="h-5 w-5" />
+                <span className="text-sm">Usuários</span>
+              </div>
+              <p className="text-2xl font-bold">{users.length}</p>
+            </div>
+            
+            <div className="bg-white/10 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Camera className="h-5 w-5" />
+                <span className="text-sm">Campanhas</span>
+              </div>
+              <p className="text-2xl font-bold">{campaigns.length}</p>
+            </div>
+            
+            <div className="bg-white/10 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <DollarSign className="h-5 w-5" />
+                <span className="text-sm">Total</span>
+              </div>
+              <p className="text-2xl font-bold">{organizations.length + users.length + campaigns.length}</p>
+            </div>
+          </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Total de Usuários</p>
-                  <p className="text-2xl font-bold">{stats.totalUsers}</p>
-                </div>
-                <Users className="h-8 w-8 text-primary" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Fotógrafos</p>
-                  <p className="text-2xl font-bold">{stats.totalPhotographers}</p>
-                </div>
-                <Camera className="h-8 w-8 text-primary" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Total de Eventos</p>
-                  <p className="text-2xl font-bold">{stats.totalCampaigns}</p>
-                </div>
-                <Camera className="h-8 w-8 text-primary" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Receita Total</p>
-                  <p className="text-2xl font-bold">R$ {stats.totalRevenue.toFixed(2)}</p>
-                </div>
-                <DollarSign className="h-8 w-8 text-primary" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Main Content Tabs */}
-        <Tabs defaultValue="users" className="space-y-4">
+        <Tabs defaultValue="organizations" className="space-y-4">
           <TabsList>
+            <TabsTrigger value="organizations">Organizações</TabsTrigger>
             <TabsTrigger value="users">Usuários</TabsTrigger>
-            <TabsTrigger value="campaigns">Eventos</TabsTrigger>
-            <TabsTrigger value="photos">Fotos</TabsTrigger>
-            <TabsTrigger value="revenue">Receitas</TabsTrigger>
-            <TabsTrigger value="payouts">Repasses</TabsTrigger>
-            <TabsTrigger value="purchases">Vendas</TabsTrigger>
+            <TabsTrigger value="campaigns">Campanhas</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="users" className="space-y-4">
+          <TabsContent value="organizations" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Gerenciar Usuários</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Building2 className="h-5 w-5" />
+                  Gerenciar Organizações
+                </CardTitle>
                 <CardDescription>
-                  Visualize e gerencie todos os usuários da plataforma
+                  Defina a porcentagem que a administração recebe de cada organização
                 </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {organizations.length === 0 ? (
+                  <div className="text-center p-8">
+                    <Building2 className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-medium mb-2">Nenhuma organização encontrada</h3>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {organizations.map((org) => (
+                      <Card key={org.id}>
+                        <CardContent className="p-6">
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <h4 className="font-medium text-lg">{org.name}</h4>
+                              <p className="text-sm text-muted-foreground">{org.description}</p>
+                              <div className="flex items-center gap-2 mt-2">
+                                <Badge variant={org.is_active ? 'default' : 'secondary'}>
+                                  {org.is_active ? 'Ativa' : 'Inativa'}
+                                </Badge>
+                                <span className="text-sm text-muted-foreground">
+                                  {new Date(org.created_at).toLocaleDateString()}
+                                </span>
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-4">
+                              {editingOrg === org.id ? (
+                                <div className="flex items-center gap-2">
+                                  <Label htmlFor={`percentage-${org.id}`} className="text-sm">
+                                    Admin %:
+                                  </Label>
+                                  <Input
+                                    id={`percentage-${org.id}`}
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    step="0.01"
+                                    value={newPercentages[org.id] ?? org.admin_percentage}
+                                    onChange={(e) => setNewPercentages({
+                                      ...newPercentages,
+                                      [org.id]: parseFloat(e.target.value) || 0
+                                    })}
+                                    className="w-20"
+                                  />
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleUpdateOrganizationPercentage(
+                                      org.id, 
+                                      newPercentages[org.id] ?? org.admin_percentage
+                                    )}
+                                    className="gap-1"
+                                  >
+                                    <Save className="h-4 w-4" />
+                                    Salvar
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      setEditingOrg(null);
+                                      setNewPercentages({});
+                                    }}
+                                  >
+                                    Cancelar
+                                  </Button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-lg font-bold text-green-600">
+                                    {org.admin_percentage}%
+                                  </span>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => setEditingOrg(org.id)}
+                                    className="gap-1"
+                                  >
+                                    <Settings className="h-4 w-4" />
+                                    Editar
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="users" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Usuários do Sistema
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {users.map((user) => (
-                    <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3">
+                    <Card key={user.id}>
+                      <CardContent className="p-4">
+                        <div className="flex justify-between items-center">
                           <div>
-                            <p className="font-medium">{user.full_name || user.email}</p>
+                            <h4 className="font-medium">{user.full_name || 'Nome não informado'}</h4>
                             <p className="text-sm text-muted-foreground">{user.email}</p>
+                            <div className="flex gap-2 mt-1">
+                              <Badge variant="outline">{user.role}</Badge>
+                              {user.organization_role && (
+                                <Badge variant="secondary">{user.organization_role}</Badge>
+                              )}
+                            </div>
                           </div>
-                          <Badge variant={
-                            user.role === 'admin' ? 'default' : 
-                            user.role === 'photographer' ? 'secondary' : 'outline'
-                          }>
-                            {user.role === 'admin' ? 'Admin' : 
-                             user.role === 'photographer' ? 'Fotógrafo' : 'Usuário'}
-                          </Badge>
+                          <span className="text-sm text-muted-foreground">
+                            {new Date(user.created_at).toLocaleDateString()}
+                          </span>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Criado em {new Date(user.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        {user.role !== 'admin' && (
-                          <>
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => updateUserRole(user.id, user.role === 'photographer' ? 'user' : 'photographer')}
-                            >
-                              {user.role === 'photographer' ? 'Tornar Usuário' : 'Tornar Fotógrafo'}
-                            </Button>
-                            <Button size="sm" variant="outline">
-                              <Edit className="h-3 w-3" />
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </div>
+                      </CardContent>
+                    </Card>
                   ))}
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="campaigns" className="space-y-4">
+          <TabsContent value="campaigns" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Todos os Eventos</CardTitle>
-                <CardDescription>
-                  Visualize e gerencie todos os eventos da plataforma
-                </CardDescription>
+                <CardTitle className="flex items-center gap-2">
+                  <Camera className="h-5 w-5" />
+                  Campanhas Recentes
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {campaigns.map((campaign) => (
-                    <div key={campaign.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="font-medium">{campaign.title}</h3>
-                          <Badge variant={campaign.is_active ? "default" : "secondary"}>
-                            {campaign.is_active ? "Ativo" : "Inativo"}
+                    <Card key={campaign.id}>
+                      <CardContent className="p-4">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h4 className="font-medium">{campaign.title}</h4>
+                            <p className="text-sm text-muted-foreground">{campaign.location}</p>
+                            {campaign.event_date && (
+                              <p className="text-sm text-muted-foreground">
+                                {new Date(campaign.event_date).toLocaleDateString()}
+                              </p>
+                            )}
+                          </div>
+                          <Badge variant={campaign.is_active ? 'default' : 'secondary'}>
+                            {campaign.is_active ? 'Ativa' : 'Inativa'}
                           </Badge>
                         </div>
-                        <p className="text-sm text-muted-foreground mb-1">
-                          {campaign.description}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          Por: {campaign.photographer?.full_name} • {campaign.location} • {new Date(campaign.event_date).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline">
-                          <Eye className="h-3 w-3" />
-                        </Button>
-                        <Button size="sm" variant="outline">
-                          <Edit className="h-3 w-3" />
-                        </Button>
-                        <Button size="sm" variant="outline">
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="photos" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Gerenciar Fotos</CardTitle>
-                <CardDescription>
-                  Visualize e modere todas as fotos da plataforma
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {photos.map((photo) => (
-                    <div key={photo.id} className="flex items-center gap-4 p-4 border rounded-lg">
-                      <div className="w-20 h-20 rounded-lg overflow-hidden bg-muted">
-                        <img 
-                          src={photo.thumbnail_url || photo.watermarked_url} 
-                          alt={photo.title || 'Foto'}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="font-medium">{photo.title || 'Foto sem título'}</h3>
-                          <Badge variant={photo.is_available ? "default" : "secondary"}>
-                            {photo.is_available ? "Disponível" : "Indisponível"}
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          Por: {photo.photographer?.full_name} • Evento: {photo.campaign?.title}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          Preço: R$ {Number(photo.price).toFixed(2)} • {new Date(photo.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => updatePhotoStatus(photo.id, !photo.is_available)}
-                        >
-                          {photo.is_available ? 'Ocultar' : 'Mostrar'}
-                        </Button>
-                        <Button size="sm" variant="outline">
-                          <Eye className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="revenue" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Receitas por Fotógrafo</CardTitle>
-                <CardDescription>
-                  Visualize o desempenho financeiro individual de cada fotógrafo
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {photographerRevenue.map((photographer) => (
-                    <div key={photographer.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex-1">
-                        <h3 className="font-medium">{photographer.full_name}</h3>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2 text-sm">
-                          <div>
-                            <p className="text-muted-foreground">Total de Fotos</p>
-                            <p className="font-medium">{photographer.total_photos}</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Vendas Totais</p>
-                            <p className="font-medium">R$ {photographer.total_sales.toFixed(2)}</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Comissão (70%)</p>
-                            <p className="font-medium text-primary">R$ {photographer.commission.toFixed(2)}</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Saldo Disponível</p>
-                            <p className="font-medium text-green-600">R$ {photographer.available_balance.toFixed(2)}</p>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline">
-                          <Eye className="h-3 w-3 mr-1" />
-                          Detalhes
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="payouts" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Solicitações de Repasse</CardTitle>
-                <CardDescription>
-                  Gerencie as solicitações de pagamento dos fotógrafos
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {payoutRequests.map((request) => (
-                    <div key={request.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="font-medium">{request.photographer?.full_name}</h3>
-                          <Badge variant={
-                            request.status === 'approved' ? 'default' :
-                            request.status === 'pending' ? 'secondary' : 'destructive'
-                          }>
-                            {request.status === 'approved' ? 'Aprovado' :
-                             request.status === 'pending' ? 'Pendente' : 'Rejeitado'}
-                          </Badge>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                          <div>
-                            <p className="text-muted-foreground">Valor Solicitado</p>
-                            <p className="font-medium text-primary">R$ {Number(request.amount).toFixed(2)}</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Data da Solicitação</p>
-                            <p className="font-medium">{new Date(request.requested_at).toLocaleDateString()}</p>
-                          </div>
-                          {request.processed_at && (
-                            <div>
-                              <p className="text-muted-foreground">Processado em</p>
-                              <p className="font-medium">{new Date(request.processed_at).toLocaleDateString()}</p>
-                            </div>
-                          )}
-                        </div>
-                        {request.notes && (
-                          <p className="text-sm text-muted-foreground mt-2">
-                            Observações: {request.notes}
-                          </p>
-                        )}
-                      </div>
-                      {request.status === 'pending' && (
-                        <div className="flex gap-2">
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            className="text-green-600 border-green-600 hover:bg-green-50"
-                            onClick={() => processPayoutRequest(request.id, 'approved', 'Pagamento aprovado pelo admin')}
-                          >
-                            <CheckCircle className="h-3 w-3 mr-1" />
-                            Aprovar
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            className="text-red-600 border-red-600 hover:bg-red-50"
-                            onClick={() => processPayoutRequest(request.id, 'rejected', 'Rejeitado pelo admin')}
-                          >
-                            <XCircle className="h-3 w-3 mr-1" />
-                            Rejeitar
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  {payoutRequests.length === 0 && (
-                    <div className="text-center py-8 text-muted-foreground">
-                      Nenhuma solicitação de repasse encontrada
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="purchases" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Histórico de Vendas</CardTitle>
-                <CardDescription>
-                  Visualize todas as transações da plataforma
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {purchases.map((purchase) => (
-                    <div key={purchase.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-1">
-                          <p className="font-medium">{purchase.photo?.title || 'Foto'}</p>
-                          <Badge variant={
-                            purchase.status === 'completed' ? 'default' :
-                            purchase.status === 'pending' ? 'secondary' : 'destructive'
-                          }>
-                            {purchase.status === 'completed' ? 'Concluído' :
-                             purchase.status === 'pending' ? 'Pendente' : 'Falhou'}
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          Comprador: {purchase.buyer?.full_name} • Fotógrafo: {purchase.photographer?.full_name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(purchase.created_at).toLocaleDateString()} às {new Date(purchase.created_at).toLocaleTimeString()}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium">R$ {Number(purchase.amount).toFixed(2)}</p>
-                      </div>
-                    </div>
+                      </CardContent>
+                    </Card>
                   ))}
                 </div>
               </CardContent>

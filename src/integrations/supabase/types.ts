@@ -24,6 +24,8 @@ export type Database = {
           is_active: boolean
           location: string | null
           photographer_id: string
+          organization_id: string | null
+          organization_percentage: number
           title: string
           updated_at: string
         }
@@ -36,6 +38,8 @@ export type Database = {
           is_active?: boolean
           location?: string | null
           photographer_id: string
+          organization_id?: string | null
+          organization_percentage?: number
           title: string
           updated_at?: string
         }
@@ -48,6 +52,8 @@ export type Database = {
           is_active?: boolean
           location?: string | null
           photographer_id?: string
+          organization_id?: string | null
+          organization_percentage?: number
           title?: string
           updated_at?: string
         }
@@ -165,6 +171,8 @@ export type Database = {
           full_name: string | null
           id: string
           role: Database["public"]["Enums"]["user_role"]
+          organization_role: string | null
+          organization_id: string | null
           updated_at: string
         }
         Insert: {
@@ -174,6 +182,8 @@ export type Database = {
           full_name?: string | null
           id: string
           role?: Database["public"]["Enums"]["user_role"]
+          organization_role?: string | null
+          organization_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -183,6 +193,8 @@ export type Database = {
           full_name?: string | null
           id?: string
           role?: Database["public"]["Enums"]["user_role"]
+          organization_role?: string | null
+          organization_id?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -196,7 +208,7 @@ export type Database = {
           photo_id: string
           photographer_id: string
           status: string
-          stripe_payment_intent_id: string | null
+          mercado_pago_payment_id: string | null
         }
         Insert: {
           amount: number
@@ -206,7 +218,7 @@ export type Database = {
           photo_id: string
           photographer_id: string
           status?: string
-          stripe_payment_intent_id?: string | null
+          mercado_pago_payment_id?: string | null
         }
         Update: {
           amount?: number
@@ -216,7 +228,7 @@ export type Database = {
           photo_id?: string
           photographer_id?: string
           status?: string
-          stripe_payment_intent_id?: string | null
+          mercado_pago_payment_id?: string | null
         }
         Relationships: [
           {
@@ -240,6 +252,231 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      organizations: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          logo_url: string | null
+          contact_email: string | null
+          contact_phone: string | null
+          address: string | null
+          is_active: boolean
+          admin_percentage: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          logo_url?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          address?: string | null
+          is_active?: boolean
+          admin_percentage?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          logo_url?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          address?: string | null
+          is_active?: boolean
+          admin_percentage?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      organization_members: {
+        Row: {
+          id: string
+          organization_id: string
+          user_id: string
+          role: string
+          photographer_percentage: number
+          is_active: boolean
+          joined_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          user_id: string
+          role?: string
+          photographer_percentage?: number
+          is_active?: boolean
+          joined_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          user_id?: string
+          role?: string
+          photographer_percentage?: number
+          is_active?: boolean
+          joined_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_members_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      event_applications: {
+        Row: {
+          id: string
+          campaign_id: string
+          photographer_id: string
+          organization_id: string
+          status: string
+          photographer_percentage: number
+          application_message: string | null
+          response_message: string | null
+          applied_at: string
+          responded_at: string | null
+        }
+        Insert: {
+          id?: string
+          campaign_id: string
+          photographer_id: string
+          organization_id: string
+          status?: string
+          photographer_percentage?: number
+          application_message?: string | null
+          response_message?: string | null
+          applied_at?: string
+          responded_at?: string | null
+        }
+        Update: {
+          id?: string
+          campaign_id?: string
+          photographer_id?: string
+          organization_id?: string
+          status?: string
+          photographer_percentage?: number
+          application_message?: string | null
+          response_message?: string | null
+          applied_at?: string
+          responded_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_applications_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_applications_photographer_id_fkey"
+            columns: ["photographer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_applications_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      revenue_shares: {
+        Row: {
+          id: string
+          purchase_id: string
+          campaign_id: string
+          organization_id: string | null
+          photographer_id: string | null
+          admin_amount: number
+          organization_amount: number
+          photographer_amount: number
+          total_amount: number
+          admin_percentage: number
+          organization_percentage: number
+          photographer_percentage: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          purchase_id: string
+          campaign_id: string
+          organization_id?: string | null
+          photographer_id?: string | null
+          admin_amount?: number
+          organization_amount?: number
+          photographer_amount?: number
+          total_amount: number
+          admin_percentage?: number
+          organization_percentage?: number
+          photographer_percentage?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          purchase_id?: string
+          campaign_id?: string
+          organization_id?: string | null
+          photographer_id?: string | null
+          admin_amount?: number
+          organization_amount?: number
+          photographer_amount?: number
+          total_amount?: number
+          admin_percentage?: number
+          organization_percentage?: number
+          photographer_percentage?: number
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "revenue_shares_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "purchases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "revenue_shares_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "revenue_shares_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "revenue_shares_photographer_id_fkey"
+            columns: ["photographer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
         ]
       }
     }

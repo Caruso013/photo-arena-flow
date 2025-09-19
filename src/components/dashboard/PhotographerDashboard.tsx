@@ -8,7 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Upload, Camera, DollarSign, BarChart3, Plus, Eye, Edit, CreditCard, AlertCircle } from 'lucide-react';
+import { Upload, Camera, DollarSign, BarChart3, Plus, Eye, Edit, CreditCard, AlertCircle, CalendarPlus } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import DashboardLayout from './DashboardLayout';
 import UploadPhotoModal from '@/components/modals/UploadPhotoModal';
 import CreateCampaignModal from '@/components/modals/CreateCampaignModal';
@@ -250,7 +251,30 @@ const PhotographerDashboard = () => {
               <Upload className="h-4 w-4" />
               Upload de Fotos
             </Button>
+            <Link to="/eventos-proximos">
+              <Button 
+                variant="outline" 
+                className="gap-2 border-white/20 text-white hover:bg-white/10"
+              >
+                <CalendarPlus className="h-4 w-4" />
+                Eventos Próximos
+              </Button>
+            </Link>
           </div>
+          
+          {profile?.role === 'photographer' && (
+            <div className="mt-4 p-4 bg-blue-500/20 border border-blue-500/30 rounded-lg">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-blue-200 mt-0.5" />
+                <div>
+                  <h3 className="font-medium text-blue-100">Bem-vindo!</h3>
+                  <p className="text-sm text-blue-200">
+                    Você está logado como fotógrafo. Explore suas campanhas e gerencie seus eventos.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Stats Cards */}
