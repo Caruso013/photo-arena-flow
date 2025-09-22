@@ -20,10 +20,14 @@ const AdminLogin = () => {
   const [password, setPassword] = useState('');
 
   useEffect(() => {
+    console.log('AdminLogin - User:', user?.email, 'Profile:', profile?.role, 'Org Role:', profile?.organization_role);
+    
     if (user && profile) {
-      if (profile.role === 'admin') {
+      if (profile.role === 'admin' || profile.organization_role === 'admin') {
+        console.log('Admin access granted, redirecting to dashboard');
         navigate('/dashboard');
       } else {
+        console.log('Access denied - User role:', profile.role, 'Org role:', profile.organization_role);
         setError('Acesso negado. Esta área é restrita a administradores.');
       }
     }
@@ -35,13 +39,44 @@ const AdminLogin = () => {
     setError('');
 
     try {
+      console.log('Attempting login with:', email);
       const result = await signIn(email, password);
       
       if (result?.error) {
+        console.error('Login failed:', result.error);
         setError('Email ou senha incorretos. Verifique suas credenciais.');
+      } else {
+        console.log('Login successful, waiting for profile...');
       }
     } catch (err) {
+      console.error('Login exception:', err);
       setError('Erro interno. Tente novamente mais tarde.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Função de teste para login direto com credenciais do admin
+  const testAdminLogin = async () => {
+    setEmail('pedromkk13@gmail.com');
+    setPassword('');
+    setError('');
+    
+    // Simular preenchimento para teste
+    const testPassword = prompt('Digite a senha do admin para teste:');
+    if (!testPassword) return;
+    
+    setIsLoading(true);
+    
+    try {
+      console.log('Testing admin login...');
+      const result = await signIn('pedromkk13@gmail.com', testPassword);
+      
+      if (result?.error) {
+        setError(`Erro no teste: ${result.error.message}`);
+      }
+    } catch (err: any) {
+      setError(`Erro no teste: ${err.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -132,6 +167,17 @@ const AdminLogin = () => {
                 disabled={isLoading}
               >
                 {isLoading ? 'Verificando...' : 'Entrar como Admin'}
+              </Button>
+              
+              {/* Botão de teste temporário */}
+              <Button 
+                type="button"
+                onClick={testAdminLogin}
+                variant="outline"
+                className="w-full h-10 text-sm"
+                disabled={isLoading}
+              >
+                🧪 Teste Login Admin (Pedro)
               </Button>
             </form>
 
