@@ -1,367 +1,399 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from '@/components/ui/use-toast';
-import { Camera, ShoppingCart, Download } from 'lucide-react';
-import WatermarkedPhoto from '@/components/WatermarkedPhoto';
-import { sendPurchaseConfirmationEmail } from '@/lib/email';
+import PaymentModal from '@/components/modals/PaymentModal';
+import { 
+  Calendar, 
+  MapPin, 
+  Camera, 
+  ArrowLeft, 
+  Download,
+  Eye,
+  ShoppingCart,
+  User,
+  Building2,
+  Clock
+} from 'lucide-react';
+
+interface Campaign {
+  id: string;
+  title: string;
+  description: string | null;
+  event_date: string | null;
+  location: string | null;
+  cover_image_url: string | null;
+  is_active: boolean;
+  photographer_id: string;
+  organization_id: string | null;
+  created_at: string;
+  photographer?: {
+    full_name: string;
+    email: string;
+  };
+  organization?: {
+    name: string;
+    description: string;
+  };
+}
 
 interface Photo {
   id: string;
-  title?: string;
+  title: string | null;
+  original_url: string;
   watermarked_url: string;
-  thumbnail_url?: string;
-  original_url?: string;
-  price?: number;
-  is_available?: boolean;
-}
-
-interface CampaignData {
-  id: string;
-  title: string;
-  cover_image_url?: string;
-  description?: string;
-}
-
-interface Purchase {
-  id: string;
-  photo_id: string;
-  status: string;
+  thumbnail_url: string | null;
+  price: number;
+  is_available: boolean;
 }
 
 const Campaign = () => {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { user } = useAuth();
-  const [campaign, setCampaign] = useState<CampaignData | null>(null);
+  
+  const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [photos, setPhotos] = useState<Photo[]>([]);
-  const [purchases, setPurchases] = useState<Purchase[]>([]);
+  const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [openPhoto, setOpenPhoto] = useState<Photo | null>(null);
-  const [purchasingPhoto, setPurchasingPhoto] = useState<string | null>(null);
+  const [purchasing, setPurchasing] = useState(false);
 
   useEffect(() => {
-    if (!id) return;
-    fetchData(id);
+    if (id) {
+      fetchCampaign();
+      fetchPhotos();
+    }
   }, [id]);
 
-  useEffect(() => {
-    if (user) {
-      fetchUserPurchases();
-    }
-  }, [user]);
-
-  const fetchUserPurchases = async () => {
-    if (!user) return;
+  const fetchCampaign = async () => {
+    if (!id) return;
 
     try {
       const { data, error } = await supabase
-        .from('purchases')
-        .select('id, photo_id, status')
-        .eq('buyer_id', user.id)
-        .eq('status', 'completed');
+        .from('campaigns')
+        .select(`
+          *,
+          photographer:profiles!campaigns_photographer_id_fkey(full_name, email),
+          organization:organizations(name, description)
+        `)
+        .eq('id', id)
+        .eq('is_active', true)
+        .single();
 
       if (error) throw error;
-      setPurchases(data || []);
+      setCampaign(data as any);
     } catch (error) {
-      console.error('Error fetching purchases:', error);
+      console.error('Error fetching campaign:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar a campanha.",
+        variant: "destructive",
+      });
+      navigate('/events');
     }
   };
 
-  const handlePurchase = async (photo: Photo) => {
+  const fetchPhotos = async () => {
+    if (!id) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('photos')
+        .select('*')
+        .eq('campaign_id', id)
+        .eq('is_available', true)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setPhotos(data || []);
+    } catch (error) {
+      console.error('Error fetching photos:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar as fotos.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBuyPhoto = (photo: Photo) => {
     if (!user) {
       toast({
         title: "Login necessário",
-        description: "Você precisa estar logado para comprar fotos.",
+        description: "Você precisa fazer login para comprar fotos.",
         variant: "destructive",
       });
+      navigate('/auth');
       return;
     }
 
-    if (!photo.price) {
-      toast({
-        title: "Preço não definido",
-        description: "Esta foto não está disponível para compra.",
-        variant: "destructive",
-      });
-      return;
-    }
+    setSelectedPhoto(photo);
+    setShowPaymentModal(true);
+  };
 
-    setPurchasingPhoto(photo.id);
+  const handlePaymentSuccess = async (paymentData: any) => {
+    if (!selectedPhoto || !user) return;
 
     try {
-      // Aqui você implementaria a integração com Mercado Pago
-      // Por enquanto, vamos simular uma compra bem-sucedida
-      
+      setPurchasing(true);
+
+      // Criar registro de compra
       const { error } = await supabase
         .from('purchases')
         .insert({
-          photo_id: photo.id,
+          photo_id: selectedPhoto.id,
           buyer_id: user.id,
-          photographer_id: photos.find(p => p.id === photo.id)?.id || '', // Precisará ser ajustado
-          amount: photo.price,
-          status: 'completed',
-          mercado_pago_payment_id: 'simulated_' + Date.now()
+          photographer_id: campaign?.photographer_id,
+          amount: selectedPhoto.price,
+          mercadopago_payment_id: paymentData.id,
+          status: 'completed'
         });
 
       if (error) throw error;
 
       toast({
         title: "Compra realizada!",
-        description: "Foto comprada com sucesso. Verifique seu e-mail e dashboard.",
+        description: "Sua foto foi comprada com sucesso. Você pode baixá-la no seu dashboard.",
       });
 
-      // Atualizar lista de compras
-      await fetchUserPurchases();
-      
-      // Enviar e-mail com a foto
-      await sendPhotoByEmail(photo);
-
+      setShowPaymentModal(false);
+      setSelectedPhoto(null);
     } catch (error) {
-      console.error('Error purchasing photo:', error);
+      console.error('Error completing purchase:', error);
       toast({
         title: "Erro na compra",
-        description: "Não foi possível processar a compra. Tente novamente.",
+        description: "Houve um problema ao finalizar sua compra.",
         variant: "destructive",
       });
     } finally {
-      setPurchasingPhoto(null);
+      setPurchasing(false);
     }
   };
 
-  const sendPhotoByEmail = async (photo: Photo) => {
-    if (!user?.email || !campaign) return;
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
-    try {
-      const result = await sendPurchaseConfirmationEmail(
-        user.email,
-        user.user_metadata?.full_name || 'Cliente',
-        {
-          photoTitle: photo.title || 'Foto sem título',
-          photoUrl: photo.original_url || photo.watermarked_url,
-          campaignTitle: campaign.title,
-          amount: photo.price || 0,
-          purchaseDate: new Date().toISOString()
-        }
-      );
-
-      if (result.success) {
-        toast({
-          title: "E-mail enviado!",
-          description: "Verifique sua caixa de entrada para baixar a foto.",
-        });
-      } else {
-        console.log('Erro ao enviar e-mail:', result.message);
-      }
-    } catch (error) {
-      console.error('Error sending email:', error);
-    }
-  };
-
-  const isPhotoPurchased = (photoId: string) => {
-    return purchases.some(purchase => purchase.photo_id === photoId);
-  };
-
-  const fetchData = async (campaignId: string) => {
-    setLoading(true);
-    try {
-      const { data: campaignData, error: campErr } = await supabase
-        .from('campaigns')
-        .select('id, title, cover_image_url, description')
-        .eq('id', campaignId)
-        .single();
-
-      if (campErr) throw campErr;
-      setCampaign(campaignData as CampaignData);
-
-      const { data: photosData, error: photosErr } = await supabase
-        .from('photos')
-        .select('id, title, watermarked_url, thumbnail_url, original_url, price, is_available')
-        .eq('campaign_id', campaignId)
-        .order('created_at', { ascending: false });
-
-      if (photosErr) throw photosErr;
-      setPhotos((photosData as Photo[]) || []);
-    } catch (error) {
-      console.error('Error fetching campaign photos:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  if (!campaign) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Card className="p-8 text-center max-w-md">
+          <h2 className="text-xl font-semibold mb-2">Campanha não encontrada</h2>
+          <p className="text-muted-foreground mb-4">
+            A campanha solicitada não existe ou não está mais ativa.
+          </p>
+          <Button onClick={() => navigate('/events')}>
+            Voltar aos eventos
+          </Button>
+        </Card>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="bg-secondary text-secondary-foreground">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <Link to="/" className="flex items-center gap-2 md:gap-3">
-              <img src="/lovable-uploads/6fdfc5d2-230c-4142-bf7c-3a326e5e45a8.png" alt="Logo" className="h-8 md:h-10 w-auto" />
-            </Link>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
+      {/* Header */}
+      <header className="border-b bg-white/95 backdrop-blur-sm sticky top-0 z-50">
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate('/events')}
+            className="gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Voltar
+          </Button>
+          
+          <div className="flex items-center gap-2">
+            <Camera className="h-6 w-6 text-primary" />
+            <span className="font-semibold">Photo Arena</span>
           </div>
         </div>
       </header>
 
-  <main className="container mx-auto px-4 py-8">
-        {loading ? (
-          <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto" />
-          </div>
-        ) : (
-          <>
-            <div className="mb-6">
-              <h1 className="text-2xl font-bold">{campaign?.title || 'Evento'}</h1>
-              {campaign?.description && <p className="text-muted-foreground mt-2">{campaign.description}</p>}
-            </div>
-
-            {photos.length === 0 ? (
-              <Card className="p-8 text-center">
-                <Camera className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium mb-2">Nenhuma foto encontrada</h3>
-                <p className="text-muted-foreground">As fotos deste evento ainda não foram enviadas ou estão indisponíveis.</p>
-              </Card>
+      <div className="container mx-auto px-4 py-8">
+        {/* Campaign Header */}
+        <div className="mb-8">
+          <div className="relative rounded-xl overflow-hidden mb-6">
+            {campaign.cover_image_url ? (
+              <img
+                src={campaign.cover_image_url}
+                alt={campaign.title}
+                className="w-full h-64 object-cover"
+              />
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                {photos.map((photo) => (
-                  <Card key={photo.id} className="overflow-hidden">
-                    <div className="aspect-square bg-gradient-subtle relative">
-                      <WatermarkedPhoto
-                        src={photo.thumbnail_url || photo.watermarked_url}
-                        alt={photo.title || 'Foto'}
-                        position="full"
-                        opacity={0.4}
-                      />
-                    </div>
-                    <CardContent className="p-3">
-                      <div className="flex justify-between items-center">
-                        <div className="flex-1">
-                          <p className="text-sm truncate">{photo.title || 'Foto'}</p>
-                          {photo.price && (
-                            <p className="text-sm font-medium text-green-600">
-                              R$ {photo.price.toFixed(2)}
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex gap-2">
-                          <Button size="sm" variant="ghost" onClick={() => setOpenPhoto(photo)}>
-                            Ver
-                          </Button>
-                          {isPhotoPurchased(photo.id) ? (
-                            <Badge variant="default" className="text-xs">
-                              Comprada
-                            </Badge>
-                          ) : photo.price && photo.is_available ? (
-                            <Button 
-                              size="sm" 
-                              className="gap-1"
-                              onClick={() => handlePurchase(photo)}
-                              disabled={purchasingPhoto === photo.id}
-                            >
-                              {purchasingPhoto === photo.id ? (
-                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white" />
-                              ) : (
-                                <ShoppingCart className="h-3 w-3" />
-                              )}
-                              {purchasingPhoto === photo.id ? 'Comprando...' : 'Comprar'}
-                            </Button>
-                          ) : (
-                            <Badge variant="secondary" className="text-xs">
-                              Indisponível
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+              <div className="w-full h-64 bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center">
+                <Camera className="h-16 w-16 text-white" />
               </div>
             )}
-          </>
-        )}
-      </main>
-
-      {/* Lightbox modal with front watermark overlay */}
-      {openPhoto && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
-          onClick={() => setOpenPhoto(null)}
-        >
-          <div
-            className="relative max-w-[90vw] max-h-[90vh]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Display opened photo */}
-            <WatermarkedPhoto
-              src={openPhoto.watermarked_url}
-              alt={openPhoto.title || 'Foto'}
-              position="full"
-              opacity={0.3}
-              imgClassName="max-w-full max-h-[90vh] object-contain block"
-              watermarkClassName=""
-            />
-
-            {/* Close button */}
-            <button
-              className="absolute top-2 right-2 bg-white/10 hover:bg-white/20 text-white rounded-full w-8 h-8 flex items-center justify-center"
-              onClick={() => setOpenPhoto(null)}
-              aria-label="Fechar"
-            >
-              ✕
-            </button>
-
-            {/* Purchase button in modal */}
-            {openPhoto && (
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-                {isPhotoPurchased(openPhoto.id) ? (
-                  <Badge variant="default" className="bg-green-600 text-white px-4 py-2">
-                    <Download className="h-4 w-4 mr-2" />
-                    Foto Comprada
-                  </Badge>
-                ) : openPhoto.price && openPhoto.is_available ? (
-                  <Button 
-                    className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
-                    onClick={() => handlePurchase(openPhoto)}
-                    disabled={purchasingPhoto === openPhoto.id}
-                  >
-                    {purchasingPhoto === openPhoto.id ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-                        Comprando...
-                      </>
-                    ) : (
-                      <>
-                        <ShoppingCart className="h-4 w-4" />
-                        Comprar por R$ {openPhoto.price.toFixed(2)}
-                      </>
-                    )}
-                  </Button>
-                ) : (
-                  <Badge variant="secondary" className="px-4 py-2">
-                    Foto não disponível para compra
-                  </Badge>
+            <div className="absolute inset-0 bg-black/20" />
+            <div className="absolute bottom-4 left-4 text-white">
+              <h1 className="text-3xl font-bold mb-2">{campaign.title}</h1>
+              <div className="flex flex-wrap gap-4 text-sm">
+                {campaign.event_date && (
+                  <div className="flex items-center gap-1">
+                    <Calendar className="h-4 w-4" />
+                    {new Date(campaign.event_date).toLocaleDateString('pt-BR')}
+                  </div>
+                )}
+                {campaign.location && (
+                  <div className="flex items-center gap-1">
+                    <MapPin className="h-4 w-4" />
+                    {campaign.location}
+                  </div>
                 )}
               </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="h-5 w-5" />
+                  Fotógrafo
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="font-medium">{campaign.photographer?.full_name}</p>
+                <p className="text-sm text-muted-foreground">{campaign.photographer?.email}</p>
+              </CardContent>
+            </Card>
+
+            {campaign.organization && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Building2 className="h-5 w-5" />
+                    Organização
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="font-medium">{campaign.organization.name}</p>
+                  <p className="text-sm text-muted-foreground">{campaign.organization.description}</p>
+                </CardContent>
+              </Card>
             )}
           </div>
+
+          {campaign.description && (
+            <Card className="mb-8">
+              <CardHeader>
+                <CardTitle>Sobre o Evento</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">{campaign.description}</p>
+              </CardContent>
+            </Card>
+          )}
         </div>
-      )}
+
+        {/* Photos Grid */}
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold mb-6">
+            Fotos do Evento ({photos.length})
+          </h2>
+
+          {photos.length === 0 ? (
+            <Card className="p-12 text-center">
+              <Camera className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium mb-2">Nenhuma foto disponível</h3>
+              <p className="text-muted-foreground">
+                As fotos deste evento ainda não foram publicadas.
+              </p>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {photos.map((photo) => (
+                <Card key={photo.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                  <div className="aspect-square bg-gradient-subtle relative">
+                    <img
+                      src={photo.thumbnail_url || photo.watermarked_url}
+                      alt={photo.title || 'Foto'}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button size="sm" variant="secondary" className="gap-1">
+                            <Eye className="h-4 w-4" />
+                            Ver
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-4xl w-[90vw]">
+                          <DialogHeader>
+                            <DialogTitle>{photo.title || 'Foto'}</DialogTitle>
+                          </DialogHeader>
+                          <div className="relative">
+                            <img
+                              src={photo.watermarked_url}
+                              alt={photo.title || 'Foto'}
+                              className="w-full max-h-[70vh] object-contain rounded-lg"
+                            />
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+                  </div>
+                  <CardContent className="p-3">
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium truncate">
+                        {photo.title || 'Foto'}
+                      </p>
+                      <div className="flex justify-between items-center">
+                        <span className="text-lg font-bold text-green-600">
+                          R$ {photo.price.toFixed(2)}
+                        </span>
+                        <Button 
+                          size="sm" 
+                          onClick={() => handleBuyPhoto(photo)}
+                          className="gap-1"
+                        >
+                          <ShoppingCart className="h-3 w-3" />
+                          Comprar
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Payment Modal */}
+        {showPaymentModal && selectedPhoto && (
+          <PaymentModal
+            isOpen={showPaymentModal}
+            onClose={() => {
+              setShowPaymentModal(false);
+              setSelectedPhoto(null);
+            }}
+            photo={{
+              id: selectedPhoto.id,
+              title: selectedPhoto.title || 'Foto',
+              price: selectedPhoto.price,
+              image_url: selectedPhoto.thumbnail_url || selectedPhoto.watermarked_url
+            }}
+            onPaymentSuccess={handlePaymentSuccess}
+          />
+        )}
+      </div>
     </div>
   );
 };
 
 export default Campaign;
-
-// Inline modal markup appended at end of file via React portal-like pattern is not available here,
-// so we include modal markup inside the component render above. To keep the patch minimal we've
-// implemented opening via `openPhoto` state which should be present in the component.
-
-
-/*
-Notes for watermark usage:
-- Place the front watermark image you shared into the public folder at: `public/watermark_front.png`.
-- The lightbox will overlay that image centered on top of the displayed photo.
-
-If you want a different filename or location, update the `watermarkUrl` below in the modal markup.
-*/
