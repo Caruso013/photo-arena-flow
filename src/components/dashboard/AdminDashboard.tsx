@@ -16,9 +16,14 @@ import {
   Save,
   BarChart3,
   Camera,
-  Shield
+  Shield,
+  TrendingUp,
+  UserCheck,
+  Activity
 } from 'lucide-react';
 import DashboardLayout from './DashboardLayout';
+import AdminNavbar from './AdminNavbar';
+import StatCard from './StatCard';
 
 interface Organization {
   id: string;
@@ -47,18 +52,32 @@ interface Campaign {
   created_at: string;
 }
 
+interface EventApplication {
+  id: string;
+  photographer?: { full_name: string; email: string };
+  campaign?: { title: string };
+  status: string;
+  applied_at: string;
+}
+
 const AdminDashboard = () => {
   const { user, profile } = useAuth();
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [eventApplications, setEventApplications] = useState<EventApplication[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingOrg, setEditingOrg] = useState<string | null>(null);
   const [newPercentages, setNewPercentages] = useState<{ [key: string]: number }>({});
 
   useEffect(() => {
-    if (user && profile?.organization_role === 'admin') {
+    console.log('AdminDashboard - User:', user?.email, 'Profile role:', profile?.role, 'Org role:', profile?.organization_role);
+    
+    if (user && (profile?.role === 'admin' || profile?.organization_role === 'admin')) {
+      console.log('Admin access granted, loading admin data...');
       fetchAdminData();
+    } else if (user && profile) {
+      console.log('Access denied - not an admin user');
     }
   }, [user, profile]);
 
@@ -131,7 +150,33 @@ const AdminDashboard = () => {
     }
   };
 
-  if (!user || profile?.organization_role !== 'admin') {
+  const handleApplicationResponse = async (applicationId: string, action: 'approve' | 'reject') => {
+    try {
+      const { error } = await supabase
+        .from('event_applications')
+        .update({ status: action === 'approve' ? 'approved' : 'rejected' })
+        .eq('id', applicationId);
+
+      if (error) throw error;
+
+      toast({
+        title: action === 'approve' ? "Candidatura aprovada!" : "Candidatura rejeitada!",
+        description: `A candidatura foi ${action === 'approve' ? 'aprovada' : 'rejeitada'} com sucesso.`,
+      });
+
+      // Refresh applications
+      fetchAdminData();
+    } catch (error) {
+      console.error('Error updating application:', error);
+      toast({
+        title: "Erro ao atualizar",
+        description: "Não foi possível atualizar a candidatura.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  if (!user || (profile?.role !== 'admin' && profile?.organization_role !== 'admin')) {
     return (
       <DashboardLayout>
         <div className="text-center p-8">
@@ -154,58 +199,103 @@ const AdminDashboard = () => {
   }
 
   return (
-    <DashboardLayout>
-      <div className="space-y-8">
-        <div className="bg-gradient-primary rounded-lg p-8 text-white">
-          <div className="flex items-center gap-4 mb-4">
-            <Shield className="h-12 w-12" />
-            <div>
-              <h1 className="text-3xl font-bold">Painel Administrativo</h1>
-              <p className="text-blue-100">Gerencie organizações e porcentagens do sistema</p>
+    <>
+      <div className="min-h-screen bg-gray-50/50">
+        <AdminNavbar 
+          currentUser={{
+            id: user?.id || '',
+            email: user?.email || '',
+            full_name: profile?.full_name || undefined,
+            avatar_url: profile?.avatar_url || undefined
+          }}
+          pendingApplications={eventApplications.filter(app => app.status === 'pending').length}
+          eventApplications={eventApplications}
+          onApplicationResponse={handleApplicationResponse}
+        />
+        
+        <main className="container mx-auto px-4 py-8">
+          <div className="space-y-8">
+            {/* Welcome Section */}
+            <div className="space-y-2">
+              <h1 className="text-3xl font-bold tracking-tight">
+                Bem-vindo ao Painel Administrativo
+              </h1>
+              <p className="text-muted-foreground">
+                Gerencie organizações, campanhas e fotógrafos da plataforma
+              </p>
             </div>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-white/10 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Building2 className="h-5 w-5" />
-                <span className="text-sm">Organizações</span>
-              </div>
-              <p className="text-2xl font-bold">{organizations.filter(o => o.is_active).length}</p>
-            </div>
-            
-            <div className="bg-white/10 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Users className="h-5 w-5" />
-                <span className="text-sm">Usuários</span>
-              </div>
-              <p className="text-2xl font-bold">{users.length}</p>
-            </div>
-            
-            <div className="bg-white/10 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Camera className="h-5 w-5" />
-                <span className="text-sm">Campanhas</span>
-              </div>
-              <p className="text-2xl font-bold">{campaigns.length}</p>
-            </div>
-            
-            <div className="bg-white/10 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <DollarSign className="h-5 w-5" />
-                <span className="text-sm">Total</span>
-              </div>
-              <p className="text-2xl font-bold">{organizations.length + users.length + campaigns.length}</p>
-            </div>
-          </div>
-        </div>
 
-        <Tabs defaultValue="organizations" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="organizations">Organizações</TabsTrigger>
-            <TabsTrigger value="users">Usuários</TabsTrigger>
-            <TabsTrigger value="campaigns">Campanhas</TabsTrigger>
-          </TabsList>
+            {/* Stats Cards */}
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+              <StatCard
+                title="Organizações Ativas"
+                value={organizations.filter(o => o.is_active).length}
+                subtitle={`${organizations.length} total`}
+                icon={Building2}
+                iconColor="bg-blue-500 text-white"
+                bgGradient="from-blue-50 to-blue-100"
+                trend={{
+                  value: 12,
+                  isPositive: true
+                }}
+              />
+              
+              <StatCard
+                title="Usuários Registrados"
+                value={users.length}
+                subtitle="Crescimento mensal"
+                icon={Users}
+                iconColor="bg-green-500 text-white"
+                bgGradient="from-green-50 to-green-100"
+                trend={{
+                  value: 8,
+                  isPositive: true
+                }}
+              />
+              
+              <StatCard
+                title="Campanhas Ativas"
+                value={campaigns.filter(c => c.is_active).length}
+                subtitle={`${campaigns.length} total`}
+                icon={Camera}
+                iconColor="bg-purple-500 text-white"
+                bgGradient="from-purple-50 to-purple-100"
+                trend={{
+                  value: 15,
+                  isPositive: true
+                }}
+              />
+              
+              <StatCard
+                title="Candidaturas Pendentes"
+                value={eventApplications.filter(app => app.status === 'pending').length}
+                subtitle="Requer aprovação"
+                icon={UserCheck}
+                iconColor="bg-orange-500 text-white"
+                bgGradient="from-orange-50 to-orange-100"
+                trend={{
+                  value: eventApplications.filter(app => app.status === 'pending').length > 5 ? -3 : 5,
+                  isPositive: eventApplications.filter(app => app.status === 'pending').length <= 5
+                }}
+              />
+            </div>
+
+            {/* Management Tabs */}
+            <Tabs defaultValue="organizations" className="space-y-6">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="organizations" className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4" />
+                  Organizações
+                </TabsTrigger>
+                <TabsTrigger value="users" className="flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Usuários
+                </TabsTrigger>
+                <TabsTrigger value="campaigns" className="flex items-center gap-2">
+                  <Camera className="h-4 w-4" />
+                  Campanhas
+                </TabsTrigger>
+              </TabsList>
 
           <TabsContent value="organizations" className="space-y-6">
             <Card>
@@ -382,8 +472,10 @@ const AdminDashboard = () => {
             </Card>
           </TabsContent>
         </Tabs>
+          </div>
+        </main>
       </div>
-    </DashboardLayout>
+    </>
   );
 };
 

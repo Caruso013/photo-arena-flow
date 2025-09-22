@@ -64,7 +64,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
                     </p>
                     <div className="mt-1">
                       <span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-1 text-xs font-medium text-primary ring-1 ring-inset ring-primary/20">
-                        {profile?.role === 'admin' ? 'Administrador' : 
+                        {(profile?.role === 'admin' || profile?.organization_role === 'admin') ? 'Administrador' : 
                          profile?.role === 'photographer' ? 'Fotógrafo' : 'Usuário'}
                       </span>
                     </div>

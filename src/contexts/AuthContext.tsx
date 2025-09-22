@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
+import { sendRegistrationConfirmationEmail } from '@/lib/email';
 
 export type UserRole = 'user' | 'photographer' | 'admin';
 export type OrganizationRole = 'admin' | 'organization' | 'photographer' | 'user';
@@ -45,15 +46,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchProfile = async (userId: string): Promise<UserProfile | null> => {
     try {
+      console.log('Fetching profile for user ID:', userId);
+      
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching profile:', error);
+        throw error;
+      }
       
-      if (!data) return null;
+      if (!data) {
+        console.log('No profile found for user:', userId);
+        return null;
+      }
+      
+      console.log('Profile fetched successfully:', data);
       
       return {
         id: data.id,
@@ -130,9 +141,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         variant: "destructive",
       });
     } else {
+      // Enviar email de confirmação de cadastro
+      try {
+        await sendRegistrationConfirmationEmail(
+          email,
+          fullName || 'Usuário',
+          {
+            userType: 'Usuário',
+            registrationDate: new Date().toISOString(),
+          }
+        );
+      } catch (emailError) {
+        console.error('Erro ao enviar email de boas-vindas:', emailError);
+      }
+
       toast({
         title: "Cadastro realizado",
-        description: "Verifique seu email para confirmar a conta.",
+        description: "Verifique seu email para confirmar a conta e receba suas boas-vindas!",
       });
     }
 
@@ -140,17 +165,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
     if (error) {
+      console.error('Login error:', error);
       toast({
         title: "Erro no login",
         description: error.message,
         variant: "destructive",
       });
+    } else if (data.user) {
+      console.log('Login successful, user:', data.user.email);
+      // Fetch profile immediately after successful login
+      const profileData = await fetchProfile(data.user.id);
+      console.log('Profile data:', profileData);
+      setProfile(profileData);
     }
 
     return { error };
