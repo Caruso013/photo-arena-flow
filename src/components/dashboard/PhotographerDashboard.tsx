@@ -18,12 +18,17 @@ import AntiScreenshotProtection from '@/components/security/AntiScreenshotProtec
 interface Campaign {
   id: string;
   title: string;
-  description: string;
-  event_date: string;
-  location: string;
-  cover_image_url: string;
+  description?: string;
+  event_date?: string;
+  location?: string;
+  cover_image_url?: string;
   is_active: boolean;
-  photos: { count: number }[];
+  organization_percentage?: number; // Made optional to match database
+  photographer_id?: string | null;
+  organization_id?: string | null;
+  created_at: string;
+  updated_at: string;
+  photos?: { count: number }[];
 }
 
 interface Photo {

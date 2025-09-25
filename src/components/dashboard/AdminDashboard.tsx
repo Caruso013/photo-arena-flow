@@ -30,8 +30,9 @@ interface Organization {
   name: string;
   description: string | null;
   admin_percentage: number;
-  is_active: boolean;
+  is_active?: boolean; // Made optional to match database response
   created_at: string;
+  updated_at: string;
 }
 
 interface User {
@@ -39,8 +40,12 @@ interface User {
   email: string;
   full_name: string | null;
   role: string;
-  organization_role: string | null;
+  organization_role?: string | null; // Made optional
+  organization_id?: string | null; // Made optional
   created_at: string;
+  avatar_url?: string | null;
+  payout_percentage?: number;
+  updated_at: string;
 }
 
 interface Campaign {
