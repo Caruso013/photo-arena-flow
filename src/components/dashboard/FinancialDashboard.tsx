@@ -1,0 +1,409 @@
+import React, { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Progress } from '@/components/ui/progress';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { TrendingUp, DollarSign, Camera, Trophy, Target, Users, Award } from 'lucide-react';
+
+interface PhotographerStats {
+  photographer_id: string;
+  photographer_name: string;
+  total_sales: number;
+  total_photos: number;
+  total_revenue: number;
+  avg_photo_price: number;
+  rank: number;
+}
+
+interface RevenueData {
+  month: string;
+  platform: number;
+  photographers: number;
+  organizations: number;
+}
+
+interface FinancialDashboardProps {
+  userRole: 'admin' | 'photographer';
+}
+
+const FinancialDashboard = ({ userRole }: FinancialDashboardProps) => {
+  const { user } = useAuth();
+  const [photographerStats, setPhotographerStats] = useState<PhotographerStats[]>([]);
+  const [revenueData, setRevenueData] = useState<RevenueData[]>([]);
+  const [totalRevenue, setTotalRevenue] = useState(0);
+  const [userStats, setUserStats] = useState<PhotographerStats | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchFinancialData();
+  }, [user, userRole]);
+
+  const fetchFinancialData = async () => {
+    try {
+      setLoading(true);
+
+      // Fetch photographer performance stats
+      const { data: salesData, error: salesError } = await supabase
+        .from('purchases')
+        .select(`
+          photographer_id,
+          amount,
+          photo:photos(title, price),
+          photographer:profiles!photographer_id(full_name),
+          created_at
+        `)
+        .eq('status', 'completed');
+
+      if (salesError) throw salesError;
+
+      // Process photographer stats
+      const photographerMap = new Map<string, PhotographerStats>();
+      let totalRevenueSum = 0;
+
+      salesData?.forEach(sale => {
+        const photographerId = sale.photographer_id;
+        const photographerName = sale.photographer?.full_name || 'Fotógrafo Desconhecido';
+        const amount = Number(sale.amount || 0);
+        
+        totalRevenueSum += amount;
+
+        if (!photographerMap.has(photographerId)) {
+          photographerMap.set(photographerId, {
+            photographer_id: photographerId,
+            photographer_name: photographerName,
+            total_sales: 0,
+            total_photos: 0,
+            total_revenue: 0,
+            avg_photo_price: 0,
+            rank: 0
+          });
+        }
+
+        const stats = photographerMap.get(photographerId)!;
+        stats.total_sales += 1;
+        stats.total_photos += 1;
+        stats.total_revenue += amount;
+      });
+
+      // Calculate averages and sort by revenue
+      const sortedStats = Array.from(photographerMap.values())
+        .map(stats => ({
+          ...stats,
+          avg_photo_price: stats.total_sales > 0 ? stats.total_revenue / stats.total_sales : 0
+        }))
+        .sort((a, b) => b.total_revenue - a.total_revenue)
+        .map((stats, index) => ({ ...stats, rank: index + 1 }));
+
+      setPhotographerStats(sortedStats);
+      setTotalRevenue(totalRevenueSum);
+
+      // Find current user stats if photographer
+      if (userRole === 'photographer' && user) {
+        const currentUserStats = sortedStats.find(s => s.photographer_id === user.id);
+        setUserStats(currentUserStats || null);
+      }
+
+      // Generate monthly revenue data (mock data for demonstration)
+      const monthlyData: RevenueData[] = [];
+      const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'];
+      
+      months.forEach(month => {
+        const total = Math.random() * 10000 + 5000;
+        monthlyData.push({
+          month,
+          platform: total * 0.6,
+          photographers: total * 0.3,
+          organizations: total * 0.1
+        });
+      });
+      
+      setRevenueData(monthlyData);
+
+    } catch (error) {
+      console.error('Error fetching financial data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getRankBadge = (rank: number) => {
+    if (rank === 1) return <Badge className="bg-yellow-500 hover:bg-yellow-600"><Trophy className="h-3 w-3 mr-1" />1º Lugar</Badge>;
+    if (rank === 2) return <Badge className="bg-gray-400 hover:bg-gray-500"><Award className="h-3 w-3 mr-1" />2º Lugar</Badge>;
+    if (rank === 3) return <Badge className="bg-amber-600 hover:bg-amber-700"><Award className="h-3 w-3 mr-1" />3º Lugar</Badge>;
+    if (rank <= 10) return <Badge variant="secondary">Top 10</Badge>;
+    return <Badge variant="outline">#{rank}</Badge>;
+  };
+
+  const chartConfig = {
+    platform: { label: "Plataforma", color: "hsl(var(--primary))" },
+    photographers: { label: "Fotógrafos", color: "hsl(var(--secondary))" },
+    organizations: { label: "Organizações", color: "hsl(var(--accent))" }
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        {[...Array(3)].map((_, i) => (
+          <Card key={i} className="animate-pulse">
+            <CardHeader>
+              <div className="h-4 bg-muted rounded w-1/3"></div>
+              <div className="h-3 bg-muted rounded w-1/2"></div>
+            </CardHeader>
+            <CardContent>
+              <div className="h-20 bg-muted rounded"></div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Overview Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Receita Total</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              +12.5% em relação ao mês anterior
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Fotógrafos Ativos</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{photographerStats.length}</div>
+            <p className="text-xs text-muted-foreground">
+              Venderam fotos este mês
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Fotos Vendidas</CardTitle>
+            <Camera className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {photographerStats.reduce((sum, p) => sum + p.total_photos, 0)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Total de fotos vendidas
+            </p>
+          </CardContent>
+        </Card>
+
+        {userRole === 'photographer' && userStats && (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Sua Posição</CardTitle>
+              <Target className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">#{userStats.rank}</div>
+              <p className="text-xs text-muted-foreground">
+                R$ {userStats.total_revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} em vendas
+              </p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      <Tabs defaultValue="ranking" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="ranking">Ranking de Fotógrafos</TabsTrigger>
+          <TabsTrigger value="revenue">Receita por Período</TabsTrigger>
+          {userRole === 'photographer' && <TabsTrigger value="personal">Meu Desempenho</TabsTrigger>}
+        </TabsList>
+
+        <TabsContent value="ranking" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-yellow-500" />
+                Ranking de Fotógrafos
+              </CardTitle>
+              <CardDescription>
+                Os fotógrafos que mais venderam fotos na plataforma
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {photographerStats.slice(0, 10).map((photographer, index) => (
+                  <div
+                    key={photographer.photographer_id}
+                    className={`flex items-center justify-between p-4 rounded-lg border ${
+                      userRole === 'photographer' && photographer.photographer_id === user?.id
+                        ? 'bg-primary/5 border-primary/20'
+                        : 'bg-card'
+                    }`}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="text-2xl font-bold text-muted-foreground">
+                        #{photographer.rank}
+                      </div>
+                      <div>
+                        <div className="font-semibold">{photographer.photographer_name}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {photographer.total_sales} foto(s) vendida(s)
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="text-right">
+                      <div className="font-semibold">
+                        R$ {photographer.total_revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        Média: R$ {photographer.avg_photo_price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-col items-end gap-2">
+                      {getRankBadge(photographer.rank)}
+                      {photographer.rank <= 3 && (
+                        <Progress 
+                          value={100 - (photographer.rank - 1) * 20} 
+                          className="w-20 h-2"
+                        />
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="revenue" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                Receita por Período
+              </CardTitle>
+              <CardDescription>
+                Distribuição da receita entre plataforma, fotógrafos e organizações
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer config={chartConfig} className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={revenueData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
+                    <YAxis />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Bar dataKey="platform" stackId="a" fill="var(--color-platform)" />
+                    <Bar dataKey="photographers" stackId="a" fill="var(--color-photographers)" />
+                    <Bar dataKey="organizations" stackId="a" fill="var(--color-organizations)" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {userRole === 'photographer' && userStats && (
+          <TabsContent value="personal" className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Seu Desempenho</CardTitle>
+                  <CardDescription>Estatísticas detalhadas das suas vendas</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex justify-between">
+                    <span>Posição no Ranking:</span>
+                    <div className="flex items-center gap-2">
+                      {getRankBadge(userStats.rank)}
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <span>Total de Vendas:</span>
+                    <span className="font-semibold">{userStats.total_sales}</span>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <span>Receita Total:</span>
+                    <span className="font-semibold">
+                      R$ {userStats.total_revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <span>Preço Médio por Foto:</span>
+                    <span className="font-semibold">
+                      R$ {userStats.avg_photo_price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Metas e Objetivos</CardTitle>
+                  <CardDescription>Progresso em direção aos seus objetivos</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <div className="flex justify-between mb-2">
+                      <span className="text-sm">Meta de Vendas Mensais</span>
+                      <span className="text-sm">
+                        {userStats.total_sales}/50
+                      </span>
+                    </div>
+                    <Progress value={(userStats.total_sales / 50) * 100} />
+                  </div>
+                  
+                  <div>
+                    <div className="flex justify-between mb-2">
+                      <span className="text-sm">Meta de Receita</span>
+                      <span className="text-sm">
+                        R$ {userStats.total_revenue.toLocaleString('pt-BR')}/R$ 5.000
+                      </span>
+                    </div>
+                    <Progress value={(userStats.total_revenue / 5000) * 100} />
+                  </div>
+                  
+                  <div className="pt-4 border-t">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-primary">
+                        {userStats.rank <= 3 ? '🏆' : userStats.rank <= 10 ? '🥇' : '📈'}
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-2">
+                        {userStats.rank === 1 && "Parabéns! Você é o fotógrafo #1!"}
+                        {userStats.rank > 1 && userStats.rank <= 3 && "Excelente! Você está no pódio!"}
+                        {userStats.rank > 3 && userStats.rank <= 10 && "Muito bem! Você está no Top 10!"}
+                        {userStats.rank > 10 && "Continue se esforçando para subir no ranking!"}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        )}
+      </Tabs>
+    </div>
+  );
+};
+
+export default FinancialDashboard;

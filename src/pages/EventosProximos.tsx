@@ -1,159 +1,125 @@
-import React, { useEffect, useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { toast } from '@/components/ui/use-toast';
-import { 
-  Calendar, 
-  MapPin, 
-  Users, 
-  Clock, 
-  AlertCircle,
-  Camera,
-  Building2,
-  Send,
-  CheckCircle,
-  XCircle
-} from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { Calendar, MapPin, Users, Camera, Clock } from 'lucide-react';
+import { Navigate } from 'react-router-dom';
 
 interface Campaign {
   id: string;
   title: string;
-  description: string | null;
-  event_date: string | null;
-  location: string | null;
-  organization_id: string | null;
-  organization_percentage: number;
-  is_active: boolean;
+  description?: string;
+  location?: string;
+  event_date?: string;
+  organization_id?: string;
   created_at: string;
   organization?: {
-    id: string;
     name: string;
-    description: string | null;
   };
+  event_applications?: any[];
 }
 
-interface EventApplication {
+interface Application {
   id: string;
   campaign_id: string;
   status: string;
-  photographer_percentage: number;
-  application_message: string | null;
-  response_message: string | null;
+  message?: string;
   applied_at: string;
-  responded_at: string | null;
 }
 
 const EventosProximos = () => {
-  const { user, profile } = useAuth();
+  const { user, profile, loading } = useAuth();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-  const [applications, setApplications] = useState<EventApplication[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [loadingData, setLoadingData] = useState(true);
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
-  const [applicationMessage, setApplicationMessage] = useState('');
-  const [isApplying, setIsApplying] = useState(false);
+  const [message, setMessage] = useState('');
+  const [applying, setApplying] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
-    if (user && profile?.organization_role === 'photographer') {
-      fetchCampaigns();
-      fetchApplications();
+    if (user && profile?.role === 'photographer') {
+      fetchData();
     }
   }, [user, profile]);
 
-  const fetchCampaigns = async () => {
+  const fetchData = async () => {
     try {
-      setLoading(true);
+      setLoadingData(true);
       
       const { data: campaignsData, error: campaignsError } = await supabase
         .from('campaigns')
         .select(`
           *,
-          organization:organizations!campaigns_organization_id_fkey(id, name, description)
+          organization:organizations(name),
+          event_applications(id)
         `)
         .eq('is_active', true)
-        .not('organization_id', 'is', null)
-        .gte('event_date', new Date().toISOString())
+        .is('photographer_id', null)
         .order('event_date', { ascending: true });
 
       if (campaignsError) throw campaignsError;
-      setCampaigns((campaignsData as any) || []);
-    } catch (error) {
-      console.error('Error fetching campaigns:', error);
-      toast({
-        title: "Erro ao carregar eventos",
-        description: "Não foi possível carregar os eventos disponíveis.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+      setCampaigns(campaignsData || []);
 
-  const fetchApplications = async () => {
-    if (!user) return;
-
-    try {
       const { data: applicationsData, error: applicationsError } = await supabase
         .from('event_applications')
         .select('*')
-        .eq('photographer_id', user.id);
+        .eq('photographer_id', user!.id);
 
       if (applicationsError) throw applicationsError;
       setApplications(applicationsData || []);
+
     } catch (error) {
-      console.error('Error fetching applications:', error);
+      console.error('Error fetching data:', error);
+      toast({
+        title: "Erro",
+        description: "Falha ao carregar eventos",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingData(false);
     }
   };
 
-  const handleApplyToEvent = async () => {
+  const handleApply = async () => {
     if (!selectedCampaign || !user) return;
 
-    setIsApplying(true);
     try {
+      setApplying(true);
+      
       const { error } = await supabase
         .from('event_applications')
         .insert({
           campaign_id: selectedCampaign.id,
           photographer_id: user.id,
-          organization_id: selectedCampaign.organization_id!,
-          status: 'pending',
-          application_message: applicationMessage,
-          photographer_percentage: 0 // Será definido pela organização
+          message: message.trim() || null,
+          status: 'pending'
         });
 
       if (error) throw error;
 
       toast({
-        title: "Aplicação enviada!",
-        description: "Sua candidatura foi enviada com sucesso. Aguarde a resposta da organização.",
+        title: "Sucesso",
+        description: "Candidatura enviada com sucesso!",
       });
 
+      setMessage('');
       setSelectedCampaign(null);
-      setApplicationMessage('');
-      fetchApplications();
+      fetchData();
     } catch (error: any) {
-      console.error('Error applying to event:', error);
-      
-      if (error.code === '23505') {
-        toast({
-          title: "Aplicação já enviada",
-          description: "Você já se candidatou a este evento.",
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Erro ao enviar aplicação",
-          description: "Não foi possível enviar sua candidatura.",
-          variant: "destructive",
-        });
-      }
+      console.error('Error applying:', error);
+      toast({
+        title: "Erro",
+        description: "Falha ao enviar candidatura",
+        variant: "destructive",
+      });
     } finally {
-      setIsApplying(false);
+      setApplying(false);
     }
   };
 
@@ -161,75 +127,53 @@ const EventosProximos = () => {
     return applications.find(app => app.campaign_id === campaignId);
   };
 
-  if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Card className="p-8 text-center max-w-md">
-          <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h2 className="text-xl font-semibold mb-2">Login Necessário</h2>
-          <p className="text-muted-foreground mb-4">
-            Você precisa fazer login para ver os eventos disponíveis.
-          </p>
-        </Card>
-      </div>
-    );
-  }
-
-  if (profile?.organization_role !== 'photographer') {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Card className="p-8 text-center max-w-md">
-          <Camera className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h2 className="text-xl font-semibold mb-2">Acesso Restrito</h2>
-          <p className="text-muted-foreground mb-4">
-            Esta área é exclusiva para fotógrafos.
-          </p>
-        </Card>
-      </div>
-    );
-  }
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Carregando...</p>
+        </div>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
-      {/* Header */}
-      <header className="border-b bg-white/95 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2 md:gap-3">
-            <Camera className="h-6 w-6 md:h-8 md:w-8 text-primary" />
-            <h1 className="text-lg font-semibold">Eventos Próximos</h1>
-          </div>
-          <Button variant="outline" size="sm">
-            <Users className="h-4 w-4 mr-2" />
-            Dashboard
-          </Button>
-        </div>
-      </header>
+  if (!user || profile?.role !== 'photographer') {
+    return <Navigate to="/auth" />;
+  }
 
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
       <div className="container mx-auto px-4 py-8">
-        {/* Título e Descrição */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-4">Eventos Disponíveis para Fotógrafos</h1>
+          <h1 className="text-4xl font-bold mb-2">Próximos Eventos</h1>
           <p className="text-muted-foreground text-lg">
-            Candidate-se aos eventos criados pelas organizações e participe como fotógrafo oficial.
+            Encontre e se candidate para eventos de fotografia
           </p>
         </div>
 
-        {/* Lista de Eventos */}
-        {campaigns.length === 0 ? (
-          <Card className="p-12 text-center">
-            <Calendar className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-medium mb-2">Nenhum evento disponível</h3>
-            <p className="text-muted-foreground">
-              No momento não há eventos abertos para candidatura de fotógrafos.
-            </p>
+        {loadingData ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[...Array(6)].map((_, i) => (
+              <Card key={i} className="animate-pulse">
+                <CardHeader>
+                  <div className="h-4 bg-muted rounded w-3/4"></div>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-3 bg-muted rounded"></div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : campaigns.length === 0 ? (
+          <Card className="text-center py-12">
+            <CardContent>
+              <Camera className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-xl font-semibold mb-2">Nenhum evento disponível</h3>
+              <p className="text-muted-foreground">
+                Não há eventos abertos para candidatura no momento.
+              </p>
+            </CardContent>
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -237,29 +181,12 @@ const EventosProximos = () => {
               const application = getApplicationStatus(campaign.id);
               
               return (
-                <Card key={campaign.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                  <CardHeader className="pb-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <CardTitle className="text-lg">{campaign.title}</CardTitle>
-                      {application && (
-                        <Badge 
-                          variant={
-                            application.status === 'approved' ? 'default' :
-                            application.status === 'rejected' ? 'destructive' : 'secondary'
-                          }
-                        >
-                          {application.status === 'approved' ? 'Aprovado' :
-                           application.status === 'rejected' ? 'Rejeitado' : 'Pendente'}
-                        </Badge>
-                      )}
-                    </div>
-                    
-                    {campaign.organization && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Building2 className="h-4 w-4" />
-                        {campaign.organization.name}
-                      </div>
-                    )}
+                <Card key={campaign.id} className="hover:shadow-lg transition-shadow">
+                  <CardHeader>
+                    <CardTitle className="text-lg">{campaign.title}</CardTitle>
+                    <CardDescription>
+                      {campaign.organization?.name || 'Plataforma'}
+                    </CardDescription>
                   </CardHeader>
                   
                   <CardContent className="space-y-4">
@@ -272,127 +199,71 @@ const EventosProximos = () => {
                     <div className="space-y-2">
                       {campaign.event_date && (
                         <div className="flex items-center gap-2 text-sm">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
-                          {new Date(campaign.event_date).toLocaleDateString('pt-BR', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
+                          <Calendar className="h-4 w-4 text-primary" />
+                          <span>
+                            {new Date(campaign.event_date).toLocaleDateString('pt-BR')}
+                          </span>
                         </div>
                       )}
                       
                       {campaign.location && (
                         <div className="flex items-center gap-2 text-sm">
-                          <MapPin className="h-4 w-4 text-muted-foreground" />
-                          {campaign.location}
+                          <MapPin className="h-4 w-4 text-primary" />
+                          <span>{campaign.location}</span>
                         </div>
                       )}
-                      
-                      <div className="flex items-center gap-2 text-sm">
-                        <div className="flex items-center gap-1">
-                          <span className="text-muted-foreground">Organização:</span>
-                          <span className="text-green-600 font-medium">
-                            {campaign.organization_percentage}%
-                          </span>
-                        </div>
-                      </div>
                     </div>
 
-                    {/* Botão de Ação */}
                     <div className="pt-2">
-                      {!application ? (
+                      {application ? (
+                        <Button variant="outline" disabled className="w-full">
+                          {application.status === 'pending' && 'Candidatura Enviada'}
+                          {application.status === 'approved' && 'Aprovado!'}
+                          {application.status === 'rejected' && 'Rejeitado'}
+                        </Button>
+                      ) : (
                         <Dialog>
                           <DialogTrigger asChild>
                             <Button 
-                              className="w-full gap-2"
+                              className="w-full" 
                               onClick={() => setSelectedCampaign(campaign)}
                             >
-                              <Send className="h-4 w-4" />
+                              <Camera className="h-4 w-4 mr-2" />
                               Candidatar-se
                             </Button>
                           </DialogTrigger>
                           <DialogContent>
                             <DialogHeader>
-                              <DialogTitle>Candidatar-se ao Evento</DialogTitle>
+                              <DialogTitle>Candidatar-se para {campaign.title}</DialogTitle>
                               <DialogDescription>
-                                Envie sua candidatura para participar do evento "{campaign.title}"
+                                Envie sua candidatura para fotografar este evento
                               </DialogDescription>
                             </DialogHeader>
                             
                             <div className="space-y-4">
                               <div>
-                                <Label htmlFor="message">Mensagem (opcional)</Label>
+                                <label className="text-sm font-medium mb-2 block">
+                                  Mensagem (opcional)
+                                </label>
                                 <Textarea
-                                  id="message"
-                                  placeholder="Conte um pouco sobre sua experiência e por que gostaria de participar deste evento..."
-                                  value={applicationMessage}
-                                  onChange={(e) => setApplicationMessage(e.target.value)}
+                                  value={message}
+                                  onChange={(e) => setMessage(e.target.value)}
+                                  placeholder="Conte sobre sua experiência..."
                                   rows={4}
                                 />
                               </div>
                               
-                              <div className="flex gap-2">
-                                <Button 
-                                  onClick={handleApplyToEvent}
-                                  disabled={isApplying}
-                                  className="flex-1"
-                                >
-                                  {isApplying ? 'Enviando...' : 'Enviar Candidatura'}
-                                </Button>
-                                <Button 
-                                  variant="outline" 
-                                  onClick={() => {
-                                    setSelectedCampaign(null);
-                                    setApplicationMessage('');
-                                  }}
-                                >
+                              <div className="flex justify-end gap-3">
+                                <Button variant="outline" onClick={() => setSelectedCampaign(null)}>
                                   Cancelar
+                                </Button>
+                                <Button onClick={handleApply} disabled={applying}>
+                                  {applying ? "Enviando..." : "Enviar Candidatura"}
                                 </Button>
                               </div>
                             </div>
                           </DialogContent>
                         </Dialog>
-                      ) : (
-                        <div className="space-y-2">
-                          <Button 
-                            variant="outline" 
-                            className="w-full gap-2" 
-                            disabled
-                          >
-                            {application.status === 'approved' ? (
-                              <>
-                                <CheckCircle className="h-4 w-4" />
-                                Candidatura Aprovada
-                              </>
-                            ) : application.status === 'rejected' ? (
-                              <>
-                                <XCircle className="h-4 w-4" />
-                                Candidatura Rejeitada
-                              </>
-                            ) : (
-                              <>
-                                <Clock className="h-4 w-4" />
-                                Aguardando Resposta
-                              </>
-                            )}
-                          </Button>
-                          
-                          {application.status === 'approved' && application.photographer_percentage > 0 && (
-                            <div className="text-center">
-                              <Badge variant="default" className="text-xs">
-                                Sua porcentagem: {application.photographer_percentage}%
-                              </Badge>
-                            </div>
-                          )}
-                          
-                          {application.response_message && (
-                            <div className="text-xs text-muted-foreground p-2 bg-muted rounded">
-                              <strong>Resposta:</strong> {application.response_message}
-                            </div>
-                          )}
-                        </div>
                       )}
                     </div>
                   </CardContent>
