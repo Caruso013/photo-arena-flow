@@ -557,10 +557,14 @@ const PhotographerDashboard = () => {
         />
       )}
 
-      {showCreateCampaignModal && (
+      {showCreateCampaignModal && profile?.role === 'admin' && (
         <CreateCampaignModal 
-          onClose={() => setShowCreateCampaignModal(false)}
-          onCampaignCreated={fetchData}
+          organizationId="default-org"
+          organizationName="Plataforma"
+          onCampaignCreated={() => {
+            fetchData();
+            setShowCreateCampaignModal(false);
+          }}
         />
       )}
       </DashboardLayout>
