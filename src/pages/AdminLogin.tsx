@@ -20,14 +20,14 @@ const AdminLogin = () => {
   const [password, setPassword] = useState('');
 
   useEffect(() => {
-    console.log('AdminLogin - User:', user?.email, 'Profile:', profile?.role, 'Org Role:', profile?.organization_role);
+    console.log('AdminLogin - User:', user?.email, 'Profile:', profile?.role);
     
     if (user && profile) {
-      if (profile.role === 'admin' || profile.organization_role === 'admin') {
+      if (profile.role === 'admin') {
         console.log('Admin access granted, redirecting to dashboard');
         navigate('/dashboard');
       } else {
-        console.log('Access denied - User role:', profile.role, 'Org role:', profile.organization_role);
+        console.log('Access denied - User role:', profile.role);
         setError('Acesso negado. Esta área é restrita a administradores.');
       }
     }

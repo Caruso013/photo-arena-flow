@@ -28,12 +28,9 @@ interface Organization {
   id: string;
   name: string;
   description: string | null;
-  logo_url: string | null;
-  contact_email: string | null;
-  contact_phone: string | null;
-  address: string | null;
   admin_percentage: number;
-  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 interface Campaign {
@@ -43,26 +40,31 @@ interface Campaign {
   event_date: string | null;
   location: string | null;
   cover_image_url: string | null;
-  organization_percentage: number;
+  photographer_id: string | null;
+  organization_id: string;
   is_active: boolean;
   created_at: string;
+  updated_at: string;
 }
 
 interface EventApplication {
   id: string;
+  campaign_id: string;
+  photographer_id: string;
   status: string;
-  photographer_percentage: number;
-  application_message: string | null;
-  response_message: string | null;
+  message: string | null;
   applied_at: string;
-  responded_at: string | null;
-  photographer: {
+  processed_at: string | null;
+  processed_by: string | null;
+  created_at: string;
+  updated_at: string;
+  photographer?: {
     id: string;
     full_name: string | null;
     email: string;
     avatar_url: string | null;
   };
-  campaign: {
+  campaign?: {
     id: string;
     title: string;
   };
@@ -93,12 +95,14 @@ const OrganizationDashboard = () => {
     title: '',
     description: '',
     event_date: '',
-    location: '',
-    organization_percentage: 0
+    location: ''
   });
 
+  // Simulando que o usuário é admin de uma organização para demo
+  const mockOrgId = "demo-org-id";
+
   useEffect(() => {
-    if (user && profile?.organization_id) {
+    if (user && profile?.role === 'admin') {
       fetchOrganizationData();
     }
   }, [user, profile]);
@@ -107,21 +111,20 @@ const OrganizationDashboard = () => {
     try {
       setLoading(true);
       
-      // Buscar dados da organização
+      // Buscar organizações (admin pode ver todas)
       const { data: orgData, error: orgError } = await supabase
         .from('organizations')
         .select('*')
-        .eq('id', profile!.organization_id!)
+        .limit(1)
         .single();
 
-      if (orgError) throw orgError;
+      if (orgError && orgError.code !== 'PGRST116') throw orgError;
       setOrganization(orgData);
 
-      // Buscar campanhas da organização
+      // Buscar campanhas
       const { data: campaignsData, error: campaignsError } = await supabase
         .from('campaigns')
         .select('*')
-        .eq('organization_id', profile!.organization_id!)
         .order('created_at', { ascending: false });
 
       if (campaignsError) throw campaignsError;
@@ -130,29 +133,11 @@ const OrganizationDashboard = () => {
       // Buscar aplicações de fotógrafos
       const { data: applicationsData, error: applicationsError } = await supabase
         .from('event_applications')
-        .select(`
-          *,
-          photographer:profiles!event_applications_photographer_id_fkey(id, full_name, email, avatar_url),
-          campaign:campaigns!event_applications_campaign_id_fkey(id, title)
-        `)
-        .eq('organization_id', profile!.organization_id!)
+        .select('*')
         .order('applied_at', { ascending: false });
 
       if (applicationsError) throw applicationsError;
       setApplications(applicationsData || []);
-
-      // Buscar membros da organização
-      const { data: membersData, error: membersError } = await supabase
-        .from('organization_members')
-        .select(`
-          *,
-          user:profiles!organization_members_user_id_fkey(id, full_name, email, avatar_url)
-        `)
-        .eq('organization_id', profile!.organization_id!)
-        .order('joined_at', { ascending: false });
-
-      if (membersError) throw membersError;
-      setMembers(membersData || []);
 
     } catch (error) {
       console.error('Error fetching organization data:', error);
@@ -180,8 +165,7 @@ const OrganizationDashboard = () => {
           event_date: newCampaign.event_date,
           location: newCampaign.location,
           organization_id: organization.id,
-          organization_percentage: newCampaign.organization_percentage,
-          photographer_id: user!.id, // Será atualizado quando fotógrafo for aprovado
+          photographer_id: null, // Será atualizado quando fotógrafo for aprovado
           is_active: true
         });
 
@@ -196,8 +180,7 @@ const OrganizationDashboard = () => {
         title: '',
         description: '',
         event_date: '',
-        location: '',
-        organization_percentage: 0
+        location: ''
       });
 
       fetchOrganizationData();
@@ -214,19 +197,14 @@ const OrganizationDashboard = () => {
   const handleApplicationResponse = async (
     applicationId: string, 
     status: 'approved' | 'rejected',
-    responseMessage: string,
-    photographerPercentage?: number
+    responseMessage: string
   ) => {
     try {
       const updateData: any = {
         status,
-        response_message: responseMessage,
-        responded_at: new Date().toISOString()
+        processed_at: new Date().toISOString(),
+        processed_by: user!.id
       };
-
-      if (status === 'approved' && photographerPercentage !== undefined) {
-        updateData.photographer_percentage = photographerPercentage;
-      }
 
       const { error } = await supabase
         .from('event_applications')
@@ -327,7 +305,6 @@ const OrganizationDashboard = () => {
           <TabsList>
             <TabsTrigger value="events">Gerenciar Eventos</TabsTrigger>
             <TabsTrigger value="applications">Aplicações de Fotógrafos</TabsTrigger>
-            <TabsTrigger value="members">Membros da Organização</TabsTrigger>
             <TabsTrigger value="settings">Configurações</TabsTrigger>
           </TabsList>
 
@@ -366,33 +343,15 @@ const OrganizationDashboard = () => {
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="event_date">Data do Evento</Label>
-                      <Input
-                        id="event_date"
-                        type="datetime-local"
-                        value={newCampaign.event_date}
-                        onChange={(e) => setNewCampaign({ ...newCampaign, event_date: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="organization_percentage">Porcentagem da Organização (%)</Label>
-                      <Input
-                        id="organization_percentage"
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="0.01"
-                        value={newCampaign.organization_percentage}
-                        onChange={(e) => setNewCampaign({ 
-                          ...newCampaign, 
-                          organization_percentage: parseFloat(e.target.value) || 0 
-                        })}
-                        required
-                      />
-                    </div>
+                  <div>
+                    <Label htmlFor="event_date">Data do Evento</Label>
+                    <Input
+                      id="event_date"
+                      type="datetime-local"
+                      value={newCampaign.event_date}
+                      onChange={(e) => setNewCampaign({ ...newCampaign, event_date: e.target.value })}
+                      required
+                    />
                   </div>
                   
                   <div>
@@ -442,9 +401,6 @@ const OrganizationDashboard = () => {
                               <Badge variant={campaign.is_active ? 'default' : 'secondary'}>
                                 {campaign.is_active ? 'Ativo' : 'Inativo'}
                               </Badge>
-                              <span className="text-sm text-green-600 font-medium">
-                                {campaign.organization_percentage}%
-                              </span>
                             </div>
                           </div>
                         </CardContent>
@@ -480,26 +436,26 @@ const OrganizationDashboard = () => {
                         <CardContent className="p-6">
                           <div className="flex justify-between items-start mb-4">
                             <div>
-                              <h4 className="font-medium">{application.photographer.full_name}</h4>
-                              <p className="text-sm text-muted-foreground">{application.photographer.email}</p>
-                              <p className="text-sm font-medium mt-1">Evento: {application.campaign.title}</p>
+                              <h4 className="font-medium">Fotógrafo: {application.photographer_id}</h4>
+                              <p className="text-sm text-muted-foreground">
+                                Evento ID: {application.campaign_id}
+                              </p>
                             </div>
-                            <Badge 
-                              variant={
-                                application.status === 'approved' ? 'default' :
-                                application.status === 'rejected' ? 'destructive' : 'secondary'
-                              }
-                            >
-                              {application.status === 'approved' ? 'Aprovado' :
-                               application.status === 'rejected' ? 'Rejeitado' : 'Pendente'}
+                            <Badge variant={
+                              application.status === 'pending' ? 'secondary' :
+                              application.status === 'approved' ? 'default' : 'destructive'
+                            }>
+                              {application.status === 'pending' && 'Pendente'}
+                              {application.status === 'approved' && 'Aprovado'}
+                              {application.status === 'rejected' && 'Rejeitado'}
                             </Badge>
                           </div>
                           
-                          {application.application_message && (
+                          {application.message && (
                             <div className="mb-4">
-                              <Label className="text-sm font-medium">Mensagem do Fotógrafo:</Label>
-                              <p className="text-sm text-muted-foreground mt-1">
-                                {application.application_message}
+                              <p className="text-sm font-medium mb-1">Mensagem:</p>
+                              <p className="text-sm text-muted-foreground bg-muted p-3 rounded">
+                                {application.message}
                               </p>
                             </div>
                           )}
@@ -508,12 +464,7 @@ const OrganizationDashboard = () => {
                             <div className="flex gap-2">
                               <Button
                                 size="sm"
-                                onClick={() => handleApplicationResponse(
-                                  application.id, 
-                                  'approved', 
-                                  'Aplicação aprovada',
-                                  application.photographer_percentage || 50
-                                )}
+                                onClick={() => handleApplicationResponse(application.id, 'approved', '')}
                                 className="gap-1"
                               >
                                 <UserCheck className="h-4 w-4" />
@@ -521,12 +472,8 @@ const OrganizationDashboard = () => {
                               </Button>
                               <Button
                                 size="sm"
-                                variant="outline"
-                                onClick={() => handleApplicationResponse(
-                                  application.id, 
-                                  'rejected', 
-                                  'Aplicação rejeitada'
-                                )}
+                                variant="destructive"
+                                onClick={() => handleApplicationResponse(application.id, 'rejected', '')}
                                 className="gap-1"
                               >
                                 <UserX className="h-4 w-4" />
@@ -543,52 +490,6 @@ const OrganizationDashboard = () => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="members" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Membros da Organização</CardTitle>
-                <CardDescription>
-                  Visualize e gerencie os membros da sua organização
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {members.length === 0 ? (
-                  <div className="text-center p-8">
-                    <Users className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-medium mb-2">Nenhum membro</h3>
-                    <p className="text-muted-foreground">
-                      Os membros da organização aparecerão aqui
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {members.map((member) => (
-                      <Card key={member.id}>
-                        <CardContent className="p-4">
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <h4 className="font-medium">{member.user.full_name}</h4>
-                              <p className="text-sm text-muted-foreground">{member.user.email}</p>
-                              <p className="text-sm">Função: {member.role}</p>
-                            </div>
-                            <div className="text-right">
-                              <Badge variant={member.is_active ? 'default' : 'secondary'}>
-                                {member.is_active ? 'Ativo' : 'Inativo'}
-                              </Badge>
-                              <p className="text-sm text-green-600 font-medium mt-1">
-                                {member.photographer_percentage}%
-                              </p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
           <TabsContent value="settings" className="space-y-6">
             <Card>
               <CardHeader>
@@ -596,9 +497,6 @@ const OrganizationDashboard = () => {
                   <Settings className="h-5 w-5" />
                   Configurações da Organização
                 </CardTitle>
-                <CardDescription>
-                  Gerencie as configurações da sua organização
-                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -608,14 +506,11 @@ const OrganizationDashboard = () => {
                   </div>
                   <div>
                     <Label>Descrição</Label>
-                    <Textarea value={organization.description || ''} disabled />
+                    <Textarea value={organization.description || ''} disabled rows={3} />
                   </div>
                   <div>
-                    <Label>Taxa do Administrador</Label>
+                    <Label>Porcentagem Administrativa</Label>
                     <Input value={`${organization.admin_percentage}%`} disabled />
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Esta porcentagem é definida pelo administrador principal
-                    </p>
                   </div>
                 </div>
               </CardContent>

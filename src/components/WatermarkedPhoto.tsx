@@ -13,7 +13,7 @@ interface WatermarkedPhotoProps {
 const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = ({
   src,
   alt = '',
-  watermarkSrc = '/watermark_front.PNG',
+  watermarkSrc = '/watermark_front.png',
   imgClassName = 'w-full h-full object-cover',
   watermarkClassName = '',
   position = 'full',
