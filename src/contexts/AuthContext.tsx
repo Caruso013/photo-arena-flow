@@ -12,8 +12,6 @@ export interface UserProfile {
   email: string;
   full_name?: string;
   role: UserRole;
-  organization_role?: OrganizationRole;
-  organization_id?: string;
   avatar_url?: string;
 }
 
@@ -71,8 +69,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email: data.email,
         full_name: data.full_name,
         role: data.role as UserRole,
-        organization_role: data.organization_role as OrganizationRole,
-        organization_id: data.organization_id,
         avatar_url: data.avatar_url
       };
     } catch (error) {

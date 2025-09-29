@@ -13,15 +13,18 @@ import { Navigate } from 'react-router-dom';
 interface Campaign {
   id: string;
   title: string;
-  description?: string;
-  location?: string;
-  event_date?: string;
-  organization_id?: string;
+  description: string | null;
+  event_date: string | null;
+  location: string | null;
+  cover_image_url: string | null;
+  photographer_id: string | null;
+  organization_id: string;
+  is_active: boolean;
   created_at: string;
+  updated_at: string;
   organization?: {
     name: string;
   };
-  event_applications?: any[];
 }
 
 interface Application {
@@ -56,8 +59,7 @@ const EventosProximos = () => {
         .from('campaigns')
         .select(`
           *,
-          organization:organizations(name),
-          event_applications(id)
+          organization:organizations(name)
         `)
         .eq('is_active', true)
         .is('photographer_id', null)

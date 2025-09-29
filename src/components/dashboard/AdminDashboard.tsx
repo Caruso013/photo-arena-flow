@@ -24,6 +24,7 @@ import {
 import DashboardLayout from './DashboardLayout';
 import AdminNavbar from './AdminNavbar';
 import StatCard from './StatCard';
+import FinancialDashboard from './FinancialDashboard';
 
 interface Organization {
   id: string;
@@ -76,9 +77,9 @@ const AdminDashboard = () => {
   const [newPercentages, setNewPercentages] = useState<{ [key: string]: number }>({});
 
   useEffect(() => {
-    console.log('AdminDashboard - User:', user?.email, 'Profile role:', profile?.role, 'Org role:', profile?.organization_role);
+    console.log('AdminDashboard - User:', user?.email, 'Profile role:', profile?.role);
     
-    if (user && (profile?.role === 'admin' || profile?.organization_role === 'admin')) {
+    if (user && profile?.role === 'admin') {
       console.log('Admin access granted, loading admin data...');
       fetchAdminData();
     } else if (user && profile) {
@@ -181,7 +182,7 @@ const AdminDashboard = () => {
     }
   };
 
-  if (!user || (profile?.role !== 'admin' && profile?.organization_role !== 'admin')) {
+  if (!user || profile?.role !== 'admin') {
     return (
       <DashboardLayout>
         <div className="text-center p-8">
@@ -286,8 +287,12 @@ const AdminDashboard = () => {
             </div>
 
             {/* Management Tabs */}
-            <Tabs defaultValue="organizations" className="space-y-6">
-              <TabsList className="grid w-full grid-cols-3">
+            <Tabs defaultValue="financial" className="space-y-6">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="financial" className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4" />
+                  Financeiro
+                </TabsTrigger>
                 <TabsTrigger value="organizations" className="flex items-center gap-2">
                   <Building2 className="h-4 w-4" />
                   Organizações
@@ -301,6 +306,10 @@ const AdminDashboard = () => {
                   Campanhas
                 </TabsTrigger>
               </TabsList>
+
+          <TabsContent value="financial" className="space-y-6">
+            <FinancialDashboard userRole="admin" />
+          </TabsContent>
 
           <TabsContent value="organizations" className="space-y-6">
             <Card>
