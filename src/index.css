@@ -17,15 +17,14 @@ All colors MUST be HSL.
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 222 47% 11%; /* Azul escuro profissional */
-    --primary-foreground: 210 40% 98%;
+    --primary: 45 93% 47%; /* Dourado STA */
+    --primary-foreground: 0 0% 0%; /* Preto para contraste */
 
     --secondary: 210 40% 96%; /* Cinza claro */
     --secondary-foreground: 222.2 47.4% 11.2%;
 
-    /* Cores auxiliares para destaques dourados */
-    --accent-gold: 45 93% 47%;
-    --accent-gold-light: 45 93% 57%;
+    /* Variação mais clara do dourado para hover/destaque */
+    --primary-light: 45 93% 57%;
 
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
@@ -69,8 +68,8 @@ All colors MUST be HSL.
     --popover: 0 0% 12%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: 217 91% 60%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 45 93% 47%;
+    --primary-foreground: 0 0% 0%;
 
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;

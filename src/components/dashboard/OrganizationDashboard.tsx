@@ -255,48 +255,51 @@ const OrganizationDashboard = () => {
     <DashboardLayout>
       <div className="space-y-8">
         {/* Header */}
-        <div className="bg-gradient-primary rounded-lg p-8 text-white">
-          <div className="flex items-center gap-4 mb-4">
-            <Building2 className="h-12 w-12" />
-            <div>
-              <h1 className="text-3xl font-bold">{organization.name}</h1>
-              <p className="text-blue-100">{organization.description}</p>
+        <div className="relative overflow-hidden rounded-xl p-8 bg-gradient-primary text-white shadow-elegant">
+          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS1vcGFjaXR5PSIwLjA1IiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-30"></div>
+          <div className="relative z-10">
+            <div className="flex items-center gap-4 mb-4">
+              <Building2 className="h-12 w-12 drop-shadow-lg" />
+              <div>
+                <h1 className="text-3xl font-bold drop-shadow-lg">{organization.name}</h1>
+                <p className="text-white/95 drop-shadow-md">{organization.description}</p>
+              </div>
             </div>
-          </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-white/10 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Calendar className="h-5 w-5" />
-                <span className="text-sm">Eventos Criados</span>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="bg-white/20 border border-white/30 rounded-lg p-4 backdrop-blur-sm">
+                <div className="flex items-center gap-2 mb-2">
+                  <Calendar className="h-5 w-5 drop-shadow" />
+                  <span className="text-sm font-medium drop-shadow">Eventos Criados</span>
+                </div>
+                <p className="text-2xl font-bold drop-shadow-lg">{campaigns.length}</p>
               </div>
-              <p className="text-2xl font-bold">{campaigns.length}</p>
-            </div>
-            
-            <div className="bg-white/10 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Users className="h-5 w-5" />
-                <span className="text-sm">Fotógrafos Ativos</span>
+              
+              <div className="bg-white/20 border border-white/30 rounded-lg p-4 backdrop-blur-sm">
+                <div className="flex items-center gap-2 mb-2">
+                  <Users className="h-5 w-5 drop-shadow" />
+                  <span className="text-sm font-medium drop-shadow">Fotógrafos Ativos</span>
+                </div>
+                <p className="text-2xl font-bold drop-shadow-lg">{members.filter(m => m.is_active).length}</p>
               </div>
-              <p className="text-2xl font-bold">{members.filter(m => m.is_active).length}</p>
-            </div>
-            
-            <div className="bg-white/10 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <FileText className="h-5 w-5" />
-                <span className="text-sm">Aplicações Pendentes</span>
+              
+              <div className="bg-white/20 border border-white/30 rounded-lg p-4 backdrop-blur-sm">
+                <div className="flex items-center gap-2 mb-2">
+                  <FileText className="h-5 w-5 drop-shadow" />
+                  <span className="text-sm font-medium drop-shadow">Aplicações Pendentes</span>
+                </div>
+                <p className="text-2xl font-bold drop-shadow-lg">
+                  {applications.filter(a => a.status === 'pending').length}
+                </p>
               </div>
-              <p className="text-2xl font-bold">
-                {applications.filter(a => a.status === 'pending').length}
-              </p>
-            </div>
-            
-            <div className="bg-white/10 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <DollarSign className="h-5 w-5" />
-                <span className="text-sm">Taxa Admin</span>
+              
+              <div className="bg-white/20 border border-white/30 rounded-lg p-4 backdrop-blur-sm">
+                <div className="flex items-center gap-2 mb-2">
+                  <DollarSign className="h-5 w-5 drop-shadow" />
+                  <span className="text-sm font-medium drop-shadow">Taxa Admin</span>
+                </div>
+                <p className="text-2xl font-bold drop-shadow-lg">{organization.admin_percentage}%</p>
               </div>
-              <p className="text-2xl font-bold">{organization.admin_percentage}%</p>
             </div>
           </div>
         </div>

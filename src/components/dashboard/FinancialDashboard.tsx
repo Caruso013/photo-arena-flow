@@ -131,11 +131,11 @@ const FinancialDashboard = ({ userRole }: FinancialDashboardProps) => {
   };
 
   const getRankBadge = (rank: number) => {
-    if (rank === 1) return <Badge className="bg-yellow-500 hover:bg-yellow-600"><Trophy className="h-3 w-3 mr-1" />1º Lugar</Badge>;
-    if (rank === 2) return <Badge className="bg-gray-400 hover:bg-gray-500"><Award className="h-3 w-3 mr-1" />2º Lugar</Badge>;
-    if (rank === 3) return <Badge className="bg-amber-600 hover:bg-amber-700"><Award className="h-3 w-3 mr-1" />3º Lugar</Badge>;
-    if (rank <= 10) return <Badge variant="secondary">Top 10</Badge>;
-    return <Badge variant="outline">#{rank}</Badge>;
+    if (rank === 1) return <Badge className="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold"><Trophy className="h-3 w-3 mr-1" />1º Lugar</Badge>;
+    if (rank === 2) return <Badge className="bg-gray-400 hover:bg-gray-500 text-white font-semibold"><Award className="h-3 w-3 mr-1" />2º Lugar</Badge>;
+    if (rank === 3) return <Badge className="bg-amber-600 hover:bg-amber-700 text-white font-semibold"><Award className="h-3 w-3 mr-1" />3º Lugar</Badge>;
+    if (rank <= 10) return <Badge variant="secondary" className="font-medium">Top 10</Badge>;
+    return <Badge variant="outline" className="font-medium">#{rank}</Badge>;
   };
 
   const chartConfig = {
