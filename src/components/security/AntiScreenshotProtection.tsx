@@ -1,10 +1,19 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 interface AntiScreenshotProtectionProps {
   children: React.ReactNode;
 }
 
 const AntiScreenshotProtection: React.FC<AntiScreenshotProtectionProps> = ({ children }) => {
+  const [obscured, setObscured] = useState(false);
+  const timerRef = useRef<number | null>(null);
+
+  const triggerObscure = (ms = 2500) => {
+    setObscured(true);
+    if (timerRef.current) window.clearTimeout(timerRef.current);
+    timerRef.current = window.setTimeout(() => setObscured(false), ms);
+  };
+
   useEffect(() => {
     // Disable right-click context menu
     const handleContextMenu = (e: MouseEvent) => {
@@ -14,18 +23,19 @@ const AntiScreenshotProtection: React.FC<AntiScreenshotProtectionProps> = ({ chi
 
     // Disable key combinations for developer tools and screenshots
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Prevent F12, Ctrl+Shift+I, Ctrl+U, Ctrl+S, Ctrl+A, Ctrl+P
+      const key = e.key.toLowerCase();
       if (
         e.key === 'F12' ||
-        (e.ctrlKey && e.shiftKey && e.key === 'I') ||
-        (e.ctrlKey && e.key === 'u') ||
-        (e.ctrlKey && e.key === 's') ||
-        (e.ctrlKey && e.key === 'a') ||
-        (e.ctrlKey && e.key === 'p') ||
-        (e.ctrlKey && e.shiftKey && e.key === 'C') ||
+        (e.ctrlKey && e.shiftKey && key === 'i') ||
+        (e.ctrlKey && key === 'u') ||
+        (e.ctrlKey && key === 's') ||
+        (e.ctrlKey && key === 'a') ||
+        (e.ctrlKey && key === 'p') ||
+        (e.ctrlKey && e.shiftKey && key === 'c') ||
         e.key === 'PrintScreen'
       ) {
         e.preventDefault();
+        triggerObscure();
         return false;
       }
     };
@@ -42,15 +52,10 @@ const AntiScreenshotProtection: React.FC<AntiScreenshotProtectionProps> = ({ chi
       return false;
     };
 
-    // Blur content when window loses focus (potential screenshot attempt)
-    const handleVisibilityChange = () => {
-      const body = document.body;
-      if (document.hidden) {
-        body.style.filter = 'blur(10px)';
-      } else {
-        body.style.filter = 'none';
-      }
-    };
+    // Obscure on visibility change and window focus loss
+    const handleVisibilityChange = () => setObscured(document.hidden);
+    const handleWindowBlur = () => setObscured(true);
+    const handleWindowFocus = () => setObscured(false);
 
     // Add event listeners
     document.addEventListener('contextmenu', handleContextMenu);
@@ -58,20 +63,15 @@ const AntiScreenshotProtection: React.FC<AntiScreenshotProtectionProps> = ({ chi
     document.addEventListener('selectstart', handleSelectStart);
     document.addEventListener('dragstart', handleDragStart);
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('blur', handleWindowBlur);
+    window.addEventListener('focus', handleWindowFocus);
 
     // Disable image dragging specifically
     const images = document.querySelectorAll('img');
     images.forEach(img => {
       img.draggable = false;
-      img.addEventListener('dragstart', handleDragStart);
+      img.addEventListener('dragstart', handleDragStart as any);
     });
-
-    // Clear console periodically
-    const clearConsole = setInterval(() => {
-      if (typeof console !== 'undefined') {
-        console.clear();
-      }
-    }, 1000);
 
     // Cleanup on component unmount
     return () => {
@@ -80,25 +80,20 @@ const AntiScreenshotProtection: React.FC<AntiScreenshotProtectionProps> = ({ chi
       document.removeEventListener('selectstart', handleSelectStart);
       document.removeEventListener('dragstart', handleDragStart);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      
-      // Reset body filter
-      document.body.style.filter = 'none';
-      
-      // Clear interval
-      clearInterval(clearConsole);
-      
-      // Re-enable image dragging for other pages
+      window.removeEventListener('blur', handleWindowBlur);
+      window.removeEventListener('focus', handleWindowFocus);
+
       const images = document.querySelectorAll('img');
       images.forEach(img => {
         img.draggable = true;
-        img.removeEventListener('dragstart', handleDragStart);
+        img.removeEventListener('dragstart', handleDragStart as any);
       });
     };
   }, []);
 
   return (
     <div 
-      className="select-none"
+      className="select-none relative"
       style={{ 
         userSelect: 'none',
         WebkitUserSelect: 'none',
@@ -107,13 +102,12 @@ const AntiScreenshotProtection: React.FC<AntiScreenshotProtectionProps> = ({ chi
       }}
     >
       {children}
-      
-      {/* Overlay to detect screenshot attempts */}
+      {/* Overlay to obscure content on suspected screenshot attempts */}
       <div 
-        className="fixed inset-0 pointer-events-none z-50"
+        className="absolute inset-0 pointer-events-none z-50 transition-all"
         style={{ 
-          background: 'transparent',
-          backdropFilter: document.hidden ? 'blur(10px)' : 'none'
+          background: obscured ? 'rgba(0,0,0,0.6)' : 'transparent',
+          backdropFilter: obscured ? 'blur(18px) brightness(0.4)' : 'none'
         }}
       />
     </div>
