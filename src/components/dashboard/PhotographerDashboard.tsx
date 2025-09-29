@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { formatCurrency } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -334,7 +335,7 @@ const PhotographerDashboard = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Faturamento</p>
-                  <p className="text-3xl font-bold mt-2 text-primary">R$ {stats.totalRevenue.toFixed(2)}</p>
+                  <p className="text-3xl font-bold mt-2 text-primary">{formatCurrency(stats.totalRevenue)}</p>
                 </div>
                 <div className="p-3 bg-primary/10 rounded-xl">
                   <DollarSign className="h-7 w-7 text-primary" />
@@ -464,7 +465,7 @@ const PhotographerDashboard = () => {
                     </p>
                     <div className="flex justify-between items-center">
                       <Badge variant="outline">
-                        R$ {photo.price.toFixed(2)}
+                        {formatCurrency(photo.price)}
                       </Badge>
                       <Button size="sm" variant="ghost" className="h-6 px-2">
                         <Edit className="h-3 w-3" />
@@ -514,7 +515,7 @@ const PhotographerDashboard = () => {
                       onChange={(e) => setPayoutAmount(e.target.value)}
                     />
                     <p className="text-sm text-muted-foreground mt-1">
-                      Receita disponível: R$ {stats.totalRevenue.toFixed(2)}
+                      Receita disponível: {formatCurrency(stats.totalRevenue)}
                     </p>
                   </div>
                   
@@ -552,7 +553,7 @@ const PhotographerDashboard = () => {
                       payoutRequests.slice(0, 5).map((request) => (
                         <div key={request.id} className="flex items-center justify-between p-3 border rounded-lg">
                           <div>
-                            <p className="font-medium">R$ {Number(request.amount).toFixed(2)}</p>
+                            <p className="font-medium">{formatCurrency(Number(request.amount))}</p>
                             <p className="text-sm text-muted-foreground">
                               {new Date(request.requested_at).toLocaleDateString()}
                             </p>
