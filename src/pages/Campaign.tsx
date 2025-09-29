@@ -8,6 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from '@/components/ui/use-toast';
 import PaymentModal from '@/components/modals/PaymentModal';
+import WatermarkedPhoto from '@/components/WatermarkedPhoto';
+import AntiScreenshotProtection from '@/components/security/AntiScreenshotProtection';
 import { 
   Calendar, 
   MapPin, 
@@ -316,14 +318,16 @@ const Campaign = () => {
               </p>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <AntiScreenshotProtection><div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {photos.map((photo) => (
                 <Card key={photo.id} className="overflow-hidden hover:shadow-lg transition-shadow">
                   <div className="aspect-square bg-gradient-subtle relative">
-                    <img
+                    <WatermarkedPhoto
                       src={photo.thumbnail_url || photo.watermarked_url}
                       alt={photo.title || 'Foto'}
-                      className="w-full h-full object-cover"
+                      position="full"
+                      opacity={0.25}
+                      imgClassName="w-full h-full object-cover"
                     />
                     <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
                       <Dialog>
@@ -338,11 +342,15 @@ const Campaign = () => {
                             <DialogTitle>{photo.title || 'Foto'}</DialogTitle>
                           </DialogHeader>
                           <div className="relative">
-                            <img
-                              src={photo.watermarked_url}
-                              alt={photo.title || 'Foto'}
-                              className="w-full max-h-[70vh] object-contain rounded-lg"
-                            />
+                            <AntiScreenshotProtection>
+                              <WatermarkedPhoto
+                                src={photo.watermarked_url || photo.original_url}
+                                alt={photo.title || 'Foto'}
+                                position="full"
+                                opacity={0.25}
+                                imgClassName="w-full max-h-[70vh] object-contain rounded-lg"
+                              />
+                            </AntiScreenshotProtection>
                           </div>
                         </DialogContent>
                       </Dialog>
@@ -370,7 +378,7 @@ const Campaign = () => {
                   </CardContent>
                 </Card>
               ))}
-            </div>
+            </div></AntiScreenshotProtection>
           )}
         </div>
 
