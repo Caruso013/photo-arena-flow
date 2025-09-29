@@ -232,19 +232,19 @@ const PhotographerDashboard = () => {
       <DashboardLayout>
         <div className="space-y-8">
         {/* Welcome Section */}
-        <div className="relative overflow-hidden rounded-xl p-8 bg-gradient-to-br from-primary via-primary/90 to-primary/80 text-primary-foreground shadow-elegant">
+        <div className="relative overflow-hidden rounded-xl p-8 bg-gradient-primary text-white shadow-elegant">
           <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS1vcGFjaXR5PSIwLjA1IiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-30"></div>
           <div className="relative z-10">
-            <h1 className="text-4xl font-bold mb-3 animate-fade-in">
+            <h1 className="text-4xl font-bold mb-3 animate-fade-in drop-shadow-lg">
               Painel do Fotógrafo 📸
             </h1>
-            <p className="text-lg opacity-95 mb-6">
+            <p className="text-lg opacity-95 mb-6 drop-shadow-md">
               Olá, {profile?.full_name}! Gerencie seus eventos e fotos aqui.
             </p>
           <div className="flex gap-4">
             <Button 
               variant="secondary" 
-              className="gap-2"
+              className="gap-2 bg-white/95 text-primary hover:bg-white font-semibold shadow-md"
               onClick={() => setShowCreateCampaignModal(true)}
             >
               <Plus className="h-4 w-4" />
@@ -252,7 +252,7 @@ const PhotographerDashboard = () => {
             </Button>
             <Button 
               variant="outline" 
-              className="gap-2 border-white/20 text-white hover:bg-white/10"
+              className="gap-2 bg-white/20 border-white/30 text-white hover:bg-white/30 hover:text-white backdrop-blur-sm font-medium"
               onClick={() => setShowUploadModal(true)}
             >
               <Upload className="h-4 w-4" />
@@ -261,7 +261,7 @@ const PhotographerDashboard = () => {
             <Link to="/eventos-proximos">
               <Button 
                 variant="outline" 
-                className="gap-2 border-white/20 text-white hover:bg-white/10"
+                className="gap-2 bg-white/20 border-white/30 text-white hover:bg-white/30 hover:text-white backdrop-blur-sm font-medium"
               >
                 <CalendarPlus className="h-4 w-4" />
                 Eventos Próximos
@@ -270,12 +270,12 @@ const PhotographerDashboard = () => {
           </div>
           
           {profile?.role === 'photographer' && (
-            <div className="mt-4 p-4 bg-blue-500/20 border border-blue-500/30 rounded-lg">
+            <div className="mt-4 p-4 bg-white/20 border border-white/30 rounded-lg backdrop-blur-sm">
               <div className="flex items-start gap-3">
-                <AlertCircle className="h-5 w-5 text-blue-200 mt-0.5" />
+                <AlertCircle className="h-5 w-5 text-white mt-0.5" />
                 <div>
-                  <h3 className="font-medium text-blue-100">Bem-vindo!</h3>
-                  <p className="text-sm text-blue-200">
+                  <h3 className="font-semibold text-white drop-shadow">Bem-vindo!</h3>
+                  <p className="text-sm text-white/95 drop-shadow-sm">
                     Você está logado como fotógrafo. Explore suas campanhas e gerencie seus eventos.
                   </p>
                 </div>

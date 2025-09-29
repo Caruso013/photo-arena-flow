@@ -65,11 +65,11 @@ export default {
 				}
 			},
 			backgroundImage: {
-				'gradient-primary': 'linear-gradient(135deg, hsl(var(--primary)), hsl(217 91% 70%))',
+				'gradient-primary': 'linear-gradient(135deg, hsl(45 93% 47%), hsl(45 93% 57%))',
 				'gradient-subtle': 'linear-gradient(180deg, hsl(var(--muted)), hsl(var(--background)))',
 			},
 			boxShadow: {
-				'elegant': '0 10px 30px -10px hsl(var(--primary) / 0.2)',
+				'elegant': '0 10px 30px -10px hsl(45 93% 47% / 0.3)',
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
