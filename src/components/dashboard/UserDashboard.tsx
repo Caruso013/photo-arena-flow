@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { formatCurrency } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -397,7 +398,7 @@ const UserDashboard = () => {
                         <div>
                           <p className="text-sm text-muted-foreground">Total Gasto</p>
                           <p className="text-2xl font-bold">
-                            R$ {purchasedPhotos.reduce((sum, p) => sum + p.amount, 0).toFixed(2)}
+                            {formatCurrency(purchasedPhotos.reduce((sum, p) => sum + p.amount, 0))}
                           </p>
                         </div>
                       </div>
@@ -433,7 +434,7 @@ const UserDashboard = () => {
                           </p>
                           <div className="flex justify-between items-center">
                             <span className="text-sm text-green-600 font-medium">
-                              R$ {purchase.amount.toFixed(2)}
+                              {formatCurrency(purchase.amount)}
                             </span>
                             <div className="flex gap-1">
                               <Button 
@@ -527,7 +528,7 @@ const UserDashboard = () => {
                   <div>
                     <p className="text-muted-foreground">Valor Pago</p>
                     <p className="font-medium text-green-600">
-                      R$ {selectedPhoto.amount.toFixed(2)}
+                      {formatCurrency(selectedPhoto.amount)}
                     </p>
                   </div>
                 </div>

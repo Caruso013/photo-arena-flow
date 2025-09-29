@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { formatCurrency } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -175,7 +176,7 @@ const FinancialDashboard = ({ userRole }: FinancialDashboardProps) => {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-primary">
-              R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              {formatCurrency(totalRevenue)}
             </div>
             <p className="text-xs text-muted-foreground flex items-center gap-1 mt-2">
               <TrendingUp className="h-3 w-3 text-green-600" />
@@ -227,7 +228,7 @@ const FinancialDashboard = ({ userRole }: FinancialDashboardProps) => {
             <CardContent>
               <div className="text-3xl font-bold">#{userStats.rank}</div>
               <p className="text-xs text-muted-foreground mt-2">
-                R$ {userStats.total_revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} em vendas
+                {formatCurrency(userStats.total_revenue)} em vendas
               </p>
             </CardContent>
           </Card>
@@ -290,10 +291,10 @@ const FinancialDashboard = ({ userRole }: FinancialDashboardProps) => {
                     
                     <div className="text-right">
                       <div className="font-semibold">
-                        R$ {photographer.total_revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        {formatCurrency(photographer.total_revenue)}
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        Média: R$ {photographer.avg_photo_price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        Média: {formatCurrency(photographer.avg_photo_price)}
                       </div>
                     </div>
                     
@@ -371,14 +372,14 @@ const FinancialDashboard = ({ userRole }: FinancialDashboardProps) => {
                   <div className="flex justify-between">
                     <span>Receita Total:</span>
                     <span className="font-semibold">
-                      R$ {userStats.total_revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      {formatCurrency(userStats.total_revenue)}
                     </span>
                   </div>
                   
                   <div className="flex justify-between">
                     <span>Preço Médio por Foto:</span>
                     <span className="font-semibold">
-                      R$ {userStats.avg_photo_price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      {formatCurrency(userStats.avg_photo_price)}
                     </span>
                   </div>
                 </CardContent>
@@ -407,7 +408,7 @@ const FinancialDashboard = ({ userRole }: FinancialDashboardProps) => {
                     <div className="flex justify-between mb-2">
                       <span className="text-sm">Meta de Receita</span>
                       <span className="text-sm">
-                        R$ {userStats.total_revenue.toLocaleString('pt-BR')}/R$ 5.000
+                        {formatCurrency(userStats.total_revenue)}/R$ 5.000
                       </span>
                     </div>
                     <Progress value={(userStats.total_revenue / 5000) * 100} />

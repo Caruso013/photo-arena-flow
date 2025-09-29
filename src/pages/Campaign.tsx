@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { formatCurrency } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -363,7 +364,7 @@ const Campaign = () => {
                       </p>
                       <div className="flex justify-between items-center">
                         <span className="text-lg font-bold text-green-600">
-                          R$ {photo.price.toFixed(2)}
+                          {formatCurrency(photo.price)}
                         </span>
                         <Button 
                           size="sm" 

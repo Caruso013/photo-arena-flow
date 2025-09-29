@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { mercadoPagoService, type BuyerInfo } from '@/lib/mercadopago';
 import { CreditCard, Loader2, ShoppingCart } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils';
 
 interface Photo {
   id: string;
@@ -148,7 +149,7 @@ export default function PaymentModal({
             <div className="flex-1">
               <h4 className="font-medium">{photo.title || 'Foto'}</h4>
               <p className="text-2xl font-bold text-green-600">
-                R$ {photo.price?.toFixed(2)}
+                {photo.price ? formatCurrency(photo.price) : 'R$ 0,00'}
               </p>
             </div>
           </div>
@@ -246,7 +247,7 @@ export default function PaymentModal({
               ) : (
                 <>
                   <CreditCard className="h-4 w-4 mr-2" />
-                  Pagar R$ {photo.price?.toFixed(2)}
+                  Pagar {photo.price ? formatCurrency(photo.price) : 'R$ 0,00'}
                 </>
               )}
             </Button>
