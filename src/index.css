@@ -22,6 +22,10 @@ All colors MUST be HSL.
 
     --secondary: 210 40% 96%; /* Cinza claro */
     --secondary-foreground: 222.2 47.4% 11.2%;
+    
+    /* Header/Footer preto */
+    --header: 0 0% 5%; /* Preto */
+    --header-foreground: 0 0% 98%; /* Branco */
 
     /* Variação mais clara do dourado para hover/destaque */
     --primary-light: 45 93% 57%;
@@ -73,6 +77,10 @@ All colors MUST be HSL.
 
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
+    
+    /* Header/Footer preto (mesmo no dark mode) */
+    --header: 0 0% 5%; /* Preto */
+    --header-foreground: 0 0% 98%; /* Branco */
 
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
