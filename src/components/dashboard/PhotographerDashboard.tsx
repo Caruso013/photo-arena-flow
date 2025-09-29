@@ -232,13 +232,15 @@ const PhotographerDashboard = () => {
       <DashboardLayout>
         <div className="space-y-8">
         {/* Welcome Section */}
-        <div className="bg-gradient-primary rounded-lg p-8 text-white">
-          <h1 className="text-3xl font-bold mb-2">
-            Painel do Fotógrafo
-          </h1>
-          <p className="text-lg opacity-90 mb-4">
-            Olá, {profile?.full_name}! Gerencie seus eventos e fotos aqui.
-          </p>
+        <div className="relative overflow-hidden rounded-xl p-8 bg-gradient-to-br from-primary via-primary/90 to-primary/80 text-primary-foreground shadow-elegant">
+          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS1vcGFjaXR5PSIwLjA1IiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-30"></div>
+          <div className="relative z-10">
+            <h1 className="text-4xl font-bold mb-3 animate-fade-in">
+              Painel do Fotógrafo 📸
+            </h1>
+            <p className="text-lg opacity-95 mb-6">
+              Olá, {profile?.full_name}! Gerencie seus eventos e fotos aqui.
+            </p>
           <div className="flex gap-4">
             <Button 
               variant="secondary" 
@@ -280,65 +282,83 @@ const PhotographerDashboard = () => {
               </div>
             </div>
           )}
+          </div>
         </div>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card>
+          <Card className="hover:shadow-lg transition-all hover:-translate-y-1">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Eventos</p>
-                  <p className="text-2xl font-bold">{stats.totalCampaigns}</p>
+                  <p className="text-sm font-medium text-muted-foreground">Eventos Criados</p>
+                  <p className="text-3xl font-bold mt-2">{stats.totalCampaigns}</p>
                 </div>
-                <Camera className="h-8 w-8 text-primary" />
+                <div className="p-3 bg-primary/10 rounded-xl">
+                  <Camera className="h-7 w-7 text-primary" />
+                </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="hover:shadow-lg transition-all hover:-translate-y-1">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Fotos</p>
-                  <p className="text-2xl font-bold">{stats.totalPhotos}</p>
+                  <p className="text-sm font-medium text-muted-foreground">Fotos Enviadas</p>
+                  <p className="text-3xl font-bold mt-2">{stats.totalPhotos}</p>
                 </div>
-                <Eye className="h-8 w-8 text-primary" />
+                <div className="p-3 bg-blue-500/10 rounded-xl">
+                  <Eye className="h-7 w-7 text-blue-600" />
+                </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="hover:shadow-lg transition-all hover:-translate-y-1">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Vendas</p>
-                  <p className="text-2xl font-bold">{stats.totalSales}</p>
+                  <p className="text-sm font-medium text-muted-foreground">Vendas Totais</p>
+                  <p className="text-3xl font-bold mt-2">{stats.totalSales}</p>
                 </div>
-                <BarChart3 className="h-8 w-8 text-primary" />
+                <div className="p-3 bg-green-500/10 rounded-xl">
+                  <BarChart3 className="h-7 w-7 text-green-600" />
+                </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="hover:shadow-lg transition-all hover:-translate-y-1 border-2 border-primary/20">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Faturamento</p>
-                  <p className="text-2xl font-bold">R$ {stats.totalRevenue.toFixed(2)}</p>
+                  <p className="text-sm font-medium text-muted-foreground">Faturamento</p>
+                  <p className="text-3xl font-bold mt-2 text-primary">R$ {stats.totalRevenue.toFixed(2)}</p>
                 </div>
-                <DollarSign className="h-8 w-8 text-primary" />
+                <div className="p-3 bg-primary/10 rounded-xl">
+                  <DollarSign className="h-7 w-7 text-primary" />
+                </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
         {/* Main Content Tabs */}
-        <Tabs defaultValue="campaigns" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="campaigns">Meus Eventos</TabsTrigger>
-            <TabsTrigger value="photos">Minhas Fotos</TabsTrigger>
-            <TabsTrigger value="payouts">Repasses</TabsTrigger>
+        <Tabs defaultValue="campaigns" className="space-y-6">
+          <TabsList className="grid w-full max-w-2xl grid-cols-3">
+            <TabsTrigger value="campaigns" className="gap-2">
+              <Camera className="h-4 w-4" />
+              Meus Eventos
+            </TabsTrigger>
+            <TabsTrigger value="photos" className="gap-2">
+              <Eye className="h-4 w-4" />
+              Minhas Fotos
+            </TabsTrigger>
+            <TabsTrigger value="payouts" className="gap-2">
+              <CreditCard className="h-4 w-4" />
+              Repasses
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="campaigns" className="space-y-4">

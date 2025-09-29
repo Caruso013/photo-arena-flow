@@ -194,44 +194,60 @@ const UserDashboard = () => {
     <DashboardLayout>
       <div className="space-y-8">
         {/* Welcome Section */}
-        <div className="bg-gradient-primary rounded-lg p-8 text-white">
-          <h1 className="text-3xl font-bold mb-2">
-            Bem-vindo, {profile?.full_name || 'Usuário'}!
-          </h1>
-          <p className="text-lg opacity-90">
-            Encontre e compre as melhores fotos dos seus eventos esportivos favoritos
-          </p>
+        <div className="relative overflow-hidden rounded-xl p-8 bg-gradient-to-br from-primary via-primary/90 to-primary/80 text-primary-foreground shadow-elegant">
+          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS1vcGFjaXR5PSIwLjA1IiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-30"></div>
+          <div className="relative z-10">
+            <h1 className="text-4xl font-bold mb-3 animate-fade-in">
+              Bem-vindo, {profile?.full_name || 'Usuário'}! 👋
+            </h1>
+            <p className="text-lg opacity-95 max-w-2xl">
+              Encontre e compre as melhores fotos dos seus eventos esportivos favoritos
+            </p>
+          </div>
         </div>
 
         {/* Search Section */}
-        <Card>
+        <Card className="shadow-sm hover:shadow-md transition-all">
           <CardContent className="p-6">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
               <Input
-                placeholder="Buscar eventos..."
+                placeholder="Buscar eventos por nome ou localização..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
+                className="pl-12 h-12 text-base"
               />
             </div>
           </CardContent>
         </Card>
 
         {/* Main Content Tabs */}
-        <Tabs defaultValue="events" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="events">Eventos Disponíveis</TabsTrigger>
-            <TabsTrigger value="purchases">Minhas Fotos Compradas</TabsTrigger>
+        <Tabs defaultValue="events" className="space-y-6">
+          <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsTrigger value="events" className="gap-2">
+              <Camera className="h-4 w-4" />
+              Eventos Disponíveis
+            </TabsTrigger>
+            <TabsTrigger value="purchases" className="gap-2">
+              <ShoppingCart className="h-4 w-4" />
+              Minhas Compras
+            </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="events" className="space-y-4">
-            <h2 className="text-2xl font-bold">
-              Eventos em Destaque {searchTerm && `(${filteredCampaigns.length} resultados)`}
-            </h2>
+          <TabsContent value="events" className="space-y-6 animate-fade-in">
+            <div className="flex items-center justify-between">
+              <h2 className="text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
+                Eventos em Destaque
+              </h2>
+              {searchTerm && (
+                <Badge variant="secondary" className="text-sm">
+                  {filteredCampaigns.length} resultado(s)
+                </Badge>
+              )}
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredCampaigns.map((campaign) => (
-                <Card key={campaign.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                <Card key={campaign.id} className="group overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-2 hover:border-primary/20">
                   <div className="aspect-video bg-gradient-subtle relative">
                     {campaign.cover_image_url ? (
                       <img
