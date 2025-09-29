@@ -165,59 +165,68 @@ const FinancialDashboard = ({ userRole }: FinancialDashboardProps) => {
   return (
     <div className="space-y-6">
       {/* Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card className="hover:shadow-lg transition-all hover:-translate-y-1 border-2 border-primary/20">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Receita Total</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <div className="p-2 bg-primary/10 rounded-lg">
+              <DollarSign className="h-5 w-5 text-primary" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-3xl font-bold text-primary">
               R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
-            <p className="text-xs text-muted-foreground">
-              +12.5% em relação ao mês anterior
+            <p className="text-xs text-muted-foreground flex items-center gap-1 mt-2">
+              <TrendingUp className="h-3 w-3 text-green-600" />
+              +12.5% vs mês anterior
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="hover:shadow-lg transition-all hover:-translate-y-1">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Fotógrafos Ativos</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <div className="p-2 bg-blue-500/10 rounded-lg">
+              <Users className="h-5 w-5 text-blue-600" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{photographerStats.length}</div>
-            <p className="text-xs text-muted-foreground">
-              Venderam fotos este mês
+            <div className="text-3xl font-bold">{photographerStats.length}</div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Com vendas este período
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="hover:shadow-lg transition-all hover:-translate-y-1">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Fotos Vendidas</CardTitle>
-            <Camera className="h-4 w-4 text-muted-foreground" />
+            <div className="p-2 bg-green-500/10 rounded-lg">
+              <Camera className="h-5 w-5 text-green-600" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-3xl font-bold">
               {photographerStats.reduce((sum, p) => sum + p.total_photos, 0)}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Total de fotos vendidas
+            <p className="text-xs text-muted-foreground mt-2">
+              Total de transações
             </p>
           </CardContent>
         </Card>
 
         {userRole === 'photographer' && userStats && (
-          <Card>
+          <Card className="hover:shadow-lg transition-all hover:-translate-y-1 border-2 border-yellow-500/30 bg-gradient-to-br from-yellow-50/50 to-transparent dark:from-yellow-950/20">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Sua Posição</CardTitle>
-              <Target className="h-4 w-4 text-muted-foreground" />
+              <div className="p-2 bg-yellow-500/10 rounded-lg">
+                <Target className="h-5 w-5 text-yellow-600" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">#{userStats.rank}</div>
-              <p className="text-xs text-muted-foreground">
+              <div className="text-3xl font-bold">#{userStats.rank}</div>
+              <p className="text-xs text-muted-foreground mt-2">
                 R$ {userStats.total_revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} em vendas
               </p>
             </CardContent>
@@ -225,22 +234,35 @@ const FinancialDashboard = ({ userRole }: FinancialDashboardProps) => {
         )}
       </div>
 
-      <Tabs defaultValue="ranking" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="ranking">Ranking de Fotógrafos</TabsTrigger>
-          <TabsTrigger value="revenue">Receita por Período</TabsTrigger>
-          {userRole === 'photographer' && <TabsTrigger value="personal">Meu Desempenho</TabsTrigger>}
+      <Tabs defaultValue="ranking" className="space-y-6">
+        <TabsList className={userRole === 'photographer' ? 'grid w-full max-w-2xl grid-cols-3' : 'grid w-full max-w-md grid-cols-2'}>
+          <TabsTrigger value="ranking" className="gap-2">
+            <Trophy className="h-4 w-4" />
+            Ranking
+          </TabsTrigger>
+          <TabsTrigger value="revenue" className="gap-2">
+            <TrendingUp className="h-4 w-4" />
+            Receita
+          </TabsTrigger>
+          {userRole === 'photographer' && (
+            <TabsTrigger value="personal" className="gap-2">
+              <Target className="h-4 w-4" />
+              Meu Desempenho
+            </TabsTrigger>
+          )}
         </TabsList>
 
-        <TabsContent value="ranking" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Trophy className="h-5 w-5 text-yellow-500" />
+        <TabsContent value="ranking" className="space-y-4 animate-fade-in">
+          <Card className="shadow-md">
+            <CardHeader className="bg-gradient-to-r from-yellow-50 to-transparent dark:from-yellow-950/20">
+              <CardTitle className="flex items-center gap-2 text-2xl">
+                <div className="p-2 bg-yellow-500/10 rounded-lg">
+                  <Trophy className="h-6 w-6 text-yellow-600" />
+                </div>
                 Ranking de Fotógrafos
               </CardTitle>
-              <CardDescription>
-                Os fotógrafos que mais venderam fotos na plataforma
+              <CardDescription className="text-base">
+                Os melhores fotógrafos da plataforma por volume de vendas
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -291,15 +313,17 @@ const FinancialDashboard = ({ userRole }: FinancialDashboardProps) => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="revenue" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5" />
+        <TabsContent value="revenue" className="space-y-4 animate-fade-in">
+          <Card className="shadow-md">
+            <CardHeader className="bg-gradient-to-r from-blue-50 to-transparent dark:from-blue-950/20">
+              <CardTitle className="flex items-center gap-2 text-2xl">
+                <div className="p-2 bg-blue-500/10 rounded-lg">
+                  <TrendingUp className="h-6 w-6 text-blue-600" />
+                </div>
                 Receita por Período
               </CardTitle>
-              <CardDescription>
-                Distribuição da receita entre plataforma, fotógrafos e organizações
+              <CardDescription className="text-base">
+                Análise temporal da distribuição de receita entre todos os participantes
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -321,11 +345,14 @@ const FinancialDashboard = ({ userRole }: FinancialDashboardProps) => {
         </TabsContent>
 
         {userRole === 'photographer' && userStats && (
-          <TabsContent value="personal" className="space-y-4">
+          <TabsContent value="personal" className="space-y-6 animate-fade-in">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Seu Desempenho</CardTitle>
+              <Card className="shadow-md border-2 border-primary/20">
+                <CardHeader className="bg-gradient-to-br from-primary/5 to-transparent">
+                  <CardTitle className="flex items-center gap-2 text-xl">
+                    <Award className="h-5 w-5 text-primary" />
+                    Seu Desempenho
+                  </CardTitle>
                   <CardDescription>Estatísticas detalhadas das suas vendas</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -357,10 +384,13 @@ const FinancialDashboard = ({ userRole }: FinancialDashboardProps) => {
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Metas e Objetivos</CardTitle>
-                  <CardDescription>Progresso em direção aos seus objetivos</CardDescription>
+              <Card className="shadow-md border-2 border-green-500/20">
+                <CardHeader className="bg-gradient-to-br from-green-50 to-transparent dark:from-green-950/20">
+                  <CardTitle className="flex items-center gap-2 text-xl">
+                    <Target className="h-5 w-5 text-green-600" />
+                    Metas e Objetivos
+                  </CardTitle>
+                  <CardDescription>Acompanhe seu progresso e conquistas</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
