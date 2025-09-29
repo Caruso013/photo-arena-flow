@@ -17,17 +17,15 @@ All colors MUST be HSL.
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 45 93% 47%; /* Dourado STA style */
-    --primary-foreground: 0 0% 0%;
+    --primary: 222 47% 11%; /* Azul escuro profissional */
+    --primary-foreground: 210 40% 98%;
 
-    --secondary: 0 0% 15%; /* Preto escuro para header/footer */
-    --secondary-foreground: 0 0% 100%;
+    --secondary: 210 40% 96%; /* Cinza claro */
+    --secondary-foreground: 222.2 47.4% 11.2%;
 
-    /* Design system inspirado no STA Fotos */
-    --gradient-primary: linear-gradient(135deg, hsl(45 93% 47%), hsl(45 93% 57%));
-    --gradient-dark: linear-gradient(180deg, hsl(0 0% 5%), hsl(0 0% 15%));
-    --shadow-elegant: 0 10px 30px -10px hsl(45 93% 47% / 0.3);
-    --shadow-glow: 0 0 40px hsl(45 93% 57% / 0.4);
+    /* Cores auxiliares para destaques dourados */
+    --accent-gold: 45 93% 47%;
+    --accent-gold-light: 45 93% 57%;
 
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
@@ -71,8 +69,8 @@ All colors MUST be HSL.
     --popover: 0 0% 12%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: 45 93% 47%;
-    --primary-foreground: 0 0% 0%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 222.2 47.4% 11.2%;
 
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;

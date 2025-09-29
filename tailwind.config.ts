@@ -64,6 +64,13 @@ export default {
 					ring: 'hsl(var(--sidebar-ring))'
 				}
 			},
+			backgroundImage: {
+				'gradient-primary': 'linear-gradient(135deg, hsl(var(--primary)), hsl(217 91% 70%))',
+				'gradient-subtle': 'linear-gradient(180deg, hsl(var(--muted)), hsl(var(--background)))',
+			},
+			boxShadow: {
+				'elegant': '0 10px 30px -10px hsl(var(--primary) / 0.2)',
+			},
 			borderRadius: {
 				lg: 'var(--radius)',
 				md: 'calc(var(--radius) - 2px)',
@@ -85,11 +92,22 @@ export default {
 					to: {
 						height: '0'
 					}
-				}
+				},
+				'fade-in': {
+					'0%': {
+						opacity: '0',
+						transform: 'translateY(10px)'
+					},
+					'100%': {
+						opacity: '1',
+						transform: 'translateY(0)'
+					}
+				},
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'fade-in': 'fade-in 0.3s ease-out',
 			}
 		}
 	},
