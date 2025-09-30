@@ -258,14 +258,6 @@ const PhotographerDashboard = () => {
             <Button 
               variant="secondary" 
               className="gap-2 bg-white/95 text-primary hover:bg-white font-semibold shadow-md"
-              onClick={() => setShowCreateCampaignModal(true)}
-            >
-              <Plus className="h-4 w-4" />
-              Novo Evento
-            </Button>
-            <Button 
-              variant="outline" 
-              className="gap-2 bg-white/20 border-white/30 text-white hover:bg-white/30 hover:text-white backdrop-blur-sm font-medium"
               onClick={() => setShowUploadModal(true)}
             >
               <Upload className="h-4 w-4" />
@@ -287,9 +279,10 @@ const PhotographerDashboard = () => {
               <div className="flex items-start gap-3">
                 <AlertCircle className="h-5 w-5 text-white mt-0.5" />
                 <div>
-                  <h3 className="font-semibold text-white drop-shadow">Bem-vindo!</h3>
+                  <h3 className="font-semibold text-white drop-shadow">Sobre o Upload</h3>
                   <p className="text-sm text-white/95 drop-shadow-sm">
-                    Você está logado como fotógrafo. Explore suas campanhas e gerencie seus eventos.
+                    Faça upload de fotos para eventos disponíveis. Apenas administradores criam novos eventos.
+                    Confira os eventos próximos e candidate-se para cobri-los!
                   </p>
                 </div>
               </div>
@@ -304,7 +297,7 @@ const PhotographerDashboard = () => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Eventos Criados</p>
+                  <p className="text-sm font-medium text-muted-foreground">Eventos com Fotos</p>
                   <p className="text-3xl font-bold mt-2">{stats.totalCampaigns}</p>
                 </div>
                 <div className="p-3 bg-primary/10 rounded-xl">
@@ -376,10 +369,10 @@ const PhotographerDashboard = () => {
 
           <TabsContent value="campaigns" className="space-y-4">
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold">Eventos Criados</h2>
-              <Button onClick={() => setShowCreateCampaignModal(true)} className="gap-2">
-                <Plus className="h-4 w-4" />
-                Novo Evento
+              <h2 className="text-xl font-semibold">Eventos com Fotos</h2>
+              <Button onClick={() => setShowUploadModal(true)} className="gap-2">
+                <Upload className="h-4 w-4" />
+                Upload de Fotos
               </Button>
             </div>
 
@@ -441,14 +434,22 @@ const PhotographerDashboard = () => {
             {campaigns.length === 0 && (
               <Card className="p-12 text-center">
                 <Camera className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium mb-2">Nenhum evento criado ainda</h3>
+                <h3 className="text-lg font-medium mb-2">Nenhum evento com fotos ainda</h3>
                 <p className="text-muted-foreground mb-4">
-                  Crie seu primeiro evento para começar a vender fotos
+                  Faça upload de fotos para eventos criados pelos administradores
                 </p>
-                <Button onClick={() => setShowCreateCampaignModal(true)} className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Criar Primeiro Evento
-                </Button>
+                <div className="flex gap-3 justify-center">
+                  <Button onClick={() => setShowUploadModal(true)} className="gap-2">
+                    <Upload className="h-4 w-4" />
+                    Fazer Upload de Fotos
+                  </Button>
+                  <Link to="/eventos-proximos">
+                    <Button variant="outline" className="gap-2">
+                      <CalendarPlus className="h-4 w-4" />
+                      Ver Eventos Disponíveis
+                    </Button>
+                  </Link>
+                </div>
               </Card>
             )}
           </TabsContent>
@@ -602,17 +603,6 @@ const PhotographerDashboard = () => {
         <UploadPhotoModal 
           onClose={() => setShowUploadModal(false)}
           onUploadComplete={fetchData}
-        />
-      )}
-
-      {showCreateCampaignModal && profile?.role === 'admin' && (
-        <CreateCampaignModal 
-          organizationId="default-org"
-          organizationName="Plataforma"
-          onCampaignCreated={() => {
-            fetchData();
-            setShowCreateCampaignModal(false);
-          }}
         />
       )}
 
