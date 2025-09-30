@@ -7,12 +7,18 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/hooks/use-toast';
 import { Upload, X } from 'lucide-react';
 
 interface Campaign {
   id: string;
   title: string;
+}
+
+interface SubEvent {
+  id: string;
+  title: string;
+  campaign_id: string;
 }
 
 interface UploadPhotoModalProps {
@@ -23,7 +29,9 @@ interface UploadPhotoModalProps {
 const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadComplete }) => {
   const { profile } = useAuth();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [subEvents, setSubEvents] = useState<SubEvent[]>([]);
   const [selectedCampaign, setSelectedCampaign] = useState('');
+  const [selectedSubEvent, setSelectedSubEvent] = useState('');
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('10.00');
   const [files, setFiles] = useState<FileList | null>(null);
@@ -33,6 +41,15 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
   useEffect(() => {
     fetchCampaigns();
   }, []);
+
+  useEffect(() => {
+    if (selectedCampaign) {
+      fetchSubEvents(selectedCampaign);
+    } else {
+      setSubEvents([]);
+      setSelectedSubEvent('');
+    }
+  }, [selectedCampaign]);
 
   const fetchCampaigns = async () => {
     try {
@@ -55,8 +72,66 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
     }
   };
 
+  const fetchSubEvents = async (campaignId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('sub_events')
+        .select('id, title, campaign_id')
+        .eq('campaign_id', campaignId)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setSubEvents(data || []);
+    } catch (error) {
+      console.error('Error fetching sub events:', error);
+      toast({
+        title: "Erro ao carregar álbuns",
+        description: "Não foi possível carregar os álbuns deste evento.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const MAX_FILE_SIZE = 2.5 * 1024 * 1024; // 2.5MB em bytes
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files;
+    if (!selectedFiles) return;
+
+    // Validar tamanho de cada arquivo
+    const invalidFiles: string[] = [];
+    const validFiles: File[] = [];
+    
+    Array.from(selectedFiles).forEach(file => {
+      if (file.size > MAX_FILE_SIZE) {
+        invalidFiles.push(`${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`);
+      } else {
+        validFiles.push(file);
+      }
+    });
+
+    if (invalidFiles.length > 0) {
+      toast({
+        title: "Arquivos muito grandes",
+        description: `Os seguintes arquivos excedem 2.5MB e não serão incluídos: ${invalidFiles.join(', ')}. Por favor, reduza o tamanho das imagens.`,
+        variant: "destructive",
+      });
+      
+      // Se não houver arquivos válidos, limpar seleção
+      if (validFiles.length === 0) {
+        e.target.value = '';
+        setFiles(null);
+        return;
+      }
+      
+      // Criar FileList apenas com arquivos válidos
+      const dataTransfer = new DataTransfer();
+      validFiles.forEach(file => dataTransfer.items.add(file));
+      setFiles(dataTransfer.files);
+      return;
+    }
+
     setFiles(selectedFiles);
   };
 
@@ -93,6 +168,7 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
       .from('photos')
       .insert({
         campaign_id: selectedCampaign,
+        sub_event_id: selectedSubEvent || null,
         photographer_id: profile?.id,
         original_url: originalUrl.publicUrl,
         watermarked_url: watermarkedUrl.publicUrl,
@@ -160,7 +236,7 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="campaign">Evento</Label>
+            <Label htmlFor="campaign">Evento *</Label>
             <Select value={selectedCampaign} onValueChange={setSelectedCampaign}>
               <SelectTrigger>
                 <SelectValue placeholder="Selecione um evento" />
@@ -174,6 +250,28 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
               </SelectContent>
             </Select>
           </div>
+
+          {selectedCampaign && subEvents.length > 0 && (
+            <div className="space-y-2">
+              <Label htmlFor="subEvent">Álbum (opcional)</Label>
+              <Select value={selectedSubEvent} onValueChange={setSelectedSubEvent}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um álbum ou deixe em branco" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Sem álbum específico</SelectItem>
+                  {subEvents.map((subEvent) => (
+                    <SelectItem key={subEvent.id} value={subEvent.id}>
+                      {subEvent.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Organize suas fotos em álbuns dentro do evento
+              </p>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="title">Título das fotos (opcional)</Label>
@@ -207,10 +305,20 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
               onChange={handleFileSelect}
             />
             {files && (
-              <p className="text-sm text-muted-foreground">
-                {files.length} arquivo(s) selecionado(s)
-              </p>
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-green-600">
+                  ✓ {files.length} arquivo(s) selecionado(s)
+                </p>
+                {Array.from(files).map((file, index) => (
+                  <p key={index} className="text-xs text-muted-foreground">
+                    {file.name} - {(file.size / 1024 / 1024).toFixed(2)}MB
+                  </p>
+                ))}
+              </div>
             )}
+            <p className="text-xs text-muted-foreground">
+              Tamanho máximo por arquivo: 2.5MB
+            </p>
           </div>
 
           {uploading && (

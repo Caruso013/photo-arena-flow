@@ -57,7 +57,10 @@ export type Database = {
           is_active: boolean
           location: string | null
           organization_id: string | null
+          organization_percentage: number
           photographer_id: string | null
+          photographer_percentage: number
+          platform_percentage: number
           title: string
           updated_at: string
         }
@@ -70,7 +73,10 @@ export type Database = {
           is_active?: boolean
           location?: string | null
           organization_id?: string | null
+          organization_percentage?: number
           photographer_id?: string | null
+          photographer_percentage?: number
+          platform_percentage?: number
           title: string
           updated_at?: string
         }
@@ -83,7 +89,10 @@ export type Database = {
           is_active?: boolean
           location?: string | null
           organization_id?: string | null
+          organization_percentage?: number
           photographer_id?: string | null
+          photographer_percentage?: number
+          platform_percentage?: number
           title?: string
           updated_at?: string
         }
