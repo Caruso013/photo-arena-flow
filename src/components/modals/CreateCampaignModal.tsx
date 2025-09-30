@@ -27,7 +27,9 @@ export default function CreateCampaignModal({
     description: '',
     location: '',
     event_date: '',
-    organization_percentage: 30, // Padrão: 30% para organização
+    platform_percentage: 60,
+    photographer_percentage: 10,
+    organization_percentage: 30,
   });
   const { toast } = useToast();
 
@@ -39,14 +41,15 @@ export default function CreateCampaignModal({
   };
 
   const calculatePercentages = () => {
-    const photographerPercentage = 10; // Fotógrafo sempre fica com 10%
-    const organizationPercentage = formData.organization_percentage;
-    const platformPercentage = 90 - organizationPercentage; // Plataforma pega o restante dos 90%
+    const sum = formData.platform_percentage + formData.photographer_percentage + formData.organization_percentage;
+    const isValid = sum === 100;
     
     return {
-      platform: platformPercentage,
-      organization: organizationPercentage,
-      photographer: photographerPercentage
+      platform: formData.platform_percentage,
+      photographer: formData.photographer_percentage,
+      organization: formData.organization_percentage,
+      sum,
+      isValid,
     };
   };
 
@@ -63,19 +66,10 @@ export default function CreateCampaignModal({
     }
 
     const percentages = calculatePercentages();
-    if (percentages.photographer !== 10) {
+    if (!percentages.isValid) {
       toast({
         title: "Erro",
-        description: "Porcentagem do fotógrafo é fixa em 10%",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (percentages.organization < 10 || percentages.organization > 80) {
-      toast({
-        title: "Erro",
-        description: "Porcentagem da organização deve estar entre 10% e 80%",
+        description: `A soma das porcentagens deve ser 100%. Atualmente: ${percentages.sum}%`,
         variant: "destructive",
       });
       return;
@@ -92,9 +86,11 @@ export default function CreateCampaignModal({
           location: formData.location || null,
           event_date: formData.event_date || null,
           organization_id: organizationId,
+          platform_percentage: formData.platform_percentage,
+          photographer_percentage: formData.photographer_percentage,
           organization_percentage: formData.organization_percentage,
           is_active: true,
-          photographer_id: '', // Será definido quando fotógrafo for aprovado
+          photographer_id: null,
         });
 
       if (error) throw error;
@@ -110,6 +106,8 @@ export default function CreateCampaignModal({
         description: '',
         location: '',
         event_date: '',
+        platform_percentage: 60,
+        photographer_percentage: 10,
         organization_percentage: 30,
       });
       
@@ -200,36 +198,81 @@ export default function CreateCampaignModal({
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="platform_percentage">
+                <div className="flex items-center gap-2">
+                  <Percent className="h-4 w-4" />
+                  % Plataforma
+                </div>
+              </Label>
+              <Input
+                id="platform_percentage"
+                type="number"
+                min="0"
+                max="100"
+                value={formData.platform_percentage}
+                onChange={(e) => handleInputChange('platform_percentage', Number(e.target.value))}
+                placeholder="60"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="photographer_percentage">
+                <div className="flex items-center gap-2">
+                  <Percent className="h-4 w-4" />
+                  % Fotógrafo
+                </div>
+              </Label>
+              <Input
+                id="photographer_percentage"
+                type="number"
+                min="0"
+                max="100"
+                value={formData.photographer_percentage}
+                onChange={(e) => handleInputChange('photographer_percentage', Number(e.target.value))}
+                placeholder="10"
+              />
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="organization_percentage">
                 <div className="flex items-center gap-2">
                   <Percent className="h-4 w-4" />
-                  Porcentagem da Organização
+                  % Organização
                 </div>
               </Label>
               <Input
                 id="organization_percentage"
                 type="number"
-                min="10"
-                max="80"
+                min="0"
+                max="100"
                 value={formData.organization_percentage}
                 onChange={(e) => handleInputChange('organization_percentage', Number(e.target.value))}
                 placeholder="30"
               />
-              <p className="text-xs text-muted-foreground">
-                Fotógrafo sempre recebe 10%. O restante (90%) é dividido entre plataforma e organização.
-              </p>
             </div>
           </div>
 
           {/* Preview das Porcentagens */}
-          <div className="bg-muted/50 p-4 rounded-lg">
+          <div className={`p-4 rounded-lg border-2 transition-all ${
+            percentages.isValid 
+              ? 'bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-900/30' 
+              : 'bg-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-900/30'
+          }`}>
             <h4 className="font-semibold mb-3 flex items-center gap-2">
               <Percent className="h-4 w-4" />
               Distribuição de Receita
+              {!percentages.isValid && (
+                <Badge variant="destructive" className="ml-2">Soma: {percentages.sum}%</Badge>
+              )}
+              {percentages.isValid && (
+                <Badge className="ml-2 bg-green-600">✓ Válido</Badge>
+              )}
             </h4>
             <div className="grid grid-cols-3 gap-4">
               <div className="text-center">
-                <Badge variant="outline" className="w-full justify-center">
+                <Badge variant="outline" className="w-full justify-center bg-blue-50 dark:bg-blue-950/20">
                   Plataforma: {percentages.platform}%
                 </Badge>
               </div>
@@ -245,7 +288,9 @@ export default function CreateCampaignModal({
               </div>
             </div>
             <p className="text-sm text-muted-foreground mt-2 text-center">
-              Cada venda será dividida conforme as porcentagens acima. Fotógrafo sempre recebe 10%.
+              {percentages.isValid 
+                ? 'Cada venda será dividida conforme as porcentagens acima.' 
+                : '⚠️ A soma das porcentagens deve ser exatamente 100%'}
             </p>
           </div>
 

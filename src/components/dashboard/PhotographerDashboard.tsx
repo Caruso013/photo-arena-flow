@@ -14,6 +14,7 @@ import { Link } from 'react-router-dom';
 import DashboardLayout from './DashboardLayout';
 import UploadPhotoModal from '@/components/modals/UploadPhotoModal';
 import CreateCampaignModal from '@/components/modals/CreateCampaignModal';
+import CreateAlbumModal from '@/components/modals/CreateAlbumModal';
 import AntiScreenshotProtection from '@/components/security/AntiScreenshotProtection';
 
 interface Campaign {
@@ -74,6 +75,8 @@ const PhotographerDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showCreateCampaignModal, setShowCreateCampaignModal] = useState(false);
+  const [showCreateAlbumModal, setShowCreateAlbumModal] = useState(false);
+  const [selectedCampaignForAlbum, setSelectedCampaignForAlbum] = useState<{ id: string; title: string } | null>(null);
   const [payoutAmount, setPayoutAmount] = useState('');
   const [isRequestingPayout, setIsRequestingPayout] = useState(false);
   const [payoutError, setPayoutError] = useState('');
@@ -206,14 +209,23 @@ const PhotographerDashboard = () => {
         .eq('status', 'completed');
 
       const totalSales = salesData?.length || 0;
-      const totalRevenue = salesData?.reduce((sum, sale) => sum + Number(sale.amount), 0) || 0;
-      const photographerCommission = totalRevenue * 0.7; // 70% for photographer
+
+      // Buscar revenue_shares reais para o fotógrafo
+      const { data: revenueData } = await supabase
+        .from('revenue_shares')
+        .select('photographer_amount')
+        .eq('photographer_id', profile?.id);
+
+      const photographerRevenue = revenueData?.reduce(
+        (sum, r) => sum + Number(r.photographer_amount), 
+        0
+      ) || 0;
 
       setStats({
         totalCampaigns: campaignsCount || 0,
         totalPhotos: photosCount || 0,
         totalSales,
-        totalRevenue: photographerCommission
+        totalRevenue: photographerRevenue
       });
     } catch (error) {
       console.error('Error fetching stats:', error);
@@ -402,14 +414,24 @@ const PhotographerDashboard = () => {
                       <span>{campaign.location}</span>
                       <span>{new Date(campaign.event_date).toLocaleDateString()}</span>
                     </div>
-                    <div className="flex justify-between items-center">
+                    <div className="flex justify-between items-center gap-2">
                       <span className="text-sm">
                         {campaign.photos?.[0]?.count || 0} fotos
                       </span>
-                      <Button size="sm" variant="outline" className="gap-1">
-                        <Edit className="h-3 w-3" />
-                        Editar
-                      </Button>
+                      <div className="flex gap-1">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="gap-1"
+                          onClick={() => {
+                            setSelectedCampaignForAlbum({ id: campaign.id, title: campaign.title });
+                            setShowCreateAlbumModal(true);
+                          }}
+                        >
+                          <Plus className="h-3 w-3" />
+                          Álbum
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -591,6 +613,19 @@ const PhotographerDashboard = () => {
             fetchData();
             setShowCreateCampaignModal(false);
           }}
+        />
+      )}
+
+      {showCreateAlbumModal && selectedCampaignForAlbum && (
+        <CreateAlbumModal
+          campaignId={selectedCampaignForAlbum.id}
+          campaignTitle={selectedCampaignForAlbum.title}
+          open={showCreateAlbumModal}
+          onClose={() => {
+            setShowCreateAlbumModal(false);
+            setSelectedCampaignForAlbum(null);
+          }}
+          onAlbumCreated={fetchData}
         />
       )}
       </DashboardLayout>

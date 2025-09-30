@@ -108,19 +108,39 @@ const FinancialDashboard = ({ userRole }: FinancialDashboardProps) => {
         setUserStats(currentUserStats || null);
       }
 
-      // Generate monthly revenue data (mock data for demonstration)
-      const monthlyData: RevenueData[] = [];
-      const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'];
-      
-      months.forEach(month => {
-        const total = Math.random() * 10000 + 5000;
-        monthlyData.push({
-          month,
-          platform: total * 0.6,
-          photographers: total * 0.3,
-          organizations: total * 0.1
-        });
+      // Buscar dados reais de revenue_shares agrupados por mês
+      const { data: revenueSharesData, error: revenueError } = await supabase
+        .from('revenue_shares')
+        .select('platform_amount, photographer_amount, organization_amount, created_at')
+        .gte('created_at', new Date(Date.now() - 6 * 30 * 24 * 60 * 60 * 1000).toISOString())
+        .order('created_at', { ascending: true });
+
+      if (revenueError) throw revenueError;
+
+      // Agrupar por mês
+      const monthlyMap = new Map<string, { platform: number; photographers: number; organizations: number }>();
+      const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+      revenueSharesData?.forEach(share => {
+        const date = new Date(share.created_at);
+        const monthKey = `${monthNames[date.getMonth()]}`;
+        
+        if (!monthlyMap.has(monthKey)) {
+          monthlyMap.set(monthKey, { platform: 0, photographers: 0, organizations: 0 });
+        }
+        
+        const monthly = monthlyMap.get(monthKey)!;
+        monthly.platform += Number(share.platform_amount || 0);
+        monthly.photographers += Number(share.photographer_amount || 0);
+        monthly.organizations += Number(share.organization_amount || 0);
       });
+
+      const monthlyData: RevenueData[] = Array.from(monthlyMap.entries()).map(([month, data]) => ({
+        month,
+        platform: data.platform,
+        photographers: data.photographers,
+        organizations: data.organizations
+      }));
       
       setRevenueData(monthlyData);
 
