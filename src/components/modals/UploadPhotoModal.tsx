@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
-import { Upload, X } from 'lucide-react';
+import { Upload, X, Camera } from 'lucide-react';
 
 interface Campaign {
   id: string;
@@ -53,20 +53,30 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
 
   const fetchCampaigns = async () => {
     try {
+      // Buscar todas as campanhas ativas (criadas por admin)
+      // Fotógrafos podem fazer upload em qualquer campanha ativa
       const { data, error } = await supabase
         .from('campaigns')
         .select('id, title')
-        .eq('photographer_id', profile?.id)
         .eq('is_active', true)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+      
+      if (!data || data.length === 0) {
+        toast({
+          title: "Nenhum evento disponível",
+          description: "Aguarde a criação de eventos pelos administradores ou entre em contato.",
+          variant: "destructive",
+        });
+      }
+      
       setCampaigns(data || []);
     } catch (error) {
       console.error('Error fetching campaigns:', error);
       toast({
         title: "Erro ao carregar eventos",
-        description: "Não foi possível carregar seus eventos.",
+        description: "Não foi possível carregar os eventos disponíveis.",
         variant: "destructive",
       });
     }
@@ -190,6 +200,15 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
       return;
     }
 
+    if (!profile?.id) {
+      toast({
+        title: "Erro de autenticação",
+        description: "Você precisa estar logado para fazer upload de fotos.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setUploading(true);
     setUploadProgress(0);
 
@@ -234,7 +253,20 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <form className="space-y-4">
+          {campaigns.length === 0 ? (
+            <div className="p-6 text-center border-2 border-dashed rounded-lg bg-muted/50">
+              <Camera className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+              <h3 className="font-semibold mb-2">Nenhum evento disponível</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Aguarde a criação de eventos pelos administradores para poder fazer upload de fotos.
+              </p>
+              <Button onClick={onClose} variant="outline">
+                Fechar
+              </Button>
+            </div>
+          ) : (
+            <>
           <div className="space-y-2">
             <Label htmlFor="campaign">Evento *</Label>
             <Select value={selectedCampaign} onValueChange={setSelectedCampaign}>
@@ -344,7 +376,9 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
               {uploading ? 'Enviando...' : 'Enviar Fotos'}
             </Button>
           </div>
-        </div>
+          </>
+          )}
+        </form>
       </DialogContent>
     </Dialog>
   );
