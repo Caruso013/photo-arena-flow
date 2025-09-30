@@ -97,13 +97,30 @@ const PhotographerDashboard = () => {
 
   const fetchCampaigns = async () => {
     try {
+      // Buscar campanhas onde o fotógrafo tem fotos
+      const { data: photosData, error: photosError } = await supabase
+        .from('photos')
+        .select('campaign_id')
+        .eq('photographer_id', profile?.id);
+
+      if (photosError) throw photosError;
+
+      // Pegar IDs únicos de campanhas
+      const campaignIds = [...new Set(photosData?.map(p => p.campaign_id) || [])];
+
+      if (campaignIds.length === 0) {
+        setCampaigns([]);
+        return;
+      }
+
+      // Buscar detalhes das campanhas
       const { data, error } = await supabase
         .from('campaigns')
         .select(`
           *,
           photos(count)
         `)
-        .eq('photographer_id', profile?.id)
+        .in('id', campaignIds)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -189,11 +206,16 @@ const PhotographerDashboard = () => {
 
   const fetchStats = async () => {
     try {
-      // Fetch campaigns count
-      const { count: campaignsCount } = await supabase
-        .from('campaigns')
-        .select('*', { count: 'exact', head: true })
+      // Contar eventos únicos onde o fotógrafo tem fotos
+      const { data: photosData, error: photosCountError } = await supabase
+        .from('photos')
+        .select('campaign_id')
         .eq('photographer_id', profile?.id);
+
+      if (photosCountError) throw photosCountError;
+
+      const uniqueCampaignIds = [...new Set(photosData?.map(p => p.campaign_id) || [])];
+      const campaignsCount = uniqueCampaignIds.length;
 
       // Fetch photos count
       const { count: photosCount } = await supabase
@@ -222,7 +244,7 @@ const PhotographerDashboard = () => {
       ) || 0;
 
       setStats({
-        totalCampaigns: campaignsCount || 0,
+        totalCampaigns: campaignsCount,
         totalPhotos: photosCount || 0,
         totalSales,
         totalRevenue: photographerRevenue
