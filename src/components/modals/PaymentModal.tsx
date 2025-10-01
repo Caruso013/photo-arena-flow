@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { mercadoPagoService, type BuyerInfo } from '@/lib/mercadopago';
+import { supabase } from '@/integrations/supabase/client';
 import { CreditCard, Loader2, ShoppingCart } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 
@@ -67,7 +67,7 @@ export default function PaymentModal({
     setLoading(true);
 
     try {
-      const buyerInfo: BuyerInfo = {
+      const buyerInfo = {
         name: buyerData.name,
         surname: buyerData.surname,
         email: buyerData.email,
@@ -81,17 +81,22 @@ export default function PaymentModal({
         },
       };
 
-      const result = await mercadoPagoService.createPhotoPurchase(
-        photo.id,
-        photo.title || 'Foto',
-        photo.price,
-        buyerInfo,
-        'default-campaign' // Usar um valor padrão para campaigns sem ID específico
-      );
+      // Call edge function to create payment preference
+      const { data, error } = await supabase.functions.invoke('create-payment-preference', {
+        body: {
+          photoId: photo.id,
+          photoTitle: photo.title || 'Foto',
+          price: photo.price,
+          buyerInfo,
+          campaignId: 'default-campaign',
+        },
+      });
 
-      if (result.success && result.init_point) {
+      if (error) throw error;
+
+      if (data.success && data.init_point) {
         // Redirect to Mercado Pago checkout
-        const checkoutUrl = result.sandbox_init_point || result.init_point;
+        const checkoutUrl = data.sandbox_init_point || data.init_point;
         window.open(checkoutUrl, '_blank');
         
         toast({
@@ -104,14 +109,14 @@ export default function PaymentModal({
         
         // Store payment reference for later verification
         localStorage.setItem(`payment_${photo.id}`, JSON.stringify({
-          preferenceId: result.preference_id,
+          preferenceId: data.preference_id,
           photoId: photo.id,
           amount: photo.price,
           timestamp: Date.now(),
         }));
 
       } else {
-        throw new Error(result.error || 'Erro ao criar preferência de pagamento');
+        throw new Error(data.error || 'Erro ao criar preferência de pagamento');
       }
     } catch (error) {
       console.error('Payment error:', error);
