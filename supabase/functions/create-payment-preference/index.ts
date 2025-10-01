@@ -1,4 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.0';
+import { buyerInfoSchema } from './validation.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -6,43 +8,100 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
     const { photoId, photoTitle, price, buyerInfo, campaignId } = await req.json();
 
-    // Validate input data
-    if (!photoId || !photoTitle || !price || !buyerInfo || !campaignId) {
-      throw new Error('Missing required fields');
+    // Validação básica
+    if (!photoId || !price) {
+      return new Response(JSON.stringify({ success: false, error: 'Dados incompletos' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    if (typeof price !== 'number' || price <= 0 || price > 100000) {
-      throw new Error('Invalid price value');
+    // Validar buyerInfo
+    const validation = buyerInfoSchema.safeParse(buyerInfo);
+    if (!validation.success) {
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: 'Dados do comprador inválidos',
+        details: validation.error.errors 
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    if (!buyerInfo.email || !buyerInfo.name || !buyerInfo.surname) {
-      throw new Error('Invalid buyer information');
+    // Buscar informações da foto
+    const { data: photo, error: photoError } = await supabase
+      .from('photos')
+      .select('photographer_id, campaign_id')
+      .eq('id', photoId)
+      .single();
+
+    if (photoError || !photo) {
+      return new Response(JSON.stringify({ success: false, error: 'Foto não encontrada' }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    // Get Mercado Pago access token from secrets
+    // Obter user_id do comprador pelo email
+    const { data: userData } = await supabase.auth.admin.listUsers();
+    const buyer = userData.users.find(u => u.email === buyerInfo.email);
+    
+    if (!buyer) {
+      return new Response(JSON.stringify({ success: false, error: 'Usuário não encontrado' }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Criar purchase no banco
+    const { data: purchase, error: purchaseError } = await supabase
+      .from('purchases')
+      .insert({
+        photo_id: photoId,
+        buyer_id: buyer.id,
+        photographer_id: photo.photographer_id,
+        amount: price,
+        status: 'pending',
+      })
+      .select()
+      .single();
+
+    if (purchaseError || !purchase) {
+      console.error('Error creating purchase:', purchaseError);
+      return new Response(JSON.stringify({ success: false, error: 'Erro ao criar compra' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const accessToken = Deno.env.get('MERCADO_PAGO_ACCESS_TOKEN');
+    
     if (!accessToken) {
-      throw new Error('MERCADO_PAGO_ACCESS_TOKEN not configured');
+      return new Response(JSON.stringify({ success: false, error: 'Token do Mercado Pago não configurado' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    const currentUrl = req.headers.get('origin') || 'https://gtpqppvyjrnnuhlsbpqd.supabase.co';
-
-    // Create preference data
     const preferenceData = {
       items: [
         {
           id: photoId,
-          title: photoTitle,
+          title: photoTitle || 'Foto',
           quantity: 1,
-          unit_price: price,
+          unit_price: Number(price),
           currency_id: 'BRL',
         },
       ],
@@ -54,25 +113,18 @@ serve(async (req) => {
         identification: buyerInfo.identification,
       },
       back_urls: {
-        success: `${currentUrl}/campaign/${campaignId}?payment=success&photo=${photoId}`,
-        failure: `${currentUrl}/campaign/${campaignId}?payment=failure&photo=${photoId}`,
-        pending: `${currentUrl}/campaign/${campaignId}?payment=pending&photo=${photoId}`,
+        success: `${supabaseUrl.replace('.supabase.co', '.lovableproject.com')}/dashboard`,
+        failure: `${supabaseUrl.replace('.supabase.co', '.lovableproject.com')}/dashboard`,
+        pending: `${supabaseUrl.replace('.supabase.co', '.lovableproject.com')}/dashboard`,
       },
       auto_return: 'approved',
-      external_reference: `photo_${photoId}_${Date.now()}`,
-      statement_descriptor: 'PHOTO ARENA',
-      binary_mode: false,
-      payment_methods: {
-        excluded_payment_methods: [],
-        excluded_payment_types: [],
-        installments: 1,
-      },
-      expires: true,
-      expiration_date_from: new Date().toISOString(),
-      expiration_date_to: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      external_reference: purchase.id,
+      notification_url: `${supabaseUrl}/functions/v1/mercadopago-webhook`,
+      statement_descriptor: 'STA FOTOS',
     };
 
-    // Call Mercado Pago API
+    console.log('Creating Mercado Pago preference:', JSON.stringify(preferenceData, null, 2));
+
     const response = await fetch('https://api.mercadopago.com/checkout/preferences', {
       method: 'POST',
       headers: {
@@ -82,35 +134,40 @@ serve(async (req) => {
       body: JSON.stringify(preferenceData),
     });
 
+    const data = await response.json();
+
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Mercado Pago API error: ${response.status}`);
+      console.error('Mercado Pago API error:', data);
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: 'Erro ao criar preferência de pagamento',
+        details: data
+      }), {
+        status: response.status,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    const result = await response.json();
+    console.log('Mercado Pago preference created:', data.id);
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        preference_id: result.id,
-        init_point: result.init_point,
-        sandbox_init_point: result.sandbox_init_point,
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      }
-    );
+    return new Response(JSON.stringify({
+      success: true,
+      preference_id: data.id,
+      init_point: data.init_point,
+      sandbox_init_point: data.sandbox_init_point,
+      purchase_id: purchase.id,
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+
   } catch (error) {
-    return new Response(
-      JSON.stringify({
-        success: false,
-        error: error.message,
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
-      }
-    );
+    console.error('Error:', error);
+    return new Response(JSON.stringify({ 
+      success: false, 
+      error: error.message 
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 });
