@@ -20,11 +20,16 @@ Configure a URL do webhook como:
 https://gtpqppvyjrnnuhlsbpqd.supabase.co/functions/v1/mercadopago-webhook
 ```
 
-### Passo 3: Selecionar Eventos
+### Passo 3: Copiar Secret do Webhook
+1. Após criar o webhook, copie a **Chave secreta** (Webhook Secret)
+2. Esta chave já foi configurada como secret `MERCADO_PAGO_WEBHOOK_SECRET`
+3. O sistema usa essa chave para validar que as notificações são realmente do Mercado Pago
+
+### Passo 4: Selecionar Eventos
 Marque o evento:
 - ✅ **Pagamentos** (payments)
 
-### Passo 4: Testar Webhook
+### Passo 5: Testar Webhook
 O Mercado Pago enviará notificações quando:
 - Pagamento for aprovado
 - Pagamento for rejeitado
