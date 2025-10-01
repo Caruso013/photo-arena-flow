@@ -119,7 +119,6 @@ export default function PaymentModal({
         throw new Error(data.error || 'Erro ao criar preferência de pagamento');
       }
     } catch (error) {
-      console.error('Payment error:', error);
       toast({
         title: "Erro no pagamento",
         description: "Não foi possível processar o pagamento. Tente novamente.",
