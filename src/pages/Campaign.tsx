@@ -81,7 +81,8 @@ const Campaign = () => {
       const { data, error } = await supabase
         .from('campaigns')
         .select(`
-          *,
+          id, title, description, event_date, location, cover_image_url,
+          is_active, photographer_id, organization_id, created_at,
           photographer:profiles!campaigns_photographer_id_fkey(full_name, email),
           organization:organizations(name, description)
         `)
@@ -92,7 +93,6 @@ const Campaign = () => {
       if (error) throw error;
       setCampaign(data as any);
     } catch (error) {
-      console.error('Error fetching campaign:', error);
       toast({
         title: "Erro",
         description: "Não foi possível carregar a campanha.",
@@ -108,7 +108,7 @@ const Campaign = () => {
     try {
       const { data, error } = await supabase
         .from('photos')
-        .select('*')
+        .select('id, title, original_url, watermarked_url, thumbnail_url, price, is_available')
         .eq('campaign_id', id)
         .eq('is_available', true)
         .order('created_at', { ascending: false });
@@ -116,7 +116,6 @@ const Campaign = () => {
       if (error) throw error;
       setPhotos(data || []);
     } catch (error) {
-      console.error('Error fetching photos:', error);
       toast({
         title: "Erro",
         description: "Não foi possível carregar as fotos.",
@@ -170,7 +169,6 @@ const Campaign = () => {
       setShowPaymentModal(false);
       setSelectedPhoto(null);
     } catch (error) {
-      console.error('Error completing purchase:', error);
       toast({
         title: "Erro na compra",
         description: "Houve um problema ao finalizar sua compra.",

@@ -44,25 +44,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchProfile = async (userId: string): Promise<UserProfile | null> => {
     try {
-      console.log('Fetching profile for user ID:', userId);
-      
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, email, full_name, role, avatar_url')
         .eq('id', userId)
         .maybeSingle();
 
-      if (error) {
-        console.error('Error fetching profile:', error);
-        throw error;
-      }
-      
-      if (!data) {
-        console.log('No profile found for user:', userId);
-        return null;
-      }
-      
-      console.log('Profile fetched successfully:', data);
+      if (error) throw error;
+      if (!data) return null;
       
       return {
         id: data.id,
@@ -72,7 +61,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         avatar_url: data.avatar_url
       };
     } catch (error) {
-      console.error('Error fetching profile:', error);
       return null;
     }
   };
@@ -162,7 +150,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         );
       } catch (emailError) {
-        console.error('Erro ao enviar email de boas-vindas:', emailError);
+        // Silent fail - email não é crítico
       }
 
       toast({
@@ -181,14 +169,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     if (error) {
-      console.error('Login error:', error);
       toast({
         title: "Erro no login",
         description: error.message,
         variant: "destructive",
       });
     }
-    // Profile fetching is handled by onAuthStateChange
     return { error };
   };
 

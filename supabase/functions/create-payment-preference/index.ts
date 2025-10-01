@@ -14,7 +14,18 @@ serve(async (req) => {
   try {
     const { photoId, photoTitle, price, buyerInfo, campaignId } = await req.json();
 
-    console.log('Creating payment preference for:', { photoId, photoTitle, price });
+    // Validate input data
+    if (!photoId || !photoTitle || !price || !buyerInfo || !campaignId) {
+      throw new Error('Missing required fields');
+    }
+
+    if (typeof price !== 'number' || price <= 0 || price > 100000) {
+      throw new Error('Invalid price value');
+    }
+
+    if (!buyerInfo.email || !buyerInfo.name || !buyerInfo.surname) {
+      throw new Error('Invalid buyer information');
+    }
 
     // Get Mercado Pago access token from secrets
     const accessToken = Deno.env.get('MERCADO_PAGO_ACCESS_TOKEN');
@@ -61,8 +72,6 @@ serve(async (req) => {
       expiration_date_to: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     };
 
-    console.log('Sending request to Mercado Pago API...');
-
     // Call Mercado Pago API
     const response = await fetch('https://api.mercadopago.com/checkout/preferences', {
       method: 'POST',
@@ -75,12 +84,10 @@ serve(async (req) => {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Mercado Pago API error:', errorText);
-      throw new Error(`Mercado Pago API error: ${response.status} - ${errorText}`);
+      throw new Error(`Mercado Pago API error: ${response.status}`);
     }
 
     const result = await response.json();
-    console.log('Payment preference created successfully:', result.id);
 
     return new Response(
       JSON.stringify({
@@ -95,7 +102,6 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error('Error creating payment preference:', error);
     return new Response(
       JSON.stringify({
         success: false,
