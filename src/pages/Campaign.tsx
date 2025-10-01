@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCart } from '@/contexts/CartContext';
 import { supabase } from '@/integrations/supabase/client';
 import { formatCurrency } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -11,6 +12,7 @@ import { toast } from '@/components/ui/use-toast';
 import PaymentModal from '@/components/modals/PaymentModal';
 import WatermarkedPhoto from '@/components/WatermarkedPhoto';
 import AntiScreenshotProtection from '@/components/security/AntiScreenshotProtection';
+import { CartDrawer } from '@/components/cart/CartDrawer';
 import { 
   Calendar, 
   MapPin, 
@@ -59,6 +61,7 @@ const Campaign = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { addToCart } = useCart();
   
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [photos, setPhotos] = useState<Photo[]>([]);
@@ -141,6 +144,26 @@ const Campaign = () => {
     setShowPaymentModal(true);
   };
 
+  const handleAddToCart = (photo: Photo) => {
+    if (!user) {
+      toast({
+        title: "Login necessário",
+        description: "Você precisa fazer login para adicionar fotos ao carrinho.",
+        variant: "destructive",
+      });
+      navigate('/auth');
+      return;
+    }
+
+    addToCart({
+      id: photo.id,
+      title: photo.title,
+      price: photo.price,
+      watermarked_url: photo.watermarked_url,
+      thumbnail_url: photo.thumbnail_url,
+    });
+  };
+
   const handlePaymentSuccess = async (paymentData: any) => {
     if (!selectedPhoto || !user) return;
 
@@ -219,6 +242,7 @@ const Campaign = () => {
           </Button>
           
           <div className="flex items-center gap-2">
+            <CartDrawer />
             <Camera className="h-6 w-6 text-primary" />
             <span className="font-semibold">Photo Arena</span>
           </div>
@@ -364,14 +388,23 @@ const Campaign = () => {
                         <span className="text-lg font-bold text-green-600">
                           {formatCurrency(photo.price)}
                         </span>
-                        <Button 
-                          size="sm" 
-                          onClick={() => handleBuyPhoto(photo)}
-                          className="gap-1"
-                        >
-                          <ShoppingCart className="h-3 w-3" />
-                          Comprar
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleAddToCart(photo)}
+                            className="gap-1"
+                          >
+                            <ShoppingCart className="h-3 w-3" />
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            onClick={() => handleBuyPhoto(photo)}
+                            className="gap-1"
+                          >
+                            Comprar
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </CardContent>
