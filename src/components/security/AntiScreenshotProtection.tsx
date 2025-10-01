@@ -23,7 +23,7 @@ const AntiScreenshotProtection: React.FC<AntiScreenshotProtectionProps> = ({ chi
 
     // Disable key combinations for developer tools and screenshots
     const handleKeyDown = (e: KeyboardEvent) => {
-      const key = e.key.toLowerCase();
+      const key = e.key ? e.key.toLowerCase() : '';
       if (
         e.key === 'F12' ||
         (e.ctrlKey && e.shiftKey && key === 'i') ||

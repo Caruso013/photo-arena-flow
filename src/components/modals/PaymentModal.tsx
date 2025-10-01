@@ -64,11 +64,11 @@ export default function PaymentModal({
   };
 
   const isFormValid = () => {
-    return buyerData.name && 
-           buyerData.surname && 
-           buyerData.email && 
-           buyerData.phone && 
-           buyerData.document;
+    return buyerData.name.length >= 2 && 
+           buyerData.surname.length >= 2 && 
+           buyerData.email.includes('@') && 
+           (buyerData.phone.length === 10 || buyerData.phone.length === 11) && 
+           buyerData.document.length === 11;
   };
 
   useEffect(() => {
@@ -269,25 +269,33 @@ export default function PaymentModal({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="phone">Telefone *</Label>
+                <Label htmlFor="phone">Telefone (10 ou 11 dígitos) *</Label>
                 <Input
                   id="phone"
                   value={buyerData.phone}
                   onChange={(e) => handleInputChange('phone', e.target.value.replace(/\D/g, ''))}
                   placeholder="11999999999"
                   maxLength={11}
+                  className={buyerData.phone && buyerData.phone.length < 10 ? 'border-red-500' : ''}
                 />
+                {buyerData.phone && buyerData.phone.length < 10 && (
+                  <p className="text-sm text-red-500">Digite o telefone completo (DDD + número)</p>
+                )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="document">CPF *</Label>
+                <Label htmlFor="document">CPF (11 dígitos) *</Label>
                 <Input
                   id="document"
                   value={buyerData.document}
                   onChange={(e) => handleInputChange('document', e.target.value.replace(/\D/g, ''))}
                   placeholder="00000000000"
                   maxLength={11}
+                  className={buyerData.document && buyerData.document.length < 11 ? 'border-red-500' : ''}
                 />
+                {buyerData.document && buyerData.document.length < 11 && (
+                  <p className="text-sm text-red-500">CPF deve conter 11 dígitos</p>
+                )}
               </div>
             </div>
 
