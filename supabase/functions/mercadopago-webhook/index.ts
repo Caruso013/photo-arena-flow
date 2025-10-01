@@ -14,10 +14,56 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const webhookSecret = Deno.env.get('MERCADO_PAGO_WEBHOOK_SECRET')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Validar assinatura do webhook
+    const xSignature = req.headers.get('x-signature');
+    const xRequestId = req.headers.get('x-request-id');
+    
+    if (!xSignature || !xRequestId) {
+      console.error('Missing signature headers');
+      return new Response(JSON.stringify({ error: 'Missing signature' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     const payload = await req.json();
     console.log('Webhook received:', JSON.stringify(payload, null, 2));
+
+    // Validar assinatura HMAC
+    const dataId = payload.data?.id || '';
+    const signatureData = `id:${dataId};request-id:${xRequestId};`;
+    
+    const encoder = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode(webhookSecret),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
+    
+    const signature = await crypto.subtle.sign(
+      'HMAC',
+      key,
+      encoder.encode(signatureData)
+    );
+    
+    const expectedSignature = Array.from(new Uint8Array(signature))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+    
+    const receivedSignature = xSignature.split(',')[0].split('=')[1];
+    
+    if (expectedSignature !== receivedSignature) {
+      console.error('Invalid signature');
+      return new Response(JSON.stringify({ error: 'Invalid signature' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     // Mercado Pago envia notificações com type="payment"
     if (payload.type === 'payment') {
