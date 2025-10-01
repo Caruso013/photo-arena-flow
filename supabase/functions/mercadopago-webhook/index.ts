@@ -121,23 +121,24 @@ serve(async (req) => {
         purchaseStatus = 'failed';
       }
 
-      const { error: updateError } = await supabase
-        .from('purchases')
-        .update({
-          status: purchaseStatus,
-          stripe_payment_intent_id: paymentId.toString(), // Reutilizando campo para armazenar payment_id do MP
-        })
-        .eq('id', externalReference);
+      // Suporta múltiplas purchases (separadas por vírgula)
+      const purchaseIds = externalReference.split(',');
+      
+      for (const purchaseId of purchaseIds) {
+        const { error: updateError } = await supabase
+          .from('purchases')
+          .update({
+            status: purchaseStatus,
+            stripe_payment_intent_id: paymentId.toString(),
+          })
+          .eq('id', purchaseId.trim());
 
-      if (updateError) {
-        console.error('Error updating purchase:', updateError);
-        return new Response(JSON.stringify({ error: 'Failed to update purchase' }), {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        if (updateError) {
+          console.error(`Error updating purchase ${purchaseId}:`, updateError);
+        } else {
+          console.log(`Purchase ${purchaseId} updated to ${purchaseStatus}`);
+        }
       }
-
-      console.log(`Purchase ${externalReference} updated to ${purchaseStatus}`);
 
       return new Response(JSON.stringify({ success: true, status: purchaseStatus }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

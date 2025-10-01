@@ -17,11 +17,11 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { photoId, photoTitle, price, buyerInfo, campaignId } = await req.json();
+    const { photos, buyerInfo, campaignId } = await req.json();
 
-    // Validação básica
-    if (!photoId || !price) {
-      return new Response(JSON.stringify({ success: false, error: 'Dados incompletos' }), {
+    // Validação básica - aceita múltiplas fotos
+    if (!photos || !Array.isArray(photos) || photos.length === 0) {
+      return new Response(JSON.stringify({ success: false, error: 'Nenhuma foto fornecida' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -40,20 +40,6 @@ serve(async (req) => {
       });
     }
 
-    // Buscar informações da foto
-    const { data: photo, error: photoError } = await supabase
-      .from('photos')
-      .select('photographer_id, campaign_id')
-      .eq('id', photoId)
-      .single();
-
-    if (photoError || !photo) {
-      return new Response(JSON.stringify({ success: false, error: 'Foto não encontrada' }), {
-        status: 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
     // Obter user_id do comprador pelo email
     const { data: userData } = await supabase.auth.admin.listUsers();
     const buyer = userData.users.find(u => u.email === buyerInfo.email);
@@ -65,22 +51,48 @@ serve(async (req) => {
       });
     }
 
-    // Criar purchase no banco
-    const { data: purchase, error: purchaseError } = await supabase
-      .from('purchases')
-      .insert({
-        photo_id: photoId,
-        buyer_id: buyer.id,
-        photographer_id: photo.photographer_id,
-        amount: price,
-        status: 'pending',
-      })
-      .select()
-      .single();
+    // Buscar informações de todas as fotos
+    const photoIds = photos.map(p => p.id);
+    const { data: photosData, error: photosError } = await supabase
+      .from('photos')
+      .select('id, photographer_id, campaign_id')
+      .in('id', photoIds);
 
-    if (purchaseError || !purchase) {
-      console.error('Error creating purchase:', purchaseError);
-      return new Response(JSON.stringify({ success: false, error: 'Erro ao criar compra' }), {
+    if (photosError || !photosData || photosData.length === 0) {
+      return new Response(JSON.stringify({ success: false, error: 'Fotos não encontradas' }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Calcular preço total
+    const totalAmount = photos.reduce((sum, p) => sum + Number(p.price), 0);
+
+    // Criar purchases no banco para cada foto
+    const purchases = [];
+    for (const photo of photos) {
+      const photoData = photosData.find(p => p.id === photo.id);
+      if (!photoData) continue;
+
+      const { data: purchase, error: purchaseError } = await supabase
+        .from('purchases')
+        .insert({
+          photo_id: photo.id,
+          buyer_id: buyer.id,
+          photographer_id: photoData.photographer_id,
+          amount: photo.price,
+          status: 'pending',
+        })
+        .select()
+        .single();
+
+      if (!purchaseError && purchase) {
+        purchases.push(purchase);
+      }
+    }
+
+    if (purchases.length === 0) {
+      return new Response(JSON.stringify({ success: false, error: 'Erro ao criar compras' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -95,22 +107,32 @@ serve(async (req) => {
       });
     }
 
+    // Preparar itens para Mercado Pago
+    const items = photos.map((photo) => ({
+      id: photo.id,
+      title: photo.title || 'Foto',
+      quantity: 1,
+      unit_price: Number(photo.price),
+      currency_id: 'BRL',
+    }));
+
+    // Usar IDs de todas as purchases separados por vírgula
+    const purchaseIds = purchases.map(p => p.id).join(',');
+
     const preferenceData = {
-      items: [
-        {
-          id: photoId,
-          title: photoTitle || 'Foto',
-          quantity: 1,
-          unit_price: Number(price),
-          currency_id: 'BRL',
-        },
-      ],
+      items,
       payer: {
         name: buyerInfo.name,
         surname: buyerInfo.surname,
         email: buyerInfo.email,
-        phone: buyerInfo.phone,
-        identification: buyerInfo.identification,
+        phone: {
+          area_code: buyerInfo.phone.substring(0, 2),
+          number: buyerInfo.phone.substring(2),
+        },
+        identification: {
+          type: 'CPF',
+          number: buyerInfo.document,
+        },
       },
       back_urls: {
         success: `${supabaseUrl.replace('.supabase.co', '.lovableproject.com')}/dashboard`,
@@ -118,7 +140,7 @@ serve(async (req) => {
         pending: `${supabaseUrl.replace('.supabase.co', '.lovableproject.com')}/dashboard`,
       },
       auto_return: 'approved',
-      external_reference: purchase.id,
+      external_reference: purchaseIds,
       notification_url: `${supabaseUrl}/functions/v1/mercadopago-webhook`,
       statement_descriptor: 'STA FOTOS',
     };
@@ -155,7 +177,7 @@ serve(async (req) => {
       preference_id: data.id,
       init_point: data.init_point,
       sandbox_init_point: data.sandbox_init_point,
-      purchase_id: purchase.id,
+      purchase_ids: purchaseIds,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

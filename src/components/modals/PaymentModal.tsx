@@ -22,12 +22,14 @@ interface Photo {
   price?: number;
   image_url?: string;
   watermarked_url?: string;
+  thumbnail_url?: string;
 }
 
 interface PaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  photo: Photo;
+  photo?: Photo; // Single photo (backwards compatibility)
+  photos?: Photo[]; // Multiple photos (cart)
   onPaymentSuccess?: (paymentData: any) => void;
 }
 
@@ -35,6 +37,7 @@ export default function PaymentModal({
   isOpen, 
   onClose, 
   photo, 
+  photos,
   onPaymentSuccess 
 }: PaymentModalProps) {
   const { user } = useAuth();
@@ -51,6 +54,11 @@ export default function PaymentModal({
     document: '',
   });
 
+  // Support both single photo and multiple photos (cart)
+  const itemsToProcess = photos && photos.length > 0 ? photos : (photo ? [photo] : []);
+  const totalPrice = itemsToProcess.reduce((sum, item) => sum + (item.price || 0), 0);
+  const totalItems = itemsToProcess.length;
+
   const handleInputChange = (field: string, value: string) => {
     setBuyerData(prev => ({ ...prev, [field]: value }));
   };
@@ -65,7 +73,7 @@ export default function PaymentModal({
 
   useEffect(() => {
     if (showCheckout && preferenceId && checkoutContainerRef.current && window.MercadoPago) {
-      const mp = new window.MercadoPago('APP_USR-a66d49dc-c48e-4308-ba84-95e798e90a95', {
+      const mp = new window.MercadoPago('APP_USR-896f557a-1803-4ffc-84e2-1325b14a96b4', {
         locale: 'pt-BR'
       });
 
@@ -86,7 +94,7 @@ export default function PaymentModal({
   }, [showCheckout, preferenceId]);
 
   const handlePayment = async () => {
-    if (!photo.price || !isFormValid()) {
+    if (itemsToProcess.length === 0 || !isFormValid()) {
       toast({
         title: "Dados incompletos",
         description: "Por favor, preencha todos os campos obrigatórios.",
@@ -102,23 +110,19 @@ export default function PaymentModal({
         name: buyerData.name,
         surname: buyerData.surname,
         email: buyerData.email,
-        phone: {
-          area_code: buyerData.phone.substring(0, 2),
-          number: buyerData.phone.substring(2),
-        },
-        identification: {
-          type: 'CPF',
-          number: buyerData.document,
-        },
+        phone: buyerData.phone,
+        document: buyerData.document,
       };
 
       const { data, error } = await supabase.functions.invoke('create-payment-preference', {
         body: {
-          photoId: photo.id,
-          photoTitle: photo.title || 'Foto',
-          price: photo.price,
+          photos: itemsToProcess.map(p => ({
+            id: p.id,
+            title: p.title || 'Foto',
+            price: p.price || 0,
+          })),
           buyerInfo,
-          campaignId: 'default-campaign',
+          campaignId: 'cart-purchase',
         },
       });
 
@@ -127,17 +131,11 @@ export default function PaymentModal({
       if (data.success && data.preference_id) {
         setPreferenceId(data.preference_id);
         setShowCheckout(true);
-        
-        localStorage.setItem(`payment_${photo.id}`, JSON.stringify({
-          preferenceId: data.preference_id,
-          photoId: photo.id,
-          amount: photo.price,
-          timestamp: Date.now(),
-        }));
       } else {
         throw new Error(data.error || 'Erro ao criar preferência de pagamento');
       }
     } catch (error) {
+      console.error('Payment error:', error);
       toast({
         title: "Erro no pagamento",
         description: "Não foi possível processar o pagamento. Tente novamente.",
@@ -187,19 +185,51 @@ export default function PaymentModal({
 
         {!showCheckout ? (
           <div className="space-y-6">
-            <div className="flex items-center gap-4 p-4 bg-muted rounded-lg">
-              <img 
-                src={photo.image_url || photo.watermarked_url} 
-                alt={photo.title || 'Foto'}
-                className="w-16 h-16 object-cover rounded"
-              />
-              <div className="flex-1">
-                <h4 className="font-medium">{photo.title || 'Foto'}</h4>
-                <p className="text-2xl font-bold text-green-600">
-                  {photo.price ? formatCurrency(photo.price) : 'R$ 0,00'}
-                </p>
+            {totalItems === 1 ? (
+              <div className="flex items-center gap-4 p-4 bg-muted rounded-lg">
+                <img 
+                  src={itemsToProcess[0].image_url || itemsToProcess[0].thumbnail_url || itemsToProcess[0].watermarked_url} 
+                  alt={itemsToProcess[0].title || 'Foto'}
+                  className="w-16 h-16 object-cover rounded"
+                />
+                <div className="flex-1">
+                  <h4 className="font-medium">{itemsToProcess[0].title || 'Foto'}</h4>
+                  <p className="text-2xl font-bold text-green-600">
+                    {formatCurrency(totalPrice)}
+                  </p>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <h4 className="font-medium">Resumo do carrinho</h4>
+                  <span className="text-sm text-muted-foreground">{totalItems} fotos</span>
+                </div>
+                <div className="max-h-48 overflow-y-auto space-y-2">
+                  {itemsToProcess.map((item, index) => (
+                    <div key={index} className="flex items-center gap-3 p-2 bg-muted rounded">
+                      <img 
+                        src={item.thumbnail_url || item.watermarked_url} 
+                        alt={item.title || 'Foto'}
+                        className="w-12 h-12 object-cover rounded"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{item.title || 'Foto'}</p>
+                        <p className="text-sm font-bold text-green-600">
+                          {formatCurrency(item.price || 0)}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex justify-between items-center pt-2 border-t">
+                  <span className="font-bold">Total:</span>
+                  <span className="text-2xl font-bold text-green-600">
+                    {formatCurrency(totalPrice)}
+                  </span>
+                </div>
+              </div>
+            )}
 
             <Separator />
 
@@ -299,15 +329,12 @@ export default function PaymentModal({
         ) : (
           <div className="space-y-4">
             <div className="flex items-center gap-4 p-4 bg-muted rounded-lg">
-              <img 
-                src={photo.image_url || photo.watermarked_url} 
-                alt={photo.title || 'Foto'}
-                className="w-12 h-12 object-cover rounded"
-              />
               <div className="flex-1">
-                <h4 className="font-medium text-sm">{photo.title || 'Foto'}</h4>
+                <h4 className="font-medium text-sm">
+                  {totalItems === 1 ? itemsToProcess[0].title || 'Foto' : `${totalItems} fotos`}
+                </h4>
                 <p className="text-xl font-bold text-green-600">
-                  {photo.price ? formatCurrency(photo.price) : 'R$ 0,00'}
+                  {formatCurrency(totalPrice)}
                 </p>
               </div>
             </div>
