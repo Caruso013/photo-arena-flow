@@ -74,7 +74,7 @@ class MercadoPagoService {
         expires: data.expires || false,
         expiration_date_from: data.expiration_date_from,
         expiration_date_to: data.expiration_date_to,
-        statement_descriptor: 'PHOTO ARENA',
+        statement_descriptor: 'STA FOTOS',
         // Additional security and configuration
         binary_mode: false,
         payment_methods: {

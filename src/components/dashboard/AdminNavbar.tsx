@@ -138,7 +138,7 @@ export default function AdminNavbar({
               <Camera className="h-5 w-5 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-xl font-bold">Photo Arena</h1>
+              <h1 className="text-xl font-bold">STA Fotos</h1>
               <Badge variant="outline" className="text-xs">
                 <Shield className="mr-1 h-3 w-3" />
                 Admin Panel

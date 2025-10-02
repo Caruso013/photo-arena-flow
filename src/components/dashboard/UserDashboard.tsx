@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from '@/components/ui/use-toast';
 import { Search, Camera, ShoppingCart, Download, FileImage, Filter, Eye, Calendar } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -503,6 +503,9 @@ const UserDashboard = () => {
                     </Button>
                   </div>
                 </DialogTitle>
+                <DialogDescription>
+                  Visualize e faça o download da sua foto em alta resolução.
+                </DialogDescription>
               </DialogHeader>
               
               <div className="px-6 pb-6">

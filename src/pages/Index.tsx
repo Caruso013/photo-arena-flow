@@ -161,54 +161,54 @@ const Index = () => {
               
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {campaigns.map((campaign) => (
-                  <Card key={campaign.id} className="overflow-hidden hover:shadow-lg transition-shadow group cursor-pointer border-2 hover:border-primary/20">
-                    <div className="aspect-video bg-gradient-dark relative">
-                      {campaign.cover_image_url ? (
-                        <WatermarkedPhoto
-                          src={campaign.cover_image_url}
-                          alt={campaign.title}
-                          position="full"
-                          opacity={0.3}
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-secondary">
-                          <div className="text-center text-secondary-foreground">
-                            <Camera className="h-16 w-16 mx-auto mb-4 text-primary" />
-                            <h3 className="text-xl font-bold mb-2">{campaign.title}</h3>
+                  <Link to={`/campaign/${campaign.id}`} key={campaign.id} className="group">
+                    <Card className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-primary/20">
+                      <div className="aspect-video bg-gradient-dark relative">
+                        {campaign.cover_image_url ? (
+                          <WatermarkedPhoto
+                            src={campaign.cover_image_url}
+                            alt={campaign.title}
+                            position="full"
+                            opacity={0.3}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-secondary">
+                            <div className="text-center text-secondary-foreground">
+                              <Camera className="h-16 w-16 mx-auto mb-4 text-primary" />
+                              <h3 className="text-xl font-bold mb-2">{campaign.title}</h3>
+                            </div>
                           </div>
-                        </div>
-                      )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                      <div className="absolute bottom-4 left-4 right-4 text-white">
-                        <h3 className="text-xl font-bold mb-1">{campaign.title}</h3>
-                        <div className="flex items-center gap-4 text-sm">
-                          <div className="flex items-center gap-1">
-                            <MapPin className="h-3 w-3" />
-                            <span>{campaign.location}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            <span>{new Date(campaign.event_date).toLocaleDateString()}</span>
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                        <div className="absolute bottom-4 left-4 right-4 text-white">
+                          <h3 className="text-xl font-bold mb-1 group-hover:text-primary transition-colors">{campaign.title}</h3>
+                          <div className="flex items-center gap-4 text-sm">
+                            <div className="flex items-center gap-1">
+                              <MapPin className="h-3 w-3" />
+                              <span>{campaign.location}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              <span>{new Date(campaign.event_date).toLocaleDateString()}</span>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                    
-                    <CardContent className="p-4">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <p className="text-sm text-muted-foreground">
-                            Por: {campaign.photographer?.full_name}
-                          </p>
-                        </div>
-                        <Link to={`/campaign/${campaign.id}`}>
+                      
+                      <CardContent className="p-4">
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <p className="text-sm text-muted-foreground">
+                              Por: {campaign.photographer?.full_name}
+                            </p>
+                          </div>
                           <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90">
                             Ver Fotos
                           </Button>
-                        </Link>
-                      </div>
-                    </CardContent>
-                  </Card>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
                 ))}
               </div>
             </>
