@@ -140,6 +140,32 @@ serve(async (req) => {
         }
       }
 
+      // Se o pagamento foi aprovado, enviar email de confirmação
+      if (purchaseStatus === 'completed') {
+        console.log('Sending purchase confirmation email...');
+        try {
+          const emailResponse = await fetch(
+            `${supabaseUrl}/functions/v1/send-purchase-confirmation`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${supabaseServiceKey}`,
+              },
+              body: JSON.stringify({ purchaseIds }),
+            }
+          );
+
+          if (!emailResponse.ok) {
+            console.error('Failed to send confirmation email:', await emailResponse.text());
+          } else {
+            console.log('Confirmation email sent successfully');
+          }
+        } catch (emailError) {
+          console.error('Error calling email function:', emailError);
+        }
+      }
+
       return new Response(JSON.stringify({ success: true, status: purchaseStatus }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
