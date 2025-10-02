@@ -120,7 +120,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signUp = async (email: string, password: string, fullName?: string) => {
     const redirectUrl = 'https://www.stafotos.com/';
     
-    const { error } = await supabase.auth.signUp({
+    console.log('Iniciando cadastro para:', email);
+    
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -132,19 +134,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     if (error) {
+      console.error('Erro no cadastro:', error);
       toast({
         title: "Erro no cadastro",
         description: error.message,
         variant: "destructive",
       });
     } else {
+      console.log('Cadastro realizado com sucesso para:', email);
+      
       // Enviar email de boas-vindas via edge function
+      console.log('Tentando enviar email de boas-vindas...');
+      
       try {
-        await supabase.functions.invoke('send-welcome-email', {
+        const { data: emailData, error: emailError } = await supabase.functions.invoke('send-welcome-email', {
           body: { email, fullName: fullName || 'Usuário' }
         });
+        
+        if (emailError) {
+          console.error('Erro ao enviar email de boas-vindas:', emailError);
+        } else {
+          console.log('Email de boas-vindas enviado com sucesso:', emailData);
+        }
       } catch (emailError) {
-        console.error('Erro ao enviar email de boas-vindas:', emailError);
+        console.error('Exceção ao enviar email de boas-vindas:', emailError);
       }
 
       toast({
