@@ -119,7 +119,7 @@ serve(async (req) => {
               </div>
 
               <div style="text-align: center; margin: 30px 0;">
-                <a href="https://gtpqppvyjrnnuhlsbpqd.supabase.co" 
+                <a href="https://www.stafotos.com/dashboard" 
                    style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 25px; font-weight: bold;">
                   Acessar Minhas Compras
                 </a>
@@ -143,7 +143,7 @@ serve(async (req) => {
       console.log(`Sending email to ${email}`);
       
       const emailResponse = await resend.emails.send({
-        from: 'STA Fotos <onboarding@resend.dev>',
+        from: 'STA Fotos <noreply@stafotos.com>',
         to: [email],
         subject: `✅ Compra Confirmada - ${data.purchases.length} ${data.purchases.length === 1 ? 'foto' : 'fotos'}`,
         html,
