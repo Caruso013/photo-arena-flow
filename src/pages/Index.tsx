@@ -165,11 +165,10 @@ const Index = () => {
                     <Card className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-primary/20">
                       <div className="aspect-video bg-gradient-dark relative">
                         {campaign.cover_image_url ? (
-                          <WatermarkedPhoto
+                          <img
                             src={campaign.cover_image_url}
                             alt={campaign.title}
-                            position="full"
-                            opacity={0.3}
+                            className="w-full h-full object-cover"
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center bg-secondary">
