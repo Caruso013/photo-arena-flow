@@ -17,7 +17,7 @@ const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = ({
   imgClassName = 'w-full h-full object-cover',
   watermarkClassName = '',
   position = 'full',
-  opacity = 0.6,
+  opacity = 0.85,
 }) => {
   const watermarkPositionClass =
     position === 'center'
