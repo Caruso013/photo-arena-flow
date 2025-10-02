@@ -76,13 +76,13 @@ serve(async (req) => {
       const totalAmount = data.purchases.reduce((sum, p) => sum + Number(p.amount), 0);
       
       const photosHtml = data.purchases.map(p => `
-        <div style="margin-bottom: 20px; padding: 15px; border: 1px solid #e0e0e0; border-radius: 8px;">
-          <h3 style="margin: 0 0 10px 0; color: #333;">${p.photo.title || 'Foto'}</h3>
-          <p style="margin: 5px 0; color: #666;">
-            <strong>Evento:</strong> ${p.photo.campaign.title}<br>
-            <strong>Valor:</strong> R$ ${Number(p.amount).toFixed(2)}
+        <div style="margin-bottom: 20px; padding: 15px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <h3 style="margin: 0 0 10px 0; color: #0d0d0d; font-size: 16px;">${p.photo.title || 'Foto'}</h3>
+          <p style="margin: 5px 0; color: #666; font-size: 14px;">
+            <strong style="color: #e6b800;">Evento:</strong> ${p.photo.campaign.title}<br>
+            <strong style="color: #e6b800;">Valor:</strong> R$ ${Number(p.amount).toFixed(2)}
           </p>
-          <img src="${p.photo.watermarked_url}" alt="${p.photo.title}" style="max-width: 100%; height: auto; border-radius: 4px; margin-top: 10px;">
+          <img src="${p.photo.watermarked_url}" alt="${p.photo.title}" style="max-width: 100%; height: auto; border-radius: 4px; margin-top: 10px; border: 2px solid #e6b800;">
         </div>
       `).join('');
 
@@ -93,47 +93,61 @@ serve(async (req) => {
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
           </head>
-          <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
-              <h1 style="color: white; margin: 0;">Compra Confirmada! 🎉</h1>
+          <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 0; background: #f5f5f5;">
+            <!-- Header com Logo e Preto STA -->
+            <div style="background: #0d0d0d; padding: 30px 20px; text-align: center;">
+              <img src="https://www.stafotos.com/lovable-uploads/6fdfc5d2-230c-4142-bf7c-3a326e5e45a8.png" alt="STA Fotos" style="height: 50px; margin-bottom: 15px;">
+              <h1 style="color: #e6b800; margin: 0; font-size: 28px; font-weight: bold;">Compra Confirmada! 🎉</h1>
             </div>
             
-            <div style="padding: 30px; background: #f9f9f9;">
-              <p style="font-size: 16px; margin-bottom: 20px;">
-                Olá <strong>${data.buyerName}</strong>,
+            <!-- Corpo do Email -->
+            <div style="padding: 30px 20px; background: #ffffff;">
+              <p style="font-size: 16px; margin-bottom: 20px; color: #333;">
+                Olá <strong style="color: #e6b800;">${data.buyerName}</strong>,
               </p>
               
-              <p style="font-size: 16px; margin-bottom: 20px;">
+              <p style="font-size: 16px; margin-bottom: 25px; color: #333;">
                 Sua compra foi confirmada com sucesso! Você já pode fazer o download das suas fotos em alta resolução na área "Minhas Compras" do dashboard.
               </p>
 
-              <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-                <h2 style="color: #667eea; margin-top: 0;">Detalhes da Compra</h2>
+              <!-- Detalhes da Compra -->
+              <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin-bottom: 25px; border-left: 4px solid #e6b800;">
+                <h2 style="color: #0d0d0d; margin-top: 0; font-size: 20px; font-weight: bold;">Detalhes da Compra</h2>
                 ${photosHtml}
                 
-                <div style="margin-top: 20px; padding-top: 20px; border-top: 2px solid #667eea;">
-                  <p style="font-size: 18px; margin: 0;">
-                    <strong>Total:</strong> <span style="color: #667eea;">R$ ${totalAmount.toFixed(2)}</span>
+                <div style="margin-top: 20px; padding-top: 20px; border-top: 2px solid #e6b800;">
+                  <p style="font-size: 18px; margin: 0; color: #0d0d0d;">
+                    <strong>Total:</strong> <span style="color: #e6b800; font-weight: bold;">R$ ${totalAmount.toFixed(2)}</span>
                   </p>
                 </div>
               </div>
 
+              <!-- Botão de Ação -->
               <div style="text-align: center; margin: 30px 0;">
                 <a href="https://www.stafotos.com/dashboard" 
-                   style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 25px; font-weight: bold;">
+                   style="display: inline-block; padding: 15px 40px; background: #e6b800; color: #0d0d0d; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
                   Acessar Minhas Compras
                 </a>
               </div>
 
-              <p style="font-size: 14px; color: #666; margin-top: 30px;">
-                <strong>Importante:</strong> As fotos ficam disponíveis para download na sua área de "Minhas Compras". Você pode baixá-las a qualquer momento.
-              </p>
+              <!-- Informação Importante -->
+              <div style="background: #fff8dc; border-left: 4px solid #e6b800; padding: 15px; margin-top: 25px; border-radius: 4px;">
+                <p style="font-size: 14px; color: #333; margin: 0;">
+                  <strong style="color: #e6b800;">💡 Importante:</strong> As fotos ficam disponíveis para download na sua área de "Minhas Compras". Você pode baixá-las a qualquer momento.
+                </p>
+              </div>
             </div>
 
-            <div style="padding: 20px; background: #333; color: white; text-align: center; border-radius: 0 0 8px 8px;">
-              <p style="margin: 0; font-size: 14px;">
-                Obrigado por sua compra!<br>
-                © 2025 STA Fotos
+            <!-- Footer Preto STA -->
+            <div style="padding: 25px 20px; background: #0d0d0d; color: #fafafa; text-align: center;">
+              <p style="margin: 0 0 10px 0; font-size: 14px;">
+                Obrigado por sua compra!
+              </p>
+              <p style="margin: 0; font-size: 12px; color: #999;">
+                © 2025 STA Fotos - Todos os direitos reservados
+              </p>
+              <p style="margin: 10px 0 0 0; font-size: 12px;">
+                <a href="https://www.stafotos.com" style="color: #e6b800; text-decoration: none;">www.stafotos.com</a>
               </p>
             </div>
           </body>
