@@ -345,12 +345,10 @@ const Campaign = () => {
               {photos.map((photo) => (
                 <Card key={photo.id} className="overflow-hidden hover:shadow-lg transition-shadow">
                   <div className="aspect-square bg-gradient-subtle relative">
-                    <WatermarkedPhoto
+                    <img
                       src={photo.thumbnail_url || photo.watermarked_url}
                       alt={photo.title || 'Foto'}
-                      position="full"
-                      opacity={0.25}
-                      imgClassName="w-full h-full object-cover"
+                      className="w-full h-full object-cover"
                     />
                     <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
                       <Dialog>
@@ -366,12 +364,10 @@ const Campaign = () => {
                           </DialogHeader>
                           <div className="relative">
                             <AntiScreenshotProtection>
-                              <WatermarkedPhoto
+                              <img
                                 src={photo.watermarked_url || photo.original_url}
                                 alt={photo.title || 'Foto'}
-                                position="full"
-                                opacity={0.25}
-                                imgClassName="w-full max-h-[70vh] object-contain rounded-lg"
+                                className="w-full max-h-[70vh] object-contain rounded-lg"
                               />
                             </AntiScreenshotProtection>
                           </div>
