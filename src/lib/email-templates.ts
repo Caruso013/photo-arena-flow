@@ -37,7 +37,7 @@ export const getEmailHeader = (options: EmailTemplateOptions = {}) => {
         font-weight: bold;
         margin: 0;
         text-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      ">Photo Arena - STA Fotos</h1>
+      ">STA Fotos</h1>
       <p style="
         color: #000;
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -143,7 +143,7 @@ export const getEmailFooter = (options: EmailTemplateOptions = {}) => {
           font-size: 14px;
           color: #999;
           margin: 10px 0;
-        ">© ${new Date().getFullYear()} STA Fotos - Photo Arena. Todos os direitos reservados.</p>
+        ">© ${new Date().getFullYear()} STA Fotos. Todos os direitos reservados.</p>
         
         <div style="
           display: inline-flex;
@@ -352,7 +352,7 @@ export const createPurchaseConfirmationEmail = (
               padding-left: 20px;
             ">
               <li>Clique no botão "Baixar Foto Original" acima</li>
-              <li>Ou acesse sua conta no Photo Arena e vá em "Minhas Fotos Compradas"</li>
+              <li>Ou acesse sua conta no STA Fotos e vá em "Minhas Fotos Compradas"</li>
               <li>A foto será baixada em alta resolução, sem marca d'água</li>
             </ol>
           </div>
@@ -540,7 +540,7 @@ export const createWelcomeEmail = (
 ) => {
   const roleMessages = {
     user: {
-      title: 'Bem-vindo ao Photo Arena!',
+      title: 'Bem-vindo ao STA Fotos!',
       content: 'Agora você pode navegar pelos eventos esportivos e encontrar suas melhores fotos. Explore nossos eventos em destaque e encontre momentos únicos capturados pelos melhores fotógrafos esportivos.',
       cta: 'Explorar Eventos',
       ctaUrl: `${options.baseUrl || DEFAULT_OPTIONS.baseUrl}/events`
@@ -610,7 +610,7 @@ export const createWelcomeEmail = (
             text-align: center;
             margin: 25px 0;
           ">
-            <h3 style="margin: 0 0 10px 0; font-size: 18px;">🏆 Por que escolher o Photo Arena?</h3>
+            <h3 style="margin: 0 0 10px 0; font-size: 18px;">🏆 Por que escolher o STA Fotos?</h3>
             <div style="
               display: grid;
               grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));

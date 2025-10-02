@@ -133,7 +133,7 @@ serve(async (req) => {
             <div style="padding: 20px; background: #333; color: white; text-align: center; border-radius: 0 0 8px 8px;">
               <p style="margin: 0; font-size: 14px;">
                 Obrigado por sua compra!<br>
-                © 2025 Photo Arena
+                © 2025 STA Fotos
               </p>
             </div>
           </body>
@@ -143,7 +143,7 @@ serve(async (req) => {
       console.log(`Sending email to ${email}`);
       
       const emailResponse = await resend.emails.send({
-        from: 'Photo Arena <onboarding@resend.dev>',
+        from: 'STA Fotos <onboarding@resend.dev>',
         to: [email],
         subject: `✅ Compra Confirmada - ${data.purchases.length} ${data.purchases.length === 1 ? 'foto' : 'fotos'}`,
         html,

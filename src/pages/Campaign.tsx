@@ -244,7 +244,7 @@ const Campaign = () => {
           <div className="flex items-center gap-2">
             <CartDrawer />
             <Camera className="h-6 w-6 text-primary" />
-            <span className="font-semibold">Photo Arena</span>
+            <span className="font-semibold">STA Fotos</span>
           </div>
         </div>
       </header>
