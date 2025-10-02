@@ -2,7 +2,6 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
-import { sendRegistrationConfirmationEmail } from '@/lib/email';
 
 export type UserRole = 'user' | 'photographer' | 'admin';
 export type OrganizationRole = 'admin' | 'organization' | 'photographer' | 'user';
@@ -139,18 +138,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         variant: "destructive",
       });
     } else {
-      // Enviar email de confirmação de cadastro
+      // Enviar email de boas-vindas via edge function
       try {
-        await sendRegistrationConfirmationEmail(
-          email,
-          fullName || 'Usuário',
-          {
-            userType: 'Usuário',
-            registrationDate: new Date().toISOString(),
-          }
-        );
+        await supabase.functions.invoke('send-welcome-email', {
+          body: { email, fullName: fullName || 'Usuário' }
+        });
       } catch (emailError) {
-        // Silent fail - email não é crítico
+        console.error('Erro ao enviar email de boas-vindas:', emailError);
       }
 
       toast({
