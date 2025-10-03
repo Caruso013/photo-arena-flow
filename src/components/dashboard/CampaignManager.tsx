@@ -11,6 +11,7 @@ import { toast } from '@/components/ui/use-toast';
 import { Camera, Edit, Power, PowerOff, MapPin, Calendar, Plus, Trash2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import CreateCampaignModal from '../modals/CreateCampaignModal';
+import { CampaignPhotographersManager } from './CampaignPhotographersManager';
 
 interface Campaign {
   id: string;
@@ -208,43 +209,51 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => openEditDialog(campaign)}
-                        className="gap-1"
-                      >
-                        <Edit className="h-4 w-4" />
-                        Editar
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant={campaign.is_active ? 'destructive' : 'default'}
-                        onClick={() => handleToggleActive(campaign)}
-                        className="gap-1"
-                      >
-                        {campaign.is_active ? (
-                          <>
-                            <PowerOff className="h-4 w-4" />
-                            Desativar
-                          </>
-                        ) : (
-                          <>
-                            <Power className="h-4 w-4" />
-                            Ativar
-                          </>
-                        )}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => openDeleteDialog(campaign)}
-                        className="gap-1"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        Excluir
-                      </Button>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2">
+                        <CampaignPhotographersManager
+                          campaignId={campaign.id}
+                          campaignTitle={campaign.title}
+                        />
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => openEditDialog(campaign)}
+                          className="gap-1"
+                        >
+                          <Edit className="h-4 w-4" />
+                          Editar
+                        </Button>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant={campaign.is_active ? 'destructive' : 'default'}
+                          onClick={() => handleToggleActive(campaign)}
+                          className="gap-1"
+                        >
+                          {campaign.is_active ? (
+                            <>
+                              <PowerOff className="h-4 w-4" />
+                              Desativar
+                            </>
+                          ) : (
+                            <>
+                              <Power className="h-4 w-4" />
+                              Ativar
+                            </>
+                          )}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => openDeleteDialog(campaign)}
+                          className="gap-1"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Excluir
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
