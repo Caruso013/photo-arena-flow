@@ -34,14 +34,22 @@ export const UserRoleManager: React.FC<UserRoleManagerProps> = ({
   const promoteToPhotographer = async () => {
     try {
       setUpdating(true);
+      
+      console.log('Promovendo usuário:', userId);
 
       // Atualizar o campo role na tabela profiles
-      const { error: profileError } = await supabase
+      const { data, error: profileError } = await supabase
         .from('profiles')
         .update({ role: 'photographer' })
-        .eq('id', userId);
+        .eq('id', userId)
+        .select();
 
-      if (profileError) throw profileError;
+      console.log('Resultado da atualização:', { data, error: profileError });
+
+      if (profileError) {
+        console.error('Erro ao promover:', profileError);
+        throw profileError;
+      }
 
       toast({
         title: "Usuário promovido!",
@@ -53,7 +61,7 @@ export const UserRoleManager: React.FC<UserRoleManagerProps> = ({
       console.error('Error promoting user:', error);
       toast({
         title: "Erro",
-        description: "Falha ao promover usuário",
+        description: `Falha ao promover usuário: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
         variant: "destructive",
       });
     } finally {
