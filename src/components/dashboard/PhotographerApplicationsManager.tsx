@@ -17,7 +17,7 @@ interface Application {
   portfolio_url: string | null;
   equipment: string | null;
   experience_years: number | null;
-  applied_at: string;
+  created_at: string;
   rejection_reason: string | null;
   user: {
     email: string;
@@ -48,7 +48,7 @@ export const PhotographerApplicationsManager = () => {
             full_name
           )
         `)
-        .order('applied_at', { ascending: false });
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
       setApplications((data as Application[]) || []);
@@ -218,7 +218,7 @@ export const PhotographerApplicationsManager = () => {
                         </div>
                         <div className="flex items-center gap-2">
                           <Calendar className="h-4 w-4 text-primary" />
-                          <span>{new Date(app.applied_at).toLocaleDateString('pt-BR')}</span>
+                          <span>{new Date(app.created_at).toLocaleDateString('pt-BR')}</span>
                         </div>
                       </div>
 
@@ -304,7 +304,7 @@ export const PhotographerApplicationsManager = () => {
                     <div className="text-right space-y-1">
                       {getStatusBadge(app.status)}
                       <p className="text-xs text-muted-foreground">
-                        {new Date(app.applied_at).toLocaleDateString('pt-BR')}
+                        {new Date(app.created_at).toLocaleDateString('pt-BR')}
                       </p>
                     </div>
                   </div>
