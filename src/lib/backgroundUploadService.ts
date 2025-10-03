@@ -268,13 +268,12 @@ class BackgroundUploadService {
     }
   }
 
-  // Mostrar notificações finais
   private showFinalNotifications() {
     for (const batch of this.uploads.values()) {
       if (batch.status === 'completed') {
         toast({
-          title: "Upload concluído!",
-          description: `${batch.completedFiles} foto(s) enviadas com sucesso.`,
+          title: "🎉 Upload concluído!",
+          description: `${batch.completedFiles} foto(s) enviadas com sucesso e já estão disponíveis no seu evento!`,
         });
 
         // Notificar service worker
@@ -282,8 +281,8 @@ class BackgroundUploadService {
         
       } else if (batch.status === 'partially_failed') {
         toast({
-          title: "Upload parcialmente concluído",
-          description: `${batch.completedFiles} foto(s) enviadas. ${batch.failedFiles} falharam.`,
+          title: "⚠️ Upload parcialmente concluído",
+          description: `${batch.completedFiles} foto(s) enviadas com sucesso. ${batch.failedFiles} falharam e podem ser reenviadas.`,
           variant: "destructive",
         });
 
@@ -292,8 +291,8 @@ class BackgroundUploadService {
         
       } else if (batch.status === 'failed') {
         toast({
-          title: "Falha no upload",
-          description: `Não foi possível enviar as fotos. Verifique sua conexão e tente novamente.`,
+          title: "❌ Falha no upload",
+          description: `Não foi possível enviar as fotos. Verifique sua conexão com a internet e tente novamente.`,
           variant: "destructive",
         });
 

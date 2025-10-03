@@ -103,7 +103,7 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
     }
   };
 
-  const MAX_FILE_SIZE = 2.5 * 1024 * 1024; // 2.5MB em bytes
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // Aumentar para 10MB em bytes
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files;
@@ -124,7 +124,7 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
     if (invalidFiles.length > 0) {
       toast({
         title: "Arquivos muito grandes",
-        description: `Os seguintes arquivos excedem 2.5MB e não serão incluídos: ${invalidFiles.join(', ')}. Por favor, reduza o tamanho das imagens.`,
+        description: `Os seguintes arquivos excedem 10MB e não serão incluídos: ${invalidFiles.join(', ')}. Por favor, reduza o tamanho das imagens ou use uma ferramenta de compressão.`,
         variant: "destructive",
       });
       
@@ -176,8 +176,8 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
 
     // Informar sucesso e permitir que o modal seja fechado
     toast({
-      title: "Upload iniciado em background",
-      description: "Suas fotos foram adicionadas à fila de upload. Você pode fechar esta janela e continuar navegando. O progresso será mostrado no canto da tela.",
+      title: "✅ Upload iniciado!",
+      description: `${files.length} foto(s) adicionadas à fila. O upload continuará em background. Acompanhe o progresso no canto inferior direito da tela.`,
     });
 
     // Callback para atualizar a interface
@@ -298,7 +298,7 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
               </div>
             )}
             <p className="text-xs text-muted-foreground">
-              Tamanho máximo por arquivo: 2.5MB
+              Tamanho máximo por arquivo: 10MB. Selecione múltiplas fotos de uma vez.
             </p>
           </div>
 
