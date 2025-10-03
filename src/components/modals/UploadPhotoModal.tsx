@@ -8,8 +8,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
-import { Upload, X, Camera, CheckCircle2, Clock } from 'lucide-react';
+import { Upload, X, Camera, CheckCircle2, Clock, FolderOpen, Image as ImageIcon, Info } from 'lucide-react';
 import { backgroundUploadService } from '@/lib/backgroundUploadService';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface Campaign {
   id: string;
@@ -103,11 +104,24 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
     }
   };
 
-  const MAX_FILE_SIZE = 10 * 1024 * 1024; // Aumentar para 10MB em bytes
+  const MAX_FILE_SIZE = 2.5 * 1024 * 1024; // 2.5MB por arquivo
+  const MAX_FILES = 150; // Máximo de 150 fotos por upload
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files;
     if (!selectedFiles) return;
+
+    // Validar número máximo de arquivos
+    if (selectedFiles.length > MAX_FILES) {
+      toast({
+        title: "Muitos arquivos selecionados",
+        description: `Você selecionou ${selectedFiles.length} fotos. O máximo é ${MAX_FILES} fotos por upload. Por favor, divida em lotes menores.`,
+        variant: "destructive",
+      });
+      e.target.value = '';
+      setFiles(null);
+      return;
+    }
 
     // Validar tamanho de cada arquivo
     const invalidFiles: string[] = [];
@@ -123,8 +137,8 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
 
     if (invalidFiles.length > 0) {
       toast({
-        title: "Arquivos muito grandes",
-        description: `Os seguintes arquivos excedem 10MB e não serão incluídos: ${invalidFiles.join(', ')}. Por favor, reduza o tamanho das imagens ou use uma ferramenta de compressão.`,
+        title: "Alguns arquivos são muito grandes",
+        description: `${invalidFiles.length} arquivos excedem 2.5MB e foram removidos. ${validFiles.length} fotos válidas selecionadas.`,
         variant: "destructive",
       });
       
@@ -216,106 +230,191 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
             </div>
           ) : (
             <>
+          {/* Explicação da estrutura */}
+          <Alert className="bg-blue-50 border-blue-200">
+            <Info className="h-4 w-4 text-blue-600" />
+            <AlertDescription className="text-sm text-blue-900">
+              <strong>Como funciona:</strong> Selecione um <strong>Evento</strong> e opcionalmente uma <strong>Pasta (Álbum)</strong> dentro dele para organizar suas fotos.
+            </AlertDescription>
+          </Alert>
+
           <div className="space-y-2">
-            <Label htmlFor="campaign">Evento *</Label>
+            <div className="flex items-center gap-2">
+              <Camera className="h-4 w-4 text-primary" />
+              <Label htmlFor="campaign" className="font-semibold">
+                1. Evento Principal *
+              </Label>
+            </div>
             <Select value={selectedCampaign} onValueChange={setSelectedCampaign}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione um evento" />
+              <SelectTrigger className="h-11">
+                <SelectValue placeholder="Escolha o evento esportivo" />
               </SelectTrigger>
               <SelectContent>
                 {campaigns.map((campaign) => (
                   <SelectItem key={campaign.id} value={campaign.id}>
-                    {campaign.title}
+                    📸 {campaign.title}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            <p className="text-xs text-muted-foreground flex items-center gap-1">
+              <ImageIcon className="h-3 w-3" />
+              O evento onde as fotos serão exibidas (ex: "Campeonato 2025")
+            </p>
           </div>
 
-          {selectedCampaign && subEvents.length > 0 && (
-            <div className="space-y-2">
-              <Label htmlFor="subEvent">Álbum (opcional)</Label>
-              <Select value={selectedSubEvent} onValueChange={setSelectedSubEvent}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um álbum ou deixe em branco" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">Sem álbum específico</SelectItem>
-                  {subEvents.map((subEvent) => (
-                    <SelectItem key={subEvent.id} value={subEvent.id}>
-                      {subEvent.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                Organize suas fotos em álbuns dentro do evento
-              </p>
+          {selectedCampaign && (
+            <div className="space-y-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <div className="flex items-center gap-2">
+                <FolderOpen className="h-4 w-4 text-amber-700" />
+                <Label htmlFor="subEvent" className="font-semibold text-amber-900">
+                  2. Pasta/Álbum (Opcional)
+                </Label>
+              </div>
+              
+              {subEvents.length > 0 ? (
+                <>
+                  <Select value={selectedSubEvent} onValueChange={setSelectedSubEvent}>
+                    <SelectTrigger className="h-11 bg-white">
+                      <SelectValue placeholder="📁 Escolha uma pasta ou deixe em branco" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">
+                        <span className="flex items-center gap-2">
+                          📂 Sem pasta específica (raiz do evento)
+                        </span>
+                      </SelectItem>
+                      {subEvents.map((subEvent) => (
+                        <SelectItem key={subEvent.id} value={subEvent.id}>
+                          <span className="flex items-center gap-2">
+                            📁 {subEvent.title}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-amber-800 font-medium flex items-center gap-1">
+                    <Info className="h-3 w-3" />
+                    Organize suas fotos em pastas para facilitar a navegação (ex: "Jogo Final", "Treino", etc)
+                  </p>
+                </>
+              ) : (
+                <div className="p-3 bg-white rounded border border-amber-300">
+                  <p className="text-sm text-amber-900">
+                    💡 Nenhuma pasta criada neste evento ainda. Suas fotos ficarão na pasta principal do evento.
+                  </p>
+                  <p className="text-xs text-amber-700 mt-1">
+                    Dica: Admins podem criar pastas no painel administrativo para melhor organização
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
-          <div className="space-y-2">
-            <Label htmlFor="title">Título das fotos (opcional)</Label>
-            <Input
-              id="title"
-              placeholder="Ex: Final do Campeonato"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="title" className="text-sm">
+                Título (opcional)
+              </Label>
+              <Input
+                id="title"
+                placeholder="Ex: Final do Campeonato"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="h-10"
+              />
+              <p className="text-xs text-muted-foreground">
+                Mesmo título para todas as fotos
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="price" className="text-sm font-semibold">
+                Preço por foto (R$) *
+              </Label>
+              <Input
+                id="price"
+                type="number"
+                step="0.01"
+                min="0"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                className="h-10 font-medium"
+              />
+              <p className="text-xs text-green-700 font-medium">
+                💰 Você receberá % por venda
+              </p>
+            </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="price">Preço por foto (R$)</Label>
-            <Input
-              id="price"
-              type="number"
-              step="0.01"
-              min="0"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="files">Selecionar fotos</Label>
+            <Label htmlFor="files" className="font-semibold flex items-center gap-2">
+              <Upload className="h-4 w-4" />
+              3. Selecionar fotos (até {MAX_FILES} fotos)
+            </Label>
             <Input
               id="files"
               type="file"
               multiple
               accept="image/*"
               onChange={handleFileSelect}
+              className="cursor-pointer"
             />
             {files && (
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-green-600">
-                  ✓ {files.length} arquivo(s) selecionado(s)
+              <div className="space-y-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-sm font-semibold text-green-900 flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4" />
+                  {files.length} foto(s) pronta(s) para envio
                 </p>
-                {Array.from(files).map((file, index) => (
-                  <p key={index} className="text-xs text-muted-foreground">
-                    {file.name} - {(file.size / 1024 / 1024).toFixed(2)}MB
+                <div className="max-h-32 overflow-y-auto space-y-1">
+                  {Array.from(files).slice(0, 10).map((file, index) => (
+                    <p key={index} className="text-xs text-green-800 flex items-center gap-2">
+                      <ImageIcon className="h-3 w-3" />
+                      {file.name} - {(file.size / 1024 / 1024).toFixed(2)}MB
+                    </p>
+                  ))}
+                  {files.length > 10 && (
+                    <p className="text-xs text-green-700 font-medium">
+                      + {files.length - 10} fotos a mais...
+                    </p>
+                  )}
+                </div>
+                <div className="pt-2 border-t border-green-300">
+                  <p className="text-xs text-green-800">
+                    📊 Total: {(Array.from(files).reduce((sum, f) => sum + f.size, 0) / 1024 / 1024).toFixed(2)}MB
                   </p>
-                ))}
+                </div>
               </div>
             )}
-            <p className="text-xs text-muted-foreground">
-              Tamanho máximo por arquivo: 10MB. Selecione múltiplas fotos de uma vez.
-            </p>
+            <div className="flex items-start gap-2 p-2 bg-blue-50 rounded">
+              <Info className="h-4 w-4 text-blue-600 mt-0.5" />
+              <div className="text-xs text-blue-900">
+                <p className="font-medium">Limites:</p>
+                <p>• Máximo: <strong>{MAX_FILES} fotos</strong> por envio</p>
+                <p>• Tamanho: <strong>2.5MB</strong> por foto</p>
+                <p className="text-blue-700 mt-1">💡 Para 100+ fotos, o upload continuará em background mesmo se você fechar esta janela!</p>
+              </div>
+            </div>
           </div>
 
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={onClose} disabled={uploading}>
+          <div className="flex justify-end gap-2 pt-2 border-t">
+            <Button variant="outline" onClick={onClose} disabled={uploading} className="h-10">
               Cancelar
             </Button>
-            <Button onClick={handleUpload} disabled={uploading || !files || !selectedCampaign}>
+            <Button 
+              onClick={handleUpload} 
+              disabled={uploading || !files || !selectedCampaign}
+              className="h-10 min-w-[200px] bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
+            >
               {uploading ? (
                 <>
                   <Clock className="h-4 w-4 mr-2 animate-spin" />
-                  Adicionando à fila...
+                  Preparando...
                 </>
               ) : (
                 <>
-                  <CheckCircle2 className="h-4 w-4 mr-2" />
-                  Enviar em Background
+                  <Upload className="h-4 w-4 mr-2" />
+                  Enviar {files?.length || 0} foto(s) em Background
                 </>
               )}
             </Button>
