@@ -1,73 +1,200 @@
-# Welcome to your Lovable project
+# STA Fotos - Plataforma de Fotografia Esportiva
 
-## Project info
+## Visão Geral
 
-**URL**: https://lovable.dev/projects/4655e098-d521-432b-b04b-ccd6dfe631f7
+STA Fotos é uma plataforma moderna e completa para comercialização de fotografias esportivas, conectando fotógrafos profissionais com atletas, familiares e organizadores de eventos.
 
-## How can I edit this code?
+## Características Principais
 
-There are several ways of editing your application.
+### 🏃‍♂️ Para Atletas e Compradores
+- **Navegação intuitiva** por eventos e galerias
+- **Visualização com marca d'água** para proteção do conteúdo
+- **Carrinho de compras** com seleção múltipla
+- **Pagamento seguro** via Mercado Pago
+- **Download imediato** em alta resolução
+- **Interface responsiva** para todos os dispositivos
 
-**Use Lovable**
+### 📸 Para Fotógrafos
+- **Upload em background** - continue trabalhando enquanto as fotos são enviadas
+- **Gerenciamento de eventos** e álbuns organizados
+- **Sistema de precificação** flexível por foto
+- **Dashboard completo** com estatísticas e vendas
+- **Notificações automáticas** do progresso de upload
+- **Proteção automática** com marca d'água
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/4655e098-d521-432b-b04b-ccd6dfe631f7) and start prompting.
+### 🏢 Para Organizadores
+- **Criação de eventos** com múltiplos álbuns
+- **Gestão de fotógrafos** credenciados
+- **Relatórios de vendas** detalhados
+- **Controle de acesso** por evento
 
-Changes made via Lovable will be committed automatically to this repo.
+## Tecnologias Utilizadas
 
-**Use your preferred IDE**
+### Frontend
+- **React 18** com TypeScript
+- **Vite** para desenvolvimento rápido
+- **Tailwind CSS** para estilização
+- **shadcn/ui** para componentes
+- **React Router** para navegação
+- **React Query** para gerenciamento de estado
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Backend & Infraestrutura
+- **Supabase** como Backend-as-a-Service
+- **PostgreSQL** para banco de dados
+- **Supabase Storage** para armazenamento de imagens
+- **Edge Functions** para processamento serverless
+- **Service Workers** para uploads em background
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### Pagamentos & Comunicação
+- **Mercado Pago** para processamento de pagamentos
+- **Resend** para sistema de e-mails transacionais
+- **Webhooks** para sincronização automática
 
-Follow these steps:
+## Instalação e Configuração
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+### Pré-requisitos
+- Node.js 18+ 
+- npm ou yarn
+- Conta Supabase
+- Credenciais Mercado Pago
+- API Key Resend
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### Configuração do Ambiente
 
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+1. **Clone o repositório**
+```bash
+git clone [url-do-repositorio]
+cd photo-arena-flow
 ```
 
-**Edit a file directly in GitHub**
+2. **Instale as dependências**
+```bash
+npm install
+```
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+3. **Configure as variáveis de ambiente**
+```bash
+# Copie o arquivo de exemplo
+cp .env.example .env
 
-**Use GitHub Codespaces**
+# Configure as seguintes variáveis:
+VITE_SUPABASE_URL=sua_url_supabase
+VITE_SUPABASE_ANON_KEY=sua_chave_publica_supabase
+VITE_MERCADO_PAGO_PUBLIC_KEY=sua_chave_publica_mp
+VITE_RESEND_API_KEY=sua_chave_resend
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+4. **Configure o Supabase**
+- Crie as tabelas necessárias no Supabase
+- Configure as políticas RLS (Row Level Security)
+- Faça upload das Edge Functions
 
-## What technologies are used for this project?
+5. **Deploy das Edge Functions**
+```bash
+supabase functions deploy mercadopago-webhook
+supabase functions deploy send-purchase-confirmation
+supabase functions deploy send-email-resend
+```
 
-This project is built with:
+### Desenvolvimento
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+```bash
+# Executar em modo de desenvolvimento
+npm run dev
 
-## How can I deploy this project?
+# Build para produção
+npm run build
 
-Simply open [Lovable](https://lovable.dev/projects/4655e098-d521-432b-b04b-ccd6dfe631f7) and click on Share -> Publish.
+# Preview da build
+npm run preview
+```
 
-## Can I connect a custom domain to my Lovable project?
+## Funcionalidades Avançadas
 
-Yes, you can!
+### Sistema de Upload em Background
+- **Uploads não-bloqueantes**: Fotógrafos podem fechar o navegador
+- **Retry automático**: Tentativas em caso de falha
+- **Progresso visual**: Interface persistente de acompanhamento
+- **Notificações push**: Alertas nativos do sistema operacional
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+### Gestão de Erros
+- **Error Boundary**: Captura erros React automaticamente
+- **Interceptação HTTP**: Tratamento global de erros de rede
+- **Mensagens localizadas**: Feedback em português brasileiro
+- **Sistema de contato**: Orientação para suporte em todos os erros
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+### Segurança
+- **Autenticação robusta** via Supabase Auth
+- **Proteção de rotas** com middleware
+- **Validação de uploads** (tipo e tamanho)
+- **Marca d'água automática** para proteção de conteúdo
+
+## Fluxo de Funcionamento
+
+### 1. Cadastro e Autenticação
+- Fotógrafos e compradores criam contas
+- Verificação por e-mail automática
+- Perfis diferenciados por tipo de usuário
+
+### 2. Criação de Eventos
+- Administradores criam eventos esportivos
+- Definição de datas, locais e modalidades
+- Organização em álbuns temáticos
+
+### 3. Upload de Fotos
+- Fotógrafos fazem upload em lotes
+- Processamento em background
+- Geração automática de versões com marca d'água
+
+### 4. Compra e Pagamento
+- Navegação por galerias organizadas
+- Seleção múltipla no carrinho
+- Pagamento seguro via Mercado Pago
+- E-mail de confirmação automático
+
+### 5. Entrega
+- Download imediato após pagamento
+- Fotos em alta resolução sem marca d'água
+- Histórico de compras no dashboard
+
+## Estrutura do Projeto
+
+```
+src/
+├── components/           # Componentes reutilizáveis
+│   ├── dashboard/       # Dashboards por tipo de usuário
+│   ├── modals/          # Modais e popups
+│   └── ui/             # Componentes base do design system
+├── contexts/            # Contextos React (Auth, Cart)
+├── hooks/              # Hooks customizados
+├── integrations/       # Integrações externas (Supabase)
+├── lib/                # Utilitários e serviços
+├── pages/              # Páginas principais
+└── styles/             # Estilos globais
+
+supabase/
+├── functions/          # Edge Functions
+└── migrations/         # Migrações do banco
+
+public/
+├── upload-sw.js        # Service Worker para uploads
+└── assets/             # Imagens e ícones
+```
+
+## Suporte e Manutenção
+
+### Monitoramento
+- Logs automáticos de erros
+- Métricas de performance
+- Acompanhamento de uploads
+
+### Backup e Recuperação
+- Backup automático do Supabase
+- Versionamento de código via Git
+- Políticas de retenção de dados
+
+---
+
+**Desenvolvido com ❤️ para a comunidade esportiva brasileira**
+
+Para suporte técnico: contato@stafotos.com

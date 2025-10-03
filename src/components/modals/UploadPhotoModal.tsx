@@ -8,7 +8,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
-import { Upload, X, Camera } from 'lucide-react';
+import { Upload, X, Camera, CheckCircle2, Clock } from 'lucide-react';
+import { backgroundUploadService } from '@/lib/backgroundUploadService';
 
 interface Campaign {
   id: string;
@@ -36,7 +37,6 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
   const [price, setPrice] = useState('10.00');
   const [files, setFiles] = useState<FileList | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
 
   useEffect(() => {
     fetchCampaigns();
@@ -145,51 +145,6 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
     setFiles(selectedFiles);
   };
 
-  const uploadPhoto = async (file: File, index: number) => {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${profile?.id}/${Date.now()}_${index}.${fileExt}`;
-    const watermarkedFileName = `${profile?.id}/watermarked_${Date.now()}_${index}.${fileExt}`;
-
-    // Upload original photo (private)
-    const { data: originalData, error: originalError } = await supabase.storage
-      .from('photos-original')
-      .upload(fileName, file);
-
-    if (originalError) throw originalError;
-
-    // Create watermarked version (for now, just copy - in production you'd add actual watermark)
-    const { data: watermarkedData, error: watermarkedError } = await supabase.storage
-      .from('photos-watermarked')
-      .upload(watermarkedFileName, file);
-
-    if (watermarkedError) throw watermarkedError;
-
-    // Get public URLs
-    const { data: originalUrl } = supabase.storage
-      .from('photos-original')
-      .getPublicUrl(fileName);
-
-    const { data: watermarkedUrl } = supabase.storage
-      .from('photos-watermarked')
-      .getPublicUrl(watermarkedFileName);
-
-    // Save photo record to database
-    const { error: dbError } = await supabase
-      .from('photos')
-      .insert({
-        campaign_id: selectedCampaign,
-        sub_event_id: selectedSubEvent || null,
-        photographer_id: profile?.id,
-        original_url: originalUrl.publicUrl,
-        watermarked_url: watermarkedUrl.publicUrl,
-        title: title || `Foto ${index + 1}`,
-        price: parseFloat(price),
-        is_available: true,
-      });
-
-    if (dbError) throw dbError;
-  };
-
   const handleUpload = async () => {
     if (!files || !selectedCampaign) {
       toast({
@@ -209,35 +164,29 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
       return;
     }
 
-    setUploading(true);
-    setUploadProgress(0);
+    // Criar lote de upload em background
+    const batchId = backgroundUploadService.createUploadBatch(
+      files,
+      selectedCampaign,
+      selectedSubEvent,
+      title,
+      parseFloat(price),
+      profile.id
+    );
 
-    try {
-      const totalFiles = files.length;
-      
-      for (let i = 0; i < totalFiles; i++) {
-        await uploadPhoto(files[i], i);
-        setUploadProgress(((i + 1) / totalFiles) * 100);
-      }
+    // Informar sucesso e permitir que o modal seja fechado
+    toast({
+      title: "Upload iniciado em background",
+      description: "Suas fotos foram adicionadas à fila de upload. Você pode fechar esta janela e continuar navegando. O progresso será mostrado no canto da tela.",
+    });
 
-      toast({
-        title: "Upload concluído",
-        description: `${totalFiles} foto(s) foram enviadas com sucesso.`,
-      });
-
-      onUploadComplete();
+    // Callback para atualizar a interface
+    onUploadComplete();
+    
+    // Fechar modal após pequeno delay para mostrar a mensagem
+    setTimeout(() => {
       onClose();
-    } catch (error) {
-      console.error('Error uploading photos:', error);
-      toast({
-        title: "Erro no upload",
-        description: "Ocorreu um erro ao enviar as fotos. Tente novamente.",
-        variant: "destructive",
-      });
-    } finally {
-      setUploading(false);
-      setUploadProgress(0);
-    }
+    }, 1500);
   };
 
   return (
@@ -353,27 +302,22 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
             </p>
           </div>
 
-          {uploading && (
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Progresso do upload</span>
-                <span>{Math.round(uploadProgress)}%</span>
-              </div>
-              <div className="w-full bg-secondary rounded-full h-2">
-                <div 
-                  className="bg-primary h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${uploadProgress}%` }}
-                />
-              </div>
-            </div>
-          )}
-
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={onClose} disabled={uploading}>
               Cancelar
             </Button>
             <Button onClick={handleUpload} disabled={uploading || !files || !selectedCampaign}>
-              {uploading ? 'Enviando...' : 'Enviar Fotos'}
+              {uploading ? (
+                <>
+                  <Clock className="h-4 w-4 mr-2 animate-spin" />
+                  Adicionando à fila...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  Enviar em Background
+                </>
+              )}
             </Button>
           </div>
           </>

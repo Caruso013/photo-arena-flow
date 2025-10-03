@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { CreditCard, Loader2, ShoppingCart, ArrowLeft } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
+import { emailService } from '@/lib/emailService';
 
 declare global {
   interface Window {
@@ -135,10 +136,10 @@ export default function PaymentModal({
         throw new Error(data.error || 'Erro ao criar preferência de pagamento');
       }
     } catch (error) {
-      console.error('Payment error:', error);
+      console.error('Erro no pagamento:', error);
       toast({
         title: "Erro no pagamento",
-        description: "Não foi possível processar o pagamento. Tente novamente.",
+        description: "Não foi possível processar o pagamento. Verifique seus dados e tente novamente. Se o problema persistir, entre em contato: contato@stafotos.com",
         variant: "destructive",
       });
     } finally {
