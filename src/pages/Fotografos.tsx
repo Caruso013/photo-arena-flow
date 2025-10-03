@@ -62,7 +62,7 @@ const Fotografos = () => {
 
       setPhotographers(processedData);
     } catch (error) {
-      console.error('Error fetching photographers:', error);
+      console.error('Erro ao buscar fotógrafos:', error);
     } finally {
       setLoading(false);
     }

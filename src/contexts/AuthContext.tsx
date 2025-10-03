@@ -30,7 +30,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error('useAuth deve ser usado dentro de um AuthProvider');
   }
   return context;
 };
@@ -133,9 +133,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (error) {
       console.error('Erro no cadastro:', error);
+      let errorMessage = "Não foi possível criar sua conta. ";
+      
+      if (error.message.includes('already registered')) {
+        errorMessage = "Este email já está cadastrado. Tente fazer login.";
+      } else if (error.message.includes('password')) {
+        errorMessage = "A senha deve conter pelo menos 6 caracteres, incluindo letras, números e símbolos.";
+      } else if (error.message.includes('email')) {
+        errorMessage = "Por favor, digite um email válido.";
+      } else {
+        errorMessage += "Entre em contato: contato@stafotos.com";
+      }
+      
       toast({
         title: "Erro no cadastro",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     } else {
@@ -174,9 +186,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     if (error) {
+      console.error('Erro no login:', error);
+      let errorMessage = "Não foi possível fazer login. ";
+      
+      if (error.message.includes('Invalid login')) {
+        errorMessage = "Email ou senha incorretos. Verifique suas credenciais.";
+      } else if (error.message.includes('Email not confirmed')) {
+        errorMessage = "Confirme seu email antes de fazer login. Verifique sua caixa de entrada.";
+      } else if (error.message.includes('Too many requests')) {
+        errorMessage = "Muitas tentativas. Aguarde alguns minutos e tente novamente.";
+      } else {
+        errorMessage += "Entre em contato: contato@stafotos.com";
+      }
+      
       toast({
         title: "Erro no login",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -184,13 +209,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Erro ao fazer logout:', error);
+        toast({
+          title: "Erro ao sair",
+          description: "Não foi possível fazer logout. Tente novamente ou entre em contato conosco.",
+          variant: "destructive",
+        });
+      } else {
+        console.log('Logout realizado com sucesso');
+        // Redirecionar para página inicial após logout
+        window.location.href = '/';
+      }
+    } catch (error) {
+      console.error('Exceção durante logout:', error);
       toast({
         title: "Erro ao sair",
-        description: error.message,
+        description: "Problema técnico durante logout. Entre em contato: contato@stafotos.com",
         variant: "destructive",
       });
+      // Forçar redirecionamento mesmo com erro
+      window.location.href = '/';
     }
   };
 
@@ -203,9 +244,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .eq('id', user.id);
 
     if (error) {
+      console.error('Erro ao atualizar perfil:', error);
       toast({
         title: "Erro ao atualizar perfil",
-        description: error.message,
+        description: "Não foi possível atualizar suas informações. Tente novamente ou entre em contato: contato@stafotos.com",
         variant: "destructive",
       });
     } else {
