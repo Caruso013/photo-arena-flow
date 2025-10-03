@@ -28,7 +28,7 @@ import FinancialDashboard from './FinancialDashboard';
 import { OrganizationManager } from './OrganizationManager';
 import { CampaignManager } from './CampaignManager';
 import { ProfileEditor } from '../profile/ProfileEditor';
-import { ApplicationsManager } from './ApplicationsManager';
+import { PhotographerApplicationsManager } from './PhotographerApplicationsManager';
 import { UserRoleManager } from './UserRoleManager';
 
 interface Organization {
@@ -323,7 +323,7 @@ const AdminDashboard = () => {
               </TabsList>
 
           <TabsContent value="applications" className="space-y-6">
-            <ApplicationsManager />
+            <PhotographerApplicationsManager />
           </TabsContent>
 
           <TabsContent value="financial" className="space-y-6">
