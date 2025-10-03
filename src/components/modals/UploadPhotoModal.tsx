@@ -542,24 +542,29 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-2 border-t">
-            <Button variant="outline" onClick={onClose} disabled={uploading} className="h-10">
+          <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4 border-t mt-4">
+            <Button 
+              variant="outline" 
+              onClick={onClose} 
+              disabled={uploading} 
+              className="h-12 sm:h-10 order-2 sm:order-1"
+            >
               Cancelar
             </Button>
             <Button 
               onClick={handleUpload} 
               disabled={uploading || !files || !selectedCampaign}
-              className="h-10 min-w-[200px] bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
+              className="h-12 sm:h-10 min-w-full sm:min-w-[240px] order-1 sm:order-2 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 font-semibold text-base shadow-lg"
             >
               {uploading ? (
                 <>
-                  <Clock className="h-4 w-4 mr-2 animate-spin" />
+                  <Clock className="h-5 w-5 mr-2 animate-spin" />
                   Preparando...
                 </>
               ) : (
                 <>
-                  <Upload className="h-4 w-4 mr-2" />
-                  Enviar {files?.length || 0} foto(s) em Background
+                  <Upload className="h-5 w-5 mr-2" />
+                  Enviar {files?.length || 0} foto(s)
                 </>
               )}
             </Button>
