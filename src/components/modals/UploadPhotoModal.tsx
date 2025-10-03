@@ -105,23 +105,11 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
   };
 
   const MAX_FILE_SIZE = 2.5 * 1024 * 1024; // 2.5MB por arquivo
-  const MAX_FILES = 150; // Máximo de 150 fotos por upload
+  // Sem limite de quantidade - fotógrafos podem enviar quantas fotos quiserem
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files;
     if (!selectedFiles) return;
-
-    // Validar número máximo de arquivos
-    if (selectedFiles.length > MAX_FILES) {
-      toast({
-        title: "Muitos arquivos selecionados",
-        description: `Você selecionou ${selectedFiles.length} fotos. O máximo é ${MAX_FILES} fotos por upload. Por favor, divida em lotes menores.`,
-        variant: "destructive",
-      });
-      e.target.value = '';
-      setFiles(null);
-      return;
-    }
 
     // Validar tamanho de cada arquivo
     const invalidFiles: string[] = [];
@@ -350,7 +338,7 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
           <div className="space-y-2">
             <Label htmlFor="files" className="font-semibold flex items-center gap-2">
               <Upload className="h-4 w-4" />
-              3. Selecionar fotos (até {MAX_FILES} fotos)
+              3. Selecionar fotos (sem limite de quantidade)
             </Label>
             <Input
               id="files"
@@ -389,10 +377,10 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
             <div className="flex items-start gap-2 p-2 bg-blue-50 rounded">
               <Info className="h-4 w-4 text-blue-600 mt-0.5" />
               <div className="text-xs text-blue-900">
-                <p className="font-medium">Limites:</p>
-                <p>• Máximo: <strong>{MAX_FILES} fotos</strong> por envio</p>
+                <p className="font-medium">✨ Upload em Background:</p>
+                <p>• <strong>Sem limite</strong> de quantidade de fotos</p>
                 <p>• Tamanho: <strong>2.5MB</strong> por foto</p>
-                <p className="text-blue-700 mt-1">💡 Para 100+ fotos, o upload continuará em background mesmo se você fechar esta janela!</p>
+                <p className="text-blue-700 mt-1">💡 O upload continuará mesmo se você fechar esta janela!</p>
               </div>
             </div>
           </div>
