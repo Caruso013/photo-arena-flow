@@ -62,8 +62,8 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
       if (error) throw error;
 
       toast({
-        title: campaign.is_active ? "Campanha desativada!" : "Campanha ativada!",
-        description: `A campanha foi ${campaign.is_active ? 'desativada' : 'ativada'} com sucesso.`,
+        title: campaign.is_active ? "Evento desativado!" : "Evento ativado!",
+        description: `O evento foi ${campaign.is_active ? 'desativado' : 'ativado'} com sucesso.`,
       });
 
       onRefresh();
@@ -71,7 +71,7 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
       console.error('Error toggling campaign:', error);
       toast({
         title: "Erro ao atualizar",
-        description: "Não foi possível atualizar o status da campanha.",
+        description: "Não foi possível atualizar o status do evento.",
         variant: "destructive",
       });
     }
@@ -100,7 +100,7 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
       if (error) throw error;
 
       toast({
-        title: "Campanha atualizada!",
+        title: "Evento atualizado!",
         description: "As informações foram atualizadas com sucesso.",
       });
 
@@ -111,7 +111,7 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
       console.error('Error updating campaign:', error);
       toast({
         title: "Erro ao atualizar",
-        description: "Não foi possível atualizar a campanha.",
+        description: "Não foi possível atualizar o evento.",
         variant: "destructive",
       });
     }
@@ -134,8 +134,8 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
       if (error) throw error;
 
       toast({
-        title: "Campanha excluída!",
-        description: "A campanha foi removida com sucesso.",
+        title: "Evento excluído!",
+        description: "O evento foi removido com sucesso.",
       });
 
       setDeleteDialogOpen(false);
@@ -145,7 +145,7 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
       console.error('Error deleting campaign:', error);
       toast({
         title: "Erro ao excluir",
-        description: "Não foi possível excluir a campanha.",
+        description: "Não foi possível excluir o evento.",
         variant: "destructive",
       });
     }
@@ -158,10 +158,10 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
           <div>
             <CardTitle className="flex items-center gap-2">
               <Camera className="h-5 w-5" />
-              Gerenciar Campanhas
+              Gerenciar Eventos
             </CardTitle>
             <CardDescription>
-              Crie, edite ou exclua campanhas da plataforma
+              Crie, edite ou exclua eventos da plataforma
             </CardDescription>
           </div>
           <CreateCampaignModal 
@@ -174,7 +174,7 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
         {campaigns.length === 0 ? (
           <div className="text-center p-8">
             <Camera className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-medium mb-2">Nenhuma campanha encontrada</h3>
+            <h3 className="text-lg font-medium mb-2">Nenhum evento encontrado</h3>
           </div>
         ) : (
           <div className="space-y-4">
@@ -258,9 +258,9 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Editar Campanha</DialogTitle>
+            <DialogTitle>Editar Evento</DialogTitle>
             <DialogDescription>
-              Atualize as informações da campanha
+              Atualize as informações do evento
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -311,7 +311,7 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
           <AlertDialogHeader>
             <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação não pode ser desfeita. A campanha será permanentemente excluída.
+              Esta ação não pode ser desfeita. O evento será permanentemente excluído.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

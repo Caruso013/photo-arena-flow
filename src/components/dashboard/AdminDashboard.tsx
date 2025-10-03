@@ -234,7 +234,7 @@ const AdminDashboard = () => {
                 Bem-vindo ao Painel Administrativo
               </h1>
               <p className="text-muted-foreground">
-                Gerencie organizações, campanhas e fotógrafos da plataforma
+                Gerencie organizações, eventos e fotógrafos da plataforma
               </p>
             </div>
 
@@ -267,7 +267,7 @@ const AdminDashboard = () => {
               />
               
               <StatCard
-                title="Campanhas Ativas"
+                title="Eventos Ativos"
                 value={campaigns.filter(c => c.is_active).length}
                 subtitle={`${campaigns.length} total`}
                 icon={Camera}
@@ -310,7 +310,7 @@ const AdminDashboard = () => {
                 </TabsTrigger>
                 <TabsTrigger value="campaigns" className="flex items-center gap-2">
                   <Camera className="h-4 w-4" />
-                  Campanhas
+                  Eventos
                 </TabsTrigger>
                 <TabsTrigger value="users" className="flex items-center gap-2">
                   <Users className="h-4 w-4" />

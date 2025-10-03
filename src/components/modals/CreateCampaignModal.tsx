@@ -62,7 +62,7 @@ export default function CreateCampaignModal({
     if (!formData.title.trim()) {
       toast({
         title: "Erro",
-        description: "Título da campanha é obrigatório",
+        description: "Título do evento é obrigatório",
         variant: "destructive",
       });
       return;
@@ -100,7 +100,7 @@ export default function CreateCampaignModal({
 
       toast({
         title: "Sucesso",
-        description: "Campanha criada com sucesso! Fotógrafos podem se candidatar agora.",
+        description: "Evento criado com sucesso! Fotógrafos podem se candidatar agora.",
       });
 
       // Reset form
@@ -121,7 +121,7 @@ export default function CreateCampaignModal({
       console.error('Error creating campaign:', error);
       toast({
         title: "Erro",
-        description: "Falha ao criar campanha",
+        description: "Falha ao criar evento",
         variant: "destructive",
       });
     } finally {
@@ -136,16 +136,16 @@ export default function CreateCampaignModal({
       <DialogTrigger asChild>
         <Button className="flex items-center gap-2">
           <Plus className="h-4 w-4" />
-          Nova Campanha
+          Novo Evento
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Criar Nova Campanha</DialogTitle>
+          <DialogTitle>Criar Novo Evento</DialogTitle>
           <DialogDescription>
             {organizationName 
-              ? `Crie uma campanha para ${organizationName}. Fotógrafos poderão se candidatar para cobrir este evento.`
-              : 'Crie uma nova campanha. Fotógrafos poderão se candidatar para cobrir este evento.'
+              ? `Crie um evento para ${organizationName}. Fotógrafos poderão se candidatar para cobrir este evento.`
+              : 'Crie um novo evento. Fotógrafos poderão se candidatar para cobrir este evento.'
             }
           </DialogDescription>
         </DialogHeader>
@@ -173,7 +173,7 @@ export default function CreateCampaignModal({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="title">Título da Campanha *</Label>
+              <Label htmlFor="title">Título do Evento *</Label>
               <Input
                 id="title"
                 value={formData.title}
