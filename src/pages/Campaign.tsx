@@ -84,6 +84,7 @@ const Campaign = () => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [purchasing, setPurchasing] = useState(false);
+  const [albumPreviews, setAlbumPreviews] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (id) {
@@ -98,6 +99,32 @@ const Campaign = () => {
       fetchPhotos();
     }
   }, [selectedSubEvent]);
+
+  useEffect(() => {
+    const fetchAlbumPreviews = async () => {
+      const previews: Record<string, string> = {};
+      
+      for (const subEvent of subEvents) {
+        const { data } = await supabase
+          .from('photos')
+          .select('thumbnail_url, watermarked_url')
+          .eq('sub_event_id', subEvent.id)
+          .eq('is_available', true)
+          .limit(1)
+          .maybeSingle();
+        
+        if (data) {
+          previews[subEvent.id] = data.thumbnail_url || data.watermarked_url;
+        }
+      }
+      
+      setAlbumPreviews(previews);
+    };
+    
+    if (subEvents.length > 0) {
+      fetchAlbumPreviews();
+    }
+  }, [subEvents]);
 
   const fetchCampaign = async () => {
     if (!id) return;
@@ -423,11 +450,23 @@ const Campaign = () => {
               {subEvents.map((subEvent) => (
                 <Card 
                   key={subEvent.id}
-                  className={`cursor-pointer transition-all hover:shadow-lg ${
+                  className={`cursor-pointer transition-all hover:shadow-lg overflow-hidden ${
                     selectedSubEvent === subEvent.id ? 'ring-2 ring-primary' : ''
                   }`}
                   onClick={() => setSelectedSubEvent(subEvent.id)}
                 >
+                  {/* Preview da foto */}
+                  {albumPreviews[subEvent.id] && (
+                    <div className="aspect-video relative">
+                      <img 
+                        src={albumPreviews[subEvent.id]} 
+                        alt={subEvent.title}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-black/20" />
+                    </div>
+                  )}
+                  
                   <CardContent className="p-6">
                     <div className="flex flex-col items-center text-center gap-3">
                       <div className={`p-4 rounded-full ${
@@ -437,11 +476,11 @@ const Campaign = () => {
                       </div>
                       <div>
                         <h3 className="font-semibold line-clamp-2">{subEvent.title}</h3>
-                        <p className="text-sm text-muted-foreground mt-1">
+                        <Badge variant="secondary" className="mt-2">
                           {subEvent.photo_count} fotos
-                        </p>
+                        </Badge>
                         {subEvent.location && (
-                          <p className="text-xs text-muted-foreground mt-1 flex items-center justify-center gap-1">
+                          <p className="text-xs text-muted-foreground mt-2 flex items-center justify-center gap-1">
                             <MapPin className="h-3 w-3" />
                             {subEvent.location}
                           </p>
