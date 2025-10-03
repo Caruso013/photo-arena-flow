@@ -399,12 +399,12 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
               {/* Select de pastas existentes */}
               {subEvents.length > 0 ? (
                 <>
-                  <Select value={selectedSubEvent} onValueChange={setSelectedSubEvent}>
+                  <Select value={selectedSubEvent || "none"} onValueChange={(value) => setSelectedSubEvent(value === "none" ? "" : value)}>
                     <SelectTrigger className="h-11 bg-white">
                       <SelectValue placeholder="📁 Escolha uma pasta ou deixe em branco" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">
+                      <SelectItem value="none">
                         <span className="flex items-center gap-2">
                           📂 Sem pasta específica (raiz do evento)
                         </span>
