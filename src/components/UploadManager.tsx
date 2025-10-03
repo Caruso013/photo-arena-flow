@@ -26,7 +26,9 @@ const UploadManager: React.FC<UploadManagerProps> = ({ className }) => {
     setUploads(backgroundUploadService.getAllUploads());
     setIsVisible(backgroundUploadService.getAllUploads().length > 0);
 
-    return unsubscribe;
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   if (!isVisible || uploads.length === 0) {
