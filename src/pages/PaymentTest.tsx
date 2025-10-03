@@ -16,7 +16,7 @@ interface Photo {
 }
 
 export default function PaymentTest() {
-  const { user } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
@@ -62,11 +62,29 @@ export default function PaymentTest() {
     });
   };
 
-  if (!user) {
+  if (authLoading) {
+    return (
+      <div className="container mx-auto py-20 text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+        <p className="text-muted-foreground">Verificando permissões...</p>
+      </div>
+    );
+  }
+
+  if (!user || !profile) {
     return (
       <div className="container mx-auto py-20 text-center">
         <h1 className="text-2xl font-bold mb-4">Acesso Restrito</h1>
-        <p>Faça login para testar o pagamento</p>
+        <p>Faça login para acessar esta página</p>
+      </div>
+    );
+  }
+
+  if (profile.role !== 'admin') {
+    return (
+      <div className="container mx-auto py-20 text-center">
+        <h1 className="text-2xl font-bold mb-4">Acesso Negado</h1>
+        <p className="text-muted-foreground">Esta página é restrita a administradores</p>
       </div>
     );
   }
