@@ -13,6 +13,7 @@ import { toast } from '@/components/ui/use-toast';
 import { Search, Camera, ShoppingCart, Download, FileImage, Filter, Eye, Calendar } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import DashboardLayout from './DashboardLayout';
+import { PhotographerApplicationForm } from './PhotographerApplicationForm';
 
 interface Campaign {
   id: string;
@@ -224,14 +225,18 @@ const UserDashboard = () => {
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="events" className="space-y-6">
-          <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsList className="grid w-full max-w-md grid-cols-3">
             <TabsTrigger value="events" className="gap-2">
               <Camera className="h-4 w-4" />
-              Eventos Disponíveis
+              Eventos
             </TabsTrigger>
             <TabsTrigger value="purchases" className="gap-2">
               <ShoppingCart className="h-4 w-4" />
-              Minhas Compras
+              Compras
+            </TabsTrigger>
+            <TabsTrigger value="photographer" className="gap-2">
+              <Camera className="h-4 w-4" />
+              Seja Fotógrafo
             </TabsTrigger>
           </TabsList>
 
@@ -472,6 +477,10 @@ const UserDashboard = () => {
                 </div>
               </>
             )}
+          </TabsContent>
+
+          <TabsContent value="photographer" className="space-y-6 animate-fade-in">
+            <PhotographerApplicationForm />
           </TabsContent>
         </Tabs>
       </div>
