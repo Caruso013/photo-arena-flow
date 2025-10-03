@@ -1,10 +1,10 @@
--- Aplicar migração da tabela photographer_applications
--- Execute este SQL no Supabase SQL Editor
+-- MIGRAÇÃO SIMPLES E DIRETA PARA CORRIGIR O ERRO
+-- Copie e cole EXATAMENTE este código no Supabase SQL Editor
 
--- Primeiro, remover tabela se existir para recriar com estrutura correta
+-- 1. Remover tabela se existir (para corrigir qualquer problema)
 DROP TABLE IF EXISTS photographer_applications;
 
--- Criar tabela photographer_applications
+-- 2. Criar tabela photographer_applications com estrutura correta
 CREATE TABLE photographer_applications (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
@@ -20,16 +20,16 @@ CREATE TABLE photographer_applications (
     rejection_reason TEXT
 );
 
--- Criar índices
-CREATE INDEX IF NOT EXISTS idx_photographer_applications_user_id ON photographer_applications(user_id);
-CREATE INDEX IF NOT EXISTS idx_photographer_applications_status ON photographer_applications(status);
-CREATE INDEX IF NOT EXISTS idx_photographer_applications_created_at ON photographer_applications(created_at);
+-- 3. Criar índices para performance
+CREATE INDEX idx_photographer_applications_user_id ON photographer_applications(user_id);
+CREATE INDEX idx_photographer_applications_status ON photographer_applications(status);
+CREATE INDEX idx_photographer_applications_created_at ON photographer_applications(created_at);
 
--- Constraint única para evitar múltiplas candidaturas pendentes do mesmo usuário
-CREATE UNIQUE INDEX IF NOT EXISTS idx_photographer_applications_unique_pending 
+-- 4. Constraint única para evitar múltiplas candidaturas pendentes
+CREATE UNIQUE INDEX idx_photographer_applications_unique_pending 
 ON photographer_applications(user_id) WHERE status = 'pending';
 
--- Função para atualizar updated_at automaticamente
+-- 5. Função para atualizar updated_at automaticamente
 CREATE OR REPLACE FUNCTION update_photographer_applications_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -38,29 +38,28 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Trigger para atualizar updated_at
-DROP TRIGGER IF EXISTS update_photographer_applications_updated_at_trigger ON photographer_applications;
+-- 6. Trigger para updated_at
 CREATE TRIGGER update_photographer_applications_updated_at_trigger
     BEFORE UPDATE ON photographer_applications
     FOR EACH ROW
     EXECUTE FUNCTION update_photographer_applications_updated_at();
 
--- RLS Policies
+-- 7. Habilitar RLS (Row Level Security)
 ALTER TABLE photographer_applications ENABLE ROW LEVEL SECURITY;
 
--- Policy: Usuários podem criar e ver suas próprias candidaturas
-CREATE POLICY IF NOT EXISTS "Users can create their own applications"
+-- 8. Políticas de segurança - Usuários podem criar e ver suas candidaturas
+CREATE POLICY "Users can create their own applications"
 ON photographer_applications FOR INSERT
 TO authenticated
 WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY IF NOT EXISTS "Users can view their own applications"
+CREATE POLICY "Users can view their own applications"
 ON photographer_applications FOR SELECT
 TO authenticated
 USING (auth.uid() = user_id);
 
--- Policy: Admins podem ver e gerenciar todas as candidaturas
-CREATE POLICY IF NOT EXISTS "Admins can view all applications"
+-- 9. Políticas de segurança - Admins podem ver e gerenciar todas
+CREATE POLICY "Admins can view all applications"
 ON photographer_applications FOR SELECT
 TO authenticated
 USING (
@@ -72,7 +71,7 @@ USING (
     OR auth.uid() = user_id
 );
 
-CREATE POLICY IF NOT EXISTS "Admins can update all applications"
+CREATE POLICY "Admins can update all applications"
 ON photographer_applications FOR UPDATE
 TO authenticated
 USING (
@@ -90,5 +89,11 @@ WITH CHECK (
     )
 );
 
--- Verificar se a migração foi aplicada com sucesso
-SELECT 'Migração photographer_applications aplicada com sucesso!' as status;
+-- 10. Verificar se deu tudo certo
+SELECT 'Tabela photographer_applications criada com sucesso!' as status;
+
+-- 11. Mostrar estrutura da tabela criada
+SELECT column_name, data_type, is_nullable, column_default
+FROM information_schema.columns 
+WHERE table_name = 'photographer_applications'
+ORDER BY ordinal_position;

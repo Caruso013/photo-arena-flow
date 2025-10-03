@@ -96,11 +96,27 @@ export const PhotographerApplicationForm = ({ onApplicationSubmitted }: Photogra
       setMessage("");
       
       onApplicationSubmitted?.();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao enviar candidatura:", error);
+      
+      let errorMessage = "Ocorreu um erro inesperado. Tente novamente ou entre em contato conosco.";
+      
+      // Handle specific errors
+      if (error?.message?.includes("relation") && error?.message?.includes("does not exist")) {
+        errorMessage = "O sistema de candidaturas ainda está sendo configurado. Tente novamente em alguns minutos ou entre em contato conosco.";
+      } else if (error?.code === "42P01") {
+        errorMessage = "O banco de dados ainda está sendo configurado. Aguarde alguns minutos e tente novamente.";
+      } else if (error?.code === "23502" && error?.message?.includes("message")) {
+        errorMessage = "Erro interno do sistema. Tente novamente ou entre em contato conosco.";
+      } else if (error?.message?.includes("JWT")) {
+        errorMessage = "Sessão expirada. Faça login novamente.";
+      } else if (error?.message?.includes("not authenticated")) {
+        errorMessage = "Você precisa estar logado para enviar uma candidatura.";
+      }
+      
       toast({
         title: "Erro ao enviar candidatura",
-        description: "Ocorreu um erro inesperado. Tente novamente ou entre em contato conosco.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
