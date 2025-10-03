@@ -25,6 +25,9 @@ import DashboardLayout from './DashboardLayout';
 import AdminNavbar from './AdminNavbar';
 import StatCard from './StatCard';
 import FinancialDashboard from './FinancialDashboard';
+import { OrganizationManager } from './OrganizationManager';
+import { CampaignManager } from './CampaignManager';
+import { ProfileEditor } from '../profile/ProfileEditor';
 
 interface Organization {
   id: string;
@@ -52,10 +55,12 @@ interface User {
 interface Campaign {
   id: string;
   title: string;
+  description: string | null;
   location: string | null;
   event_date: string | null;
   is_active: boolean;
   created_at: string;
+  updated_at: string;
 }
 
 interface EventApplication {
@@ -288,7 +293,7 @@ const AdminDashboard = () => {
 
             {/* Management Tabs */}
             <Tabs defaultValue="financial" className="space-y-6">
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className="grid w-full grid-cols-5">
                 <TabsTrigger value="financial" className="flex items-center gap-2">
                   <TrendingUp className="h-4 w-4" />
                   Financeiro
@@ -297,13 +302,17 @@ const AdminDashboard = () => {
                   <Building2 className="h-4 w-4" />
                   Organizações
                 </TabsTrigger>
+                <TabsTrigger value="campaigns" className="flex items-center gap-2">
+                  <Camera className="h-4 w-4" />
+                  Campanhas
+                </TabsTrigger>
                 <TabsTrigger value="users" className="flex items-center gap-2">
                   <Users className="h-4 w-4" />
                   Usuários
                 </TabsTrigger>
-                <TabsTrigger value="campaigns" className="flex items-center gap-2">
-                  <Camera className="h-4 w-4" />
-                  Campanhas
+                <TabsTrigger value="profile" className="flex items-center gap-2">
+                  <Settings className="h-4 w-4" />
+                  Perfil
                 </TabsTrigger>
               </TabsList>
 
@@ -312,107 +321,11 @@ const AdminDashboard = () => {
           </TabsContent>
 
           <TabsContent value="organizations" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Building2 className="h-5 w-5" />
-                  Gerenciar Organizações
-                </CardTitle>
-                <CardDescription>
-                  Defina a porcentagem que a administração recebe de cada organização
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {organizations.length === 0 ? (
-                  <div className="text-center p-8">
-                    <Building2 className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-medium mb-2">Nenhuma organização encontrada</h3>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {organizations.map((org) => (
-                      <Card key={org.id}>
-                        <CardContent className="p-6">
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <h4 className="font-medium text-lg">{org.name}</h4>
-                              <p className="text-sm text-muted-foreground">{org.description}</p>
-                              <div className="flex items-center gap-2 mt-2">
-                                <Badge variant={org.is_active ? 'default' : 'secondary'}>
-                                  {org.is_active ? 'Ativa' : 'Inativa'}
-                                </Badge>
-                                <span className="text-sm text-muted-foreground">
-                                  {new Date(org.created_at).toLocaleDateString()}
-                                </span>
-                              </div>
-                            </div>
-                            
-                            <div className="flex items-center gap-4">
-                              {editingOrg === org.id ? (
-                                <div className="flex items-center gap-2">
-                                  <Label htmlFor={`percentage-${org.id}`} className="text-sm">
-                                    Admin %:
-                                  </Label>
-                                  <Input
-                                    id={`percentage-${org.id}`}
-                                    type="number"
-                                    min="0"
-                                    max="100"
-                                    step="0.01"
-                                    value={newPercentages[org.id] ?? org.admin_percentage}
-                                    onChange={(e) => setNewPercentages({
-                                      ...newPercentages,
-                                      [org.id]: parseFloat(e.target.value) || 0
-                                    })}
-                                    className="w-20"
-                                  />
-                                  <Button
-                                    size="sm"
-                                    onClick={() => handleUpdateOrganizationPercentage(
-                                      org.id, 
-                                      newPercentages[org.id] ?? org.admin_percentage
-                                    )}
-                                    className="gap-1"
-                                  >
-                                    <Save className="h-4 w-4" />
-                                    Salvar
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => {
-                                      setEditingOrg(null);
-                                      setNewPercentages({});
-                                    }}
-                                  >
-                                    Cancelar
-                                  </Button>
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-2">
-                                  <span className="text-lg font-bold text-green-600">
-                                    {org.admin_percentage}%
-                                  </span>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => setEditingOrg(org.id)}
-                                    className="gap-1"
-                                  >
-                                    <Settings className="h-4 w-4" />
-                                    Editar
-                                  </Button>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <OrganizationManager organizations={organizations} onRefresh={fetchAdminData} />
+          </TabsContent>
+
+          <TabsContent value="campaigns" className="space-y-6">
+            <CampaignManager campaigns={campaigns} onRefresh={fetchAdminData} />
           </TabsContent>
 
           <TabsContent value="users" className="space-y-6">
@@ -451,39 +364,8 @@ const AdminDashboard = () => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="campaigns" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Camera className="h-5 w-5" />
-                  Campanhas Recentes
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {campaigns.map((campaign) => (
-                    <Card key={campaign.id}>
-                      <CardContent className="p-4">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <h4 className="font-medium">{campaign.title}</h4>
-                            <p className="text-sm text-muted-foreground">{campaign.location}</p>
-                            {campaign.event_date && (
-                              <p className="text-sm text-muted-foreground">
-                                {new Date(campaign.event_date).toLocaleDateString()}
-                              </p>
-                            )}
-                          </div>
-                          <Badge variant={campaign.is_active ? 'default' : 'secondary'}>
-                            {campaign.is_active ? 'Ativa' : 'Inativa'}
-                          </Badge>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+          <TabsContent value="profile" className="space-y-6">
+            <ProfileEditor />
           </TabsContent>
         </Tabs>
           </div>
