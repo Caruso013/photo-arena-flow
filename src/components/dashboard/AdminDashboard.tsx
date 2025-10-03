@@ -28,6 +28,8 @@ import FinancialDashboard from './FinancialDashboard';
 import { OrganizationManager } from './OrganizationManager';
 import { CampaignManager } from './CampaignManager';
 import { ProfileEditor } from '../profile/ProfileEditor';
+import { ApplicationsManager } from './ApplicationsManager';
+import { UserRoleManager } from './UserRoleManager';
 
 interface Organization {
   id: string;
@@ -292,8 +294,12 @@ const AdminDashboard = () => {
             </div>
 
             {/* Management Tabs */}
-            <Tabs defaultValue="financial" className="space-y-6">
-              <TabsList className="grid w-full grid-cols-5">
+            <Tabs defaultValue="applications" className="space-y-6">
+              <TabsList className="grid w-full grid-cols-6">
+                <TabsTrigger value="applications" className="flex items-center gap-2">
+                  <UserCheck className="h-4 w-4" />
+                  Candidaturas
+                </TabsTrigger>
                 <TabsTrigger value="financial" className="flex items-center gap-2">
                   <TrendingUp className="h-4 w-4" />
                   Financeiro
@@ -315,6 +321,10 @@ const AdminDashboard = () => {
                   Perfil
                 </TabsTrigger>
               </TabsList>
+
+          <TabsContent value="applications" className="space-y-6">
+            <ApplicationsManager />
+          </TabsContent>
 
           <TabsContent value="financial" className="space-y-6">
             <FinancialDashboard userRole="admin" />
@@ -341,18 +351,20 @@ const AdminDashboard = () => {
                   {users.map((user) => (
                     <Card key={user.id}>
                       <CardContent className="p-4">
-                        <div className="flex justify-between items-center">
-                          <div>
+                        <div className="flex justify-between items-start gap-4">
+                          <div className="flex-1">
                             <h4 className="font-medium">{user.full_name || 'Nome não informado'}</h4>
                             <p className="text-sm text-muted-foreground">{user.email}</p>
-                            <div className="flex gap-2 mt-1">
-                              <Badge variant="outline">{user.role}</Badge>
-                              {user.organization_role && (
-                                <Badge variant="secondary">{user.organization_role}</Badge>
-                              )}
+                            <div className="flex gap-2 mt-2">
+                              <UserRoleManager
+                                userId={user.id}
+                                currentRole={user.role}
+                                userName={user.full_name || user.email}
+                                onRoleUpdate={fetchAdminData}
+                              />
                             </div>
                           </div>
-                          <span className="text-sm text-muted-foreground">
+                          <span className="text-sm text-muted-foreground whitespace-nowrap">
                             {new Date(user.created_at).toLocaleDateString()}
                           </span>
                         </div>

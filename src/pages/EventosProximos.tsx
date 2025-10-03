@@ -55,6 +55,11 @@ const EventosProximos = () => {
     try {
       setLoadingData(true);
       
+      // Data mínima: hoje + 2 dias
+      const minDate = new Date();
+      minDate.setDate(minDate.getDate() + 2);
+      const minDateStr = minDate.toISOString().split('T')[0];
+      
       const { data: campaignsData, error: campaignsError } = await supabase
         .from('campaigns')
         .select(`
@@ -63,6 +68,7 @@ const EventosProximos = () => {
         `)
         .eq('is_active', true)
         .is('photographer_id', null)
+        .gte('event_date', minDateStr)
         .order('event_date', { ascending: true });
 
       if (campaignsError) throw campaignsError;
