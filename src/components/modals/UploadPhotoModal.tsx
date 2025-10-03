@@ -473,18 +473,38 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="files" className="font-semibold flex items-center gap-2">
+            <Label className="font-semibold flex items-center gap-2">
               <Upload className="h-4 w-4" />
               3. Selecionar fotos (sem limite de quantidade)
             </Label>
-            <Input
-              id="files"
-              type="file"
-              multiple
-              accept="image/*"
-              onChange={handleFileSelect}
-              className="cursor-pointer"
-            />
+            
+            {/* Área de upload visual e clicável */}
+            <label 
+              htmlFor="files" 
+              className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-primary/40 rounded-lg cursor-pointer bg-primary/5 hover:bg-primary/10 transition-colors group"
+            >
+              <div className="flex flex-col items-center justify-center pt-5 pb-6 px-4 text-center">
+                <Upload className="w-10 h-10 mb-3 text-primary group-hover:scale-110 transition-transform" />
+                <p className="mb-2 text-sm font-semibold text-foreground">
+                  <span className="text-primary">Clique aqui</span> para selecionar fotos
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Ou arraste e solte as imagens aqui
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  📸 Sem limite de quantidade • Máx 2.5MB por foto
+                </p>
+              </div>
+              <input
+                id="files"
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+            </label>
+            
             {files && (
               <div className="space-y-2 p-3 bg-green-50 border border-green-200 rounded-lg">
                 <p className="text-sm font-semibold text-green-900 flex items-center gap-2">
