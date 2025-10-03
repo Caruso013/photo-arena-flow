@@ -47,6 +47,72 @@ export type Database = {
         }
         Relationships: []
       }
+      campaign_photographers: {
+        Row: {
+          assigned_at: string | null
+          assigned_by: string | null
+          campaign_id: string
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          photographer_id: string
+        }
+        Insert: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          campaign_id: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          photographer_id: string
+        }
+        Update: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          campaign_id?: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          photographer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_photographers_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_photographers_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_photographers_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_photographers_photographer_id_fkey"
+            columns: ["photographer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_photographers_photographer_id_fkey"
+            columns: ["photographer_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaigns: {
         Row: {
           cover_image_url: string | null
