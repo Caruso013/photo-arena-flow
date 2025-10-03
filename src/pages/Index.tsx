@@ -118,6 +118,7 @@ const Index = () => {
               <Link to="/" className="text-primary font-medium whitespace-nowrap">HOME</Link>
               <Link to="/events" className="hover:text-primary transition-colors whitespace-nowrap">EVENTOS</Link>
               <Link to="/fotografos" className="hover:text-primary transition-colors whitespace-nowrap">FOTÓGRAFOS</Link>
+              <Link to="/faq" className="hover:text-primary transition-colors whitespace-nowrap">AJUDA</Link>
               <Link to="/contato" className="hover:text-primary transition-colors whitespace-nowrap">CONTATO</Link>
               {profile?.role === 'photographer' && (
                 <Link to="/dashboard" className="hover:text-primary transition-colors whitespace-nowrap">ÁREA DO FOTÓGRAFO</Link>
@@ -301,9 +302,9 @@ const Index = () => {
             <div>
               <h3 className="text-lg font-semibold mb-4 text-primary">Ajuda</h3>
               <div className="space-y-2 text-sm">
-                <div><Link to="/duvidas" className="hover:text-primary transition-colors">Dúvidas frequentes</Link></div>
+                <div><Link to="/faq" className="hover:text-primary transition-colors">Dúvidas frequentes</Link></div>
                 <div><Link to="/contato" className="hover:text-primary transition-colors">Contato</Link></div>
-                <div><Link to="/sobre" className="hover:text-primary transition-colors">Sobre nós</Link></div>
+                <div><Link to="/fotografos" className="hover:text-primary transition-colors">Seja Fotógrafo</Link></div>
                 <div><Link to="/admin" className="hover:text-primary transition-colors text-xs opacity-70">Área Admin</Link></div>
               </div>
             </div>
