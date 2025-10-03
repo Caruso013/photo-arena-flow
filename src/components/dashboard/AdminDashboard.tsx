@@ -30,6 +30,7 @@ import { CampaignManager } from './CampaignManager';
 import { ProfileEditor } from '../profile/ProfileEditor';
 import { ApplicationsManager } from './ApplicationsManager';
 import { UserRoleManager } from './UserRoleManager';
+import { PhotographerApplicationsManager } from './PhotographerApplicationsManager';
 
 interface Organization {
   id: string;
@@ -294,33 +295,41 @@ const AdminDashboard = () => {
             </div>
 
             {/* Management Tabs */}
-            <Tabs defaultValue="applications" className="space-y-6">
-              <TabsList className="grid w-full grid-cols-6">
-                <TabsTrigger value="applications" className="flex items-center gap-2">
-                  <UserCheck className="h-4 w-4" />
-                  Candidaturas
+            <Tabs defaultValue="photographer-apps" className="space-y-6">
+              <TabsList className="grid w-full grid-cols-7 text-xs">
+                <TabsTrigger value="photographer-apps" className="flex items-center gap-1">
+                  <Camera className="h-4 w-4" />
+                  Fotógrafos
                 </TabsTrigger>
-                <TabsTrigger value="financial" className="flex items-center gap-2">
+                <TabsTrigger value="applications" className="flex items-center gap-1">
+                  <UserCheck className="h-4 w-4" />
+                  Eventos
+                </TabsTrigger>
+                <TabsTrigger value="financial" className="flex items-center gap-1">
                   <TrendingUp className="h-4 w-4" />
                   Financeiro
                 </TabsTrigger>
-                <TabsTrigger value="organizations" className="flex items-center gap-2">
+                <TabsTrigger value="organizations" className="flex items-center gap-1">
                   <Building2 className="h-4 w-4" />
-                  Organizações
+                  Orgs
                 </TabsTrigger>
-                <TabsTrigger value="campaigns" className="flex items-center gap-2">
-                  <Camera className="h-4 w-4" />
-                  Eventos
+                <TabsTrigger value="campaigns" className="flex items-center gap-1">
+                  <Activity className="h-4 w-4" />
+                  Campanhas
                 </TabsTrigger>
-                <TabsTrigger value="users" className="flex items-center gap-2">
+                <TabsTrigger value="users" className="flex items-center gap-1">
                   <Users className="h-4 w-4" />
                   Usuários
                 </TabsTrigger>
-                <TabsTrigger value="profile" className="flex items-center gap-2">
+                <TabsTrigger value="profile" className="flex items-center gap-1">
                   <Settings className="h-4 w-4" />
                   Perfil
                 </TabsTrigger>
               </TabsList>
+
+          <TabsContent value="photographer-apps" className="space-y-6">
+            <PhotographerApplicationsManager />
+          </TabsContent>
 
           <TabsContent value="applications" className="space-y-6">
             <ApplicationsManager />
