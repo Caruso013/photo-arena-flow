@@ -15,6 +15,8 @@ import DashboardLayout from './DashboardLayout';
 import UploadPhotoModal from '@/components/modals/UploadPhotoModal';
 import CreateCampaignModal from '@/components/modals/CreateCampaignModal';
 import CreateAlbumModal from '@/components/modals/CreateAlbumModal';
+import { ProfileEditor } from '../profile/ProfileEditor';
+import FinancialDashboard from './FinancialDashboard';
 import AntiScreenshotProtection from '@/components/security/AntiScreenshotProtection';
 
 interface Campaign {
@@ -374,7 +376,7 @@ const PhotographerDashboard = () => {
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="campaigns" className="space-y-6">
-          <TabsList className="grid w-full max-w-2xl grid-cols-3">
+          <TabsList className="grid w-full max-w-3xl grid-cols-4">
             <TabsTrigger value="campaigns" className="gap-2">
               <Camera className="h-4 w-4" />
               Meus Eventos
@@ -386,6 +388,10 @@ const PhotographerDashboard = () => {
             <TabsTrigger value="payouts" className="gap-2">
               <CreditCard className="h-4 w-4" />
               Repasses
+            </TabsTrigger>
+            <TabsTrigger value="profile" className="gap-2">
+              <Edit className="h-4 w-4" />
+              Perfil
             </TabsTrigger>
           </TabsList>
 
@@ -617,6 +623,10 @@ const PhotographerDashboard = () => {
                 </CardContent>
               </Card>
             </div>
+          </TabsContent>
+
+          <TabsContent value="profile" className="space-y-6">
+            <ProfileEditor />
           </TabsContent>
         </Tabs>
       </div>
