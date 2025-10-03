@@ -10,9 +10,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from '@/components/ui/use-toast';
-import { Search, Camera, ShoppingCart, Download, FileImage, Filter, Eye, Calendar } from 'lucide-react';
+import { Search, Camera, ShoppingCart, Download, FileImage, Filter, Eye, Calendar, UserPlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import DashboardLayout from './DashboardLayout';
+import { PhotographerApplicationForm } from './PhotographerApplicationForm';
+import { PhotographerApplicationStatus } from './PhotographerApplicationStatus';
 
 interface Campaign {
   id: string;
@@ -53,6 +55,7 @@ const UserDashboard = () => {
   const [filterByCampaign, setFilterByCampaign] = useState<string>('all');
   const [selectedPhoto, setSelectedPhoto] = useState<PurchasedPhoto | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showApplicationForm, setShowApplicationForm] = useState(false);
 
   useEffect(() => {
     fetchCampaigns();
@@ -183,6 +186,18 @@ const UserDashboard = () => {
     setSelectedPhoto(photo);
   };
 
+  const handleApplicationSubmitted = () => {
+    setShowApplicationForm(false);
+    toast({
+      title: "Candidatura enviada!",
+      description: "Sua candidatura para fotógrafo foi enviada com sucesso. Você receberá um email com o resultado em breve.",
+    });
+  };
+
+  const handleShowApplicationForm = () => {
+    setShowApplicationForm(true);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -224,14 +239,18 @@ const UserDashboard = () => {
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="events" className="space-y-6">
-          <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsList className="grid w-full max-w-lg grid-cols-3">
             <TabsTrigger value="events" className="gap-2">
               <Camera className="h-4 w-4" />
-              Eventos Disponíveis
+              Eventos
             </TabsTrigger>
             <TabsTrigger value="purchases" className="gap-2">
               <ShoppingCart className="h-4 w-4" />
-              Minhas Compras
+              Compras
+            </TabsTrigger>
+            <TabsTrigger value="photographer" className="gap-2">
+              <UserPlus className="h-4 w-4" />
+              Fotógrafo
             </TabsTrigger>
           </TabsList>
 
@@ -471,6 +490,33 @@ const UserDashboard = () => {
                   ))}
                 </div>
               </>
+            )}
+          </TabsContent>
+
+          <TabsContent value="photographer" className="space-y-6 animate-fade-in">
+            <div className="flex items-center justify-between">
+              <h2 className="text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
+                Torne-se um Fotógrafo
+              </h2>
+            </div>
+            
+            {showApplicationForm ? (
+              <div className="space-y-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowApplicationForm(false)}
+                  className="mb-4"
+                >
+                  ← Voltar para status
+                </Button>
+                <PhotographerApplicationForm 
+                  onApplicationSubmitted={handleApplicationSubmitted}
+                />
+              </div>
+            ) : (
+              <PhotographerApplicationStatus 
+                onShowApplicationForm={handleShowApplicationForm}
+              />
             )}
           </TabsContent>
         </Tabs>
