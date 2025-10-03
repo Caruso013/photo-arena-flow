@@ -38,6 +38,9 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
   const [price, setPrice] = useState('10.00');
   const [files, setFiles] = useState<FileList | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [creatingNewFolder, setCreatingNewFolder] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+  const [newFolderDescription, setNewFolderDescription] = useState('');
 
   useEffect(() => {
     fetchCampaigns();
@@ -54,30 +57,79 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
 
   const fetchCampaigns = async () => {
     try {
-      // Buscar todas as campanhas ativas (criadas por admin)
-      // Fotógrafos podem fazer upload em qualquer campanha ativa
-      const { data, error } = await supabase
-        .from('campaigns')
-        .select('id, title')
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      
-      if (!data || data.length === 0) {
+      if (!profile?.id) {
         toast({
-          title: "Nenhum evento disponível",
-          description: "Aguarde a criação de eventos pelos administradores ou entre em contato.",
+          title: "Erro de autenticação",
+          description: "Você precisa estar logado.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Buscar APENAS eventos onde o fotógrafo está atribuído via campaign_photographers
+      const { data: assignments, error: assignError } = await supabase
+        .from('campaign_photographers')
+        .select(`
+          campaign_id,
+          campaigns (
+            id,
+            title,
+            event_date,
+            is_active
+          )
+        `)
+        .eq('photographer_id', profile.id)
+        .eq('is_active', true);
+
+      if (assignError) throw assignError;
+
+      if (!assignments || assignments.length === 0) {
+        toast({
+          title: "Nenhum evento atribuído",
+          description: "Você ainda não foi atribuído a nenhum evento. Candidate-se na página 'Eventos Próximos'.",
+          variant: "destructive",
+        });
+        setCampaigns([]);
+        return;
+      }
+
+      // Filtrar campanhas ativas e validar data (mesmo mês)
+      const currentDate = new Date();
+      const currentMonth = currentDate.getMonth();
+      const currentYear = currentDate.getFullYear();
+
+      const validCampaigns = assignments
+        .map(a => a.campaigns)
+        .filter(c => {
+          if (!c || !c.is_active) return false;
+          
+          // Validar data do evento: deve estar no mesmo mês
+          if (c.event_date) {
+            const eventDate = new Date(c.event_date);
+            const eventMonth = eventDate.getMonth();
+            const eventYear = eventDate.getFullYear();
+            
+            // Permitir upload apenas no mês do evento
+            return (eventYear === currentYear && eventMonth === currentMonth);
+          }
+          
+          return true; // Se não tem data, permitir
+        });
+
+      if (validCampaigns.length === 0) {
+        toast({
+          title: "Nenhum evento disponível para upload",
+          description: "Seus eventos atribuídos não estão no período de upload válido (mesmo mês do evento).",
           variant: "destructive",
         });
       }
-      
-      setCampaigns(data || []);
+
+      setCampaigns(validCampaigns as Campaign[]);
     } catch (error) {
       console.error('Error fetching campaigns:', error);
       toast({
         title: "Erro ao carregar eventos",
-        description: "Não foi possível carregar os eventos disponíveis.",
+        description: "Não foi possível carregar seus eventos atribuídos.",
         variant: "destructive",
       });
     }
@@ -145,6 +197,51 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
     }
 
     setFiles(selectedFiles);
+  };
+
+  const handleCreateNewFolder = async () => {
+    if (!selectedCampaign || !newFolderName.trim()) {
+      toast({
+        title: "Dados incompletos",
+        description: "Digite um nome para a nova pasta.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('sub_events')
+        .insert({
+          campaign_id: selectedCampaign,
+          title: newFolderName.trim(),
+          description: newFolderDescription.trim() || null,
+          is_active: true
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      toast({
+        title: "✅ Pasta criada!",
+        description: `A pasta "${newFolderName}" foi criada com sucesso.`,
+      });
+
+      // Atualizar lista de sub-eventos e selecionar o novo
+      await fetchSubEvents(selectedCampaign);
+      setSelectedSubEvent(data.id);
+      setNewFolderName('');
+      setNewFolderDescription('');
+      setCreatingNewFolder(false);
+    } catch (error) {
+      console.error('Error creating folder:', error);
+      toast({
+        title: "Erro ao criar pasta",
+        description: "Não foi possível criar a pasta. Verifique se você está atribuído a este evento.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleUpload = async () => {
@@ -253,13 +350,53 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
 
           {selectedCampaign && (
             <div className="space-y-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-              <div className="flex items-center gap-2">
-                <FolderOpen className="h-4 w-4 text-amber-700" />
-                <Label htmlFor="subEvent" className="font-semibold text-amber-900">
-                  2. Pasta/Álbum (Opcional)
-                </Label>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <FolderOpen className="h-4 w-4 text-amber-700" />
+                  <Label className="font-semibold text-amber-900">
+                    2. Pasta/Álbum (Opcional)
+                  </Label>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setCreatingNewFolder(!creatingNewFolder)}
+                  className="gap-1 h-8 text-xs"
+                >
+                  <FolderOpen className="h-3 w-3" />
+                  {creatingNewFolder ? 'Cancelar' : 'Nova Pasta'}
+                </Button>
               </div>
               
+              {/* Formulário de criar pasta */}
+              {creatingNewFolder && (
+                <div className="space-y-2 p-3 bg-white border border-amber-300 rounded">
+                  <Input
+                    placeholder="Nome da pasta (ex: Treino Manhã)"
+                    value={newFolderName}
+                    onChange={(e) => setNewFolderName(e.target.value)}
+                    className="h-9"
+                  />
+                  <Input
+                    placeholder="Descrição (opcional)"
+                    value={newFolderDescription}
+                    onChange={(e) => setNewFolderDescription(e.target.value)}
+                    className="h-9"
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={handleCreateNewFolder}
+                    className="gap-1 w-full h-9"
+                  >
+                    <CheckCircle2 className="h-3 w-3" />
+                    Criar Pasta
+                  </Button>
+                </div>
+              )}
+              
+              {/* Select de pastas existentes */}
               {subEvents.length > 0 ? (
                 <>
                   <Select value={selectedSubEvent} onValueChange={setSelectedSubEvent}>
@@ -289,10 +426,10 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
               ) : (
                 <div className="p-3 bg-white rounded border border-amber-300">
                   <p className="text-sm text-amber-900">
-                    💡 Nenhuma pasta criada neste evento ainda. Suas fotos ficarão na pasta principal do evento.
+                    💡 Nenhuma pasta criada. Clique em "Nova Pasta" para criar uma agora!
                   </p>
                   <p className="text-xs text-amber-700 mt-1">
-                    Dica: Admins podem criar pastas no painel administrativo para melhor organização
+                    Suas fotos ficarão na pasta principal do evento se você não criar uma pasta específica.
                   </p>
                 </div>
               )}
