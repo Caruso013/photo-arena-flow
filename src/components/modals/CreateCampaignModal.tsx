@@ -10,15 +10,17 @@ import { useToast } from '@/hooks/use-toast';
 import { Plus, Calendar, MapPin, Percent } from 'lucide-react';
 
 interface CreateCampaignModalProps {
-  organizationId: string;
-  organizationName: string;
+  organizationId?: string;
+  organizationName?: string;
   onCampaignCreated: () => void;
+  organizations?: Array<{ id: string; name: string }>;
 }
 
 export default function CreateCampaignModal({ 
   organizationId, 
   organizationName, 
-  onCampaignCreated 
+  onCampaignCreated,
+  organizations = []
 }: CreateCampaignModalProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -30,6 +32,7 @@ export default function CreateCampaignModal({
     platform_percentage: 60,
     photographer_percentage: 10,
     organization_percentage: 30,
+    organization_id: organizationId || '',
   });
   const { toast } = useToast();
 
@@ -85,7 +88,7 @@ export default function CreateCampaignModal({
           description: formData.description || null,
           location: formData.location || null,
           event_date: formData.event_date || null,
-          organization_id: organizationId,
+          organization_id: formData.organization_id || null,
           platform_percentage: formData.platform_percentage,
           photographer_percentage: formData.photographer_percentage,
           organization_percentage: formData.organization_percentage,
@@ -109,6 +112,7 @@ export default function CreateCampaignModal({
         platform_percentage: 60,
         photographer_percentage: 10,
         organization_percentage: 30,
+        organization_id: organizationId || '',
       });
       
       setOpen(false);
@@ -139,11 +143,34 @@ export default function CreateCampaignModal({
         <DialogHeader>
           <DialogTitle>Criar Nova Campanha</DialogTitle>
           <DialogDescription>
-            Crie uma campanha para {organizationName}. Fotógrafos poderão se candidatar para cobrir este evento.
+            {organizationName 
+              ? `Crie uma campanha para ${organizationName}. Fotógrafos poderão se candidatar para cobrir este evento.`
+              : 'Crie uma nova campanha. Fotógrafos poderão se candidatar para cobrir este evento.'
+            }
           </DialogDescription>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-6">
+          {organizations.length > 0 && !organizationId && (
+            <div className="space-y-2">
+              <Label htmlFor="organization">Organização *</Label>
+              <select
+                id="organization"
+                value={formData.organization_id}
+                onChange={(e) => handleInputChange('organization_id', e.target.value)}
+                className="w-full px-3 py-2 border rounded-md"
+                required
+              >
+                <option value="">Selecione uma organização</option>
+                {organizations.map((org) => (
+                  <option key={org.id} value={org.id}>
+                    {org.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="title">Título da Campanha *</Label>
@@ -278,7 +305,7 @@ export default function CreateCampaignModal({
               </div>
               <div className="text-center">
                 <Badge variant="default" className="w-full justify-center bg-amber-500 hover:bg-amber-600">
-                  {organizationName}: {percentages.organization}%
+                  Organização: {percentages.organization}%
                 </Badge>
               </div>
               <div className="text-center">
