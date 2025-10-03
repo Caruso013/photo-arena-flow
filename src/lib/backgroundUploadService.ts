@@ -32,7 +32,7 @@ class BackgroundUploadService {
   private subscribers: Set<(uploads: UploadBatch[]) => void> = new Set();
   private isUploading = false;
   private maxRetries = 3;
-  private maxConcurrentUploads = 3; // Máximo de uploads simultâneos
+  private maxConcurrentUploads = 5; // Aumentado de 3 para 5 uploads simultâneos para melhor performance
 
   // Subscribir para receber atualizações
   subscribe(callback: (uploads: UploadBatch[]) => void) {
@@ -86,9 +86,10 @@ class BackgroundUploadService {
     this.notify();
 
     // Mostrar notificação inicial
+    const timeEstimate = Math.ceil(files.length / this.maxConcurrentUploads * 8); // ~8s por lote de 5
     toast({
-      title: "Upload iniciado",
-      description: `${files.length} foto(s) adicionadas à fila de upload. O processo continuará em background.`,
+      title: "🚀 Upload iniciado!",
+      description: `${files.length} foto(s) na fila. Tempo estimado: ${timeEstimate}s. Upload continua em background!`,
     });
 
     // Iniciar processamento
