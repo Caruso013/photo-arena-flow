@@ -171,8 +171,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       toast({
-        title: "Cadastro realizado",
-        description: "Verifique seu email para confirmar a conta e receba suas boas-vindas!",
+        title: "Cadastro realizado com sucesso! ✅",
+        description: "Verifique seu email para confirmar a conta. Se não receber em alguns minutos, verifique a pasta de spam ou entre em contato.",
       });
     }
 
