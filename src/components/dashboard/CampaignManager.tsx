@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,7 +8,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/components/ui/use-toast';
-import { Camera, Edit, Power, PowerOff, MapPin, Calendar } from 'lucide-react';
+import { Camera, Edit, Power, PowerOff, MapPin, Calendar, Plus, Trash2 } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import CreateCampaignModal from '../modals/CreateCampaignModal';
 
 interface Campaign {
   id: string;
@@ -27,13 +29,28 @@ interface CampaignManagerProps {
 
 export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onRefresh }) => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
+  const [organizations, setOrganizations] = useState<Array<{ id: string; name: string }>>([]);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     location: '',
     event_date: ''
   });
+
+  useEffect(() => {
+    fetchOrganizations();
+  }, []);
+
+  const fetchOrganizations = async () => {
+    const { data } = await supabase
+      .from('organizations')
+      .select('id, name')
+      .order('name');
+    
+    if (data) setOrganizations(data);
+  };
 
   const handleToggleActive = async (campaign: Campaign) => {
     try {
@@ -100,16 +117,58 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
     }
   };
 
+  const openDeleteDialog = (campaign: Campaign) => {
+    setSelectedCampaign(campaign);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!selectedCampaign) return;
+
+    try {
+      const { error } = await supabase
+        .from('campaigns')
+        .delete()
+        .eq('id', selectedCampaign.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Campanha excluída!",
+        description: "A campanha foi removida com sucesso.",
+      });
+
+      setDeleteDialogOpen(false);
+      setSelectedCampaign(null);
+      onRefresh();
+    } catch (error) {
+      console.error('Error deleting campaign:', error);
+      toast({
+        title: "Erro ao excluir",
+        description: "Não foi possível excluir a campanha.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Camera className="h-5 w-5" />
-          Gerenciar Campanhas
-        </CardTitle>
-        <CardDescription>
-          Ative, desative ou edite campanhas da plataforma
-        </CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Camera className="h-5 w-5" />
+              Gerenciar Campanhas
+            </CardTitle>
+            <CardDescription>
+              Crie, edite ou exclua campanhas da plataforma
+            </CardDescription>
+          </div>
+          <CreateCampaignModal 
+            organizations={organizations}
+            onCampaignCreated={onRefresh}
+          />
+        </div>
       </CardHeader>
       <CardContent>
         {campaigns.length === 0 ? (
@@ -177,6 +236,15 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
                           </>
                         )}
                       </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => openDeleteDialog(campaign)}
+                        className="gap-1"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Excluir
+                      </Button>
                     </div>
                   </div>
                 </CardContent>
@@ -236,6 +304,24 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Alert Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. A campanha será permanentemente excluída.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 };
