@@ -290,7 +290,7 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Upload className="h-5 w-5" />
@@ -301,7 +301,8 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
           </DialogDescription>
         </DialogHeader>
 
-        <form className="space-y-4">
+        <div className="overflow-y-auto flex-1 pr-2">
+          <form className="space-y-4">
           {campaigns.length === 0 ? (
             <div className="p-6 text-center border-2 border-dashed rounded-lg bg-muted/50">
               <Camera className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
@@ -541,8 +542,14 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
               </div>
             </div>
           </div>
+            </>
+          )}
+          </form>
+        </div>
 
-          <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4 border-t mt-4">
+        {/* Botões fixos no final */}
+        {campaigns.length > 0 && (
+          <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4 border-t mt-2">
             <Button 
               variant="outline" 
               onClick={onClose} 
@@ -569,9 +576,7 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
               )}
             </Button>
           </div>
-          </>
-          )}
-        </form>
+        )}
       </DialogContent>
     </Dialog>
   );
