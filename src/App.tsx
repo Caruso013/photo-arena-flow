@@ -18,6 +18,7 @@ import Fotografos from "./pages/Fotografos";
 import Campaign from "./pages/Campaign";
 import EventosProximos from "./pages/EventosProximos";
 import FAQ from "./pages/FAQ";
+import PaymentTest from "./pages/PaymentTest";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -57,6 +58,7 @@ const AppContent = () => {
         <Route path="/admin" element={<AdminLogin />} />
         <Route path="/fotografos" element={<Fotografos />} />
         <Route path="/faq" element={<FAQ />} />
+        <Route path="/payment-test" element={<PaymentTest />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>
