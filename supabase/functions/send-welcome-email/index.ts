@@ -17,10 +17,12 @@ serve(async (req) => {
   }
 
   try {
+    console.log('🚀 Edge Function send-welcome-email chamada');
+    
     const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
     
     const { email, fullName } = await req.json();
-    console.log('Enviando email de boas-vindas para:', email);
+    console.log('📧 Enviando email de boas-vindas para:', email);
 
     if (!email) {
       throw new Error('Email é obrigatório');
