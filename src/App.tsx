@@ -28,6 +28,13 @@ import MyPhotos from "./pages/dashboard/MyPhotos";
 import MyPurchases from "./pages/dashboard/MyPurchases";
 import Financial from "./pages/dashboard/Financial";
 import Profile from "./pages/dashboard/Profile";
+import AdminOverview from "./pages/dashboard/admin/Overview";
+import AdminEvents from "./pages/dashboard/admin/Events";
+import AdminPhotographers from "./pages/dashboard/admin/Photographers";
+import AdminUsers from "./pages/dashboard/admin/Users";
+import AdminOrganizations from "./pages/dashboard/admin/Organizations";
+import AdminFinancial from "./pages/dashboard/admin/Financial";
+import AdminReports from "./pages/dashboard/admin/Reports";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -65,6 +72,13 @@ const AppContent = () => {
           <Route path="purchases" element={<MyPurchases />} />
           <Route path="financial" element={<Financial />} />
           <Route path="profile" element={<Profile />} />
+          <Route path="admin" element={<AdminOverview />} />
+          <Route path="admin/events" element={<AdminEvents />} />
+          <Route path="admin/photographers" element={<AdminPhotographers />} />
+          <Route path="admin/users" element={<AdminUsers />} />
+          <Route path="admin/organizations" element={<AdminOrganizations />} />
+          <Route path="admin/financial" element={<AdminFinancial />} />
+          <Route path="admin/reports" element={<AdminReports />} />
         </Route>
         <Route path="/events" element={<Events />} />
         <Route path="/eventos-proximos" element={<EventosProximos />} />
