@@ -52,13 +52,13 @@ const DashboardSidebar = ({ isOpen, onToggle }: DashboardSidebarProps) => {
   ];
 
   const adminItems = [
-    { title: 'Visão Geral', url: '/dashboard', icon: LayoutDashboard },
-    { title: 'Eventos', url: '/dashboard', icon: Calendar },
-    { title: 'Fotógrafos', url: '/dashboard', icon: Camera },
-    { title: 'Usuários', url: '/dashboard', icon: Users },
-    { title: 'Organizações', url: '/dashboard', icon: Building2 },
-    { title: 'Financeiro', url: '/dashboard/financial', icon: DollarSign },
-    { title: 'Relatórios', url: '/dashboard', icon: FileText },
+    { title: 'Visão Geral', url: '/dashboard/admin', icon: LayoutDashboard },
+    { title: 'Eventos', url: '/dashboard/admin/events', icon: Calendar },
+    { title: 'Fotógrafos', url: '/dashboard/admin/photographers', icon: Camera },
+    { title: 'Usuários', url: '/dashboard/admin/users', icon: Users },
+    { title: 'Organizações', url: '/dashboard/admin/organizations', icon: Building2 },
+    { title: 'Financeiro', url: '/dashboard/admin/financial', icon: DollarSign },
+    { title: 'Relatórios', url: '/dashboard/admin/reports', icon: FileText },
   ];
 
   const getMenuItems = () => {
@@ -140,7 +140,11 @@ const DashboardSidebar = ({ isOpen, onToggle }: DashboardSidebarProps) => {
                 cn(
                   'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors mb-1',
                   isActive
-                    ? 'bg-primary text-primary-foreground font-medium'
+                    ? profile?.role === 'admin'
+                      ? 'bg-amber-500 text-white font-medium shadow-md'
+                      : 'bg-primary text-primary-foreground font-medium'
+                    : profile?.role === 'admin'
+                    ? 'bg-amber-400/90 text-amber-950 hover:bg-amber-500 hover:text-white font-medium'
                     : 'hover:bg-muted'
                 )
               }
