@@ -4,35 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Mail, Phone, MapPin, Clock, ArrowLeft } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Mail, Phone, Clock } from 'lucide-react';
+import MainLayout from '@/components/layout/MainLayout';
 
 const Contato = () => {
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="bg-secondary text-secondary-foreground">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link to="/">
-                <Button variant="ghost" size="sm" className="gap-2 text-secondary-foreground hover:text-primary">
-                  <ArrowLeft className="h-4 w-4" />
-                  Voltar
-                </Button>
-              </Link>
-              <img 
-                src="/lovable-uploads/6fdfc5d2-230c-4142-bf7c-3a326e5e45a8.png" 
-                alt="STA Fotos Logo" 
-                className="h-10 w-auto"
-              />
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-8 md:py-12">
+    <MainLayout>
+      <section className="container mx-auto px-4 py-8 md:py-12">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-8 md:mb-12">
             <h1 className="text-2xl md:text-4xl font-bold mb-4">Entre em Contato</h1>
@@ -209,17 +187,8 @@ const Contato = () => {
             </div>
           </div>
         </div>
-      </main>
-
-      {/* Footer */}
-      <footer className="bg-secondary text-secondary-foreground py-6 md:py-8 mt-12 md:mt-16">
-        <div className="container mx-auto px-4 text-center">
-          <p className="text-muted-foreground text-sm md:text-base">
-            © 2024 STA Fotos. Todos os direitos reservados.
-          </p>
-        </div>
-      </footer>
-    </div>
+      </section>
+    </MainLayout>
   );
 };
 

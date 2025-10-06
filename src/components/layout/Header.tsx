@@ -1,13 +1,32 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, User, LogIn } from 'lucide-react';
+import { Search, User, LogIn, Menu } from 'lucide-react';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 
 const Header = () => {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const location = useLocation();
+
+  const navItems = [
+    { to: '/', label: 'HOME' },
+    { to: '/events', label: 'EVENTOS' },
+    { to: '/fotografos', label: 'FOTÓGRAFOS' },
+    { to: '/faq', label: 'AJUDA' },
+    { to: '/contato', label: 'CONTATO' },
+  ];
+
+  const isActive = (path: string) => location.pathname === path;
 
   return (
     <header className="bg-header text-header-foreground">
@@ -22,10 +41,10 @@ const Header = () => {
             />
           </Link>
 
-          {/* Search + Auth Buttons */}
-          <div className="flex items-center gap-2 md:gap-4">
-            {/* Search - Hidden on mobile */}
-            <div className="relative hidden md:block">
+          {/* Desktop Actions */}
+          <div className="hidden md:flex items-center gap-4">
+            {/* Search - Desktop */}
+            <div className="relative hidden lg:block">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
                 placeholder="Pesquisar evento..."
@@ -35,60 +54,125 @@ const Header = () => {
               />
             </div>
 
-            {/* Auth Buttons */}
+            {/* Auth Buttons - Desktop */}
             {user ? (
               <Link to="/dashboard">
-                <Button variant="outline" size="sm" className="gap-1 md:gap-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground text-xs md:text-sm">
-                  <User className="h-3 w-3 md:h-4 md:w-4" />
-                  <span className="hidden sm:inline">Dashboard</span>
-                  <span className="sm:hidden">Painel</span>
+                <Button variant="outline" size="sm" className="gap-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground">
+                  <User className="h-4 w-4" />
+                  <span>Dashboard</span>
                 </Button>
               </Link>
             ) : (
-              <div className="flex gap-1 md:gap-2">
+              <>
                 <Link to="/auth">
-                  <Button variant="outline" size="sm" className="gap-1 md:gap-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground text-xs md:text-sm px-2 md:px-4">
-                    <User className="h-3 w-3 md:h-4 md:w-4" />
+                  <Button variant="outline" size="sm" className="gap-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground">
+                    <User className="h-4 w-4" />
                     <span>Cadastrar</span>
                   </Button>
                 </Link>
                 <Link to="/auth">
-                  <Button size="sm" className="gap-1 md:gap-2 bg-primary text-primary-foreground hover:bg-primary/90 text-xs md:text-sm px-2 md:px-4">
-                    <LogIn className="h-3 w-3 md:h-4 md:w-4" />
+                  <Button size="sm" className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
+                    <LogIn className="h-4 w-4" />
                     <span>Entrar</span>
                   </Button>
                 </Link>
-              </div>
+              </>
             )}
           </div>
+
+          {/* Mobile Menu */}
+          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <SheetTrigger asChild className="md:hidden">
+              <Button variant="ghost" size="icon" className="text-white">
+                <Menu className="h-6 w-6" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="bg-header text-header-foreground w-80">
+              <SheetHeader>
+                <SheetTitle className="text-primary">Menu</SheetTitle>
+              </SheetHeader>
+              <div className="flex flex-col gap-4 mt-6">
+                {/* Auth Buttons Mobile */}
+                {user ? (
+                  <Link to="/dashboard" onClick={() => setMobileMenuOpen(false)}>
+                    <Button className="w-full gap-2 bg-primary hover:bg-primary/90">
+                      <User className="h-4 w-4" />
+                      Dashboard
+                    </Button>
+                  </Link>
+                ) : (
+                  <>
+                    <Link to="/auth" onClick={() => setMobileMenuOpen(false)}>
+                      <Button variant="outline" className="w-full gap-2 border-primary text-primary">
+                        <User className="h-4 w-4" />
+                        Cadastrar
+                      </Button>
+                    </Link>
+                    <Link to="/auth" onClick={() => setMobileMenuOpen(false)}>
+                      <Button className="w-full gap-2 bg-primary hover:bg-primary/90">
+                        <LogIn className="h-4 w-4" />
+                        Entrar
+                      </Button>
+                    </Link>
+                  </>
+                )}
+
+                {/* Navigation Mobile */}
+                <div className="border-t border-white/10 pt-4 mt-2">
+                  {navItems.map((item) => (
+                    <Link
+                      key={item.to}
+                      to={item.to}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={`block py-3 px-4 rounded-lg mb-1 transition-colors ${
+                        isActive(item.to)
+                          ? 'bg-primary text-primary-foreground font-medium'
+                          : 'hover:bg-white/10'
+                      }`}
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
+                </div>
+
+                {/* Search Mobile */}
+                <div className="border-t border-white/10 pt-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <Input
+                      placeholder="Pesquisar evento..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10 bg-background/10 border-gray-600 text-white placeholder:text-gray-400"
+                    />
+                  </div>
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
       </div>
 
-      {/* Navigation */}
-      <nav className="border-t border-white/10">
+      {/* Navigation - Desktop */}
+      <nav className="border-t border-white/10 hidden md:block">
         <div className="container mx-auto px-4">
-          <div className="flex items-center justify-center md:justify-start space-x-4 md:space-x-8 py-3 text-xs md:text-sm overflow-x-auto">
-            <Link to="/" className="text-primary font-medium whitespace-nowrap">HOME</Link>
-            <Link to="/events" className="hover:text-primary transition-colors whitespace-nowrap">EVENTOS</Link>
-            <Link to="/fotografos" className="hover:text-primary transition-colors whitespace-nowrap">FOTÓGRAFOS</Link>
-            <Link to="/faq" className="hover:text-primary transition-colors whitespace-nowrap">AJUDA</Link>
-            <Link to="/contato" className="hover:text-primary transition-colors whitespace-nowrap">CONTATO</Link>
+          <div className="flex items-center justify-start space-x-8 py-3 text-sm">
+            {navItems.map((item) => (
+              <Link
+                key={item.to}
+                to={item.to}
+                className={`transition-colors whitespace-nowrap ${
+                  isActive(item.to)
+                    ? 'text-primary font-medium'
+                    : 'hover:text-primary'
+                }`}
+              >
+                {item.label}
+              </Link>
+            ))}
           </div>
         </div>
       </nav>
-
-      {/* Mobile Search */}
-      <div className="md:hidden bg-header border-t border-white/10 p-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-          <Input
-            placeholder="Pesquisar evento..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 bg-background/10 border-gray-600 text-white placeholder:text-gray-400 text-base"
-          />
-        </div>
-      </div>
     </header>
   );
 };
