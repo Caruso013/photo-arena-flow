@@ -7,10 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from '@/components/ui/use-toast';
-import { Search, Camera, ShoppingCart, Download, FileImage, Filter, Eye, Calendar } from 'lucide-react';
+import { Search, Camera, ShoppingCart, Download, FileImage } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { PhotographerApplicationForm } from './PhotographerApplicationForm';
 
@@ -48,10 +46,6 @@ const UserDashboard = () => {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [purchasedPhotos, setPurchasedPhotos] = useState<PurchasedPhoto[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [photoSearchTerm, setPhotoSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState<'date' | 'campaign' | 'price'>('date');
-  const [filterByCampaign, setFilterByCampaign] = useState<string>('all');
-  const [selectedPhoto, setSelectedPhoto] = useState<PurchasedPhoto | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -150,38 +144,6 @@ const UserDashboard = () => {
     campaign.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     campaign.location.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  // Filter and sort purchased photos
-  const filteredAndSortedPhotos = purchasedPhotos
-    .filter(purchase => {
-      const matchesSearch = 
-        (purchase.photo.title?.toLowerCase() || '').includes(photoSearchTerm.toLowerCase()) ||
-        purchase.photo.campaign?.title.toLowerCase().includes(photoSearchTerm.toLowerCase());
-      
-      const matchesCampaign = filterByCampaign === 'all' || 
-        purchase.photo.campaign?.title === filterByCampaign;
-      
-      return matchesSearch && matchesCampaign;
-    })
-    .sort((a, b) => {
-      switch (sortBy) {
-        case 'date':
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-        case 'campaign':
-          return (a.photo.campaign?.title || '').localeCompare(b.photo.campaign?.title || '');
-        case 'price':
-          return b.amount - a.amount;
-        default:
-          return 0;
-      }
-    });
-
-  // Get unique campaigns from purchased photos for filter
-  const uniqueCampaigns = [...new Set(purchasedPhotos.map(p => p.photo.campaign?.title).filter(Boolean))];
-
-  const handleViewPhoto = (photo: PurchasedPhoto) => {
-    setSelectedPhoto(photo);
-  };
 
   if (loading) {
     return (
@@ -302,178 +264,54 @@ const UserDashboard = () => {
             )}
           </TabsContent>
 
-          <TabsContent value="purchases" className="space-y-4">
-            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-              <h2 className="text-2xl font-bold">
-                Minhas Fotos Compradas ({filteredAndSortedPhotos.length})
-              </h2>
-              
-              {/* Controls for filtering and sorting */}
-              {purchasedPhotos.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                    <Input
-                      placeholder="Buscar fotos..."
-                      value={photoSearchTerm}
-                      onChange={(e) => setPhotoSearchTerm(e.target.value)}
-                      className="pl-10 w-48"
-                    />
-                  </div>
-                  
-                  <Select value={filterByCampaign} onValueChange={setFilterByCampaign}>
-                    <SelectTrigger className="w-48">
-                      <Filter className="h-4 w-4 mr-2" />
-                      <SelectValue placeholder="Filtrar por evento" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos os eventos</SelectItem>
-                      {uniqueCampaigns.map((campaign) => (
-                        <SelectItem key={campaign} value={campaign || ''}>
-                          {campaign}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  
-                  <Select value={sortBy} onValueChange={(value: 'date' | 'campaign' | 'price') => setSortBy(value)}>
-                    <SelectTrigger className="w-44">
-                      <SelectValue placeholder="Ordenar por" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="date">Data de compra</SelectItem>
-                      <SelectItem value="campaign">Evento</SelectItem>
-                      <SelectItem value="price">Preço</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+          <TabsContent value="purchases" className="space-y-6 animate-fade-in">
+            <div>
+              <h2 className="text-3xl font-bold mb-2">Minhas Compras</h2>
+              <p className="text-muted-foreground">
+                {purchasedPhotos.length} compra(s) realizada(s)
+              </p>
             </div>
-            
+
             {purchasedPhotos.length === 0 ? (
-              <Card className="p-12 text-center">
-                <FileImage className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium mb-2">Nenhuma foto comprada ainda</h3>
-                <p className="text-muted-foreground">
-                  Explore os eventos e compre suas fotos favoritas!
-                </p>
-              </Card>
-            ) : filteredAndSortedPhotos.length === 0 ? (
-              <Card className="p-12 text-center">
-                <Search className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium mb-2">Nenhuma foto encontrada</h3>
-                <p className="text-muted-foreground">
-                  Tente ajustar os filtros ou termos de busca
-                </p>
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <ShoppingCart className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-xl font-medium mb-2">Nenhuma compra realizada</h3>
+                  <p className="text-muted-foreground">
+                    Explore os eventos e adquira suas fotos
+                  </p>
+                </CardContent>
               </Card>
             ) : (
-              <>
-                {/* Statistics Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                  <Card>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {purchasedPhotos.map((purchase) => (
+                  <Card key={purchase.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                    <div className="aspect-square relative bg-muted">
+                      <img
+                        src={purchase.photo.thumbnail_url || purchase.photo.watermarked_url}
+                        alt="Foto comprada"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
                     <CardContent className="p-4">
-                      <div className="flex items-center gap-2">
-                        <FileImage className="h-5 w-5 text-blue-600" />
-                        <div>
-                          <p className="text-sm text-muted-foreground">Total de Fotos</p>
-                          <p className="text-2xl font-bold">{purchasedPhotos.length}</p>
-                        </div>
-                      </div>
+                      <p className="font-medium mb-1 line-clamp-1">
+                        {purchase.photo.campaign?.title}
+                      </p>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        R$ {purchase.amount.toFixed(2)} • {new Date(purchase.created_at).toLocaleDateString('pt-BR')}
+                      </p>
+                      <Button
+                        size="sm"
+                        className="w-full"
+                        disabled={purchase.status !== 'completed'}
+                        onClick={() => handleDownload(purchase)}
+                      >
+                        {purchase.status === 'completed' ? 'Baixar Original' : 'Aguardando confirmação'}
+                      </Button>
                     </CardContent>
                   </Card>
-                  
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-5 w-5 text-green-600" />
-                        <div>
-                          <p className="text-sm text-muted-foreground">Eventos</p>
-                          <p className="text-2xl font-bold">{uniqueCampaigns.length}</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-2">
-                        <ShoppingCart className="h-5 w-5 text-purple-600" />
-                        <div>
-                          <p className="text-sm text-muted-foreground">Total Gasto</p>
-                          <p className="text-2xl font-bold">
-                            {formatCurrency(purchasedPhotos.reduce((sum, p) => sum + p.amount, 0))}
-                          </p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* Photos Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                  {filteredAndSortedPhotos.map((purchase) => (
-                    <Card key={purchase.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                      <div className="aspect-square bg-gradient-subtle relative cursor-pointer" 
-                           onClick={() => handleViewPhoto(purchase)}>
-                        <img
-                          src={purchase.photo.thumbnail_url || purchase.photo.watermarked_url}
-                          alt={purchase.photo.title || 'Foto'}
-                          className="w-full h-full object-cover"
-                        />
-                        <Badge className="absolute top-2 right-2 bg-green-600 text-white">
-                          Comprada
-                        </Badge>
-                        <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
-                          <Eye className="h-8 w-8 text-white" />
-                        </div>
-                      </div>
-                      <CardContent className="p-3">
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium truncate">
-                            {purchase.photo.title || 'Foto'}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {purchase.photo.campaign?.title}
-                          </p>
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-green-600 font-medium">
-                              {formatCurrency(purchase.amount)}
-                            </span>
-                            <div className="flex gap-1">
-                              <Button 
-                                size="sm" 
-                                variant="outline"
-                                className="gap-1 h-8"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleViewPhoto(purchase);
-                                }}
-                              >
-                                <Eye className="h-3 w-3" />
-                                Ver
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                className="gap-1 h-8"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDownload(purchase);
-                                }}
-                              >
-                                <Download className="h-3 w-3" />
-                                Baixar
-                              </Button>
-                            </div>
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            Comprada em {new Date(purchase.created_at).toLocaleDateString()}
-                          </p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </>
+                ))}
+              </div>
             )}
           </TabsContent>
 
@@ -481,71 +319,6 @@ const UserDashboard = () => {
             <PhotographerApplicationForm />
           </TabsContent>
         </Tabs>
-
-        {/* Photo View Modal */}
-        <Dialog open={selectedPhoto !== null} onOpenChange={() => setSelectedPhoto(null)}>
-          <DialogContent className="max-w-4xl w-[90vw] max-h-[90vh] p-0">
-            {selectedPhoto && (
-              <div className="flex flex-col">
-                <DialogHeader className="p-6 pb-0">
-                  <DialogTitle className="flex justify-between items-start">
-                    <div>
-                      <h3 className="text-xl font-semibold">
-                        {selectedPhoto.photo.title || 'Foto'}
-                      </h3>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {selectedPhoto.photo.campaign?.title}
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => handleDownload(selectedPhoto)}
-                        className="gap-2"
-                      >
-                        <Download className="h-4 w-4" />
-                        Baixar Original
-                      </Button>
-                    </div>
-                  </DialogTitle>
-                  <DialogDescription>
-                    Visualize e faça o download da sua foto em alta resolução.
-                  </DialogDescription>
-                </DialogHeader>
-                
-                <div className="px-6 pb-6">
-                  <div className="relative bg-black/5 rounded-lg overflow-hidden">
-                    <img
-                      src={selectedPhoto.photo.original_url || selectedPhoto.photo.watermarked_url}
-                      alt={selectedPhoto.photo.title || 'Foto'}
-                      className="w-full max-h-[60vh] object-contain"
-                    />
-                  </div>
-                  
-                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-                    <div>
-                      <p className="text-muted-foreground">Evento</p>
-                      <p className="font-medium">{selectedPhoto.photo.campaign?.title}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Data da Compra</p>
-                      <p className="font-medium">
-                        {new Date(selectedPhoto.created_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Valor Pago</p>
-                      <p className="font-medium text-green-600">
-                        {formatCurrency(selectedPhoto.amount)}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
       </div>
   );
 };
