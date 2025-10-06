@@ -10,6 +10,8 @@ import {
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 import DashboardSidebar from './DashboardSidebar';
+import { DynamicBreadcrumb } from '@/components/layout/DynamicBreadcrumb';
+import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { LogOut, Settings, User, Menu } from 'lucide-react';
 import { useState } from 'react';
 
@@ -45,7 +47,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
               />
             </div>
 
-            {/* User Menu */}
+            <div className="flex items-center gap-2">
+              <ThemeToggle />
+              
+              {/* User Menu */}
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-8 w-8 md:h-10 md:w-10 rounded-full">
@@ -91,11 +96,13 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+            </div>
           </div>
         </header>
 
         {/* Main Content */}
         <main className="flex-1 px-4 py-4 md:py-8">
+          <DynamicBreadcrumb />
           {children}
         </main>
       </div>

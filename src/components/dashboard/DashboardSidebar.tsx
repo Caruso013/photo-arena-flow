@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
+import { useSwipeable } from 'react-swipeable';
 import {
   LayoutDashboard,
   Camera,
@@ -24,6 +25,15 @@ interface DashboardSidebarProps {
 
 const DashboardSidebar = ({ isOpen, onToggle }: DashboardSidebarProps) => {
   const { profile } = useAuth();
+
+  // Gesture handlers para fechar sidebar com swipe
+  const swipeHandlers = useSwipeable({
+    onSwipedLeft: () => {
+      if (isOpen) onToggle();
+    },
+    trackMouse: false,
+    trackTouch: true,
+  });
 
   // Menu items por role
   const userItems = [
@@ -76,9 +86,10 @@ const DashboardSidebar = ({ isOpen, onToggle }: DashboardSidebarProps) => {
 
       {/* Sidebar */}
       <aside
+        {...swipeHandlers}
         className={cn(
-          'fixed md:sticky top-0 left-0 h-screen bg-card border-r z-50 transition-transform duration-300 flex flex-col',
-          isOpen ? 'translate-x-0 w-60' : '-translate-x-full md:translate-x-0 md:w-16'
+          'fixed md:sticky top-0 left-0 h-screen bg-card border-r z-50 transition-all duration-300 ease-in-out flex flex-col',
+          isOpen ? 'translate-x-0 w-60 shadow-2xl md:shadow-none' : '-translate-x-full md:translate-x-0 md:w-16'
         )}
       >
         {/* Header da Sidebar */}

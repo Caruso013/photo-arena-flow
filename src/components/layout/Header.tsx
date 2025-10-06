@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSearch } from '@/contexts/SearchContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { Search, User, LogIn, Menu } from 'lucide-react';
 import {
   Sheet,
@@ -51,7 +52,9 @@ const Header = () => {
           </Link>
 
           {/* Desktop Actions */}
-          <div className="hidden md:flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-3">
+            <ThemeToggle />
+            
             {/* Search - Desktop */}
             <div className="relative hidden lg:block">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
