@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { UserRoleManager } from '@/components/dashboard/UserRoleManager';
 import { Users } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
+import AdminLayout from '@/components/dashboard/AdminLayout';
 
 interface User {
   id: string;
@@ -64,48 +65,50 @@ const AdminUsers = () => {
   }
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Usuários</h1>
-        <p className="text-muted-foreground">Gerencie usuários e permissões</p>
-      </div>
+    <AdminLayout>
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Usuários</h1>
+          <p className="text-muted-foreground">Gerencie usuários e permissões</p>
+        </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Todos os Usuários ({users.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {users.map((user) => (
-              <Card key={user.id}>
-                <CardContent className="p-4">
-                  <div className="flex justify-between items-start gap-4">
-                    <div className="flex-1">
-                      <h4 className="font-medium">{user.full_name || 'Nome não informado'}</h4>
-                      <p className="text-sm text-muted-foreground">{user.email}</p>
-                      <div className="flex gap-2 mt-2">
-                        <UserRoleManager
-                          userId={user.id}
-                          currentRole={user.role}
-                          userName={user.full_name || user.email}
-                          onRoleUpdate={fetchUsers}
-                        />
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Todos os Usuários ({users.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {users.map((user) => (
+                <Card key={user.id}>
+                  <CardContent className="p-4">
+                    <div className="flex justify-between items-start gap-4">
+                      <div className="flex-1">
+                        <h4 className="font-medium">{user.full_name || 'Nome não informado'}</h4>
+                        <p className="text-sm text-muted-foreground">{user.email}</p>
+                        <div className="flex gap-2 mt-2">
+                          <UserRoleManager
+                            userId={user.id}
+                            currentRole={user.role}
+                            userName={user.full_name || user.email}
+                            onRoleUpdate={fetchUsers}
+                          />
+                        </div>
                       </div>
+                      <span className="text-sm text-muted-foreground whitespace-nowrap">
+                        {new Date(user.created_at).toLocaleDateString()}
+                      </span>
                     </div>
-                    <span className="text-sm text-muted-foreground whitespace-nowrap">
-                      {new Date(user.created_at).toLocaleDateString()}
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </AdminLayout>
   );
 };
 

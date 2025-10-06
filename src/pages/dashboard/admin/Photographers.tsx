@@ -1,5 +1,6 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { PhotographerApplicationsManager } from '@/components/dashboard/PhotographerApplicationsManager';
+import AdminLayout from '@/components/dashboard/AdminLayout';
 
 const AdminPhotographers = () => {
   const { profile } = useAuth();
@@ -14,14 +15,16 @@ const AdminPhotographers = () => {
   }
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Fotógrafos</h1>
-        <p className="text-muted-foreground">Gerencie candidaturas de fotógrafos</p>
-      </div>
+    <AdminLayout>
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Fotógrafos</h1>
+          <p className="text-muted-foreground">Gerencie candidaturas de fotógrafos</p>
+        </div>
 
-      <PhotographerApplicationsManager />
-    </div>
+        <PhotographerApplicationsManager />
+      </div>
+    </AdminLayout>
   );
 };
 
