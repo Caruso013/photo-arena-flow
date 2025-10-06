@@ -37,9 +37,9 @@ const DashboardSidebar = ({ isOpen, onToggle }: DashboardSidebarProps) => {
 
   // Menu items por role
   const userItems = [
-    { title: 'Visão Geral', url: '/dashboard', icon: LayoutDashboard },
+    { title: 'Eventos', url: '/dashboard', icon: Calendar },
     { title: 'Minhas Compras', url: '/dashboard/purchases', icon: ShoppingCart },
-    { title: 'Perfil', url: '/dashboard/profile', icon: UserCircle },
+    { title: 'Seja Fotógrafo', url: '/dashboard/photographer-application', icon: Camera },
   ];
 
   const photographerItems = [
