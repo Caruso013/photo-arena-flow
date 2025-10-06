@@ -7,7 +7,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { toast } from '@/components/ui/use-toast';
 import { Search, Camera, ShoppingCart, Download, FileImage } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { PhotographerApplicationForm } from './PhotographerApplicationForm';
@@ -85,39 +84,6 @@ const UserDashboard = () => {
       console.error('Error fetching purchased photos:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleDownload = async (photo: PurchasedPhoto) => {
-    try {
-      if (!photo.photo.original_url) {
-        toast({
-          title: "Erro no download",
-          description: "URL da foto não encontrada.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Criar um link de download
-      const link = document.createElement('a');
-      link.href = photo.photo.original_url;
-      link.download = `${photo.photo.title || 'foto'}_original.jpg`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      toast({
-        title: "Download iniciado",
-        description: "Sua foto está sendo baixada.",
-      });
-    } catch (error) {
-      console.error('Error downloading photo:', error);
-      toast({
-        title: "Erro no download",
-        description: "Não foi possível baixar a foto.",
-        variant: "destructive",
-      });
     }
   };
 
@@ -298,13 +264,18 @@ const UserDashboard = () => {
                         {purchase.photo.campaign?.title}
                       </p>
                       <p className="text-sm text-muted-foreground mb-3">
-                        R$ {purchase.amount.toFixed(2)} • {new Date(purchase.created_at).toLocaleDateString('pt-BR')}
+                        R$ {purchase.amount} • {new Date(purchase.created_at).toLocaleDateString('pt-BR')}
                       </p>
                       <Button
                         size="sm"
                         className="w-full"
                         disabled={purchase.status !== 'completed'}
-                        onClick={() => handleDownload(purchase)}
+                        onClick={() => {
+                          const link = document.createElement('a');
+                          link.href = purchase.photo.original_url;
+                          link.download = `foto-${purchase.photo.id}.jpg`;
+                          link.click();
+                        }}
                       >
                         {purchase.status === 'completed' ? 'Baixar Original' : 'Aguardando confirmação'}
                       </Button>
