@@ -65,41 +65,17 @@ const AdminHeader = () => {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between px-4">
         {/* Logo e Título */}
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500">
-              <Camera className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold">STA Fotos</h1>
-              <Badge variant="outline" className="text-xs border-amber-500 text-amber-600">
-                <Shield className="mr-1 h-3 w-3" />
-                Admin Panel
-              </Badge>
-            </div>
+        <div className="flex items-center gap-2">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500">
+            <Camera className="h-6 w-6 text-white" />
           </div>
-
-          {/* Quick Nav Links */}
-          <nav className="hidden lg:flex items-center gap-6">
-            <NavLink 
-              to="/dashboard/admin/organizations"
-              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <span>Organizações</span>
-            </NavLink>
-            <NavLink 
-              to="/dashboard/admin/photographers"
-              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <span>Fotógrafos</span>
-            </NavLink>
-            <NavLink 
-              to="/dashboard/admin/events"
-              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <span>Campanhas</span>
-            </NavLink>
-          </nav>
+          <div>
+            <h1 className="text-xl font-bold">STA Fotos</h1>
+            <Badge variant="outline" className="text-xs border-amber-500 text-amber-600">
+              <Shield className="mr-1 h-3 w-3" />
+              Admin Panel
+            </Badge>
+          </div>
         </div>
 
         {/* Actions */}
