@@ -221,47 +221,16 @@ const UserDashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Quick Access Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Link to="/events">
-            <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
-              <CardContent className="p-6 flex items-center gap-4">
-                <Camera className="h-8 w-8 text-primary" />
-                <div>
-                  <h3 className="font-semibold">Eventos</h3>
-                  <p className="text-sm text-muted-foreground">Ver eventos disponíveis</p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-          <Link to="/dashboard/purchases">
-            <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
-              <CardContent className="p-6 flex items-center gap-4">
-                <ShoppingCart className="h-8 w-8 text-primary" />
-                <div>
-                  <h3 className="font-semibold">Minhas Compras</h3>
-                  <p className="text-sm text-muted-foreground">Ver fotos compradas</p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
-            <CardContent className="p-6 flex items-center gap-4">
-              <Camera className="h-8 w-8 text-primary" />
-              <div>
-                <h3 className="font-semibold">Seja Fotógrafo</h3>
-                <p className="text-sm text-muted-foreground">Candidate-se</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
         {/* Main Content Tabs */}
         <Tabs defaultValue="events" className="space-y-6">
-          <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsList className="grid w-full max-w-md grid-cols-3">
             <TabsTrigger value="events" className="gap-2">
               <Camera className="h-4 w-4" />
-              Eventos em Destaque
+              Eventos
+            </TabsTrigger>
+            <TabsTrigger value="purchases" className="gap-2">
+              <ShoppingCart className="h-4 w-4" />
+              Compras
             </TabsTrigger>
             <TabsTrigger value="photographer" className="gap-2">
               <Camera className="h-4 w-4" />
@@ -333,6 +302,180 @@ const UserDashboard = () => {
             )}
           </TabsContent>
 
+          <TabsContent value="purchases" className="space-y-4">
+            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+              <h2 className="text-2xl font-bold">
+                Minhas Fotos Compradas ({filteredAndSortedPhotos.length})
+              </h2>
+              
+              {/* Controls for filtering and sorting */}
+              {purchasedPhotos.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                    <Input
+                      placeholder="Buscar fotos..."
+                      value={photoSearchTerm}
+                      onChange={(e) => setPhotoSearchTerm(e.target.value)}
+                      className="pl-10 w-48"
+                    />
+                  </div>
+                  
+                  <Select value={filterByCampaign} onValueChange={setFilterByCampaign}>
+                    <SelectTrigger className="w-48">
+                      <Filter className="h-4 w-4 mr-2" />
+                      <SelectValue placeholder="Filtrar por evento" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos os eventos</SelectItem>
+                      {uniqueCampaigns.map((campaign) => (
+                        <SelectItem key={campaign} value={campaign || ''}>
+                          {campaign}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  
+                  <Select value={sortBy} onValueChange={(value: 'date' | 'campaign' | 'price') => setSortBy(value)}>
+                    <SelectTrigger className="w-44">
+                      <SelectValue placeholder="Ordenar por" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="date">Data de compra</SelectItem>
+                      <SelectItem value="campaign">Evento</SelectItem>
+                      <SelectItem value="price">Preço</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+            
+            {purchasedPhotos.length === 0 ? (
+              <Card className="p-12 text-center">
+                <FileImage className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium mb-2">Nenhuma foto comprada ainda</h3>
+                <p className="text-muted-foreground">
+                  Explore os eventos e compre suas fotos favoritas!
+                </p>
+              </Card>
+            ) : filteredAndSortedPhotos.length === 0 ? (
+              <Card className="p-12 text-center">
+                <Search className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium mb-2">Nenhuma foto encontrada</h3>
+                <p className="text-muted-foreground">
+                  Tente ajustar os filtros ou termos de busca
+                </p>
+              </Card>
+            ) : (
+              <>
+                {/* Statistics Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2">
+                        <FileImage className="h-5 w-5 text-blue-600" />
+                        <div>
+                          <p className="text-sm text-muted-foreground">Total de Fotos</p>
+                          <p className="text-2xl font-bold">{purchasedPhotos.length}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-5 w-5 text-green-600" />
+                        <div>
+                          <p className="text-sm text-muted-foreground">Eventos</p>
+                          <p className="text-2xl font-bold">{uniqueCampaigns.length}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2">
+                        <ShoppingCart className="h-5 w-5 text-purple-600" />
+                        <div>
+                          <p className="text-sm text-muted-foreground">Total Gasto</p>
+                          <p className="text-2xl font-bold">
+                            {formatCurrency(purchasedPhotos.reduce((sum, p) => sum + p.amount, 0))}
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Photos Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                  {filteredAndSortedPhotos.map((purchase) => (
+                    <Card key={purchase.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                      <div className="aspect-square bg-gradient-subtle relative cursor-pointer" 
+                           onClick={() => handleViewPhoto(purchase)}>
+                        <img
+                          src={purchase.photo.thumbnail_url || purchase.photo.watermarked_url}
+                          alt={purchase.photo.title || 'Foto'}
+                          className="w-full h-full object-cover"
+                        />
+                        <Badge className="absolute top-2 right-2 bg-green-600 text-white">
+                          Comprada
+                        </Badge>
+                        <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
+                          <Eye className="h-8 w-8 text-white" />
+                        </div>
+                      </div>
+                      <CardContent className="p-3">
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium truncate">
+                            {purchase.photo.title || 'Foto'}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {purchase.photo.campaign?.title}
+                          </p>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-green-600 font-medium">
+                              {formatCurrency(purchase.amount)}
+                            </span>
+                            <div className="flex gap-1">
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                className="gap-1 h-8"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleViewPhoto(purchase);
+                                }}
+                              >
+                                <Eye className="h-3 w-3" />
+                                Ver
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                className="gap-1 h-8"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDownload(purchase);
+                                }}
+                              >
+                                <Download className="h-3 w-3" />
+                                Baixar
+                              </Button>
+                            </div>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Comprada em {new Date(purchase.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </>
+            )}
+          </TabsContent>
 
           <TabsContent value="photographer" className="space-y-6 animate-fade-in">
             <PhotographerApplicationForm />

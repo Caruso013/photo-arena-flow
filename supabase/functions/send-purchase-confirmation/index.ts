@@ -124,7 +124,7 @@ serve(async (req) => {
 
               <!-- Botão de Ação -->
               <div style="text-align: center; margin: 30px 0;">
-                <a href="https://www.stafotos.com/#/dashboard/purchases" 
+                <a href="https://www.stafotos.com/dashboard" 
                    style="display: inline-block; padding: 15px 40px; background: #e6b800; color: #0d0d0d; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
                   Acessar Minhas Compras
                 </a>
@@ -147,7 +147,7 @@ serve(async (req) => {
                 © 2025 STA Fotos - Todos os direitos reservados
               </p>
               <p style="margin: 10px 0 0 0; font-size: 12px;">
-                <a href="https://www.stafotos.com/#/" style="color: #e6b800; text-decoration: none;">www.stafotos.com</a>
+                <a href="https://www.stafotos.com" style="color: #e6b800; text-decoration: none;">www.stafotos.com</a>
               </p>
             </div>
           </body>
