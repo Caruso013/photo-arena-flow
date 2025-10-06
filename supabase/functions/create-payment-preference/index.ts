@@ -137,9 +137,9 @@ serve(async (req) => {
         },
       },
       back_urls: {
-        success: `${baseAppUrl}/#/checkout/sucesso`,
-        failure: `${baseAppUrl}/#/checkout/falha`,
-        pending: `${baseAppUrl}/#/checkout/pendente`,
+        success: `${baseAppUrl}/#/checkout/processando?ref=${purchaseIds}`,
+        failure: `${baseAppUrl}/#/checkout/processando?ref=${purchaseIds}`,
+        pending: `${baseAppUrl}/#/checkout/processando?ref=${purchaseIds}`,
       },
       auto_return: 'approved',
       external_reference: purchaseIds,
