@@ -481,73 +481,72 @@ const UserDashboard = () => {
             <PhotographerApplicationForm />
           </TabsContent>
         </Tabs>
-      </div>
 
-      {/* Photo View Modal */}
-      <Dialog open={selectedPhoto !== null} onOpenChange={() => setSelectedPhoto(null)}>
-        <DialogContent className="max-w-4xl w-[90vw] max-h-[90vh] p-0">
-          {selectedPhoto && (
-            <div className="flex flex-col">
-              <DialogHeader className="p-6 pb-0">
-                <DialogTitle className="flex justify-between items-start">
-                  <div>
-                    <h3 className="text-xl font-semibold">
-                      {selectedPhoto.photo.title || 'Foto'}
-                    </h3>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {selectedPhoto.photo.campaign?.title}
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => handleDownload(selectedPhoto)}
-                      className="gap-2"
-                    >
-                      <Download className="h-4 w-4" />
-                      Baixar Original
-                    </Button>
-                  </div>
-                </DialogTitle>
-                <DialogDescription>
-                  Visualize e faça o download da sua foto em alta resolução.
-                </DialogDescription>
-              </DialogHeader>
-              
-              <div className="px-6 pb-6">
-                <div className="relative bg-black/5 rounded-lg overflow-hidden">
-                  <img
-                    src={selectedPhoto.photo.original_url || selectedPhoto.photo.watermarked_url}
-                    alt={selectedPhoto.photo.title || 'Foto'}
-                    className="w-full max-h-[60vh] object-contain"
-                  />
-                </div>
+        {/* Photo View Modal */}
+        <Dialog open={selectedPhoto !== null} onOpenChange={() => setSelectedPhoto(null)}>
+          <DialogContent className="max-w-4xl w-[90vw] max-h-[90vh] p-0">
+            {selectedPhoto && (
+              <div className="flex flex-col">
+                <DialogHeader className="p-6 pb-0">
+                  <DialogTitle className="flex justify-between items-start">
+                    <div>
+                      <h3 className="text-xl font-semibold">
+                        {selectedPhoto.photo.title || 'Foto'}
+                      </h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {selectedPhoto.photo.campaign?.title}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleDownload(selectedPhoto)}
+                        className="gap-2"
+                      >
+                        <Download className="h-4 w-4" />
+                        Baixar Original
+                      </Button>
+                    </div>
+                  </DialogTitle>
+                  <DialogDescription>
+                    Visualize e faça o download da sua foto em alta resolução.
+                  </DialogDescription>
+                </DialogHeader>
                 
-                <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-                  <div>
-                    <p className="text-muted-foreground">Evento</p>
-                    <p className="font-medium">{selectedPhoto.photo.campaign?.title}</p>
+                <div className="px-6 pb-6">
+                  <div className="relative bg-black/5 rounded-lg overflow-hidden">
+                    <img
+                      src={selectedPhoto.photo.original_url || selectedPhoto.photo.watermarked_url}
+                      alt={selectedPhoto.photo.title || 'Foto'}
+                      className="w-full max-h-[60vh] object-contain"
+                    />
                   </div>
-                  <div>
-                    <p className="text-muted-foreground">Data da Compra</p>
-                    <p className="font-medium">
-                      {new Date(selectedPhoto.created_at).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Valor Pago</p>
-                    <p className="font-medium text-green-600">
-                      {formatCurrency(selectedPhoto.amount)}
-                    </p>
+                  
+                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+                    <div>
+                      <p className="text-muted-foreground">Evento</p>
+                      <p className="font-medium">{selectedPhoto.photo.campaign?.title}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Data da Compra</p>
+                      <p className="font-medium">
+                        {new Date(selectedPhoto.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Valor Pago</p>
+                      <p className="font-medium text-green-600">
+                        {formatCurrency(selectedPhoto.amount)}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-    </div>
+            )}
+          </DialogContent>
+        </Dialog>
+      </div>
   );
 };
 
