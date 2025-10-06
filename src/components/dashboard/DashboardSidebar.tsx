@@ -46,6 +46,7 @@ const DashboardSidebar = ({ isOpen, onToggle }: DashboardSidebarProps) => {
     { title: 'Visão Geral', url: '/dashboard', icon: LayoutDashboard },
     { title: 'Meus Eventos', url: '/dashboard/events', icon: Calendar },
     { title: 'Eventos Próximos', url: '/eventos-proximos', icon: Calendar },
+    { title: 'Minhas Compras', url: '/dashboard/purchases', icon: ShoppingCart },
     { title: 'Minhas Fotos', url: '/dashboard/photos', icon: Image },
     { title: 'Financeiro', url: '/dashboard/financial', icon: DollarSign },
     { title: 'Perfil', url: '/dashboard/profile', icon: UserCircle },

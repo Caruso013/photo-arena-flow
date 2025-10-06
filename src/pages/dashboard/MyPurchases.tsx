@@ -47,7 +47,7 @@ const MyPurchases = () => {
           )
         `)
         .eq('buyer_id', user?.id)
-        .eq('status', 'completed')
+        .in('status', ['pending', 'completed'])
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -112,9 +112,10 @@ const MyPurchases = () => {
                 <Button
                   size="sm"
                   className="w-full"
+                  disabled={purchase.status !== 'completed'}
                   onClick={() => handleDownload(purchase.photo.original_url, `foto-${purchase.photo.id}.jpg`)}
                 >
-                  Baixar Original
+                  {purchase.status === 'completed' ? 'Baixar Original' : 'Aguardando confirmação'}
                 </Button>
               </CardContent>
             </Card>
