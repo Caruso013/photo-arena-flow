@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
+import { formatCurrency } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Search, Camera } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Search, Camera, ShoppingCart, Download, FileImage } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { PhotographerApplicationForm } from './PhotographerApplicationForm';
 
 interface Campaign {
   id: string;
@@ -20,15 +23,69 @@ interface Campaign {
   };
 }
 
+interface PurchasedPhoto {
+  id: string;
+  amount: number;
+  created_at: string;
+  status: string;
+  photo: {
+    id: string;
+    title: string;
+    original_url: string;
+    thumbnail_url: string;
+    watermarked_url: string;
+    campaign: {
+      title: string;
+    };
+  };
+}
+
 const UserDashboard = () => {
   const { user, profile } = useAuth();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [purchasedPhotos, setPurchasedPhotos] = useState<PurchasedPhoto[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchCampaigns();
+    if (user) {
+      fetchPurchasedPhotos();
+    }
   }, [user]);
+
+  const fetchPurchasedPhotos = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('purchases')
+        .select(`
+          id,
+          amount,
+          created_at,
+          status,
+          photo:photos (
+            id,
+            title,
+            original_url,
+            thumbnail_url,
+            watermarked_url,
+            campaign:campaigns (title)
+          )
+        `)
+        .eq('buyer_id', user.id)
+        .eq('status', 'completed')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setPurchasedPhotos(data || []);
+    } catch (error) {
+      console.error('Error fetching purchased photos:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchCampaigns = async () => {
     try {
@@ -46,8 +103,6 @@ const UserDashboard = () => {
       setCampaigns(data || []);
     } catch (error) {
       console.error('Error fetching campaigns:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -94,70 +149,147 @@ const UserDashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Eventos em Destaque */}
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
-              Eventos em Destaque
-            </h2>
-            {searchTerm && (
-              <Badge variant="secondary" className="text-sm">
-                {filteredCampaigns.length} resultado(s)
-              </Badge>
-            )}
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredCampaigns.map((campaign) => (
-              <Card key={campaign.id} className="group overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-2 hover:border-primary/20">
-                <div className="aspect-video bg-gradient-subtle relative">
-                  {campaign.cover_image_url ? (
-                    <img
-                      src={campaign.cover_image_url}
-                      alt={campaign.title}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Camera className="h-12 w-12 text-muted-foreground" />
+        {/* Main Content Tabs */}
+        <Tabs defaultValue="events" className="space-y-6">
+          <TabsList className="grid w-full max-w-md grid-cols-3">
+            <TabsTrigger value="events" className="gap-2">
+              <Camera className="h-4 w-4" />
+              Eventos
+            </TabsTrigger>
+            <TabsTrigger value="purchases" className="gap-2">
+              <ShoppingCart className="h-4 w-4" />
+              Compras
+            </TabsTrigger>
+            <TabsTrigger value="photographer" className="gap-2">
+              <Camera className="h-4 w-4" />
+              Seja Fotógrafo
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="events" className="space-y-6 animate-fade-in">
+            <div className="flex items-center justify-between">
+              <h2 className="text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
+                Eventos em Destaque
+              </h2>
+              {searchTerm && (
+                <Badge variant="secondary" className="text-sm">
+                  {filteredCampaigns.length} resultado(s)
+                </Badge>
+              )}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredCampaigns.map((campaign) => (
+                <Card key={campaign.id} className="group overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-2 hover:border-primary/20">
+                  <div className="aspect-video bg-gradient-subtle relative">
+                    {campaign.cover_image_url ? (
+                      <img
+                        src={campaign.cover_image_url}
+                        alt={campaign.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Camera className="h-12 w-12 text-muted-foreground" />
+                      </div>
+                    )}
+                  </div>
+                  <CardContent className="p-4">
+                    <CardTitle className="text-lg mb-2">{campaign.title}</CardTitle>
+                    <CardDescription className="text-sm mb-2">
+                      {campaign.description}
+                    </CardDescription>
+                    <div className="flex justify-between items-center text-sm text-muted-foreground mb-3">
+                      <span>{campaign.location}</span>
+                      <span>{new Date(campaign.event_date).toLocaleDateString()}</span>
                     </div>
-                  )}
-                </div>
-                <CardContent className="p-4">
-                  <CardTitle className="text-lg mb-2">{campaign.title}</CardTitle>
-                  <CardDescription className="text-sm mb-2">
-                    {campaign.description}
-                  </CardDescription>
-                  <div className="flex justify-between items-center text-sm text-muted-foreground mb-3">
-                    <span>{campaign.location}</span>
-                    <span>{new Date(campaign.event_date).toLocaleDateString()}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm">Por: {campaign.photographer?.full_name}</span>
-                    <Link to={`/campaign/${campaign.id}`}>
-                      <Button size="sm" className="gap-1">
-                        <Camera className="h-3 w-3" />
-                        Ver Fotos
-                      </Button>
-                    </Link>
-                  </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm">Por: {campaign.photographer?.full_name}</span>
+                      <Link to={`/campaign/${campaign.id}`}>
+                        <Button size="sm" className="gap-1">
+                          <Camera className="h-3 w-3" />
+                          Ver Fotos
+                        </Button>
+                      </Link>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {filteredCampaigns.length === 0 && (
+              <Card className="p-12 text-center">
+                <Camera className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium mb-2">Nenhum evento encontrado</h3>
+                <p className="text-muted-foreground">
+                  {searchTerm 
+                    ? `Não encontramos eventos para "${searchTerm}"`
+                    : "Não há eventos disponíveis no momento"
+                  }
+                </p>
+              </Card>
+            )}
+          </TabsContent>
+
+          <TabsContent value="purchases" className="space-y-6 animate-fade-in">
+            <div>
+              <h2 className="text-3xl font-bold mb-2">Minhas Compras</h2>
+              <p className="text-muted-foreground">
+                {purchasedPhotos.length} compra(s) realizada(s)
+              </p>
+            </div>
+
+            {purchasedPhotos.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <ShoppingCart className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-xl font-medium mb-2">Nenhuma compra realizada</h3>
+                  <p className="text-muted-foreground">
+                    Explore os eventos e adquira suas fotos
+                  </p>
                 </CardContent>
               </Card>
-            ))}
-          </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {purchasedPhotos.map((purchase) => (
+                  <Card key={purchase.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                    <div className="aspect-square relative bg-muted">
+                      <img
+                        src={purchase.photo.thumbnail_url || purchase.photo.watermarked_url}
+                        alt="Foto comprada"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <CardContent className="p-4">
+                      <p className="font-medium mb-1 line-clamp-1">
+                        {purchase.photo.campaign?.title}
+                      </p>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        R$ {purchase.amount} • {new Date(purchase.created_at).toLocaleDateString('pt-BR')}
+                      </p>
+                      <Button
+                        size="sm"
+                        className="w-full"
+                        disabled={purchase.status !== 'completed'}
+                        onClick={() => {
+                          const link = document.createElement('a');
+                          link.href = purchase.photo.original_url;
+                          link.download = `foto-${purchase.photo.id}.jpg`;
+                          link.click();
+                        }}
+                      >
+                        {purchase.status === 'completed' ? 'Baixar Original' : 'Aguardando confirmação'}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
 
-          {filteredCampaigns.length === 0 && (
-            <Card className="p-12 text-center">
-              <Camera className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium mb-2">Nenhum evento encontrado</h3>
-              <p className="text-muted-foreground">
-                {searchTerm 
-                  ? `Não encontramos eventos para "${searchTerm}"`
-                  : "Não há eventos disponíveis no momento"
-                }
-              </p>
-            </Card>
-          )}
-        </div>
+          <TabsContent value="photographer" className="space-y-6 animate-fade-in">
+            <PhotographerApplicationForm />
+          </TabsContent>
+        </Tabs>
       </div>
   );
 };
