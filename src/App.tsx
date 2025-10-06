@@ -31,6 +31,7 @@ import MyPhotos from "./pages/dashboard/MyPhotos";
 import MyPurchases from "./pages/dashboard/MyPurchases";
 import Financial from "./pages/dashboard/Financial";
 import Profile from "./pages/dashboard/Profile";
+import PhotographerApplication from "./pages/dashboard/PhotographerApplication";
 import AdminOverview from "./pages/dashboard/admin/Overview";
 import AdminEvents from "./pages/dashboard/admin/Events";
 import AdminPhotographers from "./pages/dashboard/admin/Photographers";
@@ -75,6 +76,7 @@ const AppContent = () => {
           <Route path="purchases" element={<MyPurchases />} />
           <Route path="financial" element={<Financial />} />
           <Route path="profile" element={<Profile />} />
+          <Route path="photographer-application" element={<PhotographerApplication />} />
           <Route path="admin" element={<AdminOverview />} />
           <Route path="admin/events" element={<AdminEvents />} />
           <Route path="admin/photographers" element={<AdminPhotographers />} />
