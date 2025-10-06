@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import MainLayout from '@/components/layout/MainLayout';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -151,7 +152,7 @@ export default function FAQ() {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
+    <MainLayout>
       {/* Header */}
       <div className="bg-primary text-primary-foreground py-12 px-4">
         <div className="container mx-auto max-w-4xl">
@@ -387,6 +388,6 @@ export default function FAQ() {
           </Link>
         </div>
       </div>
-    </div>
+    </MainLayout>
   );
 }
