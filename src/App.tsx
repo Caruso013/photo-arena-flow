@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HashRouter, Routes, Route } from "react-router-dom";
+import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { SearchProvider } from "@/contexts/SearchContext";
@@ -83,20 +84,22 @@ const AppContent = () => {
 const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <AuthProvider>
-          <SearchProvider>
-            <CartProvider>
-              <Toaster />
-              <Sonner />
-              <AppContent />
-              
-              {/* Upload Manager - sempre visível quando há uploads */}
-              <UploadManager />
-            </CartProvider>
-          </SearchProvider>
-        </AuthProvider>
-      </TooltipProvider>
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <TooltipProvider>
+          <AuthProvider>
+            <SearchProvider>
+              <CartProvider>
+                <Toaster />
+                <Sonner />
+                <AppContent />
+                
+                {/* Upload Manager - sempre visível quando há uploads */}
+                <UploadManager />
+              </CartProvider>
+            </SearchProvider>
+          </AuthProvider>
+        </TooltipProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   </ErrorBoundary>
 );

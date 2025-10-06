@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 import MainLayout from '@/components/layout/MainLayout';
 import { SkeletonCard } from '@/components/ui/skeleton-card';
 import { LazyImage } from '@/components/ui/lazy-image';
+import { EventFilters, FilterState } from '@/components/events/EventFilters';
 
 interface Campaign {
   id: string;
@@ -16,6 +17,7 @@ interface Campaign {
   event_date: string;
   location: string;
   cover_image_url: string;
+  created_at?: string;
   photographer: {
     full_name: string;
   };
@@ -25,18 +27,62 @@ const Events = () => {
   const { searchTerm } = useSearch();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filters, setFilters] = useState<FilterState>({
+    location: '',
+    dateFrom: '',
+    dateTo: '',
+    sortBy: 'recent',
+  });
 
   const filteredCampaigns = useMemo(() => {
-    if (!searchTerm.trim()) return campaigns;
+    let filtered = [...campaigns];
     
-    const term = searchTerm.toLowerCase();
-    return campaigns.filter(
-      (campaign) =>
-        campaign.title.toLowerCase().includes(term) ||
-        campaign.location.toLowerCase().includes(term) ||
-        campaign.photographer?.full_name.toLowerCase().includes(term)
-    );
-  }, [campaigns, searchTerm]);
+    // Filtro de busca
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(
+        (campaign) =>
+          campaign.title.toLowerCase().includes(term) ||
+          campaign.location.toLowerCase().includes(term) ||
+          campaign.photographer?.full_name.toLowerCase().includes(term)
+      );
+    }
+    
+    // Filtro de localização
+    if (filters.location.trim()) {
+      const location = filters.location.toLowerCase();
+      filtered = filtered.filter((campaign) =>
+        campaign.location.toLowerCase().includes(location)
+      );
+    }
+    
+    // Filtro de data
+    if (filters.dateFrom) {
+      filtered = filtered.filter(
+        (campaign) => new Date(campaign.event_date) >= new Date(filters.dateFrom)
+      );
+    }
+    if (filters.dateTo) {
+      filtered = filtered.filter(
+        (campaign) => new Date(campaign.event_date) <= new Date(filters.dateTo)
+      );
+    }
+    
+    // Ordenação
+    filtered.sort((a, b) => {
+      switch (filters.sortBy) {
+        case 'date':
+          return new Date(a.event_date).getTime() - new Date(b.event_date).getTime();
+        case 'title':
+          return a.title.localeCompare(b.title);
+        case 'recent':
+        default:
+          return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+      }
+    });
+    
+    return filtered;
+  }, [campaigns, searchTerm, filters]);
 
   useEffect(() => {
     fetchCampaigns();
@@ -71,6 +117,8 @@ const Events = () => {
             Encontre fotos dos seus eventos esportivos favoritos
           </p>
         </div>
+
+        <EventFilters onFilterChange={setFilters} />
 
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
