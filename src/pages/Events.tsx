@@ -1,10 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useSearch } from '@/contexts/SearchContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Camera, MapPin, Calendar } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import MainLayout from '@/components/layout/MainLayout';
+import { SkeletonCard } from '@/components/ui/skeleton-card';
+import { LazyImage } from '@/components/ui/lazy-image';
 
 interface Campaign {
   id: string;
@@ -19,8 +22,21 @@ interface Campaign {
 }
 
 const Events = () => {
+  const { searchTerm } = useSearch();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const filteredCampaigns = useMemo(() => {
+    if (!searchTerm.trim()) return campaigns;
+    
+    const term = searchTerm.toLowerCase();
+    return campaigns.filter(
+      (campaign) =>
+        campaign.title.toLowerCase().includes(term) ||
+        campaign.location.toLowerCase().includes(term) ||
+        campaign.photographer?.full_name.toLowerCase().includes(term)
+    );
+  }, [campaigns, searchTerm]);
 
   useEffect(() => {
     fetchCampaigns();
@@ -59,31 +75,32 @@ const Events = () => {
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {[...Array(6)].map((_, i) => (
-              <div key={i} className="aspect-video bg-muted animate-pulse rounded-lg" />
+              <SkeletonCard key={i} />
             ))}
           </div>
-        ) : campaigns.length === 0 ? (
+        ) : filteredCampaigns.length === 0 ? (
           <div className="text-center py-12 md:py-16 px-4">
             <Camera className="h-12 md:h-16 w-12 md:w-16 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg md:text-xl font-medium mb-2">Nenhum evento encontrado</h3>
             <p className="text-sm md:text-base text-muted-foreground">
-              Ainda não há eventos disponíveis
+              {searchTerm ? `Nenhum resultado para "${searchTerm}"` : 'Ainda não há eventos disponíveis'}
             </p>
           </div>
         ) : (
           <>
             <div className="mb-4 md:mb-6">
               <p className="text-xs md:text-sm text-muted-foreground">
-                {campaigns.length} evento(s) encontrado(s)
+                {filteredCampaigns.length} evento(s) encontrado(s)
+                {searchTerm && ` para "${searchTerm}"`}
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-              {campaigns.map((campaign) => (
+              {filteredCampaigns.map((campaign) => (
                 <Card key={campaign.id} className="overflow-hidden hover:shadow-lg transition-shadow group cursor-pointer border-2 hover:border-primary/20">
                   <div className="aspect-video bg-gradient-dark relative">
                     {campaign.cover_image_url ? (
-                      <img
+                      <LazyImage
                         src={campaign.cover_image_url}
                         alt={campaign.title}
                         className="w-full h-full object-cover"

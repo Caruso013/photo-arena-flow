@@ -28,17 +28,17 @@ const DashboardSidebar = ({ isOpen, onToggle }: DashboardSidebarProps) => {
   // Menu items por role
   const userItems = [
     { title: 'Visão Geral', url: '/dashboard', icon: LayoutDashboard },
-    { title: 'Minhas Compras', url: '/dashboard', icon: ShoppingCart },
-    { title: 'Perfil', url: '/dashboard', icon: UserCircle },
+    { title: 'Minhas Compras', url: '/dashboard/purchases', icon: ShoppingCart },
+    { title: 'Perfil', url: '/dashboard/profile', icon: UserCircle },
   ];
 
   const photographerItems = [
     { title: 'Visão Geral', url: '/dashboard', icon: LayoutDashboard },
-    { title: 'Meus Eventos', url: '/dashboard', icon: Calendar },
+    { title: 'Meus Eventos', url: '/dashboard/events', icon: Calendar },
     { title: 'Eventos Próximos', url: '/eventos-proximos', icon: Calendar },
-    { title: 'Minhas Fotos', url: '/dashboard', icon: Image },
-    { title: 'Financeiro', url: '/dashboard', icon: DollarSign },
-    { title: 'Perfil', url: '/dashboard', icon: UserCircle },
+    { title: 'Minhas Fotos', url: '/dashboard/photos', icon: Image },
+    { title: 'Financeiro', url: '/dashboard/financial', icon: DollarSign },
+    { title: 'Perfil', url: '/dashboard/profile', icon: UserCircle },
   ];
 
   const adminItems = [
@@ -47,7 +47,7 @@ const DashboardSidebar = ({ isOpen, onToggle }: DashboardSidebarProps) => {
     { title: 'Fotógrafos', url: '/dashboard', icon: Camera },
     { title: 'Usuários', url: '/dashboard', icon: Users },
     { title: 'Organizações', url: '/dashboard', icon: Building2 },
-    { title: 'Financeiro', url: '/dashboard', icon: DollarSign },
+    { title: 'Financeiro', url: '/dashboard/financial', icon: DollarSign },
     { title: 'Relatórios', url: '/dashboard', icon: FileText },
   ];
 

@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSearch } from '@/contexts/SearchContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, User, LogIn, Menu } from 'lucide-react';
@@ -14,9 +15,17 @@ import {
 
 const Header = () => {
   const { user } = useAuth();
-  const [searchTerm, setSearchTerm] = useState('');
+  const { searchTerm, setSearchTerm } = useSearch();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleSearch = (value: string) => {
+    setSearchTerm(value);
+    if (location.pathname !== '/events') {
+      navigate('/events');
+    }
+  };
 
   const navItems = [
     { to: '/', label: 'HOME' },
@@ -49,7 +58,7 @@ const Header = () => {
               <Input
                 placeholder="Pesquisar evento..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => handleSearch(e.target.value)}
                 className="pl-10 bg-background/10 border-gray-600 text-white placeholder:text-gray-400 w-64"
               />
             </div>
@@ -142,7 +151,7 @@ const Header = () => {
                     <Input
                       placeholder="Pesquisar evento..."
                       value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
+                      onChange={(e) => handleSearch(e.target.value)}
                       className="pl-10 bg-background/10 border-gray-600 text-white placeholder:text-gray-400"
                     />
                   </div>

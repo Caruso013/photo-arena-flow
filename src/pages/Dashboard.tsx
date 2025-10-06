@@ -1,9 +1,7 @@
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Navigate } from 'react-router-dom';
-import UserDashboard from '@/components/dashboard/UserDashboard';
-import PhotographerDashboard from '@/components/dashboard/PhotographerDashboard';
-import AdminDashboard from '@/components/dashboard/AdminDashboard';
+import { Navigate, Outlet } from 'react-router-dom';
+import DashboardLayout from '@/components/dashboard/DashboardLayout';
 
 const Dashboard = () => {
   const { user, profile, loading } = useAuth();
@@ -23,15 +21,11 @@ const Dashboard = () => {
     return <Navigate to="/auth" />;
   }
 
-  switch (profile.role) {
-    case 'admin':
-      return <AdminDashboard />;
-    case 'photographer':
-      return <PhotographerDashboard />;
-    case 'user':
-    default:
-      return <UserDashboard />;
-  }
+  return (
+    <DashboardLayout>
+      <Outlet />
+    </DashboardLayout>
+  );
 };
 
 export default Dashboard;
