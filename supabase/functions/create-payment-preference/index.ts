@@ -119,7 +119,8 @@ serve(async (req) => {
     // Usar IDs de todas as purchases separados por vírgula
     const purchaseIds = purchases.map(p => p.id).join(',');
 
-    const baseAppUrl = supabaseUrl.replace('.supabase.co', '.lovableproject.com');
+    // Use always the production domain
+    const baseAppUrl = 'https://www.stafotos.com';
 
     const preferenceData = {
       items,
