@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { OrganizationManager } from '@/components/dashboard/OrganizationManager';
 import { toast } from '@/components/ui/use-toast';
+import AdminLayout from '@/components/dashboard/AdminLayout';
 
 interface Organization {
   id: string;
@@ -62,14 +63,16 @@ const AdminOrganizations = () => {
   }
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Organizações</h1>
-        <p className="text-muted-foreground">Gerencie organizações e suas configurações</p>
-      </div>
+    <AdminLayout>
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Organizações</h1>
+          <p className="text-muted-foreground">Gerencie organizações e suas configurações</p>
+        </div>
 
-      <OrganizationManager organizations={organizations} onRefresh={fetchOrganizations} />
-    </div>
+        <OrganizationManager organizations={organizations} onRefresh={fetchOrganizations} />
+      </div>
+    </AdminLayout>
   );
 };
 
