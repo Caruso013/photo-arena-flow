@@ -17,163 +17,168 @@ serve(async (req) => {
     const webhookSecret = Deno.env.get('MERCADO_PAGO_WEBHOOK_SECRET')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Validar assinatura do webhook
+    // Tentar validar assinatura do webhook (não bloquear em caso de falha)
     const xSignature = req.headers.get('x-signature');
-    const xRequestId = req.headers.get('x-request-id');
-    
-    if (!xSignature || !xRequestId) {
-      console.error('Missing signature headers');
-      return new Response(JSON.stringify({ error: 'Missing signature' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    const xRequestId = req.headers.get('x-request-id') || '';
+
+    const rawBody = await req.text();
+    let payload: any = {};
+    try {
+      payload = JSON.parse(rawBody || '{}');
+    } catch (_) {
+      console.warn('Webhook body is not valid JSON');
     }
 
-    const payload = await req.json();
-    console.log('Webhook received:', JSON.stringify(payload, null, 2));
+    console.log('Webhook headers:', { xSignature, xRequestId });
+    console.log('Webhook received:', rawBody);
 
-    // Validar assinatura HMAC
-    const dataId = payload.data?.id || '';
-    const signatureData = `id:${dataId};request-id:${xRequestId};`;
-    
-    const encoder = new TextEncoder();
-    const key = await crypto.subtle.importKey(
-      'raw',
-      encoder.encode(webhookSecret),
-      { name: 'HMAC', hash: 'SHA-256' },
-      false,
-      ['sign']
-    );
-    
-    const signature = await crypto.subtle.sign(
-      'HMAC',
-      key,
-      encoder.encode(signatureData)
-    );
-    
-    const expectedSignature = Array.from(new Uint8Array(signature))
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('');
-    
-    const receivedSignature = xSignature.split(',')[0].split('=')[1];
-    
-    if (expectedSignature !== receivedSignature) {
-      console.error('Invalid signature');
-      return new Response(JSON.stringify({ error: 'Invalid signature' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    let signatureValid = false;
+    try {
+      if (xSignature && xRequestId && webhookSecret) {
+        const dataId = payload?.data?.id || '';
+        // Formato documentado pelo MP para v1: "id:<id>;request-id:<x-request-id>;"
+        const signatureDataV1 = `id:${dataId};request-id:${xRequestId};`;
+        const encoder = new TextEncoder();
+        const key = await crypto.subtle.importKey(
+          'raw',
+          encoder.encode(webhookSecret),
+          { name: 'HMAC', hash: 'SHA-256' },
+          false,
+          ['sign']
+        );
+        const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(signatureDataV1));
+        const expectedHex = Array.from(new Uint8Array(signature))
+          .map(b => b.toString(16).padStart(2, '0'))
+          .join('');
 
-    // Mercado Pago envia notificações com type="payment"
-    if (payload.type === 'payment') {
-      const paymentId = payload.data?.id;
-      
-      if (!paymentId) {
-        console.error('No payment ID in webhook');
-        return new Response(JSON.stringify({ error: 'No payment ID' }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
-      console.log(`Processing payment ${paymentId}`);
-
-      // Buscar informações do pagamento no Mercado Pago
-      const mpAccessToken = Deno.env.get('MERCADO_PAGO_ACCESS_TOKEN');
-      const paymentResponse = await fetch(
-        `https://api.mercadopago.com/v1/payments/${paymentId}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${mpAccessToken}`,
-          },
+        // O header do MP pode vir em diferentes formatos. Tentar extrair sha256/v1/signature
+        const parts = xSignature.split(',').map(p => p.trim());
+        const found = parts.find(p => p.startsWith('sha256=') || p.startsWith('v1=') || p.startsWith('signature='));
+        const received = found ? found.split('=')[1] : undefined;
+        if (received && received.toLowerCase() === expectedHex.toLowerCase()) {
+          signatureValid = true;
         }
-      );
-
-      if (!paymentResponse.ok) {
-        console.error('Failed to fetch payment from Mercado Pago');
-        return new Response(JSON.stringify({ error: 'Failed to fetch payment' }), {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
       }
+    } catch (e) {
+      console.warn('Signature validation error (continuing):', e);
+    }
 
-      const paymentData = await paymentResponse.json();
-      console.log('Payment data:', JSON.stringify(paymentData, null, 2));
+    if (!signatureValid) {
+      console.warn('Signature not validated. Proceeding by verifying with Mercado Pago API.');
+    }
 
-      // Extrair informações do pagamento
-      const status = paymentData.status; // approved, pending, rejected, etc
-      const externalReference = paymentData.external_reference; // ID da purchase
-      
-      if (!externalReference) {
-        console.error('No external reference in payment');
-        return new Response(JSON.stringify({ error: 'No external reference' }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
+    // Detectar tipo de evento (payment ou merchant_order)
+    const topic = payload?.topic || payload?.type || (payload?.action?.includes('payment') ? 'payment' : undefined);
+    const resource: string | undefined = payload?.resource;
 
-      // Atualizar status da purchase no banco
+    const mpAccessToken = Deno.env.get('MERCADO_PAGO_ACCESS_TOKEN');
+    if (!mpAccessToken) {
+      console.error('MERCADO_PAGO_ACCESS_TOKEN not set');
+      return new Response(JSON.stringify({ error: 'Missing MP access token' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Helpers
+    const updatePurchases = async (externalReference: string, status: string, paymentIdForLog?: string) => {
       let purchaseStatus = 'pending';
-      if (status === 'approved') {
-        purchaseStatus = 'completed';
-      } else if (status === 'rejected' || status === 'cancelled') {
-        purchaseStatus = 'failed';
-      }
+      if (status === 'approved' || status === 'paid') purchaseStatus = 'completed';
+      else if (status === 'rejected' || status === 'cancelled' || status === 'expired') purchaseStatus = 'failed';
 
-      // Suporta múltiplas purchases (separadas por vírgula)
-      const purchaseIds = externalReference.split(',');
-      
-      for (const purchaseId of purchaseIds) {
+      const purchaseIds = externalReference.split(',').map((id: string) => id.trim()).filter(Boolean);
+      for (const pid of purchaseIds) {
         const { error: updateError } = await supabase
           .from('purchases')
-          .update({
-            status: purchaseStatus,
-            stripe_payment_intent_id: paymentId.toString(),
-          })
-          .eq('id', purchaseId.trim());
-
-        if (updateError) {
-          console.error(`Error updating purchase ${purchaseId}:`, updateError);
-        } else {
-          console.log(`Purchase ${purchaseId} updated to ${purchaseStatus}`);
-        }
+          .update({ status: purchaseStatus, stripe_payment_intent_id: paymentIdForLog?.toString() })
+          .eq('id', pid);
+        if (updateError) console.error(`Erro ao atualizar purchase ${pid}:`, updateError);
+        else console.log(`Purchase ${pid} -> ${purchaseStatus}`);
       }
-
-      // Se o pagamento foi aprovado, enviar email de confirmação
+      // E-mail somente quando concluído
       if (purchaseStatus === 'completed') {
-        console.log('Sending purchase confirmation email...');
         try {
-          const emailResponse = await fetch(
-            `${supabaseUrl}/functions/v1/send-purchase-confirmation`,
-            {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${supabaseServiceKey}`,
-              },
-              body: JSON.stringify({ purchaseIds }),
-            }
-          );
-
-          if (!emailResponse.ok) {
-            console.error('Failed to send confirmation email:', await emailResponse.text());
-          } else {
-            console.log('Confirmation email sent successfully');
-          }
-        } catch (emailError) {
-          console.error('Error calling email function:', emailError);
+          const emailResp = await fetch(`${supabaseUrl}/functions/v1/send-purchase-confirmation`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${supabaseServiceKey}` },
+            body: JSON.stringify({ purchaseIds: externalReference.split(',') }),
+          });
+          if (!emailResp.ok) console.error('Falha ao enviar email:', await emailResp.text());
+        } catch (err) {
+          console.error('Erro ao chamar função de e-mail:', err);
         }
       }
+      return purchaseStatus;
+    };
 
-      return new Response(JSON.stringify({ success: true, status: purchaseStatus }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    const processPayment = async (paymentId: string) => {
+      console.log(`Processando payment ${paymentId}`);
+      const paymentRes = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+        headers: { 'Authorization': `Bearer ${mpAccessToken}` },
       });
+      if (!paymentRes.ok) {
+        console.error('Falha ao buscar payment no MP:', await paymentRes.text());
+        return new Response(JSON.stringify({ error: 'Failed to fetch payment' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      const paymentData = await paymentRes.json();
+      console.log('Payment data:', JSON.stringify(paymentData));
+      const externalReference = paymentData.external_reference as string | undefined;
+      if (!externalReference) {
+        console.error('Payment sem external_reference');
+        return new Response(JSON.stringify({ error: 'No external reference' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      const finalStatus = await updatePurchases(externalReference, paymentData.status, paymentId);
+      return new Response(JSON.stringify({ success: true, status: finalStatus }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    };
+
+    const processMerchantOrder = async (merchantOrderId: string) => {
+      console.log(`Processando merchant_order ${merchantOrderId}`);
+      const moRes = await fetch(`https://api.mercadopago.com/merchant_orders/${merchantOrderId}`, {
+        headers: { 'Authorization': `Bearer ${mpAccessToken}` },
+      });
+      if (!moRes.ok) {
+        console.error('Falha ao buscar merchant_order:', await moRes.text());
+        return new Response(JSON.stringify({ error: 'Failed to fetch merchant order' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      const mo = await moRes.json();
+      console.log('Merchant order:', JSON.stringify(mo));
+
+      const externalReference: string | undefined = mo.external_reference;
+      const approvedPayment = (mo.payments || []).find((p: any) => p.status === 'approved');
+      const anyRejected = (mo.payments || []).some((p: any) => p.status === 'rejected' || p.status === 'cancelled' || p.status === 'expired');
+
+      if (!externalReference) {
+        console.error('Merchant order sem external_reference');
+        return new Response(JSON.stringify({ error: 'No external reference' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      let statusForRef = 'pending';
+      if (approvedPayment) statusForRef = 'approved';
+      else if (anyRejected) statusForRef = 'rejected';
+
+      const finalStatus = await updatePurchases(externalReference, statusForRef, approvedPayment?.id?.toString());
+      return new Response(JSON.stringify({ success: true, status: finalStatus }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    };
+
+    // Identificar o ID a partir do payload ou resource
+    const paymentIdFromPayload = payload?.data?.id || (resource?.match(/payments\/(\d+)/)?.[1]);
+    const merchantOrderIdFromResource = resource?.match(/merchant_orders\/(\d+)/)?.[1];
+
+    if ((topic === 'payment' || payload?.action?.includes('payment')) && paymentIdFromPayload) {
+      return await processPayment(paymentIdFromPayload.toString());
     }
 
-    return new Response(JSON.stringify({ message: 'Webhook received' }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    if ((topic === 'merchant_order' || resource?.includes('merchant_orders')) && merchantOrderIdFromResource) {
+      return await processMerchantOrder(merchantOrderIdFromResource.toString());
+    }
+
+    // Última tentativa: se só temos paymentId, processar por payment
+    if (paymentIdFromPayload) {
+      return await processPayment(paymentIdFromPayload.toString());
+    }
+
+    console.log('Evento não reconhecido, retornando 200 para evitar retries');
+    return new Response(JSON.stringify({ message: 'Webhook received' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
   } catch (error) {
     console.error('Webhook error:', error);
