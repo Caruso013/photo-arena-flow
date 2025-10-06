@@ -28,19 +28,12 @@ export default function CheckoutSuccess() {
   const [loading, setLoading] = useState(true);
   const [purchases, setPurchases] = useState<Purchase[]>([]);
 
-  const isApproved = useMemo(() => {
-    const status = (searchParams.get('status') || searchParams.get('collection_status') || '').toLowerCase();
-    const code = searchParams.get('code') || searchParams.get('status_code');
-    return status === 'approved' || status === 'accredited' || status === 'success' || code === '200';
-  }, [searchParams]);
-
-  const externalRef = searchParams.get('external_reference') || '';
+  const externalRef = searchParams.get('ref') || searchParams.get('external_reference') || '';
   const purchaseIds = useMemo(() => externalRef ? externalRef.split(',') : [], [externalRef]);
 
   // Basic SEO
   useEffect(() => {
-    const title = isApproved ? 'Compra concluída | STA Fotos' : 'Processando pagamento | STA Fotos';
-    document.title = title;
+    document.title = 'Compra concluída | STA Fotos';
     let meta = document.querySelector('meta[name="description"]');
     if (!meta) {
       meta = document.createElement('meta');
@@ -48,7 +41,7 @@ export default function CheckoutSuccess() {
       document.head.appendChild(meta);
     }
     meta.setAttribute('content', 'Compra de fotos concluída. Baixe suas fotos e confira em Minhas Compras.');
-  }, [isApproved]);
+  }, []);
 
   useEffect(() => {
     const fetchPurchases = async () => {
@@ -62,6 +55,7 @@ export default function CheckoutSuccess() {
           .select(`*, photo:photos(id, watermarked_url, thumbnail_url, original_url, campaign:campaigns(title))`)
           .in('id', purchaseIds)
           .eq('buyer_id', user.id)
+          .eq('status', 'completed')
           .order('created_at', { ascending: false });
         if (error) throw error;
         setPurchases(data || []);
@@ -73,13 +67,6 @@ export default function CheckoutSuccess() {
     };
 
     fetchPurchases();
-    // Optionally poll for webhook completion for a short time
-    const interval = setInterval(fetchPurchases, 4000);
-    const timeout = setTimeout(() => clearInterval(interval), 30000);
-    return () => {
-      clearInterval(interval);
-      clearTimeout(timeout);
-    };
   }, [user, purchaseIds.join(',')]);
 
   const handleDownload = (url: string, fileName: string) => {
@@ -92,20 +79,14 @@ export default function CheckoutSuccess() {
   return (
     <main className="container mx-auto px-4 py-8 space-y-6">
       <header className="flex items-center gap-3">
-        {isApproved ? (
-          <CheckCircle2 className="h-8 w-8 text-green-600" />
-        ) : (
-          <ShoppingCart className="h-8 w-8" />
-        )}
-        <h1 className="text-3xl font-bold">
-          {isApproved ? 'Compra concluída' : 'Finalizando seu pagamento'}
-        </h1>
+        <CheckCircle2 className="h-8 w-8 text-green-600" />
+        <h1 className="text-3xl font-bold">Compra realizada com sucesso!</h1>
       </header>
 
       {loading ? (
         <div className="flex items-center gap-2 text-muted-foreground">
           <Loader2 className="h-5 w-5 animate-spin" />
-          Validando sua compra...
+          Carregando suas fotos...
         </div>
       ) : purchases.length === 0 ? (
         <Card>
@@ -119,9 +100,7 @@ export default function CheckoutSuccess() {
       ) : (
         <section className="space-y-4">
           <p className="text-muted-foreground">
-            {isApproved
-              ? 'Pagamento aprovado! Suas fotos já estão disponíveis para download e também em Minhas Compras.'
-              : 'Recebemos seu pedido. Assim que o pagamento for confirmado, as fotos serão liberadas.'}
+            Pagamento aprovado! Suas fotos já estão disponíveis para download e também em Minhas Compras.
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -139,12 +118,11 @@ export default function CheckoutSuccess() {
                     {purchase.photo?.campaign?.title || 'Foto'}
                   </p>
                   <p className="text-sm text-muted-foreground mb-3">
-                    {new Date(purchase.created_at).toLocaleDateString('pt-BR')}
+                    R$ {purchase.amount} • {new Date(purchase.created_at).toLocaleDateString('pt-BR')}
                   </p>
                   <Button
                     size="sm"
                     className="w-full"
-                    disabled={!isApproved && purchase.status !== 'completed'}
                     onClick={() => purchase.photo?.original_url && handleDownload(purchase.photo.original_url, `foto-${purchase.photo.id}.jpg`)}
                   >
                     Baixar Original

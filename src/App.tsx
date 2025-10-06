@@ -23,6 +23,8 @@ import FAQ from "./pages/FAQ";
 import PaymentTest from "./pages/PaymentTest";
 import NotFound from "./pages/NotFound";
 import CheckoutSuccess from "./pages/CheckoutSuccess";
+import CheckoutProcessing from "./pages/CheckoutProcessing";
+import CheckoutFailure from "./pages/CheckoutFailure";
 import Overview from "./pages/dashboard/Overview";
 import MyEvents from "./pages/dashboard/MyEvents";
 import MyPhotos from "./pages/dashboard/MyPhotos";
@@ -89,7 +91,9 @@ const AppContent = () => {
         <Route path="/fotografos" element={<Fotografos />} />
         <Route path="/faq" element={<FAQ />} />
         <Route path="/payment-test" element={<PaymentTest />} />
+        <Route path="/checkout/processando" element={<CheckoutProcessing />} />
         <Route path="/checkout/sucesso" element={<CheckoutSuccess />} />
+        <Route path="/checkout/falha" element={<CheckoutFailure />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>
