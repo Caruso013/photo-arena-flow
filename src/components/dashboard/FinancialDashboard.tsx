@@ -9,6 +9,8 @@ import { Progress } from '@/components/ui/progress';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { TrendingUp, DollarSign, Camera, Trophy, Target, Users, Award } from 'lucide-react';
+import { PayoutRequestsManager } from './PayoutRequestsManager';
+import { PhotographerEarnings } from './PhotographerEarnings';
 
 interface PhotographerStats {
   photographer_id: string;
@@ -29,10 +31,20 @@ interface RevenueData {
 
 interface FinancialDashboardProps {
   userRole: 'admin' | 'photographer';
+  view?: 'overview' | 'payouts' | 'earnings';
 }
 
-const FinancialDashboard = ({ userRole }: FinancialDashboardProps) => {
+const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardProps) => {
   const { user } = useAuth();
+
+  // Se view é payouts ou earnings, mostrar componentes específicos
+  if (view === 'payouts' && userRole === 'admin') {
+    return <PayoutRequestsManager />;
+  }
+
+  if (view === 'earnings' && userRole === 'photographer') {
+    return <PhotographerEarnings />;
+  }
   const [photographerStats, setPhotographerStats] = useState<PhotographerStats[]>([]);
   const [revenueData, setRevenueData] = useState<RevenueData[]>([]);
   const [totalRevenue, setTotalRevenue] = useState(0);
