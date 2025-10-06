@@ -119,6 +119,8 @@ serve(async (req) => {
     // Usar IDs de todas as purchases separados por vírgula
     const purchaseIds = purchases.map(p => p.id).join(',');
 
+    const baseAppUrl = supabaseUrl.replace('.supabase.co', '.lovableproject.com');
+
     const preferenceData = {
       items,
       payer: {
@@ -135,9 +137,9 @@ serve(async (req) => {
         },
       },
       back_urls: {
-        success: `${supabaseUrl.replace('.supabase.co', '.lovableproject.com')}/dashboard`,
-        failure: `${supabaseUrl.replace('.supabase.co', '.lovableproject.com')}/dashboard`,
-        pending: `${supabaseUrl.replace('.supabase.co', '.lovableproject.com')}/dashboard`,
+        success: `${baseAppUrl}/#/checkout/sucesso`,
+        failure: `${baseAppUrl}/#/checkout/falha`,
+        pending: `${baseAppUrl}/#/checkout/pendente`,
       },
       auto_return: 'approved',
       external_reference: purchaseIds,
