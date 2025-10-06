@@ -13,6 +13,10 @@ import { Upload, Camera, DollarSign, BarChart3, Plus, Eye, Edit, CreditCard, Ale
 import { Link } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import AntiScreenshotProtection from '@/components/security/AntiScreenshotProtection';
+import UploadPhotoModal from '@/components/modals/UploadPhotoModal';
+import CreateCampaignModal from '@/components/modals/CreateCampaignModal';
+import CreateAlbumModal from '@/components/modals/CreateAlbumModal';
+import { ProfileEditor } from '../profile/ProfileEditor';
 
 interface Campaign {
   id: string;
