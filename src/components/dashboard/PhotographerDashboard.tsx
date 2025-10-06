@@ -12,12 +12,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Upload, Camera, DollarSign, BarChart3, Plus, Eye, Edit, CreditCard, AlertCircle, CalendarPlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import DashboardLayout from './DashboardLayout';
-import UploadPhotoModal from '@/components/modals/UploadPhotoModal';
-import CreateCampaignModal from '@/components/modals/CreateCampaignModal';
-import CreateAlbumModal from '@/components/modals/CreateAlbumModal';
-import { ProfileEditor } from '../profile/ProfileEditor';
-import FinancialDashboard from './FinancialDashboard';
 import AntiScreenshotProtection from '@/components/security/AntiScreenshotProtection';
 
 interface Campaign {
@@ -267,8 +261,7 @@ const PhotographerDashboard = () => {
 
   return (
     <AntiScreenshotProtection>
-      <DashboardLayout>
-        <div className="space-y-8">
+      <div className="space-y-8">
         {/* Welcome Section with Profile */}
         <div className="relative overflow-hidden rounded-xl p-8 bg-gradient-primary text-white shadow-elegant">
           <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS1vcGFjaXR5PSIwLjA1IiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-30"></div>
@@ -654,7 +647,6 @@ const PhotographerDashboard = () => {
           </TabsContent>
         </Tabs>
         </div>
-      </DashboardLayout>
 
       {showUploadModal && (
         <UploadPhotoModal 
