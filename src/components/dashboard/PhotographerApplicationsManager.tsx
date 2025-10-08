@@ -85,7 +85,7 @@ export const PhotographerApplicationsManager = () => {
         .from("photographer_applications")
         .select(`
           *,
-          profiles:user_id (
+          profiles!photographer_applications_user_id_fkey (
             full_name,
             email,
             avatar_url
@@ -93,7 +93,11 @@ export const PhotographerApplicationsManager = () => {
         `)
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Erro na query:", error);
+        throw error;
+      }
+      
       setApplications(data || []);
     } catch (error) {
       console.error("Erro ao buscar candidaturas:", error);

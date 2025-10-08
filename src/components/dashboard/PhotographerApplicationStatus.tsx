@@ -52,7 +52,10 @@ export const PhotographerApplicationStatus = ({ onShowApplicationForm }: Photogr
           .order("created_at", { ascending: false })
           .limit(1);
 
-        if (error) throw error;
+        if (error) {
+          console.error("Erro na query de candidatura:", error);
+          throw error;
+        }
 
         setApplication(data?.[0] || null);
       } catch (error) {
