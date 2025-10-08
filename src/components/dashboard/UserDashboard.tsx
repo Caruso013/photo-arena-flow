@@ -108,23 +108,62 @@ const UserDashboard = () => {
         return;
       }
 
-      // Criar um link de download
+      toast({
+        title: "Preparando download...",
+        description: "Aguarde enquanto preparamos sua foto.",
+      });
+
+      // Extrair o caminho do arquivo da URL
+      // URL format: https://[project].supabase.co/storage/v1/object/public/[bucket]/[path]
+      const urlParts = photo.photo.original_url.split('/storage/v1/object/');
+      if (urlParts.length < 2) {
+        throw new Error('URL inválida');
+      }
+
+      const pathParts = urlParts[1].split('/');
+      const bucketName = pathParts[1]; // 'public' or bucket name
+      const filePath = pathParts.slice(2).join('/'); // resto do caminho
+
+      // Buscar arquivo do storage
+      const { data: fileData, error: downloadError } = await supabase.storage
+        .from('photos-original')
+        .download(filePath);
+
+      if (downloadError) {
+        console.error('Download error:', downloadError);
+        throw downloadError;
+      }
+
+      // Criar URL local e fazer download
+      const url = URL.createObjectURL(fileData);
       const link = document.createElement('a');
-      link.href = photo.photo.original_url;
+      link.href = url;
       link.download = `${photo.photo.title || 'foto'}_original.jpg`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      URL.revokeObjectURL(url);
 
       toast({
-        title: "Download iniciado",
-        description: "Sua foto está sendo baixada.",
+        title: "Download concluído!",
+        description: "Sua foto foi baixada com sucesso.",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error downloading photo:', error);
+      
+      let errorMessage = "Não foi possível baixar a foto.";
+      
+      if (error.message?.includes('Bucket not found')) {
+        errorMessage = "O sistema de armazenamento não está configurado. Entre em contato com o suporte.";
+      } else if (error.message?.includes('Object not found')) {
+        errorMessage = "Arquivo não encontrado. A foto pode ter sido removida.";
+      } else if (error.message?.includes('Unauthorized')) {
+        errorMessage = "Você não tem permissão para baixar esta foto.";
+      }
+      
       toast({
         title: "Erro no download",
-        description: "Não foi possível baixar a foto.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
