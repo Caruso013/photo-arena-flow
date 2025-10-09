@@ -254,9 +254,13 @@ const UserDashboard = () => {
                   <Card key={purchase.id} className="overflow-hidden hover:shadow-lg transition-shadow">
                     <div className="aspect-square relative bg-muted">
                       <img
-                        src={purchase.photo.thumbnail_url || purchase.photo.watermarked_url}
+                        src={purchase.photo.watermarked_url || purchase.photo.thumbnail_url}
                         alt="Foto comprada"
                         className="w-full h-full object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = purchase.photo.thumbnail_url;
+                        }}
                       />
                     </div>
                     <CardContent className="p-4">

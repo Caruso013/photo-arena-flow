@@ -16,6 +16,7 @@ import AntiScreenshotProtection from '@/components/security/AntiScreenshotProtec
 import UploadPhotoModal from '@/components/modals/UploadPhotoModal';
 import CreateCampaignModal from '@/components/modals/CreateCampaignModal';
 import CreateAlbumModal from '@/components/modals/CreateAlbumModal';
+import EditCampaignCoverModal from '@/components/modals/EditCampaignCoverModal';
 import { ProfileEditor } from '../profile/ProfileEditor';
 
 interface Campaign {
@@ -78,6 +79,8 @@ const PhotographerDashboard = () => {
   const [showCreateCampaignModal, setShowCreateCampaignModal] = useState(false);
   const [showCreateAlbumModal, setShowCreateAlbumModal] = useState(false);
   const [selectedCampaignForAlbum, setSelectedCampaignForAlbum] = useState<{ id: string; title: string } | null>(null);
+  const [showEditCoverModal, setShowEditCoverModal] = useState(false);
+  const [selectedCampaignForCover, setSelectedCampaignForCover] = useState<{ id: string; title: string; coverUrl?: string } | null>(null);
   const [payoutAmount, setPayoutAmount] = useState('');
   const [isRequestingPayout, setIsRequestingPayout] = useState(false);
   const [payoutError, setPayoutError] = useState('');
@@ -466,6 +469,22 @@ const PhotographerDashboard = () => {
                           variant="outline" 
                           className="gap-1"
                           onClick={() => {
+                            setSelectedCampaignForCover({ 
+                              id: campaign.id, 
+                              title: campaign.title,
+                              coverUrl: campaign.cover_image_url 
+                            });
+                            setShowEditCoverModal(true);
+                          }}
+                        >
+                          <Edit className="h-3 w-3" />
+                          Capa
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="gap-1"
+                          onClick={() => {
                             setSelectedCampaignForAlbum({ id: campaign.id, title: campaign.title });
                             setShowCreateAlbumModal(true);
                           }}
@@ -669,6 +688,20 @@ const PhotographerDashboard = () => {
             setSelectedCampaignForAlbum(null);
           }}
           onAlbumCreated={fetchData}
+        />
+      )}
+
+      {showEditCoverModal && selectedCampaignForCover && (
+        <EditCampaignCoverModal
+          campaignId={selectedCampaignForCover.id}
+          campaignTitle={selectedCampaignForCover.title}
+          currentCoverUrl={selectedCampaignForCover.coverUrl}
+          open={showEditCoverModal}
+          onClose={() => {
+            setShowEditCoverModal(false);
+            setSelectedCampaignForCover(null);
+          }}
+          onCoverUpdated={fetchData}
         />
       )}
     </AntiScreenshotProtection>

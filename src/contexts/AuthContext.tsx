@@ -3,7 +3,7 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 
-export type UserRole = 'user' | 'photographer' | 'admin';
+export type UserRole = 'user' | 'photographer' | 'admin' | 'organizer';
 export type OrganizationRole = 'admin' | 'organization' | 'photographer' | 'user';
 
 export interface UserProfile {
