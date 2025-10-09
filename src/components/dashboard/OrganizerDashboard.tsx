@@ -52,10 +52,25 @@ const OrganizerDashboard = () => {
 
   const fetchCampaigns = async () => {
     try {
+      // Buscar organizações do usuário
+      const { data: orgMemberships } = await supabase
+        .from('organization_members')
+        .select('organization_id')
+        .eq('user_id', user?.id)
+        .eq('is_active', true);
+
+      const orgIds = orgMemberships?.map(m => m.organization_id) || [];
+
+      if (orgIds.length === 0) {
+        setCampaigns([]);
+        return;
+      }
+
+      // Buscar campanhas vinculadas às organizações
       const { data: campaignsData, error } = await supabase
         .from('campaigns')
         .select('*')
-        .eq('organization_id', user?.id)
+        .in('organization_id', orgIds)
         .order('event_date', { ascending: false });
 
       if (error) throw error;
@@ -67,7 +82,6 @@ const OrganizerDashboard = () => {
             .select('*', { count: 'exact', head: true })
             .eq('campaign_id', campaign.id);
 
-          // Buscar vendas através do relacionamento com fotos
           const { data: photosInCampaign } = await supabase
             .from('photos')
             .select('id')
@@ -107,15 +121,34 @@ const OrganizerDashboard = () => {
 
   const fetchStats = async () => {
     try {
+      // Buscar organizações do usuário
+      const { data: orgMemberships } = await supabase
+        .from('organization_members')
+        .select('organization_id')
+        .eq('user_id', user?.id)
+        .eq('is_active', true);
+
+      const orgIds = orgMemberships?.map(m => m.organization_id) || [];
+
+      if (orgIds.length === 0) {
+        setStats({
+          totalCampaigns: 0,
+          totalPhotos: 0,
+          totalRevenue: 0,
+          totalOrganizationRevenue: 0
+        });
+        return;
+      }
+
       const { count: campaignsCount } = await supabase
         .from('campaigns')
         .select('*', { count: 'exact', head: true })
-        .eq('organization_id', user?.id);
+        .in('organization_id', orgIds);
 
       const { data: campaignsData } = await supabase
         .from('campaigns')
         .select('id, organization_percentage')
-        .eq('organization_id', user?.id);
+        .in('organization_id', orgIds);
 
       const campaignIds = campaignsData?.map(c => c.id) || [];
 
@@ -131,7 +164,6 @@ const OrganizerDashboard = () => {
       let totalRevenue = 0;
       let organizationRevenue = 0;
 
-      // Processar cada campanha individualmente
       for (const campaign of campaignsData || []) {
         const { data: photosInCampaign } = await supabase
           .from('photos')

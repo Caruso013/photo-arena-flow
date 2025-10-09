@@ -231,11 +231,51 @@ const UserDashboard = () => {
           </TabsContent>
 
           <TabsContent value="purchases" className="space-y-6 animate-fade-in">
-            <div>
-              <h2 className="text-3xl font-bold mb-2">Minhas Compras</h2>
-              <p className="text-muted-foreground">
-                {purchasedPhotos.length} compra(s) realizada(s)
-              </p>
+            <div className="space-y-4">
+              <h2 className="text-2xl font-bold">Minhas Fotos Compradas ({purchasedPhotos.length})</h2>
+              
+              {/* Stats Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Total de Fotos</p>
+                        <p className="text-2xl font-bold">{purchasedPhotos.length}</p>
+                      </div>
+                      <FileImage className="h-8 w-8 text-blue-500" />
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Eventos</p>
+                        <p className="text-2xl font-bold">
+                          {new Set(purchasedPhotos.map(p => p.photo.campaign?.title)).size}
+                        </p>
+                      </div>
+                      <Camera className="h-8 w-8 text-green-500" />
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Total Gasto</p>
+                        <p className="text-2xl font-bold">
+                          {formatCurrency(purchasedPhotos.reduce((sum, p) => sum + Number(p.amount), 0))}
+                        </p>
+                      </div>
+                      <ShoppingCart className="h-8 w-8 text-purple-500" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
 
             {purchasedPhotos.length === 0 ? (
@@ -249,40 +289,47 @@ const UserDashboard = () => {
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {purchasedPhotos.map((purchase) => (
-                  <Card key={purchase.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                    <div className="aspect-square relative bg-muted">
-                      <img
-                        src={purchase.photo.watermarked_url || purchase.photo.thumbnail_url}
-                        alt="Foto comprada"
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = purchase.photo.thumbnail_url;
-                        }}
-                      />
+                  <Card key={purchase.id} className="overflow-hidden hover:shadow-lg transition-all group">
+                    <div className="relative">
+                      <div className="aspect-square relative bg-muted overflow-hidden">
+                        <img
+                          src={purchase.photo.thumbnail_url}
+                          alt="Foto comprada"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                        />
+                        <Badge className="absolute top-2 left-2 bg-green-500">
+                          Comprada
+                        </Badge>
+                      </div>
                     </div>
-                    <CardContent className="p-4">
-                      <p className="font-medium mb-1 line-clamp-1">
+                    <CardContent className="p-3">
+                      <p className="text-sm font-medium mb-1 line-clamp-1">
+                        {purchase.photo.title || `Foto ${purchase.photo.id.slice(0, 8)}`}
+                      </p>
+                      <p className="text-xs text-muted-foreground mb-2 line-clamp-1">
                         {purchase.photo.campaign?.title}
                       </p>
-                      <p className="text-sm text-muted-foreground mb-3">
-                        R$ {purchase.amount} • {new Date(purchase.created_at).toLocaleDateString('pt-BR')}
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-bold text-green-600">
+                          {formatCurrency(Number(purchase.amount))}
+                        </span>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7"
+                          disabled={purchase.status !== 'completed'}
+                          onClick={() => {
+                            window.open(purchase.photo.original_url, '_blank');
+                          }}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Comprada em {new Date(purchase.created_at).toLocaleDateString('pt-BR')}
                       </p>
-                      <Button
-                        size="sm"
-                        className="w-full"
-                        disabled={purchase.status !== 'completed'}
-                        onClick={() => {
-                          const link = document.createElement('a');
-                          link.href = purchase.photo.original_url;
-                          link.download = `foto-${purchase.photo.id}.jpg`;
-                          link.click();
-                        }}
-                      >
-                        {purchase.status === 'completed' ? 'Baixar Original' : 'Aguardando confirmação'}
-                      </Button>
                     </CardContent>
                   </Card>
                 ))}
