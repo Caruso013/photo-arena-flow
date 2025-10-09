@@ -330,7 +330,36 @@ const UserDashboard = () => {
                           disabled={purchase.status !== 'completed'}
                           onClick={async () => {
                             try {
-                              const response = await fetch(purchase.photo.original_url);
+                              const parseStoragePath = (url: string) => {
+                                try {
+                                  const marker = '/storage/v1/object/';
+                                  const idx = url.indexOf(marker);
+                                  if (idx === -1) return null;
+                                  let rest = url.slice(idx + marker.length);
+                                  // remove leading 'public/' if present
+                                  if (rest.startsWith('public/')) rest = rest.replace('public/', '');
+                                  const firstSlash = rest.indexOf('/');
+                                  if (firstSlash === -1) return null;
+                                  const bucket = rest.slice(0, firstSlash);
+                                  const path = rest.slice(firstSlash + 1);
+                                  return { bucket, path } as const;
+                                } catch { return null; }
+                              };
+
+                              const parsed = parseStoragePath(purchase.photo.original_url);
+                              let downloadUrl = purchase.photo.original_url;
+
+                              if (parsed) {
+                                const { data, error } = await supabase
+                                  .storage
+                                  .from(parsed.bucket)
+                                  .createSignedUrl(parsed.path, 60);
+                                if (error) throw error;
+                                if (data?.signedUrl) downloadUrl = data.signedUrl;
+                              }
+
+                              const response = await fetch(downloadUrl);
+                              if (!response.ok) throw new Error(`HTTP ${response.status}`);
                               const blob = await response.blob();
                               const url = window.URL.createObjectURL(blob);
                               const link = document.createElement('a');
@@ -342,6 +371,7 @@ const UserDashboard = () => {
                               window.URL.revokeObjectURL(url);
                             } catch (error) {
                               console.error('Erro ao baixar foto:', error);
+                              // Fallback abre em nova aba (permite o usuário salvar manualmente)
                               window.open(purchase.photo.original_url, '_blank');
                             }
                           }}
