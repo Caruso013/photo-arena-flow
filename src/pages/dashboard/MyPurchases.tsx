@@ -59,11 +59,37 @@ const MyPurchases = () => {
     }
   };
 
-  const handleDownload = (url: string, fileName: string) => {
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = fileName;
-    link.click();
+  const handleDownload = async (url: string, fileName: string) => {
+    try {
+      const marker = '/storage/v1/object/';
+      const idx = url.indexOf(marker);
+      let signed = url;
+      if (idx !== -1) {
+        let rest = url.slice(idx + marker.length);
+        if (rest.startsWith('public/')) rest = rest.replace('public/', '');
+        const firstSlash = rest.indexOf('/');
+        if (firstSlash !== -1) {
+          const bucket = rest.slice(0, firstSlash);
+          const path = rest.slice(firstSlash + 1);
+          const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, 60);
+          if (!error && data?.signedUrl) signed = data.signedUrl;
+        }
+      }
+      const response = await fetch(signed);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const blob = await response.blob();
+      const objectUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(objectUrl);
+    } catch (e) {
+      console.error('Erro ao baixar foto:', e);
+      window.open(url, '_blank');
+    }
   };
 
   return (
