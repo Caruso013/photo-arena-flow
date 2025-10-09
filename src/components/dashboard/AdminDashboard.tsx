@@ -64,6 +64,10 @@ interface Campaign {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  organization_id: string | null;
+  platform_percentage: number;
+  photographer_percentage: number;
+  organization_percentage: number;
 }
 
 interface EventApplication {
