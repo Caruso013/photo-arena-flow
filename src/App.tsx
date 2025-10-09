@@ -20,6 +20,7 @@ import Fotografos from "./pages/Fotografos";
 import Campaign from "./pages/Campaign";
 import EventosProximos from "./pages/EventosProximos";
 import FAQ from "./pages/FAQ";
+import Sobre from "./pages/Sobre";
 import PaymentTest from "./pages/PaymentTest";
 import NotFound from "./pages/NotFound";
 import CheckoutSuccess from "./pages/CheckoutSuccess";
@@ -92,6 +93,7 @@ const AppContent = () => {
         <Route path="/admin" element={<AdminLogin />} />
         <Route path="/fotografos" element={<Fotografos />} />
         <Route path="/faq" element={<FAQ />} />
+        <Route path="/sobre" element={<Sobre />} />
         <Route path="/payment-test" element={<PaymentTest />} />
         <Route path="/checkout/processando" element={<CheckoutProcessing />} />
         <Route path="/checkout/sucesso" element={<CheckoutSuccess />} />
