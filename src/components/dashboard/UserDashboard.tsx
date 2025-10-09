@@ -289,15 +289,23 @@ const UserDashboard = () => {
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {purchasedPhotos.map((purchase) => (
                   <Card key={purchase.id} className="overflow-hidden hover:shadow-lg transition-all group">
                     <div className="relative">
                       <div className="aspect-square relative bg-muted overflow-hidden">
                         <img
-                          src={purchase.photo.thumbnail_url}
+                          src={purchase.photo.watermarked_url || purchase.photo.thumbnail_url || purchase.photo.original_url}
                           alt="Foto comprada"
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            if (purchase.photo.thumbnail_url && target.src !== purchase.photo.thumbnail_url) {
+                              target.src = purchase.photo.thumbnail_url;
+                            } else if (purchase.photo.original_url && target.src !== purchase.photo.original_url) {
+                              target.src = purchase.photo.original_url;
+                            }
+                          }}
                         />
                         <Badge className="absolute top-2 left-2 bg-green-500">
                           Comprada
@@ -320,8 +328,22 @@ const UserDashboard = () => {
                           variant="ghost"
                           className="h-7 w-7"
                           disabled={purchase.status !== 'completed'}
-                          onClick={() => {
-                            window.open(purchase.photo.original_url, '_blank');
+                          onClick={async () => {
+                            try {
+                              const response = await fetch(purchase.photo.original_url);
+                              const blob = await response.blob();
+                              const url = window.URL.createObjectURL(blob);
+                              const link = document.createElement('a');
+                              link.href = url;
+                              link.download = `foto-${purchase.photo.id}.jpg`;
+                              document.body.appendChild(link);
+                              link.click();
+                              document.body.removeChild(link);
+                              window.URL.revokeObjectURL(url);
+                            } catch (error) {
+                              console.error('Erro ao baixar foto:', error);
+                              window.open(purchase.photo.original_url, '_blank');
+                            }
                           }}
                         >
                           <Download className="h-4 w-4" />
