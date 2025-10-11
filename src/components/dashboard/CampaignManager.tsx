@@ -21,6 +21,10 @@ interface Campaign {
   event_date: string | null;
   is_active: boolean;
   created_at: string;
+  organization_id: string | null;
+  platform_percentage: number;
+  photographer_percentage: number;
+  organization_percentage: number;
 }
 
 interface CampaignManagerProps {
@@ -37,7 +41,11 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
     title: '',
     description: '',
     location: '',
-    event_date: ''
+    event_date: '',
+    organization_id: '',
+    platform_percentage: 60,
+    photographer_percentage: 10,
+    organization_percentage: 30
   });
 
   useEffect(() => {
@@ -84,7 +92,11 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
       title: campaign.title,
       description: campaign.description || '',
       location: campaign.location || '',
-      event_date: campaign.event_date || ''
+      event_date: campaign.event_date || '',
+      organization_id: campaign.organization_id || '',
+      platform_percentage: campaign.platform_percentage,
+      photographer_percentage: campaign.photographer_percentage,
+      organization_percentage: campaign.organization_percentage
     });
     setEditDialogOpen(true);
   };
@@ -193,7 +205,7 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
                       {campaign.description && (
                         <p className="text-sm text-muted-foreground mb-2">{campaign.description}</p>
                       )}
-                      <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
+                      <div className="flex flex-wrap gap-3 text-sm text-muted-foreground mb-2">
                         {campaign.location && (
                           <span className="flex items-center gap-1">
                             <MapPin className="h-4 w-4" />
@@ -205,6 +217,13 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
                             <Calendar className="h-4 w-4" />
                             {new Date(campaign.event_date).toLocaleDateString()}
                           </span>
+                        )}
+                      </div>
+                      <div className="flex gap-2 text-xs">
+                        <Badge variant="outline">Plataforma: {campaign.platform_percentage}%</Badge>
+                        <Badge variant="outline">Fotógrafo: {campaign.photographer_percentage}%</Badge>
+                        {campaign.organization_id && (
+                          <Badge variant="outline">Organização: {campaign.organization_percentage}%</Badge>
                         )}
                       </div>
                     </div>
@@ -307,6 +326,66 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
                 onChange={(e) => setFormData({ ...formData, event_date: e.target.value })}
               />
             </div>
+            
+            <div className="space-y-2 pt-2 border-t">
+              <h4 className="font-medium text-sm">Organização e Comissões</h4>
+              <div>
+                <Label htmlFor="edit-organization">Organização</Label>
+                <select
+                  id="edit-organization"
+                  value={formData.organization_id}
+                  onChange={(e) => setFormData({ ...formData, organization_id: e.target.value })}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+                >
+                  <option value="">Nenhuma (Plataforma)</option>
+                  {organizations.map((org) => (
+                    <option key={org.id} value={org.id}>
+                      {org.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <Label htmlFor="edit-platform-percentage">Plataforma (%)</Label>
+                  <Input
+                    id="edit-platform-percentage"
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={formData.platform_percentage}
+                    onChange={(e) => setFormData({ ...formData, platform_percentage: Number(e.target.value) })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-photographer-percentage">Fotógrafo (%)</Label>
+                  <Input
+                    id="edit-photographer-percentage"
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={formData.photographer_percentage}
+                    onChange={(e) => setFormData({ ...formData, photographer_percentage: Number(e.target.value) })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-organization-percentage">Organização (%)</Label>
+                  <Input
+                    id="edit-organization-percentage"
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={formData.organization_percentage}
+                    onChange={(e) => setFormData({ ...formData, organization_percentage: Number(e.target.value) })}
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Total: {formData.platform_percentage + formData.photographer_percentage + formData.organization_percentage}%
+              </p>
+            </div>
+
             <Button onClick={handleEdit} className="w-full">
               Salvar Alterações
             </Button>

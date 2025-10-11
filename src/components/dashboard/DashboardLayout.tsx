@@ -9,8 +9,11 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
-import { Camera, LogOut, Settings, User, Home } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import DashboardSidebar from './DashboardSidebar';
+import { DynamicBreadcrumb } from '@/components/layout/DynamicBreadcrumb';
+import { ThemeToggle } from '@/components/layout/ThemeToggle';
+import { LogOut, Settings, User, Menu } from 'lucide-react';
+import { useState } from 'react';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -18,32 +21,37 @@ interface DashboardLayoutProps {
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const { profile, signOut } = useAuth();
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-3 md:py-4">
-          <div className="flex items-center justify-between">
-            {/* Logo */}
-            <Link to="/dashboard" className="flex items-center gap-2">
+    <div className="min-h-screen flex w-full bg-background">
+      <DashboardSidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
+      
+      <div className="flex-1 flex flex-col">
+        {/* Header */}
+        <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-50">
+          <div className="flex items-center justify-between px-4 py-3 md:py-4">
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="md:hidden"
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
               <img 
                 src="/lovable-uploads/6fdfc5d2-230c-4142-bf7c-3a326e5e45a8.png" 
                 alt="STA Fotos Logo" 
                 className="h-8 md:h-10 w-auto"
               />
-            </Link>
+            </div>
 
-            {/* User Menu */}
-            <div className="flex items-center gap-2 md:gap-4">
-              <Link to="/">
-                <Button variant="ghost" size="sm" className="gap-1 md:gap-2 text-xs md:text-sm">
-                  <Home className="h-3 w-3 md:h-4 md:w-4" />
-                  <span className="hidden sm:inline">Início</span>
-                </Button>
-              </Link>
-
-              <DropdownMenu>
+            <div className="flex items-center gap-2">
+              <ThemeToggle />
+              
+              {/* User Menu */}
+            <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-8 w-8 md:h-10 md:w-10 rounded-full">
                     <Avatar className="h-8 w-8 md:h-10 md:w-10">
@@ -65,7 +73,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
                     <div className="mt-1">
                       <span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-1 text-xs font-medium text-primary ring-1 ring-inset ring-primary/20">
                         {profile?.role === 'admin' ? 'Administrador' : 
-                         profile?.role === 'photographer' ? 'Fotógrafo' : 'Usuário'}
+                         profile?.role === 'photographer' ? 'Fotógrafo' :
+                         profile?.role === 'organizer' ? 'Organizador' : 'Usuário'}
                       </span>
                     </div>
                   </div>
@@ -90,13 +99,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
               </DropdownMenu>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-4 md:py-8">
-        {children}
-      </main>
+        {/* Main Content */}
+        <main className="flex-1 px-4 py-4 md:py-8">
+          <DynamicBreadcrumb />
+          {children}
+        </main>
+      </div>
     </div>
   );
 };

@@ -60,19 +60,29 @@ const EventosProximos = () => {
       minDate.setDate(minDate.getDate() + 2);
       const minDateStr = minDate.toISOString().split('T')[0];
       
+      // Buscar eventos com LEFT JOIN para verificar atribuições
       const { data: campaignsData, error: campaignsError } = await supabase
         .from('campaigns')
         .select(`
           *,
-          organization:organizations(name)
+          organization:organizations(name),
+          campaign_photographers!left(photographer_id)
         `)
         .eq('is_active', true)
-        .is('photographer_id', null)
         .gte('event_date', minDateStr)
         .order('event_date', { ascending: true });
 
       if (campaignsError) throw campaignsError;
-      setCampaigns(campaignsData || []);
+
+      // Filtrar eventos onde o usuário ainda não está atribuído
+      const availableCampaigns = (campaignsData || []).filter(campaign => {
+        const isAssigned = campaign.campaign_photographers?.some(
+          (cp: any) => cp.photographer_id === user!.id
+        );
+        return !isAssigned; // Mostrar apenas eventos não atribuídos
+      });
+
+      setCampaigns(availableCampaigns);
 
       const { data: applicationsData, error: applicationsError } = await supabase
         .from('event_applications')

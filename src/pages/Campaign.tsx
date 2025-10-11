@@ -13,6 +13,7 @@ import PaymentModal from '@/components/modals/PaymentModal';
 import WatermarkedPhoto from '@/components/WatermarkedPhoto';
 import AntiScreenshotProtection from '@/components/security/AntiScreenshotProtection';
 import { CartDrawer } from '@/components/cart/CartDrawer';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Calendar, 
   MapPin, 
@@ -23,7 +24,9 @@ import {
   ShoppingCart,
   User,
   Building2,
-  Clock
+  Clock,
+  Folder,
+  Image as ImageIcon
 } from 'lucide-react';
 
 interface Campaign {
@@ -47,6 +50,15 @@ interface Campaign {
   };
 }
 
+interface SubEvent {
+  id: string;
+  title: string;
+  description: string | null;
+  location: string | null;
+  event_time: string | null;
+  photo_count?: number;
+}
+
 interface Photo {
   id: string;
   title: string | null;
@@ -55,6 +67,7 @@ interface Photo {
   thumbnail_url: string | null;
   price: number;
   is_available: boolean;
+  sub_event_id: string | null;
 }
 
 const Campaign = () => {
@@ -64,18 +77,54 @@ const Campaign = () => {
   const { addToCart } = useCart();
   
   const [campaign, setCampaign] = useState<Campaign | null>(null);
+  const [subEvents, setSubEvents] = useState<SubEvent[]>([]);
   const [photos, setPhotos] = useState<Photo[]>([]);
+  const [selectedSubEvent, setSelectedSubEvent] = useState<string | null>(null);
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [purchasing, setPurchasing] = useState(false);
+  const [albumPreviews, setAlbumPreviews] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (id) {
       fetchCampaign();
+      fetchSubEvents();
       fetchPhotos();
     }
   }, [id]);
+
+  useEffect(() => {
+    if (id) {
+      fetchPhotos();
+    }
+  }, [selectedSubEvent]);
+
+  useEffect(() => {
+    const fetchAlbumPreviews = async () => {
+      const previews: Record<string, string> = {};
+      
+      for (const subEvent of subEvents) {
+        const { data } = await supabase
+          .from('photos')
+          .select('thumbnail_url, watermarked_url')
+          .eq('sub_event_id', subEvent.id)
+          .eq('is_available', true)
+          .limit(1)
+          .maybeSingle();
+        
+        if (data) {
+          previews[subEvent.id] = data.thumbnail_url || data.watermarked_url;
+        }
+      }
+      
+      setAlbumPreviews(previews);
+    };
+    
+    if (subEvents.length > 0) {
+      fetchAlbumPreviews();
+    }
+  }, [subEvents]);
 
   const fetchCampaign = async () => {
     if (!id) return;
@@ -105,16 +154,51 @@ const Campaign = () => {
     }
   };
 
-  const fetchPhotos = async () => {
+  const fetchSubEvents = async () => {
     if (!id) return;
 
     try {
       const { data, error } = await supabase
-        .from('photos')
-        .select('id, title, original_url, watermarked_url, thumbnail_url, price, is_available')
+        .from('sub_events')
+        .select(`
+          id, title, description, location, event_time,
+          photos:photos(count)
+        `)
         .eq('campaign_id', id)
-        .eq('is_available', true)
+        .eq('is_active', true)
         .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      
+      const subEventsWithCount = (data || []).map(se => ({
+        ...se,
+        photo_count: se.photos?.[0]?.count || 0
+      }));
+      
+      setSubEvents(subEventsWithCount);
+    } catch (error) {
+      console.error('Error fetching sub events:', error);
+    }
+  };
+
+  const fetchPhotos = async () => {
+    if (!id) return;
+
+    try {
+      let query = supabase
+        .from('photos')
+        .select('id, title, original_url, watermarked_url, thumbnail_url, price, is_available, sub_event_id')
+        .eq('campaign_id', id)
+        .eq('is_available', true);
+
+      // Filtrar por álbum se selecionado
+      if (selectedSubEvent) {
+        query = query.eq('sub_event_id', selectedSubEvent);
+      }
+
+      query = query.order('created_at', { ascending: false });
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setPhotos(data || []);
@@ -326,10 +410,98 @@ const Campaign = () => {
           )}
         </div>
 
+        {/* Albums/Sub-Events Section */}
+        {subEvents.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+              <Folder className="h-6 w-6" />
+              Todas as Pastas
+            </h2>
+            <p className="text-muted-foreground mb-6">
+              Navegue pelos álbuns deste evento para encontrar suas fotos
+            </p>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
+              {/* Botão "Todas as Fotos" */}
+              <Card 
+                className={`cursor-pointer transition-all hover:shadow-lg ${
+                  selectedSubEvent === null ? 'ring-2 ring-primary' : ''
+                }`}
+                onClick={() => setSelectedSubEvent(null)}
+              >
+                <CardContent className="p-6">
+                  <div className="flex flex-col items-center text-center gap-3">
+                    <div className={`p-4 rounded-full ${
+                      selectedSubEvent === null ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                    }`}>
+                      <ImageIcon className="h-8 w-8" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">Todas as Fotos</h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {photos.length} fotos
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Álbuns/Pastas */}
+              {subEvents.map((subEvent) => (
+                <Card 
+                  key={subEvent.id}
+                  className={`cursor-pointer transition-all hover:shadow-lg overflow-hidden ${
+                    selectedSubEvent === subEvent.id ? 'ring-2 ring-primary' : ''
+                  }`}
+                  onClick={() => setSelectedSubEvent(subEvent.id)}
+                >
+                  {/* Preview da foto */}
+                  {albumPreviews[subEvent.id] && (
+                    <div className="aspect-video relative">
+                      <img 
+                        src={albumPreviews[subEvent.id]} 
+                        alt={subEvent.title}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-black/20" />
+                    </div>
+                  )}
+                  
+                  <CardContent className="p-6">
+                    <div className="flex flex-col items-center text-center gap-3">
+                      <div className={`p-4 rounded-full ${
+                        selectedSubEvent === subEvent.id ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                      }`}>
+                        <Folder className="h-8 w-8" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold line-clamp-2">{subEvent.title}</h3>
+                        <Badge variant="secondary" className="mt-2">
+                          {subEvent.photo_count} fotos
+                        </Badge>
+                        {subEvent.location && (
+                          <p className="text-xs text-muted-foreground mt-2 flex items-center justify-center gap-1">
+                            <MapPin className="h-3 w-3" />
+                            {subEvent.location}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Photos Grid */}
         <div className="mb-8">
-          <h2 className="text-2xl font-bold mb-6">
-            Fotos do Evento ({photos.length})
+          <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+            <ImageIcon className="h-6 w-6" />
+            {selectedSubEvent 
+              ? `${subEvents.find(se => se.id === selectedSubEvent)?.title || 'Álbum'} (${photos.length})` 
+              : `Todas as Fotos (${photos.length})`
+            }
           </h2>
 
           {photos.length === 0 ? (

@@ -173,8 +173,11 @@ export const ProfileEditor: React.FC = () => {
                   <User className="h-16 w-16" />
                 </AvatarFallback>
               </Avatar>
-              <div className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                   onClick={() => fileInputRef.current?.click()}>
+              {/* Overlay para desktop (hover) e mobile (sempre visível com baixa opacidade) */}
+              <div 
+                className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-full opacity-20 md:opacity-0 md:group-hover:opacity-100 transition-opacity cursor-pointer"
+                onClick={() => fileInputRef.current?.click()}
+              >
                 <Camera className="h-8 w-8 text-white" />
               </div>
             </div>
@@ -190,10 +193,10 @@ export const ProfileEditor: React.FC = () => {
             <Button
               type="button"
               variant="outline"
-              size="sm"
+              size="lg"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
-              className="gap-2"
+              className="gap-2 w-full sm:w-auto"
             >
               {uploading ? (
                 <>

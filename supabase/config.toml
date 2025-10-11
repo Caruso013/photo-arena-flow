@@ -1,13 +1,4 @@
 project_id = "gtpqppvyjrnnuhlsbpqd"
 
-[functions.create-payment-preference]
-verify_jwt = false
-
 [functions.mercadopago-webhook]
-verify_jwt = false
-
-[functions.send-purchase-confirmation]
-verify_jwt = false
-
-[functions.send-welcome-email]
 verify_jwt = false
