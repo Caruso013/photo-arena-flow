@@ -119,6 +119,8 @@ serve(async (req) => {
     // Usar IDs de todas as purchases separados por vírgula
     const purchaseIds = purchases.map(p => p.id).join(',');
 
+    const baseAppUrl = 'https://www.stafotos.com';
+
     const preferenceData = {
       items,
       payer: {
@@ -135,9 +137,9 @@ serve(async (req) => {
         },
       },
       back_urls: {
-        success: `${supabaseUrl.replace('.supabase.co', '.lovableproject.com')}/dashboard`,
-        failure: `${supabaseUrl.replace('.supabase.co', '.lovableproject.com')}/dashboard`,
-        pending: `${supabaseUrl.replace('.supabase.co', '.lovableproject.com')}/dashboard`,
+        success: `${baseAppUrl}/#/checkout/processando?ref=${purchaseIds}`,
+        failure: `${baseAppUrl}/#/checkout/processando?ref=${purchaseIds}`,
+        pending: `${baseAppUrl}/#/checkout/processando?ref=${purchaseIds}`,
       },
       auto_return: 'approved',
       external_reference: purchaseIds,

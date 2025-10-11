@@ -96,6 +96,7 @@ export const ApplicationsManager = () => {
       if (!application) return;
 
       const newStatus = action === 'approve' ? 'approved' : 'rejected';
+      const { data: { user } } = await supabase.auth.getUser();
 
       // Atualizar status da candidatura
       const { error: updateError } = await supabase
@@ -103,21 +104,39 @@ export const ApplicationsManager = () => {
         .update({
           status: newStatus,
           processed_at: new Date().toISOString(),
+          processed_by: user?.id,
         })
         .eq('id', applicationId);
 
       if (updateError) throw updateError;
 
-      // Se aprovado, atribuir fotógrafo à campanha
+      // Se aprovado, adicionar em campaign_photographers (sistema de múltiplos fotógrafos)
       if (action === 'approve') {
-        const { error: campaignError } = await supabase
-          .from('campaigns')
-          .update({
-            photographer_id: application.photographer_id
-          })
-          .eq('id', application.campaign_id);
+        const { error: assignError } = await supabase
+          .from('campaign_photographers')
+          .insert({
+            campaign_id: application.campaign_id,
+            photographer_id: application.photographer_id,
+            assigned_by: user?.id,
+            is_active: true
+          });
 
-        if (campaignError) throw campaignError;
+        if (assignError) throw assignError;
+
+        // OPCIONAL: Também atualizar photographer_id para compatibilidade com código legado
+        const { data: existingPhotogs } = await supabase
+          .from('campaign_photographers')
+          .select('id')
+          .eq('campaign_id', application.campaign_id)
+          .eq('is_active', true);
+        
+        if (existingPhotogs && existingPhotogs.length === 1) {
+          // Se é o primeiro fotógrafo, atualizar photographer_id do evento
+          await supabase
+            .from('campaigns')
+            .update({ photographer_id: application.photographer_id })
+            .eq('id', application.campaign_id);
+        }
       }
 
       // Enviar email de notificação

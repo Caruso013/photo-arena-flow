@@ -12,13 +12,12 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Upload, Camera, DollarSign, BarChart3, Plus, Eye, Edit, CreditCard, AlertCircle, CalendarPlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import DashboardLayout from './DashboardLayout';
+import AntiScreenshotProtection from '@/components/security/AntiScreenshotProtection';
 import UploadPhotoModal from '@/components/modals/UploadPhotoModal';
 import CreateCampaignModal from '@/components/modals/CreateCampaignModal';
 import CreateAlbumModal from '@/components/modals/CreateAlbumModal';
+import EditCampaignCoverModal from '@/components/modals/EditCampaignCoverModal';
 import { ProfileEditor } from '../profile/ProfileEditor';
-import FinancialDashboard from './FinancialDashboard';
-import AntiScreenshotProtection from '@/components/security/AntiScreenshotProtection';
 
 interface Campaign {
   id: string;
@@ -80,9 +79,12 @@ const PhotographerDashboard = () => {
   const [showCreateCampaignModal, setShowCreateCampaignModal] = useState(false);
   const [showCreateAlbumModal, setShowCreateAlbumModal] = useState(false);
   const [selectedCampaignForAlbum, setSelectedCampaignForAlbum] = useState<{ id: string; title: string } | null>(null);
+  const [showEditCoverModal, setShowEditCoverModal] = useState(false);
+  const [selectedCampaignForCover, setSelectedCampaignForCover] = useState<{ id: string; title: string; coverUrl?: string } | null>(null);
   const [payoutAmount, setPayoutAmount] = useState('');
   const [isRequestingPayout, setIsRequestingPayout] = useState(false);
   const [payoutError, setPayoutError] = useState('');
+  const [availableBalance, setAvailableBalance] = useState(0);
 
   useEffect(() => {
     fetchData();
@@ -183,7 +185,7 @@ const PhotographerDashboard = () => {
         return;
       }
 
-      if (amount > stats.totalRevenue) {
+      if (amount > availableBalance) {
         setPayoutError('O valor não pode ser maior que a receita disponível');
         return;
       }
@@ -246,6 +248,32 @@ const PhotographerDashboard = () => {
         0
       ) || 0;
 
+      // Calcular saldo disponível (>= 12h) menos solicitações pendentes/aprovadas
+      const { data: rsWithPurchase } = await supabase
+        .from('revenue_shares')
+        .select('photographer_amount, purchase:purchases(created_at, status)')
+        .eq('photographer_id', profile?.id);
+
+      let withdrawable = 0;
+      rsWithPurchase?.forEach((row: any) => {
+        const amt = Number(row.photographer_amount || 0);
+        const purchase = (row as any).purchase;
+        if (purchase?.status === 'completed') {
+          const hours = (Date.now() - new Date(purchase.created_at).getTime()) / (1000 * 60 * 60);
+          if (hours >= 12) withdrawable += amt;
+        }
+      });
+
+      const { data: reqs } = await supabase
+        .from('payout_requests')
+        .select('amount, status')
+        .eq('photographer_id', user?.id);
+
+      const outstanding = reqs?.filter((r: any) => r.status !== 'rejected')
+        .reduce((s: number, r: any) => s + Number(r.amount || 0), 0) || 0;
+
+      setAvailableBalance(Math.max(withdrawable - outstanding, 0));
+
       setStats({
         totalCampaigns: campaignsCount,
         totalPhotos: photosCount || 0,
@@ -267,8 +295,7 @@ const PhotographerDashboard = () => {
 
   return (
     <AntiScreenshotProtection>
-      <DashboardLayout>
-        <div className="space-y-8">
+      <div className="space-y-8">
         {/* Welcome Section with Profile */}
         <div className="relative overflow-hidden rounded-xl p-8 bg-gradient-primary text-white shadow-elegant">
           <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS1vcGFjaXR5PSIwLjA1IiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-30"></div>
@@ -469,6 +496,22 @@ const PhotographerDashboard = () => {
                           variant="outline" 
                           className="gap-1"
                           onClick={() => {
+                            setSelectedCampaignForCover({ 
+                              id: campaign.id, 
+                              title: campaign.title,
+                              coverUrl: campaign.cover_image_url 
+                            });
+                            setShowEditCoverModal(true);
+                          }}
+                        >
+                          <Edit className="h-3 w-3" />
+                          Capa
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="gap-1"
+                          onClick={() => {
                             setSelectedCampaignForAlbum({ id: campaign.id, title: campaign.title });
                             setShowCreateAlbumModal(true);
                           }}
@@ -590,7 +633,7 @@ const PhotographerDashboard = () => {
                       onChange={(e) => setPayoutAmount(e.target.value)}
                     />
                     <p className="text-sm text-muted-foreground mt-1">
-                      Receita disponível: {formatCurrency(stats.totalRevenue)}
+                      Receita disponível: {formatCurrency(availableBalance)}
                     </p>
                   </div>
                   
@@ -654,7 +697,6 @@ const PhotographerDashboard = () => {
           </TabsContent>
         </Tabs>
         </div>
-      </DashboardLayout>
 
       {showUploadModal && (
         <UploadPhotoModal 
@@ -673,6 +715,20 @@ const PhotographerDashboard = () => {
             setSelectedCampaignForAlbum(null);
           }}
           onAlbumCreated={fetchData}
+        />
+      )}
+
+      {showEditCoverModal && selectedCampaignForCover && (
+        <EditCampaignCoverModal
+          campaignId={selectedCampaignForCover.id}
+          campaignTitle={selectedCampaignForCover.title}
+          currentCoverUrl={selectedCampaignForCover.coverUrl}
+          open={showEditCoverModal}
+          onClose={() => {
+            setShowEditCoverModal(false);
+            setSelectedCampaignForCover(null);
+          }}
+          onCoverUpdated={fetchData}
         />
       )}
     </AntiScreenshotProtection>

@@ -4,18 +4,25 @@ import { Resend } from 'npm:resend@2.0.0';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { 
+      status: 200,
+      headers: corsHeaders 
+    });
   }
 
   try {
+    console.log('🚀 Edge Function send-welcome-email chamada');
+    
     const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
     
     const { email, fullName } = await req.json();
-    console.log('Enviando email de boas-vindas para:', email);
+    console.log('📧 Enviando email de boas-vindas para:', email);
 
     if (!email) {
       throw new Error('Email é obrigatório');

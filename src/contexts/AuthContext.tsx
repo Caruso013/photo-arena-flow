@@ -3,7 +3,7 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 
-export type UserRole = 'user' | 'photographer' | 'admin';
+export type UserRole = 'user' | 'photographer' | 'admin' | 'organizer';
 export type OrganizationRole = 'admin' | 'organization' | 'photographer' | 'user';
 
 export interface UserProfile {
@@ -193,27 +193,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } else {
       console.log('Cadastro realizado com sucesso para:', email);
       
-      // Enviar email de boas-vindas via edge function
-      console.log('Tentando enviar email de boas-vindas...');
-      
-      try {
-        const { data: emailData, error: emailError } = await supabase.functions.invoke('send-welcome-email', {
-          body: { email, fullName: fullName || 'Usuário' }
-        });
-        
-        if (emailError) {
-          console.error('Erro ao enviar email de boas-vindas:', emailError);
-        } else {
-          console.log('Email de boas-vindas enviado com sucesso:', emailData);
-        }
-      } catch (emailError) {
-        console.error('Exceção ao enviar email de boas-vindas:', emailError);
-      }
-
       toast({
-        title: "Cadastro realizado",
-        description: "Verifique seu email para confirmar a conta e receba suas boas-vindas!",
+        title: "Cadastro realizado com sucesso! ✅",
+        description: "Verifique seu email para confirmar a conta. Se não receber em alguns minutos, verifique a pasta de spam ou entre em contato.",
       });
+
+      // Enviar email de boas-vindas em background (não bloqueia o cadastro)
+      setTimeout(async () => {
+        console.log('📧 Enviando email de boas-vindas em background...');
+        
+        try {
+          const { data: emailData, error: emailError } = await supabase.functions.invoke('send-welcome-email', {
+            body: { email, fullName: fullName || 'Usuário' }
+          });
+          
+          if (emailError) {
+            console.error('❌ Erro ao enviar email de boas-vindas:', emailError);
+          } else {
+            console.log('✅ Email de boas-vindas enviado com sucesso:', emailData);
+          }
+        } catch (emailError) {
+          console.error('❌ Exceção ao enviar email de boas-vindas:', emailError);
+        }
+      }, 0);
     }
 
     return { error };

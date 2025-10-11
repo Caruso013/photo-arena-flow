@@ -32,7 +32,7 @@ class BackgroundUploadService {
   private subscribers: Set<(uploads: UploadBatch[]) => void> = new Set();
   private isUploading = false;
   private maxRetries = 3;
-  private maxConcurrentUploads = 3; // Máximo de uploads simultâneos
+  private maxConcurrentUploads = 5; // Aumentado de 3 para 5 uploads simultâneos para melhor performance
 
   // Subscribir para receber atualizações
   subscribe(callback: (uploads: UploadBatch[]) => void) {
@@ -86,9 +86,10 @@ class BackgroundUploadService {
     this.notify();
 
     // Mostrar notificação inicial
+    const timeEstimate = Math.ceil(files.length / this.maxConcurrentUploads * 8); // ~8s por lote de 5
     toast({
-      title: "Upload iniciado",
-      description: `${files.length} foto(s) adicionadas à fila de upload. O processo continuará em background.`,
+      title: "🚀 Upload iniciado!",
+      description: `${files.length} foto(s) na fila. Tempo estimado: ${timeEstimate}s. Upload continua em background!`,
     });
 
     // Iniciar processamento
@@ -268,13 +269,12 @@ class BackgroundUploadService {
     }
   }
 
-  // Mostrar notificações finais
   private showFinalNotifications() {
     for (const batch of this.uploads.values()) {
       if (batch.status === 'completed') {
         toast({
-          title: "Upload concluído!",
-          description: `${batch.completedFiles} foto(s) enviadas com sucesso.`,
+          title: "🎉 Upload concluído!",
+          description: `${batch.completedFiles} foto(s) enviadas com sucesso e já estão disponíveis no seu evento!`,
         });
 
         // Notificar service worker
@@ -282,8 +282,8 @@ class BackgroundUploadService {
         
       } else if (batch.status === 'partially_failed') {
         toast({
-          title: "Upload parcialmente concluído",
-          description: `${batch.completedFiles} foto(s) enviadas. ${batch.failedFiles} falharam.`,
+          title: "⚠️ Upload parcialmente concluído",
+          description: `${batch.completedFiles} foto(s) enviadas com sucesso. ${batch.failedFiles} falharam e podem ser reenviadas.`,
           variant: "destructive",
         });
 
@@ -292,8 +292,8 @@ class BackgroundUploadService {
         
       } else if (batch.status === 'failed') {
         toast({
-          title: "Falha no upload",
-          description: `Não foi possível enviar as fotos. Verifique sua conexão e tente novamente.`,
+          title: "❌ Falha no upload",
+          description: `Não foi possível enviar as fotos. Verifique sua conexão com a internet e tente novamente.`,
           variant: "destructive",
         });
 
