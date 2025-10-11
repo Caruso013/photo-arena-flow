@@ -84,6 +84,7 @@ const PhotographerDashboard = () => {
   const [payoutAmount, setPayoutAmount] = useState('');
   const [isRequestingPayout, setIsRequestingPayout] = useState(false);
   const [payoutError, setPayoutError] = useState('');
+  const [availableBalance, setAvailableBalance] = useState(0);
 
   useEffect(() => {
     fetchData();
@@ -184,7 +185,7 @@ const PhotographerDashboard = () => {
         return;
       }
 
-      if (amount > stats.totalRevenue) {
+      if (amount > availableBalance) {
         setPayoutError('O valor não pode ser maior que a receita disponível');
         return;
       }
@@ -246,6 +247,32 @@ const PhotographerDashboard = () => {
         (sum, r) => sum + Number(r.photographer_amount), 
         0
       ) || 0;
+
+      // Calcular saldo disponível (>= 12h) menos solicitações pendentes/aprovadas
+      const { data: rsWithPurchase } = await supabase
+        .from('revenue_shares')
+        .select('photographer_amount, purchase:purchases(created_at, status)')
+        .eq('photographer_id', profile?.id);
+
+      let withdrawable = 0;
+      rsWithPurchase?.forEach((row: any) => {
+        const amt = Number(row.photographer_amount || 0);
+        const purchase = (row as any).purchase;
+        if (purchase?.status === 'completed') {
+          const hours = (Date.now() - new Date(purchase.created_at).getTime()) / (1000 * 60 * 60);
+          if (hours >= 12) withdrawable += amt;
+        }
+      });
+
+      const { data: reqs } = await supabase
+        .from('payout_requests')
+        .select('amount, status')
+        .eq('photographer_id', user?.id);
+
+      const outstanding = reqs?.filter((r: any) => r.status !== 'rejected')
+        .reduce((s: number, r: any) => s + Number(r.amount || 0), 0) || 0;
+
+      setAvailableBalance(Math.max(withdrawable - outstanding, 0));
 
       setStats({
         totalCampaigns: campaignsCount,
@@ -606,7 +633,7 @@ const PhotographerDashboard = () => {
                       onChange={(e) => setPayoutAmount(e.target.value)}
                     />
                     <p className="text-sm text-muted-foreground mt-1">
-                      Receita disponível: {formatCurrency(stats.totalRevenue)}
+                      Receita disponível: {formatCurrency(availableBalance)}
                     </p>
                   </div>
                   
