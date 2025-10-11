@@ -30,7 +30,6 @@ import { CampaignManager } from './CampaignManager';
 import { ProfileEditor } from '../profile/ProfileEditor';
 import { PhotographerApplicationsManager } from './PhotographerApplicationsManager';
 import { UserRoleManager } from './UserRoleManager';
-import { PhotographerApplicationsManager } from './PhotographerApplicationsManager';
 
 interface Organization {
   id: string;
