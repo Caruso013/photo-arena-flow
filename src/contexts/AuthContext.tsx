@@ -72,11 +72,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       async (event, session) => {
         if (!mounted) return;
         
-        console.log('Auth state change:', event, session?.user?.email);
+        // Ignorar eventos durante logout
+        if (localStorage.getItem('logout_in_progress') === 'true') {
+          return;
+        }
+        
         
         // Handle token refresh errors
         if (event === 'TOKEN_REFRESHED' && !session) {
-          console.log('Token refresh failed, clearing local session');
           setSession(null);
           setUser(null);
           setProfile(null);
@@ -86,7 +89,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         // Handle invalid refresh tokens
         if (event === 'SIGNED_OUT' && session === null) {
-          console.log('User signed out or invalid session');
           setSession(null);
           setUser(null);
           setProfile(null);
@@ -158,7 +160,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const signUp = async (email: string, password: string, fullName?: string) => {
-    console.log('Iniciando cadastro para:', email);
     
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -191,7 +192,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         variant: "destructive",
       });
     } else {
-      console.log('Cadastro realizado com sucesso para:', email);
       
       toast({
         title: "Cadastro realizado com sucesso! ✅",
@@ -200,7 +200,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Enviar email de boas-vindas em background (não bloqueia o cadastro)
       setTimeout(async () => {
-        console.log('📧 Enviando email de boas-vindas em background...');
         
         try {
           const { data: emailData, error: emailError } = await supabase.functions.invoke('send-welcome-email', {
@@ -210,7 +209,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (emailError) {
             console.error('❌ Erro ao enviar email de boas-vindas:', emailError);
           } else {
-            console.log('✅ Email de boas-vindas enviado com sucesso:', emailData);
           }
         } catch (emailError) {
           console.error('❌ Exceção ao enviar email de boas-vindas:', emailError);
@@ -253,28 +251,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.error('Erro ao fazer logout:', error);
-        toast({
-          title: "Erro ao sair",
-          description: "Não foi possível fazer logout. Tente novamente ou entre em contato conosco.",
-          variant: "destructive",
-        });
-      } else {
-        console.log('Logout realizado com sucesso');
-        // Redirecionar para página inicial após logout
-        window.location.href = '/';
+      // Marcar flag para evitar reautenticação automática
+      localStorage.setItem('logout_in_progress', 'true');
+      
+      // Limpar dados locais primeiro
+      setUser(null);
+      setProfile(null);
+      setSession(null);
+      
+      // Tentar fazer logout no servidor (scope global)
+      try {
+        await supabase.auth.signOut({ scope: 'global' });
+      } catch (signOutError: any) {
+        // Ignorar erro se sessão já estava expirada
+        if (signOutError?.message !== 'Auth session missing!') {
+          console.warn('Aviso ao fazer logout:', signOutError);
+        }
       }
+      
+      // Limpar storage manualmente (todas as chaves do Supabase)
+      const keys = Object.keys(localStorage);
+      keys.forEach(key => {
+        if (key.startsWith('sb-') || key.includes('supabase')) {
+          localStorage.removeItem(key);
+        }
+      });
+      sessionStorage.clear();
+      
+      // Remover flag após limpeza
+      localStorage.removeItem('logout_in_progress');
+      
+      // Forçar reload completo para limpar qualquer cache
+      window.location.replace('/');
     } catch (error) {
       console.error('Exceção durante logout:', error);
-      toast({
-        title: "Erro ao sair",
-        description: "Problema técnico durante logout. Entre em contato: contato@stafotos.com",
-        variant: "destructive",
-      });
-      // Forçar redirecionamento mesmo com erro
-      window.location.href = '/';
+      // Forçar limpeza completa mesmo com erro
+      setUser(null);
+      setProfile(null);
+      setSession(null);
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.replace('/');
     }
   };
 

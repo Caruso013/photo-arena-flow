@@ -14,6 +14,7 @@ import { DynamicBreadcrumb } from '@/components/layout/DynamicBreadcrumb';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { LogOut, Settings, User, Menu } from 'lucide-react';
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -40,11 +41,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
               >
                 <Menu className="h-5 w-5" />
               </Button>
-              <img 
-                src="/lovable-uploads/6fdfc5d2-230c-4142-bf7c-3a326e5e45a8.png" 
-                alt="STA Fotos Logo" 
-                className="h-8 md:h-10 w-auto"
-              />
+              <Link to="/" className="hover:opacity-80 transition-opacity">
+                <img 
+                  src="/lovable-uploads/6fdfc5d2-230c-4142-bf7c-3a326e5e45a8.png" 
+                  alt="STA Fotos - Página Inicial" 
+                  className="h-8 md:h-10 w-auto cursor-pointer"
+                  title="Voltar para página inicial"
+                />
+              </Link>
             </div>
 
             <div className="flex items-center gap-2">

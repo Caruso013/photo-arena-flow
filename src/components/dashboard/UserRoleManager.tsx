@@ -35,7 +35,6 @@ export const UserRoleManager: React.FC<UserRoleManagerProps> = ({
     try {
       setUpdating(true);
       
-      console.log('Promovendo usuário:', userId);
 
       // Atualizar o campo role na tabela profiles
       const { data, error: profileError } = await supabase
@@ -44,7 +43,6 @@ export const UserRoleManager: React.FC<UserRoleManagerProps> = ({
         .eq('id', userId)
         .select();
 
-      console.log('Resultado da atualização:', { data, error: profileError });
 
       if (profileError) {
         console.error('Erro ao promover:', profileError);

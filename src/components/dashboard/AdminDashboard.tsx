@@ -88,13 +88,10 @@ const AdminDashboard = () => {
   const [newPercentages, setNewPercentages] = useState<{ [key: string]: number }>({});
 
   useEffect(() => {
-    console.log('AdminDashboard - User:', user?.email, 'Profile role:', profile?.role);
     
     if (user && profile?.role === 'admin') {
-      console.log('Admin access granted, loading admin data...');
       fetchAdminData();
     } else if (user && profile) {
-      console.log('Access denied - not an admin user');
     }
   }, [user, profile]);
 
@@ -232,16 +229,16 @@ const AdminDashboard = () => {
           <div className="space-y-8">
             {/* Welcome Section */}
             <div className="space-y-2">
-              <h1 className="text-3xl font-bold tracking-tight">
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
                 Bem-vindo ao Painel Administrativo
               </h1>
-              <p className="text-muted-foreground">
+              <p className="text-sm sm:text-base text-muted-foreground">
                 Gerencie organizações, eventos e fotógrafos da plataforma
               </p>
             </div>
 
             {/* Stats Cards */}
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-3 sm:gap-4 md:gap-6 grid-cols-2 lg:grid-cols-4">
               <StatCard
                 title="Organizações Ativas"
                 value={organizations.filter(o => o.is_active).length}
@@ -249,23 +246,15 @@ const AdminDashboard = () => {
                 icon={Building2}
                 iconColor="bg-blue-500 text-white"
                 bgGradient="from-blue-50 to-blue-100"
-                trend={{
-                  value: 12,
-                  isPositive: true
-                }}
               />
               
               <StatCard
                 title="Usuários Registrados"
                 value={users.length}
-                subtitle="Crescimento mensal"
+                subtitle="Total na plataforma"
                 icon={Users}
                 iconColor="bg-green-500 text-white"
                 bgGradient="from-green-50 to-green-100"
-                trend={{
-                  value: 8,
-                  isPositive: true
-                }}
               />
               
               <StatCard
@@ -275,10 +264,6 @@ const AdminDashboard = () => {
                 icon={Camera}
                 iconColor="bg-purple-500 text-white"
                 bgGradient="from-purple-50 to-purple-100"
-                trend={{
-                  value: 15,
-                  isPositive: true
-                }}
               />
               
               <StatCard
@@ -288,43 +273,40 @@ const AdminDashboard = () => {
                 icon={UserCheck}
                 iconColor="bg-orange-500 text-white"
                 bgGradient="from-orange-50 to-orange-100"
-                trend={{
-                  value: eventApplications.filter(app => app.status === 'pending').length > 5 ? -3 : 5,
-                  isPositive: eventApplications.filter(app => app.status === 'pending').length <= 5
-                }}
               />
             </div>
 
             {/* Management Tabs */}
             <Tabs defaultValue="photographer-apps" className="space-y-6">
-              <TabsList className="grid w-full grid-cols-7 text-xs">
-                <TabsTrigger value="photographer-apps" className="flex items-center gap-1">
-                  <Camera className="h-4 w-4" />
-                  Fotógrafos
+              <TabsList className="grid w-full grid-cols-4 sm:grid-cols-7 text-xs gap-1 h-auto sm:h-10 p-1">
+                <TabsTrigger value="photographer-apps" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1 py-2 sm:py-0 h-14 sm:h-9">
+                  <Camera className="h-4 w-4 flex-shrink-0" />
+                  <span className="text-[10px] sm:text-xs">Fotógrafos</span>
                 </TabsTrigger>
-                <TabsTrigger value="applications" className="flex items-center gap-1">
-                  <UserCheck className="h-4 w-4" />
-                  Eventos
+                <TabsTrigger value="applications" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1 py-2 sm:py-0 h-14 sm:h-9">
+                  <UserCheck className="h-4 w-4 flex-shrink-0" />
+                  <span className="text-[10px] sm:text-xs">Eventos</span>
                 </TabsTrigger>
-                <TabsTrigger value="financial" className="flex items-center gap-1">
-                  <TrendingUp className="h-4 w-4" />
-                  Financeiro
+                <TabsTrigger value="financial" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1 py-2 sm:py-0 h-14 sm:h-9">
+                  <TrendingUp className="h-4 w-4 flex-shrink-0" />
+                  <span className="text-[10px] sm:text-xs hidden sm:inline">Financeiro</span>
+                  <span className="text-[10px] sm:hidden">$</span>
                 </TabsTrigger>
-                <TabsTrigger value="organizations" className="flex items-center gap-1">
-                  <Building2 className="h-4 w-4" />
-                  Orgs
+                <TabsTrigger value="organizations" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1 py-2 sm:py-0 h-14 sm:h-9">
+                  <Building2 className="h-4 w-4 flex-shrink-0" />
+                  <span className="text-[10px] sm:text-xs">Orgs</span>
                 </TabsTrigger>
-                <TabsTrigger value="campaigns" className="flex items-center gap-1">
-                  <Activity className="h-4 w-4" />
-                  Campanhas
+                <TabsTrigger value="campaigns" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1 py-2 sm:py-0 h-14 sm:h-9 hidden sm:flex">
+                  <Activity className="h-4 w-4 flex-shrink-0" />
+                  <span className="text-[10px] sm:text-xs">Campanhas</span>
                 </TabsTrigger>
-                <TabsTrigger value="users" className="flex items-center gap-1">
-                  <Users className="h-4 w-4" />
-                  Usuários
+                <TabsTrigger value="users" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1 py-2 sm:py-0 h-14 sm:h-9 hidden sm:flex">
+                  <Users className="h-4 w-4 flex-shrink-0" />
+                  <span className="text-[10px] sm:text-xs">Usuários</span>
                 </TabsTrigger>
-                <TabsTrigger value="profile" className="flex items-center gap-1">
-                  <Settings className="h-4 w-4" />
-                  Perfil
+                <TabsTrigger value="profile" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1 py-2 sm:py-0 h-14 sm:h-9 hidden sm:flex">
+                  <Settings className="h-4 w-4 flex-shrink-0" />
+                  <span className="text-[10px] sm:text-xs">Perfil</span>
                 </TabsTrigger>
               </TabsList>
 

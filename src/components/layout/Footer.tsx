@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { Instagram } from 'lucide-react';
 
 const Footer = () => {
   return (
@@ -38,9 +39,27 @@ const Footer = () => {
           {/* Redes Sociais */}
           <div>
             <h3 className="text-lg font-semibold mb-4 text-primary">Redes sociais</h3>
-            <div className="flex gap-4">
-              <div className="w-8 h-8 bg-gray-600 rounded"></div>
+            <div className="flex flex-col gap-3">
+              <a 
+                href="https://www.instagram.com/sta.fotos/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="group flex items-center gap-3 p-3 bg-gradient-to-br from-purple-600 via-pink-600 to-orange-500 rounded-xl hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-2xl hover:shadow-pink-500/50"
+                title="Siga-nos no Instagram @sta.fotos"
+              >
+                <div className="flex items-center justify-center w-10 h-10 bg-white/20 rounded-lg group-hover:bg-white/30 transition-colors backdrop-blur-sm">
+                  <Instagram className="h-6 w-6 text-white" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-white font-semibold text-sm">Instagram</span>
+                  <span className="text-white/90 text-xs">@sta.fotos</span>
+                </div>
+              </a>
             </div>
+            <p className="text-xs mt-3 text-white/60 flex items-center gap-1">
+              <span className="inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+              Siga-nos para novidades!
+            </p>
           </div>
         </div>
 

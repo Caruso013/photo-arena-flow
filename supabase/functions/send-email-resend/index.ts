@@ -36,24 +36,25 @@ serve(async (req) => {
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Confirmação de Compra - Photo Arena</title>
+        <title>Confirmação de Compra - STA Fotos</title>
         <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-            .content { background: white; padding: 30px; border: 1px solid #e0e0e0; }
-            .footer { background: #f8f9fa; padding: 20px; text-align: center; border-radius: 0 0 10px 10px; color: #666; }
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f5f5f5; }
+            .container { max-width: 600px; margin: 0 auto; }
+            .header { background: #0d0d0d; color: white; padding: 30px; text-align: center; }
+            .content { background: white; padding: 30px; }
+            .footer { background: #0d0d0d; padding: 20px; text-align: center; color: #999; }
             .photo-item { border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; margin: 10px 0; display: flex; align-items: center; }
             .photo-thumbnail { width: 80px; height: 80px; object-fit: cover; border-radius: 6px; margin-right: 15px; }
-            .amount { font-size: 24px; font-weight: bold; color: #28a745; text-align: center; margin: 20px 0; }
-            .button { background: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 20px 0; }
+            .amount { font-size: 24px; font-weight: bold; color: #e6b800; text-align: center; margin: 20px 0; }
+            .button { background: #e6b800; color: #0d0d0d; padding: 15px 40px; text-decoration: none; border-radius: 8px; display: inline-block; margin: 20px 0; font-weight: bold; }
         </style>
     </head>
     <body>
         <div class="container">
             <div class="header">
-                <h1>🎉 Compra Confirmada!</h1>
-                <p>Obrigado por comprar no Photo Arena</p>
+                <img src="https://www.stafotos.com/lovable-uploads/6fdfc5d2-230c-4142-bf7c-3a326e5e45a8.png" alt="STA Fotos" style="height: 50px; margin-bottom: 15px;">
+                <h1 style="color: #e6b800; margin: 0;">🎉 Compra Confirmada!</h1>
+                <p style="color: #fafafa; margin: 10px 0 0 0;">Obrigado por comprar na STA Fotos</p>
             </div>
             
             <div class="content">
@@ -85,8 +86,10 @@ serve(async (req) => {
             </div>
             
             <div class="footer">
-                <p>© 2025 Photo Arena - Seus momentos capturados com qualidade</p>
-                <p>Precisa de ajuda? Responda este email ou visite nossa central de ajuda.</p>
+                <p style="margin: 0; font-size: 12px;">© 2025 STA Fotos - Todos os direitos reservados</p>
+                <p style="margin: 10px 0 0 0; font-size: 12px;">
+                    <a href="https://www.stafotos.com" style="color: #e6b800; text-decoration: none;">www.stafotos.com</a>
+                </p>
             </div>
         </div>
     </body>
@@ -103,7 +106,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Photo Arena <noreply@photoarena.com>',
+        from: 'STA Fotos <noreply@stafotos.com>',
         to: [to],
         subject,
         html: finalHtml,

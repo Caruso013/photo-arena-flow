@@ -67,6 +67,7 @@ const PhotographerDashboard = () => {
   const { profile, user } = useAuth();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [photos, setPhotos] = useState<Photo[]>([]);
+  const [allPhotos, setAllPhotos] = useState<Photo[]>([]); // Todas as fotos para a aba
   const [payoutRequests, setPayoutRequests] = useState<PayoutRequest[]>([]);
   const [stats, setStats] = useState<Stats>({
     totalCampaigns: 0,
@@ -76,7 +77,6 @@ const PhotographerDashboard = () => {
   });
   const [loading, setLoading] = useState(true);
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [showCreateCampaignModal, setShowCreateCampaignModal] = useState(false);
   const [showCreateAlbumModal, setShowCreateAlbumModal] = useState(false);
   const [selectedCampaignForAlbum, setSelectedCampaignForAlbum] = useState<{ id: string; title: string } | null>(null);
   const [showEditCoverModal, setShowEditCoverModal] = useState(false);
@@ -94,6 +94,7 @@ const PhotographerDashboard = () => {
     await Promise.all([
       fetchCampaigns(),
       fetchPhotos(),
+      fetchAllPhotos(), // Buscar todas as fotos
       fetchPayoutRequests(),
       fetchStats()
     ]);
@@ -137,6 +138,8 @@ const PhotographerDashboard = () => {
 
   const fetchPhotos = async () => {
     try {
+      console.log('🔍 Buscando fotos do fotógrafo:', profile?.id);
+      
       const { data, error } = await supabase
         .from('photos')
         .select(`
@@ -147,10 +150,40 @@ const PhotographerDashboard = () => {
         .order('created_at', { ascending: false })
         .limit(8);
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Erro ao buscar fotos:', error);
+        throw error;
+      }
+      
+      console.log('✅ Fotos encontradas (overview):', data?.length, data);
       setPhotos(data || []);
     } catch (error) {
       console.error('Error fetching photos:', error);
+    }
+  };
+
+  const fetchAllPhotos = async () => {
+    try {
+      console.log('🔍 Buscando TODAS as fotos do fotógrafo:', profile?.id);
+      
+      const { data, error } = await supabase
+        .from('photos')
+        .select(`
+          *,
+          campaign:campaigns(title)
+        `)
+        .eq('photographer_id', profile?.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('❌ Erro ao buscar todas as fotos:', error);
+        throw error;
+      }
+      
+      console.log('✅ Total de fotos encontradas:', data?.length, data);
+      setAllPhotos(data || []);
+    } catch (error) {
+      console.error('Error fetching all photos:', error);
     }
   };
 
@@ -211,6 +244,13 @@ const PhotographerDashboard = () => {
 
   const fetchStats = async () => {
     try {
+      console.log('═══════════════════════════════════════════');
+      console.log('🚀 Iniciando fetchStats');
+      console.log('👤 Profile ID:', profile?.id);
+      console.log('👤 User ID:', user?.id);
+      console.log('📧 Email:', profile?.email);
+      console.log('═══════════════════════════════════════════');
+      
       // Contar eventos únicos onde o fotógrafo tem fotos
       const { data: photosData, error: photosCountError } = await supabase
         .from('photos')
@@ -249,30 +289,75 @@ const PhotographerDashboard = () => {
       ) || 0;
 
       // Calcular saldo disponível (>= 12h) menos solicitações pendentes/aprovadas
-      const { data: rsWithPurchase } = await supabase
+      console.log('🔍 Buscando revenue_shares para photographer_id:', profile?.id);
+      
+      const { data: rsWithPurchase, error: rsError } = await supabase
         .from('revenue_shares')
-        .select('photographer_amount, purchase:purchases(created_at, status)')
+        .select('photographer_amount, purchases!revenue_shares_purchase_id_fkey(created_at, status)')
         .eq('photographer_id', profile?.id);
 
+      if (rsError) {
+        console.error('❌ Erro ao buscar saldo:', rsError);
+      }
+
+      console.log('📊 Revenue shares encontrados:', rsWithPurchase?.length || 0, rsWithPurchase);
+
       let withdrawable = 0;
-      rsWithPurchase?.forEach((row: any) => {
+      rsWithPurchase?.forEach((row: any, index) => {
         const amt = Number(row.photographer_amount || 0);
-        const purchase = (row as any).purchase;
+        const purchase = row.purchases;
+        
+        console.log(`📌 Revenue share ${index + 1}:`, {
+          amount: amt,
+          purchase_status: purchase?.status,
+          purchase_created: purchase?.created_at,
+          purchase_obj: purchase
+        });
+        
         if (purchase?.status === 'completed') {
-          const hours = (Date.now() - new Date(purchase.created_at).getTime()) / (1000 * 60 * 60);
-          if (hours >= 12) withdrawable += amt;
+          const createdDate = new Date(purchase.created_at);
+          const now = Date.now();
+          const hours = (now - createdDate.getTime()) / (1000 * 60 * 60);
+          
+          console.log(`⏰ Horas desde venda: ${hours.toFixed(2)}h`, {
+            created_at: purchase.created_at,
+            now: new Date(now).toISOString(),
+            hours: hours,
+            is_available: hours >= 12
+          });
+          
+          if (hours >= 12) {
+            withdrawable += amt;
+            console.log(`✅ Adicionado ao saldo: R$ ${amt.toFixed(2)}`);
+          } else {
+            console.log(`⏳ Aguardando ${(12 - hours).toFixed(2)}h para liberar`);
+          }
+        } else {
+          console.log(`❌ Status não é 'completed': ${purchase?.status}`);
         }
       });
+
+      console.log('💰 Saldo calculado (antes de descontar solicitações):', withdrawable);
+
+      console.log('💰 Saldo calculado (antes de descontar solicitações):', withdrawable);
 
       const { data: reqs } = await supabase
         .from('payout_requests')
         .select('amount, status')
         .eq('photographer_id', user?.id);
 
+      console.log('📋 Solicitações de repasse:', reqs);
+
       const outstanding = reqs?.filter((r: any) => r.status !== 'rejected')
         .reduce((s: number, r: any) => s + Number(r.amount || 0), 0) || 0;
 
-      setAvailableBalance(Math.max(withdrawable - outstanding, 0));
+      console.log('💸 Valor em solicitações pendentes/aprovadas:', outstanding);
+
+      const calculatedBalance = Math.max(withdrawable - outstanding, 0);
+      
+      console.log('🎯 SALDO FINAL DISPONÍVEL:', calculatedBalance);
+      
+      setAvailableBalance(calculatedBalance);
 
       setStats({
         totalCampaigns: campaignsCount,
@@ -341,21 +426,6 @@ const PhotographerDashboard = () => {
               </div>
             </div>
           </div>
-          
-          {profile?.role === 'photographer' && (
-            <div className="mt-4 p-4 bg-white/20 border border-white/30 rounded-lg backdrop-blur-sm">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="h-5 w-5 text-white mt-0.5" />
-                <div>
-                  <h3 className="font-semibold text-white drop-shadow">Sobre o Upload</h3>
-                  <p className="text-sm text-white/95 drop-shadow-sm">
-                    Faça upload de fotos para eventos disponíveis. Apenas administradores criam novos eventos.
-                    Confira os eventos próximos e candidate-se para cobri-los!
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Stats Cards - visual melhorado */}
@@ -412,9 +482,12 @@ const PhotographerDashboard = () => {
             <CardContent className="p-0">
               <div className="flex items-center p-6">
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-muted-foreground mb-1">Faturamento</p>
+                  <p className="text-sm font-medium text-muted-foreground mb-1">Disponível p/ Repasse</p>
                   <p className="text-3xl font-bold bg-gradient-to-r from-amber-600 to-amber-500 bg-clip-text text-transparent">
-                    {formatCurrency(stats.totalRevenue)}
+                    {formatCurrency(availableBalance)}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Após 12h das vendas
                   </p>
                 </div>
                 <div className="bg-amber-500/10 p-4 rounded-lg">
@@ -449,10 +522,13 @@ const PhotographerDashboard = () => {
           <TabsContent value="campaigns" className="space-y-4">
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-semibold">Eventos com Fotos</h2>
-              <Button onClick={() => setShowUploadModal(true)} className="gap-2">
-                <Upload className="h-4 w-4" />
-                Upload de Fotos
-              </Button>
+              <div className="flex gap-2">
+                <CreateCampaignModal onCampaignCreated={fetchData} />
+                <Button onClick={() => setShowUploadModal(true)} className="gap-2">
+                  <Upload className="h-4 w-4" />
+                  Upload de Fotos
+                </Button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -559,7 +635,7 @@ const PhotographerDashboard = () => {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {photos.map((photo) => (
+              {allPhotos.map((photo) => (
                 <Card key={photo.id} className="overflow-hidden">
                   <div className="aspect-square bg-gradient-subtle relative">
                     <img
@@ -594,7 +670,7 @@ const PhotographerDashboard = () => {
               ))}
             </div>
 
-            {photos.length === 0 && (
+            {allPhotos.length === 0 && (
               <Card className="p-12 text-center">
                 <Upload className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-lg font-medium mb-2">Nenhuma foto carregada ainda</h3>
@@ -622,18 +698,31 @@ const PhotographerDashboard = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-muted-foreground">Saldo Disponível</span>
+                      <DollarSign className="h-4 w-4 text-primary" />
+                    </div>
+                    <p className="text-2xl font-bold text-primary">{formatCurrency(availableBalance)}</p>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      ℹ️ Apenas vendas com mais de 12h podem ser solicitadas
+                    </p>
+                  </div>
+                  
                   <div>
-                    <Label htmlFor="payout-amount">Valor do Repasse</Label>
+                    <Label htmlFor="payout-amount">Valor do Repasse (R$)</Label>
                     <Input
                       id="payout-amount"
                       type="number"
                       step="0.01"
+                      max={availableBalance}
                       placeholder="0.00"
                       value={payoutAmount}
                       onChange={(e) => setPayoutAmount(e.target.value)}
+                      className="mt-2"
                     />
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Receita disponível: {formatCurrency(availableBalance)}
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Máximo: {formatCurrency(availableBalance)}
                     </p>
                   </div>
                   
@@ -646,7 +735,7 @@ const PhotographerDashboard = () => {
 
                   <Button 
                     onClick={requestPayout}
-                    disabled={isRequestingPayout || !payoutAmount}
+                    disabled={isRequestingPayout || !payoutAmount || availableBalance <= 0}
                     className="w-full"
                   >
                     {isRequestingPayout ? 'Solicitando...' : 'Solicitar Repasse'}

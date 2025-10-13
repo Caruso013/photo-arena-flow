@@ -59,13 +59,13 @@ export const PhotographerEarnings = () => {
         .from('revenue_shares')
         .select(`
           *,
-          purchase:purchases!inner(
+          purchases!revenue_shares_purchase_id_fkey(
             created_at,
-            photo:photos!inner(
+            photos!purchases_photo_id_fkey(
               id,
               title,
               price,
-              campaign:campaigns!inner(
+              campaigns!photos_campaign_id_fkey(
                 id,
                 title
               )
@@ -74,7 +74,10 @@ export const PhotographerEarnings = () => {
         `)
         .eq('photographer_id', user?.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro ao buscar ganhos:', error);
+        throw error;
+      }
 
       // Processar dados por campanha
       const campaignMap = new Map<string, CampaignEarnings>();
@@ -82,9 +85,9 @@ export const PhotographerEarnings = () => {
       let pendingSum = 0;
 
       revenueData?.forEach((revenue) => {
-        const purchase = revenue.purchase as any;
-        const photo = purchase?.photo;
-        const campaign = photo?.campaign;
+        const purchase = (revenue as any).purchases;
+        const photo = purchase?.photos;
+        const campaign = photo?.campaigns;
         
         if (!campaign) return;
 

@@ -52,7 +52,7 @@ serve(async (req) => {
 
     switch (status) {
       case 'submitted':
-        subject = '📸 Candidatura para Fotógrafo Recebida - Photo Arena'
+        subject = '📸 Candidatura para Fotógrafo Recebida - STA Fotos'
         htmlContent = `
           <!DOCTYPE html>
           <html>
@@ -63,13 +63,13 @@ serve(async (req) => {
           </head>
           <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
             <div style="text-align: center; margin-bottom: 30px;">
-              <h1 style="color: #2563eb; margin-bottom: 10px;">📸 Photo Arena</h1>
-              <h2 style="color: #1e40af; margin-top: 0;">Candidatura Recebida!</h2>
+              <h1 style="color: #e6b800; margin-bottom: 10px;">📸 STA Fotos</h1>
+              <h2 style="color: #0d0d0d; margin-top: 0;">Candidatura Recebida!</h2>
             </div>
             
             <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
               <h3 style="color: #1e40af; margin-top: 0;">Olá, ${name}!</h3>
-              <p>Recebemos sua candidatura para se tornar um fotógrafo credenciado na Photo Arena!</p>
+              <p>Recebemos sua candidatura para se tornar um fotógrafo credenciado na STA Fotos!</p>
               
               <p><strong>O que acontece agora:</strong></p>
               <ul style="margin: 15px 0; padding-left: 20px;">
@@ -98,7 +98,7 @@ serve(async (req) => {
                 Este é um email automático. Em caso de dúvidas, responda este email ou entre em contato conosco.
               </p>
               <p style="color: #6b7280; font-size: 12px; margin-top: 10px;">
-                Photo Arena - Capturando momentos únicos
+                STA Fotos - Capturando momentos únicos
               </p>
             </div>
           </body>
@@ -107,7 +107,7 @@ serve(async (req) => {
         break
 
       case 'approved':
-        subject = '🎉 Candidatura Aprovada - Bem-vindo à Photo Arena!'
+        subject = '🎉 Candidatura Aprovada - Bem-vindo à STA Fotos!'
         htmlContent = `
           <!DOCTYPE html>
           <html>
@@ -118,13 +118,13 @@ serve(async (req) => {
           </head>
           <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
             <div style="text-align: center; margin-bottom: 30px;">
-              <h1 style="color: #2563eb; margin-bottom: 10px;">📸 Photo Arena</h1>
+              <h1 style="color: #e6b800; margin-bottom: 10px;">📸 STA Fotos</h1>
               <h2 style="color: #059669; margin-top: 0;">🎉 Parabéns! Candidatura Aprovada!</h2>
             </div>
             
             <div style="background: #ecfdf5; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 2px solid #10b981;">
               <h3 style="color: #059669; margin-top: 0;">Olá, ${name}!</h3>
-              <p>É com grande prazer que informamos que sua candidatura para se tornar um fotógrafo credenciado na Photo Arena foi <strong>APROVADA</strong>!</p>
+              <p>É com grande prazer que informamos que sua candidatura para se tornar um fotógrafo credenciado na STA Fotos foi <strong>APROVADA</strong>!</p>
               
               <p>Ficamos impressionados com a qualidade do seu portfolio e acreditamos que você será uma excelente adição à nossa comunidade de fotógrafos profissionais.</p>
             </div>
@@ -159,7 +159,7 @@ serve(async (req) => {
                 Bem-vindo à nossa comunidade de fotógrafos profissionais! 🎊
               </p>
               <p style="color: #6b7280; font-size: 12px; margin-top: 10px;">
-                Photo Arena - Capturando momentos únicos
+                STA Fotos - Capturando momentos únicos
               </p>
             </div>
           </body>
@@ -168,7 +168,7 @@ serve(async (req) => {
         break
 
       case 'rejected':
-        subject = '📸 Atualização sobre sua Candidatura - Photo Arena'
+        subject = '📸 Atualização sobre sua Candidatura - STA Fotos'
         htmlContent = `
           <!DOCTYPE html>
           <html>
@@ -179,13 +179,13 @@ serve(async (req) => {
           </head>
           <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
             <div style="text-align: center; margin-bottom: 30px;">
-              <h1 style="color: #2563eb; margin-bottom: 10px;">📸 Photo Arena</h1>
+              <h1 style="color: #e6b800; margin-bottom: 10px;">📸 STA Fotos</h1>
               <h2 style="color: #dc2626; margin-top: 0;">Atualização sobre sua Candidatura</h2>
             </div>
             
             <div style="background: #fef2f2; padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #dc2626;">
               <h3 style="color: #991b1b; margin-top: 0;">Olá, ${name},</h3>
-              <p>Agradecemos pelo interesse em se tornar um fotógrafo credenciado na Photo Arena e pelo tempo dedicado ao envio da sua candidatura.</p>
+              <p>Agradecemos pelo interesse em se tornar um fotógrafo credenciado na STA Fotos e pelo tempo dedicado ao envio da sua candidatura.</p>
               
               <p>Após uma análise cuidadosa, decidimos não prosseguir com sua candidatura neste momento.</p>
               
@@ -220,7 +220,7 @@ serve(async (req) => {
                 Em caso de dúvidas sobre este feedback, sinta-se à vontade para responder este email.
               </p>
               <p style="color: #6b7280; font-size: 12px; margin-top: 10px;">
-                Photo Arena - Capturando momentos únicos
+                STA Fotos - Capturando momentos únicos
               </p>
             </div>
           </body>
@@ -246,7 +246,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Photo Arena <noreply@photo-arena.com>',
+        from: 'STA Fotos <noreply@stafotos.com>',
         to: [email],
         subject,
         html: htmlContent,

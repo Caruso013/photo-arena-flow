@@ -1,0 +1,186 @@
+/* ========================================
+   MELHORIAS DARK THEME - STA Fotos
+   Adicione este código ao final do @layer base no index.css
+   ======================================== */
+
+/* Scrollbar escuro personalizado */
+.dark {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(0 0% 25%) hsl(0 0% 5%);
+}
+
+.dark ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: hsl(0 0% 5%);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: hsl(0 0% 25%);
+  border-radius: 5px;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: hsl(45 93% 47%); /* Dourado STA */
+}
+
+/* Cards com melhor profundidade e sombra */
+.dark .bg-card {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+}
+
+/* Inputs com melhor contraste e focus dourado */
+.dark input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.dark textarea,
+.dark select {
+  border-color: hsl(0 0% 25%);
+  background-color: hsl(0 0% 10%);
+}
+
+.dark input:focus:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.dark textarea:focus,
+.dark select:focus {
+  border-color: hsl(45 93% 47%);
+  box-shadow: 0 0 0 3px rgba(230, 184, 0, 0.1);
+  outline: none;
+}
+
+/* Hover states melhorados para interatividade */
+.dark button:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+/* Text selection dourado para branding */
+.dark ::selection {
+  background-color: hsl(45 93% 47% / 0.3);
+  color: hsl(0 0% 98%);
+}
+
+/* Skeleton loading mais visível com gradiente animado */
+.dark .animate-pulse {
+  background: linear-gradient(
+    90deg,
+    hsl(0 0% 10%) 0%,
+    hsl(0 0% 15%) 50%,
+    hsl(0 0% 10%) 100%
+  );
+  background-size: 200% 100%;
+}
+
+/* Tabelas com melhor contraste e hover */
+.dark table {
+  border-color: hsl(0 0% 25%);
+}
+
+.dark th,
+.dark td {
+  border-color: hsl(0 0% 25%);
+}
+
+.dark tbody tr:hover {
+  background-color: hsl(0 0% 12%);
+}
+
+/* Separadores mais visíveis */
+.dark hr {
+  border-color: hsl(0 0% 25%);
+  opacity: 1;
+}
+
+/* Backdrop de modals mais escuro */
+.dark [data-radix-dialog-overlay],
+.dark [data-radix-alert-dialog-overlay] {
+  background-color: rgba(0, 0, 0, 0.8);
+}
+
+/* ========================================
+   STAT CARDS DARK MODE - Cores Vibrantes
+   ======================================== */
+
+/* Ícones azuis (organizações) */
+.dark .bg-blue-500 {
+  background-color: hsl(217 91% 60%) !important;
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+}
+
+/* Ícones verdes (usuários) */
+.dark .bg-green-500 {
+  background-color: hsl(142 71% 45%) !important;
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.3);
+}
+
+/* Ícones roxos (eventos) */
+.dark .bg-purple-500 {
+  background-color: hsl(271 91% 65%) !important;
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.3);
+}
+
+/* Ícones laranjas (candidaturas) */
+.dark .bg-orange-500 {
+  background-color: hsl(25 95% 53%) !important;
+  box-shadow: 0 0 20px rgba(249, 115, 22, 0.3);
+}
+
+/* Cards com gradiente no dark mode */
+.dark .bg-gradient-to-br {
+  background: linear-gradient(to bottom right, 
+    hsl(0 0% 10%), 
+    hsl(0 0% 15%)
+  ) !important;
+}
+
+/* Header do dashboard mais escuro */
+.dark .bg-gradient-to-r {
+  background: linear-gradient(to right, 
+    hsl(0 0% 5%), 
+    hsl(0 0% 8%)
+  ) !important;
+}
+
+/* ========================================
+   NAVBAR E HEADER DARK MODE
+   ======================================== */
+
+/* Navbar sticky com fundo mais escuro */
+.dark header.sticky {
+  background-color: hsl(0 0% 5%);
+  border-bottom: 1px solid hsl(0 0% 15%);
+}
+
+.dark .bg-background\/95 {
+  background-color: hsl(0 0% 5% / 0.98) !important;
+}
+
+.dark .backdrop-blur {
+  backdrop-filter: blur(12px);
+}
+
+/* Badge outline com melhor contraste */
+.dark .border {
+  border-color: hsl(0 0% 25%);
+}
+
+/* ========================================
+   MOBILE RESPONSIVE - Cards e Layout
+   ======================================== */
+
+/* Cards mobile com padding reduzido */
+@media (max-width: 640px) {
+  .dark .bg-card {
+    padding: 12px !important;
+  }
+  
+  /* Texto truncado melhor visível */
+  .dark .truncate {
+    color: hsl(0 0% 90%);
+  }
+  
+  /* Badge menor no mobile */
+  .dark .badge {
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+}

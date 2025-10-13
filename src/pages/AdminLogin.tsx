@@ -20,14 +20,11 @@ const AdminLogin = () => {
   const [password, setPassword] = useState('');
 
   useEffect(() => {
-    console.log('AdminLogin - User:', user?.email, 'Profile:', profile?.role);
     
     if (user && profile) {
       if (profile.role === 'admin') {
-        console.log('Admin access granted, redirecting to dashboard');
         navigate('/dashboard');
       } else {
-        console.log('Access denied - User role:', profile.role);
         setError('Acesso negado. Esta área é restrita a administradores.');
       }
     }
@@ -39,14 +36,12 @@ const AdminLogin = () => {
     setError('');
 
     try {
-      console.log('Attempting login with:', email);
       const result = await signIn(email, password);
       
       if (result?.error) {
         console.error('Login failed:', result.error);
         setError('Email ou senha incorretos. Verifique suas credenciais.');
       } else {
-        console.log('Login successful, waiting for profile...');
       }
     } catch (err) {
       console.error('Login exception:', err);
@@ -69,7 +64,6 @@ const AdminLogin = () => {
     setIsLoading(true);
     
     try {
-      console.log('Testing admin login...');
       const result = await signIn('pedromkk13@gmail.com', testPassword);
       
       if (result?.error) {

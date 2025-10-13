@@ -8,6 +8,7 @@ interface WatermarkedPhotoProps {
   watermarkClassName?: string;
   position?: 'center' | 'corner' | 'full';
   opacity?: number;
+  loading?: 'lazy' | 'eager';
 }
 
 const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = ({
@@ -18,6 +19,7 @@ const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = ({
   watermarkClassName = '',
   position = 'full',
   opacity = 0.85,
+  loading = 'lazy',
 }) => {
   const watermarkPositionClass =
     position === 'center'
@@ -28,7 +30,13 @@ const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = ({
 
   return (
     <div className="relative w-full h-full">
-      <img src={src} alt={alt} className={imgClassName} />
+      <img 
+        src={src} 
+        alt={alt} 
+        className={imgClassName}
+        loading={loading}
+        decoding="async"
+      />
 
       {/* watermark overlay in front */}
       <img
@@ -39,6 +47,8 @@ const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = ({
           opacity,
           objectFit: position === 'full' ? 'cover' : 'contain'
         }}
+        loading={loading}
+        decoding="async"
         aria-hidden
       />
     </div>
