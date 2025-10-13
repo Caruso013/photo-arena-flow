@@ -63,45 +63,55 @@ All colors MUST be HSL.
   }
 
   .dark {
-    --background: 0 0% 8%;
-    --foreground: 0 0% 98%;
+    /* Backgrounds - Tons escuros mais ricos */
+    --background: 0 0% 5%; /* Preto profundo #0d0d0d */
+    --foreground: 0 0% 98%; /* Branco puro */
 
-    --card: 0 0% 12%;
-    --card-foreground: 0 0% 98%;
+    /* Cards e Popovers - Cinza escuro com contraste */
+    --card: 0 0% 10%; /* #1a1a1a - Cinza muito escuro */
+    --card-foreground: 0 0% 95%; /* Texto claro */
 
-    --popover: 0 0% 12%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 0 0% 10%; /* #1a1a1a */
+    --popover-foreground: 0 0% 95%;
 
-    --primary: 45 93% 47%;
-    --primary-foreground: 0 0% 0%;
+    /* Primary - Dourado STA (mantém) */
+    --primary: 45 93% 47%; /* #e6b800 */
+    --primary-foreground: 0 0% 5%; /* Preto para contraste */
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    /* Secondary - Cinza médio escuro */
+    --secondary: 0 0% 18%; /* #2d2d2d - Cinza médio */
+    --secondary-foreground: 0 0% 95%;
     
-    /* Header/Footer preto (mesmo no dark mode) */
-    --header: 0 0% 5%; /* Preto */
-    --header-foreground: 0 0% 98%; /* Branco */
+    /* Header/Footer - Preto puro STA */
+    --header: 0 0% 3%; /* #080808 - Quase preto */
+    --header-foreground: 0 0% 98%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    /* Muted - Para elementos desabilitados/secundários */
+    --muted: 0 0% 18%; /* #2d2d2d */
+    --muted-foreground: 0 0% 65%; /* #a6a6a6 */
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    /* Accent - Para highlights */
+    --accent: 0 0% 18%; /* #2d2d2d */
+    --accent-foreground: 45 93% 60%; /* Dourado claro */
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    /* Destructive - Vermelho para ações destrutivas */
+    --destructive: 0 72% 51%; /* Vermelho vibrante */
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Borders e Inputs - Bordas sutis */
+    --border: 0 0% 25%; /* #404040 - Cinza para bordas */
+    --input: 0 0% 18%; /* #2d2d2d */
+    --ring: 45 93% 47%; /* Dourado para focus ring */
+
+    /* Sidebar - Tons consistentes */
+    --sidebar-background: 0 0% 5%; /* #0d0d0d */
+    --sidebar-foreground: 0 0% 90%;
+    --sidebar-primary: 45 93% 47%; /* Dourado STA */
+    --sidebar-primary-foreground: 0 0% 5%;
+    --sidebar-accent: 0 0% 15%; /* #262626 */
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 0 0% 15%; /* #262626 */
+    --sidebar-ring: 45 93% 47%; /* Dourado */
   }
 }
 

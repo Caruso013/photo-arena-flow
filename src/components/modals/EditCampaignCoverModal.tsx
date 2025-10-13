@@ -102,7 +102,6 @@ const EditCampaignCoverModal: React.FC<EditCampaignCoverModalProps> = ({
               .remove([oldPath]);
           }
         } catch (deleteError) {
-          console.log('Erro ao deletar imagem antiga:', deleteError);
         }
       }
 

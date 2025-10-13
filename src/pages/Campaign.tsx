@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from '@/components/ui/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
 import PaymentModal from '@/components/modals/PaymentModal';
 import WatermarkedPhoto from '@/components/WatermarkedPhoto';
 import AntiScreenshotProtection from '@/components/security/AntiScreenshotProtection';
@@ -83,47 +84,75 @@ const Campaign = () => {
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadingPhotos, setLoadingPhotos] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
   const [albumPreviews, setAlbumPreviews] = useState<Record<string, string>>({});
+  
+  // Paginação
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const PHOTOS_PER_PAGE = 24;
+
+  // Memoizar contagem total de fotos
+  const totalPhotos = useMemo(() => {
+    if (selectedSubEvent) {
+      return subEvents.find(se => se.id === selectedSubEvent)?.photo_count || 0;
+    }
+    return subEvents.reduce((sum, se) => sum + (se.photo_count || 0), 0);
+  }, [subEvents, selectedSubEvent]);
 
   useEffect(() => {
     if (id) {
       fetchCampaign();
       fetchSubEvents();
-      fetchPhotos();
     }
   }, [id]);
 
+  // Resetar página quando trocar de álbum
   useEffect(() => {
+    setPage(1);
+    setPhotos([]);
+    setHasMore(true);
     if (id) {
-      fetchPhotos();
+      fetchPhotos(true);
     }
   }, [selectedSubEvent]);
 
+  // Otimização: Buscar previews em paralelo
   useEffect(() => {
     const fetchAlbumPreviews = async () => {
-      const previews: Record<string, string> = {};
+      if (subEvents.length === 0) return;
       
-      for (const subEvent of subEvents) {
-        const { data } = await supabase
-          .from('photos')
-          .select('thumbnail_url, watermarked_url')
-          .eq('sub_event_id', subEvent.id)
-          .eq('is_available', true)
-          .limit(1)
-          .maybeSingle();
+      try {
+        // Buscar todos os previews em paralelo (muito mais rápido!)
+        const previewPromises = subEvents.map(async (subEvent) => {
+          const { data } = await supabase
+            .from('photos')
+            .select('thumbnail_url, watermarked_url')
+            .eq('sub_event_id', subEvent.id)
+            .eq('is_available', true)
+            .limit(1)
+            .maybeSingle();
+          
+          return { id: subEvent.id, url: data?.thumbnail_url || data?.watermarked_url };
+        });
         
-        if (data) {
-          previews[subEvent.id] = data.thumbnail_url || data.watermarked_url;
-        }
+        const results = await Promise.all(previewPromises);
+        
+        const previews: Record<string, string> = {};
+        results.forEach(result => {
+          if (result.url) {
+            previews[result.id] = result.url;
+          }
+        });
+        
+        setAlbumPreviews(previews);
+      } catch (error) {
+        // Silenciar erro de preview - não é crítico
       }
-      
-      setAlbumPreviews(previews);
     };
     
-    if (subEvents.length > 0) {
-      fetchAlbumPreviews();
-    }
+    fetchAlbumPreviews();
   }, [subEvents]);
 
   const fetchCampaign = async () => {
@@ -177,19 +206,25 @@ const Campaign = () => {
       
       setSubEvents(subEventsWithCount);
     } catch (error) {
-      console.error('Error fetching sub events:', error);
+      // Silenciar erro de sub-eventos - não é crítico
     }
   };
 
-  const fetchPhotos = async () => {
+  const fetchPhotos = async (reset = false) => {
     if (!id) return;
 
     try {
+      setLoadingPhotos(true);
+      
+      const from = reset ? 0 : (page - 1) * PHOTOS_PER_PAGE;
+      const to = from + PHOTOS_PER_PAGE - 1;
+
       let query = supabase
         .from('photos')
         .select('id, title, original_url, watermarked_url, thumbnail_url, price, is_available, sub_event_id')
         .eq('campaign_id', id)
-        .eq('is_available', true);
+        .eq('is_available', true)
+        .range(from, to);
 
       // Filtrar por álbum se selecionado
       if (selectedSubEvent) {
@@ -201,7 +236,14 @@ const Campaign = () => {
       const { data, error } = await query;
 
       if (error) throw error;
-      setPhotos(data || []);
+      
+      const newPhotos = data || [];
+      setPhotos(reset ? newPhotos : [...photos, ...newPhotos]);
+      setHasMore(newPhotos.length === PHOTOS_PER_PAGE);
+      
+      if (!reset) {
+        setPage(page + 1);
+      }
     } catch (error) {
       toast({
         title: "Erro",
@@ -209,7 +251,14 @@ const Campaign = () => {
         variant: "destructive",
       });
     } finally {
+      setLoadingPhotos(false);
       setLoading(false);
+    }
+  };
+
+  const loadMore = () => {
+    if (!loadingPhotos && hasMore) {
+      fetchPhotos(false);
     }
   };
 
@@ -288,8 +337,46 @@ const Campaign = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
+        {/* Header Skeleton */}
+        <div className="mb-8">
+          <Skeleton className="h-8 w-32 mb-4" />
+          <Skeleton className="h-12 w-3/4 mb-4" />
+          <div className="flex flex-wrap gap-4 mb-4">
+            <Skeleton className="h-6 w-40" />
+            <Skeleton className="h-6 w-32" />
+            <Skeleton className="h-6 w-36" />
+          </div>
+        </div>
+
+        {/* Albums Skeleton */}
+        <div className="mb-8">
+          <Skeleton className="h-8 w-48 mb-4" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {[...Array(4)].map((_, i) => (
+              <Card key={i}>
+                <Skeleton className="aspect-video" />
+                <CardContent className="p-6">
+                  <Skeleton className="h-6 w-full mb-2" />
+                  <Skeleton className="h-4 w-20" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+
+        {/* Photos Grid Skeleton */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {[...Array(8)].map((_, i) => (
+            <Card key={i} className="overflow-hidden">
+              <Skeleton className="aspect-square" />
+              <CardContent className="p-4">
+                <Skeleton className="h-5 w-3/4 mb-2" />
+                <Skeleton className="h-4 w-1/2" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     );
   }
@@ -314,97 +401,101 @@ const Campaign = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
       {/* Header */}
       <header className="border-b bg-white/95 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+        <div className="container mx-auto px-3 sm:px-4 h-14 sm:h-16 flex items-center justify-between">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => navigate('/events')}
-            className="gap-2"
+            className="gap-1 sm:gap-2 h-9 sm:h-10 text-xs sm:text-sm"
           >
-            <ArrowLeft className="h-4 w-4" />
-            Voltar
+            <ArrowLeft className="h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Voltar</span>
           </Button>
           
           <div className="flex items-center gap-2">
             <CartDrawer />
-            <Camera className="h-6 w-6 text-primary" />
-            <span className="font-semibold">STA Fotos</span>
+            <Camera className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+            <span className="font-semibold text-sm sm:text-base">STA Fotos</span>
           </div>
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
         {/* Campaign Header */}
-        <div className="mb-8">
-          <div className="relative rounded-xl overflow-hidden mb-6">
+        <div className="mb-6 sm:mb-8">
+          <div className="relative rounded-xl overflow-hidden mb-4 sm:mb-6">
             {campaign.cover_image_url ? (
               <img
                 src={campaign.cover_image_url}
                 alt={campaign.title}
-                className="w-full h-64 object-cover"
+                className="w-full h-48 sm:h-64 object-cover"
               />
             ) : (
-              <div className="w-full h-64 bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center">
-                <Camera className="h-16 w-16 text-white" />
+              <div className="w-full h-48 sm:h-64 bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center">
+                <Camera className="h-12 w-12 sm:h-16 sm:w-16 text-white" />
               </div>
             )}
             <div className="absolute inset-0 bg-black/20" />
-            <div className="absolute bottom-4 left-4 text-white">
-              <h1 className="text-3xl font-bold mb-2">{campaign.title}</h1>
-              <div className="flex flex-wrap gap-4 text-sm">
+            <div className="absolute bottom-3 sm:bottom-4 left-3 sm:left-4 text-white">
+              <h1 className="text-xl sm:text-3xl font-bold mb-1 sm:mb-2">{campaign.title}</h1>
+              <div className="flex flex-wrap gap-2 sm:gap-4 text-xs sm:text-sm">
                 {campaign.event_date && (
                   <div className="flex items-center gap-1">
-                    <Calendar className="h-4 w-4" />
-                    {new Date(campaign.event_date).toLocaleDateString('pt-BR')}
+                    <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="hidden sm:inline">{new Date(campaign.event_date).toLocaleDateString('pt-BR')}</span>
+                    <span className="sm:hidden">{new Date(campaign.event_date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</span>
                   </div>
                 )}
                 {campaign.location && (
-                  <div className="flex items-center gap-1">
-                    <MapPin className="h-4 w-4" />
-                    {campaign.location}
+                  <div className="flex items-center gap-1 max-w-[200px] sm:max-w-none">
+                    <MapPin className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                    <span className="truncate">{campaign.location}</span>
                   </div>
                 )}
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <User className="h-5 w-5" />
-                  Fotógrafo
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
+            <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10">
+              <CardHeader className="pb-3 sm:pb-4">
+                <CardTitle className="flex items-center gap-2 text-primary text-base sm:text-lg">
+                  <Camera className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                  <span className="truncate">Fotógrafo Responsável</span>
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <p className="font-medium">{campaign.photographer?.full_name}</p>
-                <p className="text-sm text-muted-foreground">{campaign.photographer?.email}</p>
+              <CardContent className="pt-0">
+                <p className="text-base sm:text-lg font-bold text-foreground truncate">{campaign.photographer?.full_name}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                  <User className="h-3 w-3 flex-shrink-0" />
+                  <span className="truncate">{campaign.photographer?.email}</span>
+                </p>
               </CardContent>
             </Card>
 
             {campaign.organization && (
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Building2 className="h-5 w-5" />
-                    Organização
+                <CardHeader className="pb-3 sm:pb-4">
+                  <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                    <Building2 className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                    <span className="truncate">Organização</span>
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <p className="font-medium">{campaign.organization.name}</p>
-                  <p className="text-sm text-muted-foreground">{campaign.organization.description}</p>
+                <CardContent className="pt-0">
+                  <p className="font-medium truncate">{campaign.organization.name}</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2">{campaign.organization.description}</p>
                 </CardContent>
               </Card>
             )}
           </div>
 
           {campaign.description && (
-            <Card className="mb-8">
-              <CardHeader>
-                <CardTitle>Sobre o Evento</CardTitle>
+            <Card className="mb-6 sm:mb-8">
+              <CardHeader className="pb-3 sm:pb-4">
+                <CardTitle className="text-base sm:text-lg">Sobre o Evento</CardTitle>
               </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">{campaign.description}</p>
+              <CardContent className="pt-0">
+                <p className="text-muted-foreground text-sm sm:text-base">{campaign.description}</p>
               </CardContent>
             </Card>
           )}
@@ -412,16 +503,16 @@ const Campaign = () => {
 
         {/* Albums/Sub-Events Section */}
         {subEvents.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
-              <Folder className="h-6 w-6" />
+          <div className="mb-6 sm:mb-8">
+            <h2 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4 flex items-center gap-2">
+              <Folder className="h-5 w-5 sm:h-6 sm:w-6" />
               Todas as Pastas
             </h2>
-            <p className="text-muted-foreground mb-6">
+            <p className="text-muted-foreground mb-4 sm:mb-6 text-sm sm:text-base">
               Navegue pelos álbuns deste evento para encontrar suas fotos
             </p>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
               {/* Botão "Todas as Fotos" */}
               <Card 
                 className={`cursor-pointer transition-all hover:shadow-lg ${
@@ -429,17 +520,17 @@ const Campaign = () => {
                 }`}
                 onClick={() => setSelectedSubEvent(null)}
               >
-                <CardContent className="p-6">
-                  <div className="flex flex-col items-center text-center gap-3">
-                    <div className={`p-4 rounded-full ${
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex flex-col items-center text-center gap-2 sm:gap-3">
+                    <div className={`p-3 sm:p-4 rounded-full ${
                       selectedSubEvent === null ? 'bg-primary text-primary-foreground' : 'bg-muted'
                     }`}>
-                      <ImageIcon className="h-8 w-8" />
+                      <ImageIcon className="h-6 w-6 sm:h-8 sm:w-8" />
                     </div>
                     <div>
-                      <h3 className="font-semibold">Todas as Fotos</h3>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {photos.length} fotos
+                      <h3 className="font-semibold text-sm sm:text-base">Todas as Fotos</h3>
+                      <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+                        {totalPhotos} fotos
                       </p>
                     </div>
                   </div>
@@ -467,22 +558,22 @@ const Campaign = () => {
                     </div>
                   )}
                   
-                  <CardContent className="p-6">
-                    <div className="flex flex-col items-center text-center gap-3">
-                      <div className={`p-4 rounded-full ${
+                  <CardContent className="p-3 sm:p-6">
+                    <div className="flex flex-col items-center text-center gap-2 sm:gap-3">
+                      <div className={`p-3 sm:p-4 rounded-full ${
                         selectedSubEvent === subEvent.id ? 'bg-primary text-primary-foreground' : 'bg-muted'
                       }`}>
-                        <Folder className="h-8 w-8" />
+                        <Folder className="h-6 w-6 sm:h-8 sm:w-8" />
                       </div>
                       <div>
-                        <h3 className="font-semibold line-clamp-2">{subEvent.title}</h3>
-                        <Badge variant="secondary" className="mt-2">
+                        <h3 className="font-semibold text-sm sm:text-base line-clamp-2">{subEvent.title}</h3>
+                        <Badge variant="secondary" className="mt-1 sm:mt-2 text-xs">
                           {subEvent.photo_count} fotos
                         </Badge>
                         {subEvent.location && (
-                          <p className="text-xs text-muted-foreground mt-2 flex items-center justify-center gap-1">
-                            <MapPin className="h-3 w-3" />
-                            {subEvent.location}
+                          <p className="text-xs text-muted-foreground mt-1 sm:mt-2 flex items-center justify-center gap-1 truncate">
+                            <MapPin className="h-3 w-3 flex-shrink-0" />
+                            <span className="truncate">{subEvent.location}</span>
                           </p>
                         )}
                       </div>
@@ -495,94 +586,142 @@ const Campaign = () => {
         )}
 
         {/* Photos Grid */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-            <ImageIcon className="h-6 w-6" />
-            {selectedSubEvent 
-              ? `${subEvents.find(se => se.id === selectedSubEvent)?.title || 'Álbum'} (${photos.length})` 
-              : `Todas as Fotos (${photos.length})`
-            }
+        <div className="mb-6 sm:mb-8">
+          <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 flex items-center gap-2">
+            <ImageIcon className="h-5 w-5 sm:h-6 sm:w-6" />
+            <span className="truncate">
+              {selectedSubEvent 
+                ? `${subEvents.find(se => se.id === selectedSubEvent)?.title || 'Álbum'} (${photos.length})` 
+                : `Todas as Fotos (${photos.length})`
+              }
+            </span>
           </h2>
 
           {photos.length === 0 ? (
-            <Card className="p-12 text-center">
-              <Camera className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium mb-2">Nenhuma foto disponível</h3>
-              <p className="text-muted-foreground">
+            <Card className="p-8 sm:p-12 text-center">
+              <Camera className="h-12 w-12 sm:h-16 sm:w-16 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-base sm:text-lg font-medium mb-2">Nenhuma foto disponível</h3>
+              <p className="text-muted-foreground text-sm sm:text-base">
                 As fotos deste evento ainda não foram publicadas.
               </p>
             </Card>
           ) : (
-            <AntiScreenshotProtection><div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {photos.map((photo) => (
-                <Card key={photo.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                  <div className="aspect-square bg-gradient-subtle relative">
-                    <WatermarkedPhoto
-                      src={photo.thumbnail_url || photo.watermarked_url}
-                      alt={photo.title || 'Foto'}
-                      position="full"
-                      opacity={0.85}
-                      imgClassName="w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button size="sm" variant="secondary" className="gap-1">
-                            <Eye className="h-4 w-4" />
-                            Ver
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-4xl w-[90vw]">
-                          <DialogHeader>
-                            <DialogTitle>{photo.title || 'Foto'}</DialogTitle>
-                          </DialogHeader>
-                          <div className="relative">
-                            <AntiScreenshotProtection>
-                              <WatermarkedPhoto
-                                src={photo.watermarked_url || photo.original_url}
-                                alt={photo.title || 'Foto'}
-                                position="full"
-                                opacity={0.85}
-                                imgClassName="w-full max-h-[70vh] object-contain rounded-lg"
-                              />
-                            </AntiScreenshotProtection>
-                          </div>
-                        </DialogContent>
-                      </Dialog>
-                    </div>
-                  </div>
-                  <CardContent className="p-3">
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium truncate">
-                        {photo.title || 'Foto'}
-                      </p>
-                      <div className="flex justify-between items-center">
-                        <span className="text-lg font-bold text-green-600">
-                          {formatCurrency(photo.price)}
-                        </span>
-                        <div className="flex gap-2">
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => handleAddToCart(photo)}
-                            className="gap-1"
-                          >
-                            <ShoppingCart className="h-3 w-3" />
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            onClick={() => handleBuyPhoto(photo)}
-                            className="gap-1"
-                          >
-                            Comprar
-                          </Button>
+            <>
+              <AntiScreenshotProtection>
+                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
+                  {photos.map((photo, index) => (
+                    <Card key={photo.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                      <div className="aspect-square bg-gradient-subtle relative">
+                        <WatermarkedPhoto
+                          src={photo.thumbnail_url || photo.watermarked_url}
+                          alt={photo.title || 'Foto'}
+                          position="full"
+                          opacity={0.85}
+                          imgClassName="w-full h-full object-cover"
+                          loading={index < 8 ? "eager" : "lazy"}
+                        />
+                        <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button size="sm" variant="secondary" className="gap-1 h-8 sm:h-9 text-xs sm:text-sm">
+                                <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
+                                Ver
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-[95vw] sm:max-w-4xl w-[90vw]">
+                              <DialogHeader>
+                                <DialogTitle className="text-sm sm:text-base truncate">{photo.title || 'Foto'}</DialogTitle>
+                              </DialogHeader>
+                              <div className="relative">
+                                <AntiScreenshotProtection>
+                                  <WatermarkedPhoto
+                                    src={photo.watermarked_url || photo.original_url}
+                                    alt={photo.title || 'Foto'}
+                                    position="full"
+                                    opacity={0.85}
+                                    imgClassName="w-full max-h-[60vh] sm:max-h-[70vh] object-contain rounded-lg"
+                                  />
+                                </AntiScreenshotProtection>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
                         </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div></AntiScreenshotProtection>
+                      <CardContent className="p-2 sm:p-3">
+                        <div className="space-y-1 sm:space-y-2">
+                          <p className="text-xs sm:text-sm font-medium truncate">
+                            {photo.title || 'Foto'}
+                          </p>
+                          <div className="flex justify-between items-center gap-2">
+                            <span className="text-base sm:text-lg font-bold text-green-600 flex-shrink-0">
+                              {formatCurrency(photo.price)}
+                            </span>
+                            <div className="flex gap-1 sm:gap-2">
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => handleAddToCart(photo)}
+                                className="gap-1 h-8 sm:h-9 w-8 sm:w-auto px-2 sm:px-3"
+                              >
+                                <ShoppingCart className="h-3 w-3 sm:h-4 sm:w-4" />
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                onClick={() => handleBuyPhoto(photo)}
+                                className="gap-1 h-8 sm:h-9 text-xs sm:text-sm px-2 sm:px-3"
+                              >
+                                <span className="hidden sm:inline">Comprar</span>
+                                <span className="sm:hidden">R$</span>
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </AntiScreenshotProtection>
+              
+              {/* Load More Button */}
+              {hasMore && (
+                <div className="mt-6 sm:mt-8 text-center">
+                  <Button 
+                    onClick={loadMore} 
+                    disabled={loadingPhotos}
+                    size="lg"
+                    variant="outline"
+                    className="gap-2 h-11 sm:h-12 text-sm sm:text-base w-full sm:w-auto"
+                  >
+                    {loadingPhotos ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                        Carregando...
+                      </>
+                    ) : (
+                      <>
+                        <ImageIcon className="h-4 w-4" />
+                        Carregar mais fotos
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+              
+              {/* Loading Skeleton while fetching more */}
+              {loadingPhotos && (
+                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6 mt-4 sm:mt-6">
+                  {[...Array(8)].map((_, i) => (
+                    <Card key={`skeleton-${i}`} className="overflow-hidden">
+                      <Skeleton className="aspect-square" />
+                      <CardContent className="p-4">
+                        <Skeleton className="h-5 w-3/4 mb-2" />
+                        <Skeleton className="h-4 w-1/2" />
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
 

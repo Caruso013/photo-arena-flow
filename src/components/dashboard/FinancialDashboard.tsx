@@ -4,13 +4,17 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { TrendingUp, DollarSign, Camera, Trophy, Target, Users, Award } from 'lucide-react';
+import { TrendingUp, DollarSign, Camera, Trophy, Target, Users, Award, FileText, Download } from 'lucide-react';
 import { PayoutRequestsManager } from './PayoutRequestsManager';
 import { PhotographerEarnings } from './PhotographerEarnings';
+import { useToast } from '@/hooks/use-toast';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface PhotographerStats {
   photographer_id: string;
@@ -36,6 +40,7 @@ interface FinancialDashboardProps {
 
 const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardProps) => {
   const { user } = useAuth();
+  const { toast } = useToast();
 
   // Se view é payouts ou earnings, mostrar componentes específicos
   if (view === 'payouts' && userRole === 'admin') {
@@ -50,6 +55,7 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [userStats, setUserStats] = useState<PhotographerStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [generatingReport, setGeneratingReport] = useState(false);
 
   useEffect(() => {
     fetchFinancialData();
@@ -163,6 +169,203 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
     }
   };
 
+  const generateFinancialReport = async () => {
+    try {
+      setGeneratingReport(true);
+
+      // Criar PDF
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.width;
+      const pageHeight = doc.internal.pageSize.height;
+      
+      // Data atual
+      const currentDate = new Date();
+      const formattedDate = currentDate.toLocaleDateString('pt-BR', { 
+        day: '2-digit', 
+        month: '2-digit', 
+        year: 'numeric' 
+      });
+      const formattedTime = currentDate.toLocaleTimeString('pt-BR', { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      });
+
+      // ===== HEADER COM LOGO =====
+      // Fundo preto no topo
+      doc.setFillColor(13, 13, 13); // #0d0d0d
+      doc.rect(0, 0, pageWidth, 40, 'F');
+      
+      // Logo STA (texto dourado)
+      doc.setTextColor(230, 184, 0); // #e6b800 dourado
+      doc.setFontSize(24);
+      doc.setFont('helvetica', 'bold');
+      doc.text('STA FOTOS', pageWidth / 2, 20, { align: 'center' });
+      
+      // Subtítulo
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(255, 255, 255);
+      doc.text('Relatório Financeiro - Contador', pageWidth / 2, 28, { align: 'center' });
+      
+      // ===== INFORMAÇÕES DO RELATÓRIO =====
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text('RELATÓRIO FINANCEIRO', 14, 50);
+      
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Data de Emissão: ${formattedDate} às ${formattedTime}`, 14, 58);
+      doc.text(`Período: Todas as transações`, 14, 64);
+      
+      // Linha separadora
+      doc.setDrawColor(230, 184, 0); // Dourado
+      doc.setLineWidth(0.5);
+      doc.line(14, 68, pageWidth - 14, 68);
+      
+      // ===== RESUMO FINANCEIRO =====
+      let yPosition = 78;
+      
+      doc.setFillColor(250, 250, 250); // Fundo cinza claro
+      doc.rect(14, yPosition - 5, pageWidth - 28, 35, 'F');
+      
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text('RESUMO EXECUTIVO', 18, yPosition);
+      
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      yPosition += 8;
+      
+      const totalPhotos = photographerStats.reduce((sum, p) => sum + p.total_photos, 0);
+      const totalSales = photographerStats.reduce((sum, p) => sum + p.total_sales, 0);
+      const avgSaleValue = totalRevenue / Math.max(totalSales, 1);
+      
+      doc.text(`Receita Total:`, 18, yPosition);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`${formatCurrency(totalRevenue)}`, 70, yPosition);
+      
+      doc.setFont('helvetica', 'normal');
+      yPosition += 6;
+      doc.text(`Total de Fotógrafos:`, 18, yPosition);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`${photographerStats.length}`, 70, yPosition);
+      
+      doc.setFont('helvetica', 'normal');
+      yPosition += 6;
+      doc.text(`Total de Fotos Vendidas:`, 18, yPosition);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`${totalPhotos}`, 70, yPosition);
+      
+      doc.setFont('helvetica', 'normal');
+      yPosition += 6;
+      doc.text(`Ticket Médio:`, 18, yPosition);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`${formatCurrency(avgSaleValue)}`, 70, yPosition);
+      
+      // ===== TABELA DE FOTÓGRAFOS =====
+      yPosition += 15;
+      
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text('VENDAS POR FOTÓGRAFO', 14, yPosition);
+      
+      // Preparar dados da tabela
+      const tableData = photographerStats.map((p, index) => [
+        `${index + 1}`,
+        p.photographer_name,
+        `${p.total_sales}`,
+        `${p.total_photos}`,
+        formatCurrency(p.total_revenue),
+        formatCurrency(p.avg_photo_price)
+      ]);
+      
+      autoTable(doc, {
+        startY: yPosition + 5,
+        head: [['#', 'Fotógrafo', 'Vendas', 'Fotos', 'Receita Total', 'Ticket Médio']],
+        body: tableData,
+        theme: 'striped',
+        headStyles: {
+          fillColor: [13, 13, 13], // Preto STA
+          textColor: [230, 184, 0], // Dourado
+          fontStyle: 'bold',
+          fontSize: 9
+        },
+        bodyStyles: {
+          fontSize: 8
+        },
+        columnStyles: {
+          0: { cellWidth: 10, halign: 'center' },
+          1: { cellWidth: 60 },
+          2: { cellWidth: 20, halign: 'center' },
+          3: { cellWidth: 20, halign: 'center' },
+          4: { cellWidth: 35, halign: 'right' },
+          5: { cellWidth: 35, halign: 'right' }
+        },
+        margin: { left: 14, right: 14 },
+        didDrawPage: (data) => {
+          // Footer em cada página
+          const pageCount = doc.getNumberOfPages();
+          doc.setFontSize(8);
+          doc.setTextColor(128, 128, 128);
+          doc.text(
+            `Página ${data.pageNumber} de ${pageCount}`,
+            pageWidth / 2,
+            pageHeight - 10,
+            { align: 'center' }
+          );
+          
+          // Rodapé com info
+          doc.text(
+            'STA Fotos - Relatório Confidencial',
+            14,
+            pageHeight - 10
+          );
+          doc.text(
+            formattedDate,
+            pageWidth - 14,
+            pageHeight - 10,
+            { align: 'right' }
+          );
+        }
+      });
+      
+      // ===== OBSERVAÇÕES FINAIS =====
+      const finalY = (doc as any).lastAutoTable.finalY + 15;
+      
+      if (finalY < pageHeight - 40) {
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.text('OBSERVAÇÕES:', 14, finalY);
+        
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.text('• Este relatório contém informações confidenciais para fins contábeis.', 14, finalY + 6);
+        doc.text('• Todos os valores estão em Reais (R$).', 14, finalY + 11);
+        doc.text('• As vendas incluem apenas transações com status "completed".', 14, finalY + 16);
+      }
+      
+      // Salvar PDF
+      const fileName = `relatorio-financeiro-sta-${new Date().toISOString().split('T')[0]}.pdf`;
+      doc.save(fileName);
+
+      toast({
+        title: "Relatório PDF gerado com sucesso!",
+        description: `${fileName} - Total: ${formatCurrency(totalRevenue)}`,
+      });
+
+    } catch (error) {
+      console.error('Error generating report:', error);
+      toast({
+        title: "Erro ao gerar relatório",
+        description: "Não foi possível gerar o relatório em PDF. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setGeneratingReport(false);
+    }
+  };
+
   const getRankBadge = (rank: number) => {
     if (rank === 1) return <Badge className="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold"><Trophy className="h-3 w-3 mr-1" />1º Lugar</Badge>;
     if (rank === 2) return <Badge className="bg-gray-400 hover:bg-gray-500 text-white font-semibold"><Award className="h-3 w-3 mr-1" />2º Lugar</Badge>;
@@ -210,9 +413,8 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
             <div className="text-3xl font-bold text-primary">
               {formatCurrency(totalRevenue)}
             </div>
-            <p className="text-xs text-muted-foreground flex items-center gap-1 mt-2">
-              <TrendingUp className="h-3 w-3 text-green-600" />
-              +12.5% vs mês anterior
+            <p className="text-xs text-muted-foreground mt-2">
+              Total de vendas realizadas
             </p>
           </CardContent>
         </Card>
@@ -267,12 +469,65 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
         )}
       </div>
 
+      {/* Botão Gerar Relatório - Apenas para Admin */}
+      {userRole === 'admin' && (
+        <Card className="border-dashed border-2">
+          <CardContent className="p-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-primary" />
+                  <h3 className="text-lg font-semibold">Relatório Financeiro PDF - Contador</h3>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Gere um relatório profissional em PDF com logo STA, vendas por fotógrafo, datas e valores totais
+                </p>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  <Badge variant="outline" className="text-xs">
+                    📄 Formato PDF Profissional
+                  </Badge>
+                  <Badge variant="outline" className="text-xs">
+                    📊 Receita: {formatCurrency(totalRevenue)}
+                  </Badge>
+                  <Badge variant="outline" className="text-xs">
+                    👥 {photographerStats.length} Fotógrafos
+                  </Badge>
+                  <Badge variant="outline" className="text-xs">
+                    📸 {photographerStats.reduce((sum, p) => sum + p.total_photos, 0)} Fotos
+                  </Badge>
+                </div>
+              </div>
+              <Button 
+                onClick={generateFinancialReport}
+                disabled={generatingReport}
+                className="bg-primary hover:bg-primary/90 gap-2 min-w-[180px]"
+                size="lg"
+              >
+                {generatingReport ? (
+                  <>
+                    <span className="animate-spin">⏳</span>
+                    Gerando PDF...
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4" />
+                    Gerar PDF
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Tabs defaultValue="ranking" className="space-y-6">
-        <TabsList className={userRole === 'photographer' ? 'grid w-full max-w-2xl grid-cols-3' : 'grid w-full max-w-md grid-cols-2'}>
-          <TabsTrigger value="ranking" className="gap-2">
-            <Trophy className="h-4 w-4" />
-            Ranking
-          </TabsTrigger>
+        <TabsList className={userRole === 'photographer' ? 'grid w-full max-w-2xl grid-cols-2' : 'grid w-full max-w-md grid-cols-2'}>
+          {userRole === 'admin' && (
+            <TabsTrigger value="ranking" className="gap-2">
+              <Trophy className="h-4 w-4" />
+              Ranking
+            </TabsTrigger>
+          )}
           <TabsTrigger value="revenue" className="gap-2">
             <TrendingUp className="h-4 w-4" />
             Receita
@@ -285,7 +540,8 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
           )}
         </TabsList>
 
-        <TabsContent value="ranking" className="space-y-4 animate-fade-in">
+        {userRole === 'admin' && (
+          <TabsContent value="ranking" className="space-y-4 animate-fade-in">
           <Card className="shadow-md">
             <CardHeader className="bg-gradient-to-r from-yellow-50 to-transparent dark:from-yellow-950/20">
               <CardTitle className="flex items-center gap-2 text-2xl">
@@ -304,7 +560,7 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
                   <div
                     key={photographer.photographer_id}
                     className={`flex items-center justify-between p-4 rounded-lg border ${
-                      userRole === 'photographer' && photographer.photographer_id === user?.id
+                      (userRole as string) === 'photographer' && photographer.photographer_id === user?.id
                         ? 'bg-primary/5 border-primary/20'
                         : 'bg-card'
                     }`}
@@ -345,6 +601,7 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
             </CardContent>
           </Card>
         </TabsContent>
+        )}
 
         <TabsContent value="revenue" className="space-y-4 animate-fade-in">
           <Card className="shadow-md">
@@ -377,18 +634,50 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
           </Card>
         </TabsContent>
 
-        {userRole === 'photographer' && userStats && (
+        {userRole === 'photographer' && (
           <TabsContent value="personal" className="space-y-6 animate-fade-in">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card className="shadow-md border-2 border-primary/20">
-                <CardHeader className="bg-gradient-to-br from-primary/5 to-transparent">
-                  <CardTitle className="flex items-center gap-2 text-xl">
-                    <Award className="h-5 w-5 text-primary" />
-                    Seu Desempenho
-                  </CardTitle>
-                  <CardDescription>Estatísticas detalhadas das suas vendas</CardDescription>
+            {!userStats ? (
+              <Card className="shadow-md">
+                <CardHeader className="text-center">
+                  <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+                    <Camera className="h-8 w-8 text-primary" />
+                  </div>
+                  <CardTitle className="text-2xl">Comece sua Jornada</CardTitle>
+                  <CardDescription className="text-base">
+                    Você ainda não possui vendas registradas. Faça upload de suas fotos e comece a vender!
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="text-center p-4 border rounded-lg">
+                      <div className="text-3xl font-bold text-muted-foreground">0</div>
+                      <div className="text-sm text-muted-foreground">Vendas</div>
+                    </div>
+                    <div className="text-center p-4 border rounded-lg">
+                      <div className="text-3xl font-bold text-muted-foreground">R$ 0,00</div>
+                      <div className="text-sm text-muted-foreground">Receita Total</div>
+                    </div>
+                    <div className="text-center p-4 border rounded-lg">
+                      <div className="text-3xl font-bold text-muted-foreground">-</div>
+                      <div className="text-sm text-muted-foreground">Posição</div>
+                    </div>
+                  </div>
+                  <div className="text-center text-sm text-muted-foreground mt-6">
+                    💡 Dica: Quanto mais fotos você vender, melhor será sua posição no ranking!
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Card className="shadow-md border-2 border-primary/20">
+                  <CardHeader className="bg-gradient-to-br from-primary/5 to-transparent">
+                    <CardTitle className="flex items-center gap-2 text-xl">
+                      <Award className="h-5 w-5 text-primary" />
+                      Seu Desempenho
+                    </CardTitle>
+                    <CardDescription>Estatísticas detalhadas das suas vendas</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
                   <div className="flex justify-between">
                     <span>Posição no Ranking:</span>
                     <div className="flex items-center gap-2">
@@ -462,6 +751,7 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
                 </CardContent>
               </Card>
             </div>
+          )}
           </TabsContent>
         )}
       </Tabs>

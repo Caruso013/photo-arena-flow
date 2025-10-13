@@ -43,9 +43,9 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
     location: '',
     event_date: '',
     organization_id: '',
-    platform_percentage: 60,
-    photographer_percentage: 10,
-    organization_percentage: 30
+    platform_percentage: 7,        // FIXO: 7%
+    photographer_percentage: 93,   // Padrão: fotógrafo fica com tudo
+    organization_percentage: 0     // Padrão: sem organização
   });
 
   useEffect(() => {
@@ -94,15 +94,60 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
       location: campaign.location || '',
       event_date: campaign.event_date || '',
       organization_id: campaign.organization_id || '',
-      platform_percentage: campaign.platform_percentage,
+      platform_percentage: 7, // SEMPRE 7% (fixo)
       photographer_percentage: campaign.photographer_percentage,
       organization_percentage: campaign.organization_percentage
     });
     setEditDialogOpen(true);
   };
 
+  // Ajusta automaticamente quando mudar porcentagem do fotógrafo
+  const handlePhotographerPercentageChange = (value: number) => {
+    const photographerPct = Math.max(0, Math.min(93, value));
+    const organizationPct = 93 - photographerPct;
+    
+    setFormData(prev => ({
+      ...prev,
+      photographer_percentage: photographerPct,
+      organization_percentage: organizationPct
+    }));
+  };
+
+  // Ajusta automaticamente quando mudar porcentagem da organização
+  const handleOrganizationPercentageChange = (value: number) => {
+    const organizationPct = Math.max(0, Math.min(93, value));
+    const photographerPct = 93 - organizationPct;
+    
+    setFormData(prev => ({
+      ...prev,
+      photographer_percentage: photographerPct,
+      organization_percentage: organizationPct
+    }));
+  };
+
   const handleEdit = async () => {
     if (!selectedCampaign) return;
+
+    // Validação: plataforma deve ser sempre 7%
+    if (formData.platform_percentage !== 7) {
+      toast({
+        title: "Erro na validação",
+        description: "A plataforma deve ter exatamente 7% (fixo).",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validação: fotógrafo + organização deve somar 93%
+    const sum = formData.photographer_percentage + formData.organization_percentage;
+    if (sum !== 93) {
+      toast({
+        title: "Erro na divisão de receita",
+        description: `Fotógrafo + Organização deve somar 93% (atualmente: ${sum}%)`,
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
       const { error } = await supabase
@@ -114,7 +159,7 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
 
       toast({
         title: "Evento atualizado!",
-        description: "As informações foram atualizadas com sucesso.",
+        description: "As informações e porcentagens foram atualizadas com sucesso.",
       });
 
       setEditDialogOpen(false);
@@ -327,17 +372,107 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
               />
             </div>
             
-            <div className="space-y-2 pt-2 border-t">
-              <h4 className="font-medium text-sm">Organização e Comissões</h4>
+            <div className="space-y-4 pt-2 border-t">
+              <div className="flex items-center justify-between">
+                <h4 className="font-medium text-sm">Divisão de Receita</h4>
+                <Badge variant="secondary" className="text-xs">
+                  Total: {formData.platform_percentage + formData.photographer_percentage + formData.organization_percentage}%
+                </Badge>
+              </div>
+              
+              {/* Plataforma - FIXO 7% */}
+              <div className="p-3 bg-primary/5 rounded-lg border border-primary/20">
+                <div className="flex items-center justify-between mb-2">
+                  <Label className="text-sm font-medium">🏢 Plataforma (Fixo)</Label>
+                  <Badge variant="default">7%</Badge>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Taxa fixa da plataforma não editável
+                </p>
+              </div>
+
+              {/* Fotógrafo - Slider */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="edit-photographer-percentage" className="text-sm">
+                    📸 Fotógrafo
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="edit-photographer-percentage"
+                      type="number"
+                      min="0"
+                      max="93"
+                      value={formData.photographer_percentage}
+                      onChange={(e) => handlePhotographerPercentageChange(Number(e.target.value))}
+                      className="w-20 h-8 text-center"
+                    />
+                    <span className="text-sm">%</span>
+                  </div>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="93"
+                  value={formData.photographer_percentage}
+                  onChange={(e) => handlePhotographerPercentageChange(Number(e.target.value))}
+                  className="w-full"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Receita do fotógrafo: R$ {(formData.photographer_percentage * 10 / 10).toFixed(2)} em uma venda de R$ 100,00
+                </p>
+              </div>
+
+              {/* Organização - Slider */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="edit-organization-percentage" className="text-sm">
+                    🏛️ Organização
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="edit-organization-percentage"
+                      type="number"
+                      min="0"
+                      max="93"
+                      value={formData.organization_percentage}
+                      onChange={(e) => handleOrganizationPercentageChange(Number(e.target.value))}
+                      className="w-20 h-8 text-center"
+                    />
+                    <span className="text-sm">%</span>
+                  </div>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="93"
+                  value={formData.organization_percentage}
+                  onChange={(e) => handleOrganizationPercentageChange(Number(e.target.value))}
+                  className="w-full"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Receita da organização: R$ {(formData.organization_percentage * 10 / 10).toFixed(2)} em uma venda de R$ 100,00
+                </p>
+              </div>
+
+              {/* Alerta de validação */}
+              {(formData.photographer_percentage + formData.organization_percentage) !== 93 && (
+                <div className="p-2 bg-destructive/10 border border-destructive/20 rounded-md">
+                  <p className="text-xs text-destructive">
+                    ⚠️ Atenção: Fotógrafo + Organização deve somar exatamente 93%
+                  </p>
+                </div>
+              )}
+
               <div>
-                <Label htmlFor="edit-organization">Organização</Label>
+                <Label htmlFor="edit-organization">Organização do Evento</Label>
                 <select
                   id="edit-organization"
                   value={formData.organization_id}
                   onChange={(e) => setFormData({ ...formData, organization_id: e.target.value })}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
                 >
-                  <option value="">Nenhuma (Plataforma)</option>
+                  <option value="">Nenhuma (Evento da Plataforma)</option>
                   {organizations.map((org) => (
                     <option key={org.id} value={org.id}>
                       {org.name}
@@ -345,45 +480,6 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
                   ))}
                 </select>
               </div>
-
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <Label htmlFor="edit-platform-percentage">Plataforma (%)</Label>
-                  <Input
-                    id="edit-platform-percentage"
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={formData.platform_percentage}
-                    onChange={(e) => setFormData({ ...formData, platform_percentage: Number(e.target.value) })}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="edit-photographer-percentage">Fotógrafo (%)</Label>
-                  <Input
-                    id="edit-photographer-percentage"
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={formData.photographer_percentage}
-                    onChange={(e) => setFormData({ ...formData, photographer_percentage: Number(e.target.value) })}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="edit-organization-percentage">Organização (%)</Label>
-                  <Input
-                    id="edit-organization-percentage"
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={formData.organization_percentage}
-                    onChange={(e) => setFormData({ ...formData, organization_percentage: Number(e.target.value) })}
-                  />
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Total: {formData.platform_percentage + formData.photographer_percentage + formData.organization_percentage}%
-              </p>
             </div>
 
             <Button onClick={handleEdit} className="w-full">

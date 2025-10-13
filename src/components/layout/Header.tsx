@@ -44,11 +44,12 @@ const Header = () => {
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-3">
+          <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
             <img 
               src="/lovable-uploads/6fdfc5d2-230c-4142-bf7c-3a326e5e45a8.png" 
-              alt="STA Fotos Logo" 
-              className="h-8 md:h-10 w-auto"
+              alt="STA Fotos - Página Inicial" 
+              className="h-8 md:h-10 w-auto cursor-pointer"
+              title="Voltar para página inicial"
             />
           </Link>
 

@@ -138,12 +138,12 @@ const UserDashboard = () => {
         <Card className="shadow-sm hover:shadow-md transition-all">
           <CardContent className="p-6">
             <div className="relative">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
+              <Search className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4 sm:h-5 sm:w-5" />
               <Input
-                placeholder="Buscar eventos por nome ou localização..."
+                placeholder="Buscar eventos..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-12 h-12 text-base"
+                className="pl-10 sm:pl-12 h-11 sm:h-12 text-sm sm:text-base"
               />
             </div>
           </CardContent>
@@ -151,33 +151,33 @@ const UserDashboard = () => {
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="events" className="space-y-6">
-          <TabsList className="grid w-full max-w-md grid-cols-3">
-            <TabsTrigger value="events" className="gap-2">
-              <Camera className="h-4 w-4" />
-              Eventos
+          <TabsList className="grid w-full max-w-md grid-cols-3 h-auto sm:h-10 p-1">
+            <TabsTrigger value="events" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-2 py-2 sm:py-0 h-14 sm:h-9">
+              <Camera className="h-4 w-4 flex-shrink-0" />
+              <span className="text-xs sm:text-sm">Eventos</span>
             </TabsTrigger>
-            <TabsTrigger value="purchases" className="gap-2">
-              <ShoppingCart className="h-4 w-4" />
-              Compras
+            <TabsTrigger value="purchases" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-2 py-2 sm:py-0 h-14 sm:h-9">
+              <ShoppingCart className="h-4 w-4 flex-shrink-0" />
+              <span className="text-xs sm:text-sm">Compras</span>
             </TabsTrigger>
-            <TabsTrigger value="photographer" className="gap-2">
-              <Camera className="h-4 w-4" />
-              Seja Fotógrafo
+            <TabsTrigger value="photographer" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-2 py-2 sm:py-0 h-14 sm:h-9">
+              <Camera className="h-4 w-4 flex-shrink-0" />
+              <span className="text-xs sm:text-sm">Fotógrafo</span>
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="events" className="space-y-6 animate-fade-in">
-            <div className="flex items-center justify-between">
-              <h2 className="text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
                 Eventos em Destaque
               </h2>
               {searchTerm && (
-                <Badge variant="secondary" className="text-sm">
+                <Badge variant="secondary" className="text-xs sm:text-sm">
                   {filteredCampaigns.length} resultado(s)
                 </Badge>
               )}
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {filteredCampaigns.map((campaign) => (
                 <Card key={campaign.id} className="group overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-2 hover:border-primary/20">
                   <div className="aspect-video bg-gradient-subtle relative">
@@ -189,23 +189,23 @@ const UserDashboard = () => {
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
-                        <Camera className="h-12 w-12 text-muted-foreground" />
+                        <Camera className="h-8 w-8 sm:h-12 sm:w-12 text-muted-foreground" />
                       </div>
                     )}
                   </div>
-                  <CardContent className="p-4">
-                    <CardTitle className="text-lg mb-2">{campaign.title}</CardTitle>
-                    <CardDescription className="text-sm mb-2">
+                  <CardContent className="p-3 sm:p-4">
+                    <CardTitle className="text-base sm:text-lg mb-2 line-clamp-2">{campaign.title}</CardTitle>
+                    <CardDescription className="text-xs sm:text-sm mb-2 line-clamp-2">
                       {campaign.description}
                     </CardDescription>
-                    <div className="flex justify-between items-center text-sm text-muted-foreground mb-3">
-                      <span>{campaign.location}</span>
-                      <span>{new Date(campaign.event_date).toLocaleDateString()}</span>
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1 text-xs sm:text-sm text-muted-foreground mb-3">
+                      <span className="truncate max-w-full">{campaign.location}</span>
+                      <span className="flex-shrink-0">{new Date(campaign.event_date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</span>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">Por: {campaign.photographer?.full_name}</span>
-                      <Link to={`/campaign/${campaign.id}`}>
-                        <Button size="sm" className="gap-1">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                      <span className="text-xs sm:text-sm truncate">Por: {campaign.photographer?.full_name}</span>
+                      <Link to={`/campaign/${campaign.id}`} className="w-full sm:w-auto">
+                        <Button size="sm" className="gap-1 w-full sm:w-auto h-9 sm:h-8">
                           <Camera className="h-3 w-3" />
                           Ver Fotos
                         </Button>
@@ -217,10 +217,10 @@ const UserDashboard = () => {
             </div>
 
             {filteredCampaigns.length === 0 && (
-              <Card className="p-12 text-center">
-                <Camera className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium mb-2">Nenhum evento encontrado</h3>
-                <p className="text-muted-foreground">
+              <Card className="p-6 sm:p-12 text-center">
+                <Camera className="h-12 w-12 sm:h-16 sm:w-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-base sm:text-lg font-medium mb-2">Nenhum evento encontrado</h3>
+                <p className="text-sm sm:text-base text-muted-foreground">
                   {searchTerm 
                     ? `Não encontramos eventos para "${searchTerm}"`
                     : "Não há eventos disponíveis no momento"
@@ -232,46 +232,46 @@ const UserDashboard = () => {
 
           <TabsContent value="purchases" className="space-y-6 animate-fade-in">
             <div className="space-y-4">
-              <h2 className="text-2xl font-bold">Minhas Fotos Compradas ({purchasedPhotos.length})</h2>
+              <h2 className="text-xl sm:text-2xl font-bold">Minhas Fotos Compradas ({purchasedPhotos.length})</h2>
               
               {/* Stats Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                 <Card>
-                  <CardContent className="p-4">
+                  <CardContent className="p-3 sm:p-4">
                     <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Total de Fotos</p>
-                        <p className="text-2xl font-bold">{purchasedPhotos.length}</p>
+                      <div className="min-w-0">
+                        <p className="text-xs sm:text-sm text-muted-foreground">Total de Fotos</p>
+                        <p className="text-xl sm:text-2xl font-bold">{purchasedPhotos.length}</p>
                       </div>
-                      <FileImage className="h-8 w-8 text-blue-500" />
+                      <FileImage className="h-6 w-6 sm:h-8 sm:w-8 text-blue-500 flex-shrink-0" />
                     </div>
                   </CardContent>
                 </Card>
                 
                 <Card>
-                  <CardContent className="p-4">
+                  <CardContent className="p-3 sm:p-4">
                     <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Eventos</p>
-                        <p className="text-2xl font-bold">
+                      <div className="min-w-0">
+                        <p className="text-xs sm:text-sm text-muted-foreground">Eventos</p>
+                        <p className="text-xl sm:text-2xl font-bold">
                           {new Set(purchasedPhotos.map(p => p.photo.campaign?.title)).size}
                         </p>
                       </div>
-                      <Camera className="h-8 w-8 text-green-500" />
+                      <Camera className="h-6 w-6 sm:h-8 sm:w-8 text-green-500 flex-shrink-0" />
                     </div>
                   </CardContent>
                 </Card>
                 
                 <Card>
-                  <CardContent className="p-4">
+                  <CardContent className="p-3 sm:p-4">
                     <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Total Gasto</p>
-                        <p className="text-2xl font-bold">
+                      <div className="min-w-0">
+                        <p className="text-xs sm:text-sm text-muted-foreground">Total Gasto</p>
+                        <p className="text-xl sm:text-2xl font-bold truncate">
                           {formatCurrency(purchasedPhotos.reduce((sum, p) => sum + Number(p.amount), 0))}
                         </p>
                       </div>
-                      <ShoppingCart className="h-8 w-8 text-purple-500" />
+                      <ShoppingCart className="h-6 w-6 sm:h-8 sm:w-8 text-purple-500 flex-shrink-0" />
                     </div>
                   </CardContent>
                 </Card>
@@ -280,16 +280,16 @@ const UserDashboard = () => {
 
             {purchasedPhotos.length === 0 ? (
               <Card>
-                <CardContent className="py-12 text-center">
-                  <ShoppingCart className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-xl font-medium mb-2">Nenhuma compra realizada</h3>
-                  <p className="text-muted-foreground">
+                <CardContent className="py-8 sm:py-12 text-center">
+                  <ShoppingCart className="h-12 w-12 sm:h-16 sm:w-16 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg sm:text-xl font-medium mb-2">Nenhuma compra realizada</h3>
+                  <p className="text-sm sm:text-base text-muted-foreground">
                     Explore os eventos e adquira suas fotos
                   </p>
                 </CardContent>
               </Card>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
                 {purchasedPhotos.map((purchase) => (
                   <Card key={purchase.id} className="overflow-hidden hover:shadow-lg transition-all group">
                     <div className="relative">
@@ -307,26 +307,27 @@ const UserDashboard = () => {
                             }
                           }}
                         />
-                        <Badge className="absolute top-2 left-2 bg-green-500">
-                          Comprada
+                        <Badge className="absolute top-1 left-1 bg-green-500 text-xs px-1.5 py-0.5 sm:top-2 sm:left-2 sm:px-2 sm:py-1">
+                          <span className="hidden sm:inline">Comprada</span>
+                          <span className="sm:hidden">✓</span>
                         </Badge>
                       </div>
                     </div>
-                    <CardContent className="p-3">
-                      <p className="text-sm font-medium mb-1 line-clamp-1">
+                    <CardContent className="p-2 sm:p-3">
+                      <p className="text-xs sm:text-sm font-medium mb-1 line-clamp-1" title={purchase.photo.title || `Foto ${purchase.photo.id.slice(0, 8)}`}>
                         {purchase.photo.title || `Foto ${purchase.photo.id.slice(0, 8)}`}
                       </p>
-                      <p className="text-xs text-muted-foreground mb-2 line-clamp-1">
+                      <p className="text-xs text-muted-foreground mb-2 line-clamp-1" title={purchase.photo.campaign?.title}>
                         {purchase.photo.campaign?.title}
                       </p>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-bold text-green-600">
+                      <div className="flex items-center justify-between gap-1 mb-2">
+                        <span className="text-xs sm:text-sm font-bold text-green-600 truncate">
                           {formatCurrency(Number(purchase.amount))}
                         </span>
                         <Button
                           size="icon"
                           variant="ghost"
-                          className="h-7 w-7"
+                          className="h-7 w-7 flex-shrink-0"
                           disabled={purchase.status !== 'completed'}
                           onClick={async () => {
                             try {
