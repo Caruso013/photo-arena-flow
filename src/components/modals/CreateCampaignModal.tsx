@@ -24,6 +24,7 @@ export default function CreateCampaignModal({
   organizations = []
 }: CreateCampaignModalProps) {
   const { profile } = useAuth();
+  const isAdmin = profile?.role === 'admin';
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -171,15 +172,17 @@ export default function CreateCampaignModal({
         <DialogHeader className="pb-2 sm:pb-4">
           <DialogTitle className="text-lg sm:text-xl">Criar Novo Evento</DialogTitle>
           <DialogDescription className="text-sm">
-            {organizationName 
-              ? `Crie um evento para ${organizationName}. Fotógrafos poderão se candidatar para cobrir este evento.`
-              : 'Crie um novo evento. Fotógrafos poderão se candidatar para cobrir este evento.'
+            {isAdmin 
+              ? (organizationName 
+                  ? `Crie um evento para ${organizationName}. Fotógrafos poderão se candidatar para cobrir este evento.`
+                  : 'Crie um novo evento. Fotógrafos poderão se candidatar para cobrir este evento.')
+              : 'Crie seu evento e comece a fazer upload de fotos.'
             }
           </DialogDescription>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
-          {organizations.length > 0 && !organizationId && (
+          {isAdmin && organizations.length > 0 && !organizationId && (
             <div className="space-y-2">
               <Label htmlFor="organization" className="text-sm">Organização *</Label>
               <select
@@ -254,7 +257,8 @@ export default function CreateCampaignModal({
             </div>
           </div>
 
-          {/* Seção de Divisão de Receita */}
+          {/* Seção de Divisão de Receita - apenas para admin */}
+          {isAdmin && (
           <div className="space-y-4 p-4 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20 rounded-lg border-2 border-blue-200 dark:border-blue-900/30">
             <div className="flex items-center justify-between">
               <h4 className="font-semibold text-lg flex items-center gap-2">
@@ -365,6 +369,7 @@ export default function CreateCampaignModal({
               )}
             </div>
           </div>
+          )}
 
           <div className="flex justify-end gap-3">
             <Button
