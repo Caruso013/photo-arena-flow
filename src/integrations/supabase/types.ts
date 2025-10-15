@@ -94,6 +94,13 @@ export type Database = {
             foreignKeyName: "campaign_photographers_campaign_id_fkey"
             columns: ["campaign_id"]
             isOneToOne: false
+            referencedRelation: "campaign_revenue_distribution"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_photographers_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
             referencedRelation: "campaigns"
             referencedColumns: ["id"]
           },
@@ -349,6 +356,72 @@ export type Database = {
         }
         Relationships: []
       }
+      photo_collaborators: {
+        Row: {
+          added_by: string
+          collaborator_id: string
+          created_at: string
+          id: string
+          percentage: number
+          photo_id: string
+          updated_at: string
+        }
+        Insert: {
+          added_by: string
+          collaborator_id: string
+          created_at?: string
+          id?: string
+          percentage?: number
+          photo_id: string
+          updated_at?: string
+        }
+        Update: {
+          added_by?: string
+          collaborator_id?: string
+          created_at?: string
+          id?: string
+          percentage?: number
+          photo_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "photo_collaborators_added_by_fkey"
+            columns: ["added_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "photo_collaborators_added_by_fkey"
+            columns: ["added_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "photo_collaborators_collaborator_id_fkey"
+            columns: ["collaborator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "photo_collaborators_collaborator_id_fkey"
+            columns: ["collaborator_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "photo_collaborators_photo_id_fkey"
+            columns: ["photo_id"]
+            isOneToOne: false
+            referencedRelation: "photos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       photographer_applications: {
         Row: {
           created_at: string | null
@@ -471,6 +544,13 @@ export type Database = {
             foreignKeyName: "photos_campaign_id_fkey"
             columns: ["campaign_id"]
             isOneToOne: false
+            referencedRelation: "campaign_revenue_distribution"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "photos_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
             referencedRelation: "campaigns"
             referencedColumns: ["id"]
           },
@@ -504,7 +584,6 @@ export type Database = {
           email: string
           full_name: string | null
           id: string
-          payout_percentage: number | null
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string
         }
@@ -514,7 +593,6 @@ export type Database = {
           email: string
           full_name?: string | null
           id: string
-          payout_percentage?: number | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
         }
@@ -524,7 +602,6 @@ export type Database = {
           email?: string
           full_name?: string | null
           id?: string
-          payout_percentage?: number | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
         }
@@ -612,7 +689,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          id?: string
+          id: string
           organization_amount?: number
           organization_id?: string | null
           photographer_amount?: number
@@ -630,7 +707,29 @@ export type Database = {
           platform_amount?: number
           purchase_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_revenue_shares_photographer"
+            columns: ["photographer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_revenue_shares_photographer"
+            columns: ["photographer_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "revenue_shares_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "purchases"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sub_events: {
         Row: {
@@ -671,87 +770,84 @@ export type Database = {
             foreignKeyName: "sub_events_campaign_id_fkey"
             columns: ["campaign_id"]
             isOneToOne: false
+            referencedRelation: "campaign_revenue_distribution"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_events_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
             referencedRelation: "campaigns"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      photographer_applications: {
-        Row: {
-          created_at: string
-          equipment: string | null
-          experience_years: number | null
-          id: string
-          message: string | null
-          portfolio_url: string | null
-          processed_at: string | null
-          processed_by: string | null
-          rejection_reason: string | null
-          status: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          equipment?: string | null
-          experience_years?: number | null
-          id?: string
-          message?: string | null
-          portfolio_url?: string | null
-          processed_at?: string | null
-          processed_by?: string | null
-          rejection_reason?: string | null
-          status?: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          equipment?: string | null
-          experience_years?: number | null
-          id?: string
-          message?: string | null
-          portfolio_url?: string | null
-          processed_at?: string | null
-          processed_by?: string | null
-          rejection_reason?: string | null
-          status?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "photographer_applications_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "photographer_applications_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "public_profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "photographer_applications_processed_by_fkey"
-            columns: ["processed_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "photographer_applications_processed_by_fkey"
-            columns: ["processed_by"]
-            isOneToOne: false
-            referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },
         ]
       }
     }
     Views: {
+      campaign_revenue_distribution: {
+        Row: {
+          id: string | null
+          organization_amount_example: number | null
+          organization_id: string | null
+          organization_percentage: number | null
+          photographer_amount_example: number | null
+          photographer_id: string | null
+          photographer_percentage: number | null
+          platform_amount_example: number | null
+          platform_percentage: number | null
+          revenue_split_description: string | null
+          title: string | null
+        }
+        Insert: {
+          id?: string | null
+          organization_amount_example?: never
+          organization_id?: string | null
+          organization_percentage?: number | null
+          photographer_amount_example?: never
+          photographer_id?: string | null
+          photographer_percentage?: number | null
+          platform_amount_example?: never
+          platform_percentage?: number | null
+          revenue_split_description?: never
+          title?: string | null
+        }
+        Update: {
+          id?: string | null
+          organization_amount_example?: never
+          organization_id?: string | null
+          organization_percentage?: number | null
+          photographer_amount_example?: never
+          photographer_id?: string | null
+          photographer_percentage?: number | null
+          platform_amount_example?: never
+          platform_percentage?: number | null
+          revenue_split_description?: never
+          title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaigns_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_photographer_id_fkey"
+            columns: ["photographer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_photographer_id_fkey"
+            columns: ["photographer_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       public_profiles: {
         Row: {
           avatar_url: string | null
@@ -775,6 +871,51 @@ export type Database = {
           role?: Database["public"]["Enums"]["user_role"] | null
         }
         Relationships: []
+      }
+      revenue_shares_with_correct_photographer: {
+        Row: {
+          correct_photographer_id: string | null
+          id: string | null
+          organization_amount: number | null
+          photo_id: string | null
+          photographer_amount: number | null
+          photographer_email: string | null
+          photographer_name: string | null
+          platform_amount: number | null
+          purchase_created_at: string | null
+          purchase_id: string | null
+          purchase_status: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchases_photo_id_fkey"
+            columns: ["photo_id"]
+            isOneToOne: false
+            referencedRelation: "photos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchases_photographer_id_fkey"
+            columns: ["correct_photographer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchases_photographer_id_fkey"
+            columns: ["correct_photographer_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "revenue_shares_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "purchases"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Functions: {
