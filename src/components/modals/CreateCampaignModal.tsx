@@ -176,7 +176,7 @@ export default function CreateCampaignModal({
               ? (organizationName 
                   ? `Crie um evento para ${organizationName}. Fotógrafos poderão se candidatar para cobrir este evento.`
                   : 'Crie um novo evento. Fotógrafos poderão se candidatar para cobrir este evento.')
-              : 'Crie seu evento e comece a fazer upload de fotos.'
+              : 'Crie seu evento e comece a fazer upload de fotos. Você receberá 7% de comissão por cada foto vendida.'
             }
           </DialogDescription>
         </DialogHeader>
