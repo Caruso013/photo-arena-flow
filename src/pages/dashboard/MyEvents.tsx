@@ -60,6 +60,28 @@ const MyEvents = () => {
     try {
       setDeleting(campaignId);
       
+      // Primeiro, deletar fotos associadas
+      const { error: photosError } = await supabase
+        .from('photos')
+        .delete()
+        .eq('campaign_id', campaignId)
+        .eq('photographer_id', user?.id);
+
+      if (photosError) {
+        console.error('Error deleting photos:', photosError);
+      }
+
+      // Deletar álbuns/sub_events
+      const { error: subEventsError } = await supabase
+        .from('sub_events')
+        .delete()
+        .eq('campaign_id', campaignId);
+
+      if (subEventsError) {
+        console.error('Error deleting sub_events:', subEventsError);
+      }
+
+      // Por último, deletar a campanha
       const { error } = await supabase
         .from('campaigns')
         .delete()
