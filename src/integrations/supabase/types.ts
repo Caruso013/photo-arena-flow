@@ -689,7 +689,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          id: string
+          id?: string
           organization_amount?: number
           organization_id?: string | null
           photographer_amount?: number
