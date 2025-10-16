@@ -117,35 +117,36 @@ serve(async (req) => {
           
         if (updateError) {
           console.error(`❌ Erro ao atualizar purchase ${pid}:`, updateError);
+          throw updateError; // Interromper se houver erro
         } else {
           console.log(`✅ Purchase ${pid} atualizada para ${purchaseStatus}`);
         }
       }
-
-      // Enviar e-mail se concluído
-      if (purchaseStatus === 'completed') {
-        console.log('📧 Enviando email de confirmação...');
-        try {
-          const emailResp = await fetch(`${supabaseUrl}/functions/v1/send-purchase-confirmation`, {
-            method: 'POST',
-            headers: { 
-              'Content-Type': 'application/json', 
-              'Authorization': `Bearer ${supabaseServiceKey}` 
-            },
-            body: JSON.stringify({ purchaseIds }),
-          });
-          
-          if (!emailResp.ok) {
-            console.error('❌ Falha ao enviar email:', await emailResp.text());
-          } else {
-            console.log('✅ Email enviado com sucesso');
-          }
-        } catch (err) {
-          console.error('❌ Erro ao chamar função de email:', err);
-        }
-      }
       
       return purchaseStatus;
+    };
+
+    // Helper: Enviar email de confirmação (separado)
+    const sendConfirmationEmail = async (purchaseIds: string[]) => {
+      console.log('📧 Enviando email de confirmação...');
+      try {
+        const emailResp = await fetch(`${supabaseUrl}/functions/v1/send-purchase-confirmation`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json', 
+            'Authorization': `Bearer ${supabaseServiceKey}` 
+          },
+          body: JSON.stringify({ purchaseIds }),
+        });
+        
+        if (!emailResp.ok) {
+          console.error('❌ Falha ao enviar email:', await emailResp.text());
+        } else {
+          console.log('✅ Email enviado com sucesso');
+        }
+      } catch (err) {
+        console.error('❌ Erro ao chamar função de email:', err);
+      }
     };
 
     // Helper: Processar Payment
@@ -177,6 +178,13 @@ serve(async (req) => {
       }
       
       const finalStatus = await updatePurchases(externalReference, paymentData.status, paymentId);
+      
+      // Enviar email SOMENTE se o pagamento foi APROVADO
+      if (finalStatus === 'completed') {
+        const purchaseIds = externalReference.split(',').map(id => id.trim()).filter(Boolean);
+        await sendConfirmationEmail(purchaseIds);
+      }
+      
       return new Response(JSON.stringify({ success: true, status: finalStatus }), { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
@@ -220,6 +228,13 @@ serve(async (req) => {
       else if (anyRejected) statusForRef = 'rejected';
 
       const finalStatus = await updatePurchases(externalReference, statusForRef, approvedPayment?.id?.toString());
+      
+      // Enviar email SOMENTE se o pagamento foi APROVADO
+      if (finalStatus === 'completed') {
+        const purchaseIds = externalReference.split(',').map(id => id.trim()).filter(Boolean);
+        await sendConfirmationEmail(purchaseIds);
+      }
+      
       return new Response(JSON.stringify({ success: true, status: finalStatus }), { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
