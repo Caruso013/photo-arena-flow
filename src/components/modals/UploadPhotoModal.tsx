@@ -364,7 +364,7 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
             Upload de Fotos
           </DialogTitle>
           <DialogDescription className="text-sm">
-            Envie suas fotos para o evento selecionado
+            Organize e envie suas fotos para o evento selecionado
           </DialogDescription>
         </DialogHeader>
 

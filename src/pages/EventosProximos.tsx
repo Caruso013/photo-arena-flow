@@ -164,10 +164,14 @@ const EventosProximos = () => {
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">Próximos Eventos</h1>
+          <h1 className="text-4xl font-bold mb-2">Eventos Disponíveis para Candidatura</h1>
           <p className="text-muted-foreground text-lg">
-            Encontre e se candidate para eventos de fotografia
+            Eventos abertos onde você ainda não está atribuído. Candidate-se para cobrir esses eventos!
           </p>
+          <Badge variant="outline" className="mt-2">
+            <Calendar className="h-3 w-3 mr-1" />
+            Mostrando eventos a partir de {new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR')}
+          </Badge>
         </div>
 
         {loadingData ? (
@@ -184,12 +188,15 @@ const EventosProximos = () => {
             ))}
           </div>
         ) : campaigns.length === 0 ? (
-          <Card className="text-center py-12">
+          <Card className="text-center py-12 border-2 border-dashed">
             <CardContent>
               <Camera className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Nenhum evento disponível</h3>
-              <p className="text-muted-foreground">
-                Não há eventos abertos para candidatura no momento.
+              <h3 className="text-xl font-semibold mb-2">Nenhum evento disponível para candidatura</h3>
+              <p className="text-muted-foreground mb-2">
+                Você já está atribuído a todos os eventos disponíveis ou não há eventos abertos no momento.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Verifique a página "Meus Eventos" para gerenciar eventos onde você já está participando.
               </p>
             </CardContent>
           </Card>
@@ -199,12 +206,19 @@ const EventosProximos = () => {
               const application = getApplicationStatus(campaign.id);
               
               return (
-                <Card key={campaign.id} className="hover:shadow-lg transition-shadow">
+                <Card key={campaign.id} className="hover:shadow-lg transition-shadow border-l-4 border-l-primary">
                   <CardHeader>
-                    <CardTitle className="text-lg">{campaign.title}</CardTitle>
-                    <CardDescription>
-                      {campaign.organization?.name || 'Plataforma'}
-                    </CardDescription>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1">
+                        <CardTitle className="text-lg">{campaign.title}</CardTitle>
+                        <CardDescription>
+                          {campaign.organization?.name || 'Plataforma'}
+                        </CardDescription>
+                      </div>
+                      <Badge variant="secondary" className="flex-shrink-0">
+                        Aberto
+                      </Badge>
+                    </div>
                   </CardHeader>
                   
                   <CardContent className="space-y-4">

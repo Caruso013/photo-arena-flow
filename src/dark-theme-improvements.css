@@ -184,3 +184,83 @@
     padding: 2px 6px;
   }
 }
+
+/* ========================================
+   DASHBOARD IMPROVEMENTS - Melhor contraste
+   ======================================== */
+
+/* Cards com borde mais visível no dark */
+.dark [class*="Card"] {
+  border: 1px solid hsl(0 0% 20%);
+  background-color: hsl(0 0% 8%);
+}
+
+/* Títulos mais visíveis */
+.dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 {
+  color: hsl(0 0% 98%);
+  font-weight: 600;
+}
+
+/* Text muted melhor legibilidade */
+.dark .text-muted-foreground {
+  color: hsl(0 0% 65%) !important;
+}
+
+/* Badges com melhor contraste */
+.dark [class*="Badge"] {
+  border: 1px solid hsl(0 0% 30%);
+}
+
+/* Hover states em cards */
+.dark [class*="Card"]:hover {
+  border-color: hsl(45 93% 47% / 0.5);
+  box-shadow: 0 8px 16px -4px rgba(0, 0, 0, 0.4);
+  transition: all 0.2s ease;
+}
+
+/* Links e botões secondary melhor visíveis */
+.dark a, .dark button[class*="outline"] {
+  color: hsl(0 0% 85%);
+}
+
+.dark a:hover {
+  color: hsl(45 93% 47%);
+}
+
+/* Stats cards com números mais destacados */
+.dark [class*="stat"] {
+  font-weight: 700;
+  color: hsl(0 0% 98%);
+}
+
+/* Alert boxes com melhor contraste */
+.dark [class*="Alert"] {
+  border: 1px solid hsl(0 0% 25%);
+  background-color: hsl(0 0% 10%);
+}
+
+/* Select e dropdowns melhor contraste */
+.dark [class*="Select"] {
+  background-color: hsl(0 0% 8%);
+  border-color: hsl(0 0% 25%);
+}
+
+/* Empty states melhor visíveis */
+.dark [class*="empty"] svg,
+.dark [class*="placeholder"] svg {
+  color: hsl(0 0% 40%);
+}
+
+/* Dividers mais visíveis */
+.dark [class*="Separator"] {
+  background-color: hsl(0 0% 25%);
+}
+
+/* Progress bars com dourado */
+.dark [class*="Progress"] {
+  background-color: hsl(0 0% 15%);
+}
+
+.dark [class*="Progress"] > div {
+  background-color: hsl(45 93% 47%);
+}
