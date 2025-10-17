@@ -27,6 +27,7 @@ const MyPurchases = () => {
   const { user } = useAuth();
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [loading, setLoading] = useState(true);
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
 
   useEffect(() => {
     fetchMyPurchases();
@@ -65,6 +66,25 @@ const MyPurchases = () => {
     }
   };
 
+  const getSignedDisplayUrl = async (url: string) => {
+    try {
+      const marker = '/storage/v1/object/';
+      const idx = url?.indexOf(marker) ?? -1;
+      if (idx === -1) return url;
+      let rest = url.slice(idx + marker.length);
+      if (rest.startsWith('public/')) rest = rest.replace('public/', '');
+      const firstSlash = rest.indexOf('/');
+      if (firstSlash === -1) return url;
+      const bucket = rest.slice(0, firstSlash);
+      const path = rest.slice(firstSlash + 1);
+      const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, 600);
+      if (!error && data?.signedUrl) return data.signedUrl;
+      return url;
+    } catch {
+      return url;
+    }
+  };
+
   const handleDownload = async (url: string, fileName: string) => {
     try {
       const marker = '/storage/v1/object/';
@@ -98,6 +118,27 @@ const MyPurchases = () => {
     }
   };
 
+  useEffect(() => {
+    const buildSigned = async () => {
+      try {
+        const entries = await Promise.all(
+          purchases.map(async (purchase) => {
+            const imageUrl = purchase.photo?.thumbnail_url || purchase.photo?.watermarked_url || purchase.photo?.original_url || '';
+            if (!imageUrl) return [purchase.id, ''] as const;
+            const finalUrl = await getSignedDisplayUrl(imageUrl);
+            return [purchase.id, finalUrl] as const;
+          })
+        );
+        const map: Record<string, string> = {};
+        entries.forEach(([id, url]) => { if (url) map[id] = url; });
+        setSignedUrls(map);
+      } catch (e) {
+        console.warn('Falha ao assinar URLs de imagens:', e);
+      }
+    };
+    if (purchases.length) buildSigned();
+  }, [purchases]);
+
   return (
     <div className="space-y-6">
       <div>
@@ -127,10 +168,11 @@ const MyPurchases = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {purchases.map((purchase) => {
             const imageUrl = purchase.photo?.thumbnail_url || purchase.photo?.watermarked_url || purchase.photo?.original_url;
+            const displayUrl = signedUrls[purchase.id] || imageUrl;
             console.log('Purchase photo data:', {
               id: purchase.id,
               hasPhoto: !!purchase.photo,
-              imageUrl,
+              imageUrl: displayUrl,
               thumbnail: purchase.photo?.thumbnail_url,
               watermarked: purchase.photo?.watermarked_url
             });
@@ -138,13 +180,13 @@ const MyPurchases = () => {
             return (
               <Card key={purchase.id} className="overflow-hidden hover:shadow-lg transition-shadow">
                 <div className="aspect-square relative bg-muted">
-                  {imageUrl ? (
+                  {displayUrl ? (
                     <img
-                      src={imageUrl}
+                      src={displayUrl}
                       alt={purchase.photo?.title || "Foto comprada"}
                       className="w-full h-full object-cover"
                       onError={(e) => {
-                        console.error('Image load error:', imageUrl);
+                        console.error('Image load error:', displayUrl);
                         e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23ddd" width="100" height="100"/%3E%3Ctext fill="%23999" x="50%25" y="50%25" text-anchor="middle" dy=".3em"%3ESem imagem%3C/text%3E%3C/svg%3E';
                       }}
                       loading="lazy"
