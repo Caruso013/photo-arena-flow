@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Instagram } from 'lucide-react';
+import mercadoPagoLogo from '@/assets/mercado-pago-logo.png';
 
 const Footer = () => {
   return (
@@ -66,11 +67,13 @@ const Footer = () => {
         {/* Copyright */}
         <div className="border-t border-white/10 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center text-sm text-white/60">
           <p>© 2024 STA Fotos. Todos os direitos reservados.</p>
-          <div className="flex items-center gap-2 mt-4 md:mt-0">
+          <div className="flex items-center gap-3 mt-4 md:mt-0">
             <span>Pagamentos seguros via</span>
-            <div className="bg-primary px-2 py-1 rounded text-primary-foreground text-xs font-semibold">
-              MERCADO PAGO
-            </div>
+            <img 
+              src={mercadoPagoLogo} 
+              alt="Mercado Pago" 
+              className="h-8 object-contain"
+            />
           </div>
         </div>
       </div>
