@@ -123,7 +123,7 @@ export default function CreateCampaignModal({
           photographer_percentage: formData.photographer_percentage,
           organization_percentage: formData.organization_percentage,
           is_active: true,
-          photographer_id: profile?.id, // Pega o ID do fotógrafo logado
+          photographer_id: isAdmin ? null : profile?.id, // Admin não é fotógrafo, fotógrafos se candidatam
         });
 
       if (error) throw error;
