@@ -534,7 +534,7 @@ const PhotographerDashboard = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {campaigns.map((campaign) => (
                 <Card key={campaign.id} className="overflow-hidden">
-                  <div className="aspect-video bg-gradient-subtle relative">
+                  <div className="aspect-[4/5] bg-gradient-subtle relative">
                     {campaign.cover_image_url ? (
                       <img
                         src={campaign.cover_image_url}

@@ -68,19 +68,38 @@ const MyPurchases = () => {
 
   const getSignedDisplayUrl = async (url: string) => {
     try {
+      if (!url) return '';
+      
+      // Se já é uma URL assinada ou pública, retorna diretamente
+      if (url.includes('token=') || !url.includes('/storage/v1/object/')) {
+        return url;
+      }
+      
       const marker = '/storage/v1/object/';
-      const idx = url?.indexOf(marker) ?? -1;
+      const idx = url.indexOf(marker);
       if (idx === -1) return url;
+      
       let rest = url.slice(idx + marker.length);
       if (rest.startsWith('public/')) rest = rest.replace('public/', '');
+      
       const firstSlash = rest.indexOf('/');
       if (firstSlash === -1) return url;
+      
       const bucket = rest.slice(0, firstSlash);
       const path = rest.slice(firstSlash + 1);
-      const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, 600);
-      if (!error && data?.signedUrl) return data.signedUrl;
-      return url;
-    } catch {
+      
+      const { data, error } = await supabase.storage
+        .from(bucket)
+        .createSignedUrl(path, 3600); // 1 hora de validade
+      
+      if (error) {
+        console.error('Erro ao criar URL assinada:', error);
+        return url;
+      }
+      
+      return data?.signedUrl || url;
+    } catch (error) {
+      console.error('Erro no getSignedDisplayUrl:', error);
       return url;
     }
   };

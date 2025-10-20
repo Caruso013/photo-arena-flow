@@ -146,7 +146,7 @@ const Events = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {filteredCampaigns.map((campaign) => (
                 <Card key={campaign.id} className="overflow-hidden hover:shadow-lg transition-shadow group cursor-pointer border-2 hover:border-primary/20">
-                  <div className="aspect-video bg-gradient-dark relative">
+                  <div className="aspect-[4/5] bg-gradient-dark relative">
                     {campaign.cover_image_url ? (
                       <LazyImage
                         src={campaign.cover_image_url}

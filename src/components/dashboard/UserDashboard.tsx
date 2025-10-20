@@ -180,7 +180,7 @@ const UserDashboard = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {filteredCampaigns.map((campaign) => (
                 <Card key={campaign.id} className="group overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-2 hover:border-primary/20">
-                  <div className="aspect-video bg-gradient-subtle relative">
+                  <div className="aspect-[4/5] bg-gradient-subtle relative">
                     {campaign.cover_image_url ? (
                       <img
                         src={campaign.cover_image_url}
