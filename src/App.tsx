@@ -9,7 +9,6 @@ import { CartProvider } from "@/contexts/CartContext";
 import { SearchProvider } from "@/contexts/SearchContext";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import UploadManager from "@/components/UploadManager";
-import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import { useServiceWorker } from "@/hooks/useServiceWorker";
 import { lazy, Suspense } from "react";
 
@@ -141,9 +140,6 @@ const App = () => (
                 
                 {/* Upload Manager - sempre visível quando há uploads */}
                 <UploadManager />
-                
-                {/* PWA Install Prompt */}
-                <PWAInstallPrompt />
               </CartProvider>
             </SearchProvider>
           </AuthProvider>
