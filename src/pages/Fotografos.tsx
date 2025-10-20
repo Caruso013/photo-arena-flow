@@ -90,8 +90,8 @@ const Fotografos = () => {
                 </div>
                 <div className="h-4 bg-muted animate-pulse rounded mb-4 w-full" />
                 <div className="grid grid-cols-2 gap-2">
-                  <div className="aspect-video bg-muted animate-pulse rounded" />
-                  <div className="aspect-video bg-muted animate-pulse rounded" />
+                  <div className="aspect-[4/5] bg-muted animate-pulse rounded" />
+                  <div className="aspect-[4/5] bg-muted animate-pulse rounded" />
                 </div>
               </Card>
             ))}
@@ -124,7 +124,7 @@ const Fotografos = () => {
                       <h4 className="text-sm font-medium text-muted-foreground mb-2">Eventos Recentes:</h4>
                       <div className="grid grid-cols-2 gap-2 mb-4">
                         {photographer.campaigns.slice(0, 2).map((campaign) => (
-                          <div key={campaign.id} className="aspect-video bg-gradient-subtle rounded-lg overflow-hidden relative">
+                          <div key={campaign.id} className="aspect-[4/5] bg-gradient-subtle rounded-lg overflow-hidden relative">
                             {campaign.cover_image_url ? (
                               <img
                                 src={campaign.cover_image_url}

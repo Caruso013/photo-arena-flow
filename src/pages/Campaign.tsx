@@ -548,7 +548,7 @@ const Campaign = () => {
                 >
                   {/* Preview da foto */}
                   {albumPreviews[subEvent.id] && (
-                    <div className="aspect-video relative">
+                    <div className="aspect-[4/5] relative">
                       <img 
                         src={albumPreviews[subEvent.id]} 
                         alt={subEvent.title}

@@ -57,7 +57,7 @@ const Index = () => {
           {loading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {[...Array(6)].map((_, i) => (
-                <div key={i} className="aspect-video bg-muted animate-pulse rounded-lg" />
+                <div key={i} className="aspect-[4/5] bg-muted animate-pulse rounded-lg" />
               ))}
             </div>
           ) : campaigns.length > 0 ? (
@@ -71,7 +71,7 @@ const Index = () => {
                 {campaigns.map((campaign) => (
                   <Link to={`/campaign/${campaign.id}`} key={campaign.id} className="group">
                     <Card className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-primary/20">
-                      <div className="aspect-video bg-gradient-dark relative">
+                      <div className="aspect-[4/5] bg-gradient-dark relative">
                         {campaign.cover_image_url ? (
                           <img
                             src={campaign.cover_image_url}
