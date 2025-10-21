@@ -126,17 +126,21 @@ serve(async (req) => {
       return purchaseStatus;
     };
 
-    // Helper: Enviar email de confirmação (separado)
+    // Helper: Enviar email de confirmação com redirecionamento
     const sendConfirmationEmail = async (purchaseIds: string[]) => {
       console.log('📧 Enviando email de confirmação...');
       try {
+        const purchaseIdsParam = purchaseIds.join(',');
         const emailResp = await fetch(`${supabaseUrl}/functions/v1/send-purchase-confirmation`, {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json', 
             'Authorization': `Bearer ${supabaseServiceKey}` 
           },
-          body: JSON.stringify({ purchaseIds }),
+          body: JSON.stringify({ 
+            purchaseIds,
+            redirectUrl: `https://gtpqppvyjrnnuhlsbpqd.supabase.co/dashboard/purchases?purchase_ids=${purchaseIdsParam}`
+          }),
         });
         
         if (!emailResp.ok) {

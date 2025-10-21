@@ -42,6 +42,7 @@ export const PhotographerEarnings = () => {
   const [loading, setLoading] = useState(true);
   const [totalAvailable, setTotalAvailable] = useState(0);
   const [totalPending, setTotalPending] = useState(0);
+  const [totalPhotosSold, setTotalPhotosSold] = useState(0);
   const [requestingPayout, setRequestingPayout] = useState(false);
 
   useEffect(() => {
@@ -83,8 +84,10 @@ export const PhotographerEarnings = () => {
       const campaignMap = new Map<string, CampaignEarnings>();
       let availableSum = 0;
       let pendingSum = 0;
+      let photoCount = 0;
 
       revenueData?.forEach((revenue) => {
+        photoCount++;
         const purchase = (revenue as any).purchases;
         const photo = purchase?.photos;
         const campaign = photo?.campaigns;
@@ -135,6 +138,7 @@ export const PhotographerEarnings = () => {
       setEarnings(Array.from(campaignMap.values()));
       setTotalAvailable(availableSum);
       setTotalPending(pendingSum);
+      setTotalPhotosSold(photoCount);
     } catch (error) {
       console.error('Erro ao buscar ganhos:', error);
       toast.error('Erro ao carregar ganhos');
@@ -190,6 +194,28 @@ export const PhotographerEarnings = () => {
 
   return (
     <div className="space-y-6">
+      {/* Alerta de Saldo Pendente */}
+      {totalPending > 0 && (
+        <Card className="border-2 border-yellow-500/50 bg-yellow-50 dark:bg-yellow-950/20">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-full bg-yellow-500/20">
+                <Lock className="h-5 w-5 text-yellow-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-lg mb-1">Vendas Pendentes</h3>
+                <p className="text-sm text-muted-foreground mb-2">
+                  {totalPhotosSold} foto{totalPhotosSold !== 1 ? 's' : ''} vendida{totalPhotosSold !== 1 ? 's' : ''} com valor pendente de {formatCurrency(totalPending)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  💡 Após 12 horas da venda, o valor fica disponível para saque. Isso garante segurança contra fraudes e estornos.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Cards de Resumo */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="border-2 border-green-500/30">
