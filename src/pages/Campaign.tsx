@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from '@/components/ui/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import PaymentModal from '@/components/modals/PaymentModal';
 import WatermarkedPhoto from '@/components/WatermarkedPhoto';
 import AntiScreenshotProtection from '@/components/security/AntiScreenshotProtection';
@@ -90,7 +91,7 @@ const Campaign = () => {
   
   // Paginação
   const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
+  const [totalPages, setTotalPages] = useState(1);
   const PHOTOS_PER_PAGE = 24;
 
   // Memoizar contagem total de fotos
@@ -112,11 +113,17 @@ const Campaign = () => {
   useEffect(() => {
     setPage(1);
     setPhotos([]);
-    setHasMore(true);
     if (id) {
-      fetchPhotos(true);
+      fetchPhotos(1);
     }
   }, [selectedSubEvent]);
+
+  // Buscar fotos quando mudar de página
+  useEffect(() => {
+    if (id && page > 1) {
+      fetchPhotos(page);
+    }
+  }, [page]);
 
   // Otimização: Buscar previews em paralelo
   useEffect(() => {
@@ -210,15 +217,31 @@ const Campaign = () => {
     }
   };
 
-  const fetchPhotos = async (reset = false) => {
+  const fetchPhotos = async (pageNum: number) => {
     if (!id) return;
 
     try {
       setLoadingPhotos(true);
       
-      const from = reset ? 0 : (page - 1) * PHOTOS_PER_PAGE;
+      const from = (pageNum - 1) * PHOTOS_PER_PAGE;
       const to = from + PHOTOS_PER_PAGE - 1;
 
+      // Primeiro, contar o total de fotos
+      let countQuery = supabase
+        .from('photos')
+        .select('id', { count: 'exact', head: true })
+        .eq('campaign_id', id)
+        .eq('is_available', true);
+
+      if (selectedSubEvent) {
+        countQuery = countQuery.eq('sub_event_id', selectedSubEvent);
+      }
+
+      const { count } = await countQuery;
+      const total = count || 0;
+      setTotalPages(Math.ceil(total / PHOTOS_PER_PAGE));
+
+      // Depois buscar as fotos
       let query = supabase
         .from('photos')
         .select('id, title, original_url, watermarked_url, thumbnail_url, price, is_available, sub_event_id')
@@ -226,7 +249,6 @@ const Campaign = () => {
         .eq('is_available', true)
         .range(from, to);
 
-      // Filtrar por álbum se selecionado
       if (selectedSubEvent) {
         query = query.eq('sub_event_id', selectedSubEvent);
       }
@@ -237,13 +259,7 @@ const Campaign = () => {
 
       if (error) throw error;
       
-      const newPhotos = data || [];
-      setPhotos(reset ? newPhotos : [...photos, ...newPhotos]);
-      setHasMore(newPhotos.length === PHOTOS_PER_PAGE);
-      
-      if (!reset) {
-        setPage(page + 1);
-      }
+      setPhotos(data || []);
     } catch (error) {
       toast({
         title: "Erro",
@@ -253,12 +269,6 @@ const Campaign = () => {
     } finally {
       setLoadingPhotos(false);
       setLoading(false);
-    }
-  };
-
-  const loadMore = () => {
-    if (!loadingPhotos && hasMore) {
-      fetchPhotos(false);
     }
   };
 
@@ -682,43 +692,55 @@ const Campaign = () => {
                 </div>
               </AntiScreenshotProtection>
               
-              {/* Load More Button */}
-              {hasMore && (
-                <div className="mt-6 sm:mt-8 text-center">
-                  <Button 
-                    onClick={loadMore} 
-                    disabled={loadingPhotos}
-                    size="lg"
-                    variant="outline"
-                    className="gap-2 h-11 sm:h-12 text-sm sm:text-base w-full sm:w-auto"
-                  >
-                    {loadingPhotos ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                        Carregando...
-                      </>
-                    ) : (
-                      <>
-                        <ImageIcon className="h-4 w-4" />
-                        Carregar mais fotos
-                      </>
-                    )}
-                  </Button>
-                </div>
-              )}
-              
-              {/* Loading Skeleton while fetching more */}
-              {loadingPhotos && (
-                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6 mt-4 sm:mt-6">
-                  {[...Array(8)].map((_, i) => (
-                    <Card key={`skeleton-${i}`} className="overflow-hidden">
-                      <Skeleton className="aspect-square" />
-                      <CardContent className="p-4">
-                        <Skeleton className="h-5 w-3/4 mb-2" />
-                        <Skeleton className="h-4 w-1/2" />
-                      </CardContent>
-                    </Card>
-                  ))}
+              {/* Paginação */}
+              {totalPages > 1 && (
+                <div className="mt-6 sm:mt-8">
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious 
+                          onClick={() => setPage(p => Math.max(1, p - 1))}
+                          className={page === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                        />
+                      </PaginationItem>
+                      
+                      {[...Array(totalPages)].map((_, i) => {
+                        const pageNum = i + 1;
+                        // Mostrar apenas algumas páginas
+                        if (
+                          pageNum === 1 ||
+                          pageNum === totalPages ||
+                          (pageNum >= page - 1 && pageNum <= page + 1)
+                        ) {
+                          return (
+                            <PaginationItem key={pageNum}>
+                              <PaginationLink
+                                onClick={() => setPage(pageNum)}
+                                isActive={page === pageNum}
+                                className="cursor-pointer"
+                              >
+                                {pageNum}
+                              </PaginationLink>
+                            </PaginationItem>
+                          );
+                        } else if (pageNum === page - 2 || pageNum === page + 2) {
+                          return (
+                            <PaginationItem key={pageNum}>
+                              <span className="px-4">...</span>
+                            </PaginationItem>
+                          );
+                        }
+                        return null;
+                      })}
+                      
+                      <PaginationItem>
+                        <PaginationNext 
+                          onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                          className={page === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
                 </div>
               )}
             </>

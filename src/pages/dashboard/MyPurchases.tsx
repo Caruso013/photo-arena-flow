@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { ShoppingCart } from 'lucide-react';
 import { SkeletonCard } from '@/components/ui/skeleton-card';
 import { Button } from '@/components/ui/button';
+import { toast } from '@/components/ui/use-toast';
 
 interface Purchase {
   id: string;
@@ -106,34 +107,58 @@ const MyPurchases = () => {
 
   const handleDownload = async (url: string, fileName: string) => {
     try {
-      const marker = '/storage/v1/object/';
-      const idx = url.indexOf(marker);
-      let signed = url;
-      if (idx !== -1) {
-        let rest = url.slice(idx + marker.length);
-        if (rest.startsWith('public/')) rest = rest.replace('public/', '');
-        const firstSlash = rest.indexOf('/');
-        if (firstSlash !== -1) {
-          const bucket = rest.slice(0, firstSlash);
-          const path = rest.slice(firstSlash + 1);
-          const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, 60);
-          if (!error && data?.signedUrl) signed = data.signedUrl;
-        }
+      if (!url) {
+        toast({
+          title: "Erro",
+          description: "URL da foto não encontrada",
+          variant: "destructive",
+        });
+        return;
       }
-      const response = await fetch(signed);
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const blob = await response.blob();
-      const objectUrl = window.URL.createObjectURL(blob);
+
+      // Extrair o caminho do bucket
+      const urlParts = url.split('/storage/v1/object/public/');
+      let filePath = '';
+      
+      if (urlParts.length > 1) {
+        const pathParts = urlParts[1].split('/');
+        filePath = pathParts.slice(1).join('/');
+      } else {
+        filePath = url.split('photos-original/')[1] || url;
+      }
+
+      console.log('Baixando foto:', { filePath, originalUrl: url });
+
+      // Gerar URL assinada de curta duração (60 segundos)
+      const { data: signedData, error: signedError } = await supabase
+        .storage
+        .from('photos-original')
+        .createSignedUrl(filePath, 60);
+
+      if (signedError) {
+        console.error('Erro ao gerar URL assinada:', signedError);
+        throw signedError;
+      }
+
       const link = document.createElement('a');
-      link.href = objectUrl;
+      link.href = signedData.signedUrl;
       link.download = fileName;
+      link.target = '_blank';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      window.URL.revokeObjectURL(objectUrl);
-    } catch (e) {
-      console.error('Erro ao baixar foto:', e);
-      window.open(url, '_blank');
+
+      toast({
+        title: "Download iniciado",
+        description: "Sua foto está sendo baixada",
+      });
+    } catch (error) {
+      console.error('Erro ao baixar foto:', error);
+      toast({
+        title: "Erro ao baixar",
+        description: "Não foi possível baixar a foto. Tente novamente.",
+        variant: "destructive",
+      });
     }
   };
 

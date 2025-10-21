@@ -23,7 +23,7 @@ const AdminNavLinks = () => {
   ];
 
   return (
-    <nav className="border-b bg-card">
+    <nav className="border-b bg-card sticky top-16 z-30 md:static md:z-auto">
       <div className="container px-4">
         <div className="flex items-center gap-1 overflow-x-auto">
           {navItems.map((item) => (
