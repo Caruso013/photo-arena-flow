@@ -59,12 +59,12 @@ const Header = () => {
             
             {/* Search - Desktop */}
             <div className="relative hidden lg:block">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
               <Input
                 placeholder="Pesquisar evento..."
                 value={searchTerm}
                 onChange={(e) => handleSearch(e.target.value)}
-                className="pl-10 bg-background/10 border-gray-600 text-white placeholder:text-gray-400 w-64"
+                className="pl-10 bg-background/10 border-border text-foreground placeholder:text-muted-foreground w-64"
               />
             </div>
 
@@ -97,7 +97,7 @@ const Header = () => {
           {/* Mobile Menu */}
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <SheetTrigger asChild className="md:hidden">
-              <Button variant="ghost" size="icon" className="text-white">
+              <Button variant="ghost" size="icon" className="text-header-foreground">
                 <Menu className="h-6 w-6" />
               </Button>
             </SheetTrigger>
@@ -152,12 +152,12 @@ const Header = () => {
                 {/* Search Mobile */}
                 <div className="border-t border-white/10 pt-4">
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                     <Input
                       placeholder="Pesquisar evento..."
                       value={searchTerm}
                       onChange={(e) => handleSearch(e.target.value)}
-                      className="pl-10 bg-background/10 border-gray-600 text-white placeholder:text-gray-400"
+                      className="pl-10 bg-background/10 border-border text-foreground placeholder:text-muted-foreground"
                     />
                   </div>
                 </div>
