@@ -48,10 +48,10 @@ interface Photo {
 }
 
 interface Stats {
-  totalCampaigns: number;
-  totalPhotos: number;
   totalSales: number;
-  totalRevenue: number;
+  monthlySales: number;
+  pendingAmount: number;
+  availableAmount: number;
 }
 
 interface PayoutRequest {
@@ -70,10 +70,10 @@ const PhotographerDashboard = () => {
   const [allPhotos, setAllPhotos] = useState<Photo[]>([]); // Todas as fotos para a aba
   const [payoutRequests, setPayoutRequests] = useState<PayoutRequest[]>([]);
   const [stats, setStats] = useState<Stats>({
-    totalCampaigns: 0,
-    totalPhotos: 0,
     totalSales: 0,
-    totalRevenue: 0
+    monthlySales: 0,
+    pendingAmount: 0,
+    availableAmount: 0
   });
   const [loading, setLoading] = useState(true);
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -251,119 +251,77 @@ const PhotographerDashboard = () => {
       console.log('📧 Email:', profile?.email);
       console.log('═══════════════════════════════════════════');
       
-      // Contar eventos únicos onde o fotógrafo tem fotos
-      const { data: photosData, error: photosCountError } = await supabase
-        .from('photos')
-        .select('campaign_id')
-        .eq('photographer_id', profile?.id);
-
-      if (photosCountError) throw photosCountError;
-
-      const uniqueCampaignIds = [...new Set(photosData?.map(p => p.campaign_id) || [])];
-      const campaignsCount = uniqueCampaignIds.length;
-
-      // Fetch photos count
-      const { count: photosCount } = await supabase
-        .from('photos')
-        .select('*', { count: 'exact', head: true })
-        .eq('photographer_id', profile?.id);
-
-      // Fetch sales stats
+      // Buscar todas as vendas completas
       const { data: salesData } = await supabase
         .from('purchases')
-        .select('amount')
+        .select('created_at')
         .eq('photographer_id', profile?.id)
         .eq('status', 'completed');
 
       const totalSales = salesData?.length || 0;
 
-      // Buscar revenue_shares reais para o fotógrafo
-      const { data: revenueData } = await supabase
-        .from('revenue_shares')
-        .select('photographer_amount')
-        .eq('photographer_id', profile?.id);
+      // Calcular vendas do mês atual
+      const now = new Date();
+      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const monthlySales = salesData?.filter(sale => {
+        const saleDate = new Date(sale.created_at);
+        return saleDate >= firstDayOfMonth;
+      }).length || 0;
 
-      const photographerRevenue = revenueData?.reduce(
-        (sum, r) => sum + Number(r.photographer_amount), 
-        0
-      ) || 0;
-
-      // Calcular saldo disponível (>= 12h) menos solicitações pendentes/aprovadas
-      console.log('🔍 Buscando revenue_shares para photographer_id:', profile?.id);
-      
+      // Buscar revenue_shares com informações de purchase para calcular pendente/disponível
       const { data: rsWithPurchase, error: rsError } = await supabase
         .from('revenue_shares')
         .select('photographer_amount, purchases!revenue_shares_purchase_id_fkey(created_at, status)')
         .eq('photographer_id', profile?.id);
 
       if (rsError) {
-        console.error('❌ Erro ao buscar saldo:', rsError);
+        console.error('❌ Erro ao buscar revenue shares:', rsError);
       }
 
-      console.log('📊 Revenue shares encontrados:', rsWithPurchase?.length || 0, rsWithPurchase);
+      console.log('📊 Revenue shares encontrados:', rsWithPurchase?.length || 0);
 
-      let withdrawable = 0;
-      rsWithPurchase?.forEach((row: any, index) => {
+      let availableSum = 0;
+      let pendingSum = 0;
+
+      rsWithPurchase?.forEach((row: any) => {
         const amt = Number(row.photographer_amount || 0);
         const purchase = row.purchases;
         
-        console.log(`📌 Revenue share ${index + 1}:`, {
-          amount: amt,
-          purchase_status: purchase?.status,
-          purchase_created: purchase?.created_at,
-          purchase_obj: purchase
-        });
-        
         if (purchase?.status === 'completed') {
           const createdDate = new Date(purchase.created_at);
-          const now = Date.now();
-          const hours = (now - createdDate.getTime()) / (1000 * 60 * 60);
+          const hoursSinceSale = (Date.now() - createdDate.getTime()) / (1000 * 60 * 60);
           
-          console.log(`⏰ Horas desde venda: ${hours.toFixed(2)}h`, {
-            created_at: purchase.created_at,
-            now: new Date(now).toISOString(),
-            hours: hours,
-            is_available: hours >= 12
-          });
-          
-          if (hours >= 12) {
-            withdrawable += amt;
-            console.log(`✅ Adicionado ao saldo: R$ ${amt.toFixed(2)}`);
+          if (hoursSinceSale >= 12) {
+            availableSum += amt;
           } else {
-            console.log(`⏳ Aguardando ${(12 - hours).toFixed(2)}h para liberar`);
+            pendingSum += amt;
           }
-        } else {
-          console.log(`❌ Status não é 'completed': ${purchase?.status}`);
         }
       });
 
-      console.log('💰 Saldo calculado (antes de descontar solicitações):', withdrawable);
-
-      console.log('💰 Saldo calculado (antes de descontar solicitações):', withdrawable);
-
+      // Descontar solicitações pendentes/aprovadas do saldo disponível
       const { data: reqs } = await supabase
         .from('payout_requests')
         .select('amount, status')
         .eq('photographer_id', user?.id);
 
-      console.log('📋 Solicitações de repasse:', reqs);
-
       const outstanding = reqs?.filter((r: any) => r.status !== 'rejected')
         .reduce((s: number, r: any) => s + Number(r.amount || 0), 0) || 0;
 
-      console.log('💸 Valor em solicitações pendentes/aprovadas:', outstanding);
-
-      const calculatedBalance = Math.max(withdrawable - outstanding, 0);
+      const finalAvailable = Math.max(availableSum - outstanding, 0);
       
-      console.log('🎯 SALDO FINAL DISPONÍVEL:', calculatedBalance);
+      console.log('💰 Pendente (< 12h):', pendingSum);
+      console.log('💰 Disponível (>= 12h):', availableSum);
+      console.log('💸 Solicitações pendentes:', outstanding);
+      console.log('🎯 SALDO FINAL DISPONÍVEL:', finalAvailable);
       
-      setAvailableBalance(calculatedBalance);
+      setAvailableBalance(finalAvailable);
 
       setStats({
-        totalCampaigns: campaignsCount,
-        totalPhotos: photosCount || 0,
         totalSales,
-        totalRevenue: photographerRevenue
+        monthlySales,
+        pendingAmount: pendingSum,
+        availableAmount: finalAvailable
       });
     } catch (error) {
       console.error('Error fetching stats:', error);
@@ -428,70 +386,71 @@ const PhotographerDashboard = () => {
           </div>
         </div>
 
-        {/* Stats Cards - visual melhorado */}
+        {/* Stats Cards - métricas do fotógrafo */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 border-2 hover:border-primary/20 animate-fade-in">
-            <CardContent className="p-0">
-              <div className="flex items-center p-6">
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-muted-foreground mb-1">Eventos com Fotos</p>
-                  <p className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-                    {stats.totalCampaigns}
-                  </p>
-                </div>
-                <div className="bg-primary/10 p-4 rounded-lg">
-                  <Camera className="h-8 w-8 text-primary" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 border-2 hover:border-blue-500/20 animate-fade-in" style={{ animationDelay: '0.1s' }}>
-            <CardContent className="p-0">
-              <div className="flex items-center p-6">
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-muted-foreground mb-1">Fotos Enviadas</p>
-                  <p className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent">
-                    {stats.totalPhotos}
-                  </p>
-                </div>
-                <div className="bg-blue-500/10 p-4 rounded-lg">
-                  <Eye className="h-8 w-8 text-blue-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 border-2 hover:border-green-500/20 animate-fade-in" style={{ animationDelay: '0.2s' }}>
+          <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 border-2 hover:border-blue-500/20 animate-fade-in">
             <CardContent className="p-0">
               <div className="flex items-center p-6">
                 <div className="flex-1">
                   <p className="text-sm font-medium text-muted-foreground mb-1">Vendas Totais</p>
-                  <p className="text-3xl font-bold bg-gradient-to-r from-green-600 to-green-500 bg-clip-text text-transparent">
+                  <p className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent">
                     {stats.totalSales}
                   </p>
                 </div>
-                <div className="bg-green-500/10 p-4 rounded-lg">
-                  <BarChart3 className="h-8 w-8 text-green-600" />
+                <div className="bg-blue-500/10 p-4 rounded-lg">
+                  <BarChart3 className="h-8 w-8 text-blue-600" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 border-2 hover:border-primary/30 animate-fade-in" style={{ animationDelay: '0.3s' }}>
+          <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 border-2 hover:border-purple-500/20 animate-fade-in" style={{ animationDelay: '0.1s' }}>
             <CardContent className="p-0">
               <div className="flex items-center p-6">
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-muted-foreground mb-1">Disponível p/ Repasse</p>
-                  <p className="text-3xl font-bold bg-gradient-to-r from-amber-600 to-amber-500 bg-clip-text text-transparent">
-                    {formatCurrency(availableBalance)}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Após 12h das vendas
+                  <p className="text-sm font-medium text-muted-foreground mb-1">Vendas no Mês</p>
+                  <p className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-purple-500 bg-clip-text text-transparent">
+                    {stats.monthlySales}
                   </p>
                 </div>
-                <div className="bg-amber-500/10 p-4 rounded-lg">
-                  <DollarSign className="h-8 w-8 text-amber-600" />
+                <div className="bg-purple-500/10 p-4 rounded-lg">
+                  <Camera className="h-8 w-8 text-purple-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 border-2 hover:border-yellow-500/20 animate-fade-in" style={{ animationDelay: '0.2s' }}>
+            <CardContent className="p-0">
+              <div className="flex items-center p-6">
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-muted-foreground mb-1">A Receber</p>
+                  <p className="text-3xl font-bold bg-gradient-to-r from-yellow-600 to-yellow-500 bg-clip-text text-transparent">
+                    {formatCurrency(stats.pendingAmount)}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">&lt; 12 horas</p>
+                </div>
+                <div className="bg-yellow-500/10 p-4 rounded-lg">
+                  <CreditCard className="h-8 w-8 text-yellow-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 border-2 hover:border-green-500/20 animate-fade-in" style={{ animationDelay: '0.3s' }}>
+            <CardContent className="p-0">
+              <div className="flex items-center p-6">
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-muted-foreground mb-1">Disponível pra Repasse</p>
+                  <p className="text-3xl font-bold bg-gradient-to-r from-green-600 to-green-500 bg-clip-text text-transparent">
+                    {formatCurrency(stats.availableAmount)}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    &gt;= 12 horas
+                  </p>
+                </div>
+                <div className="bg-green-500/10 p-4 rounded-lg">
+                  <DollarSign className="h-8 w-8 text-green-600" />
                 </div>
               </div>
             </CardContent>
