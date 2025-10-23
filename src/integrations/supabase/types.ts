@@ -321,6 +321,9 @@ export type Database = {
         Row: {
           amount: number
           created_at: string
+          pix_key: string | null
+          recipient_name: string | null
+          institution: string | null
           id: string
           notes: string | null
           photographer_id: string
@@ -333,6 +336,9 @@ export type Database = {
         Insert: {
           amount: number
           created_at?: string
+          pix_key?: string | null
+          recipient_name?: string | null
+          institution?: string | null
           id?: string
           notes?: string | null
           photographer_id: string
@@ -345,6 +351,9 @@ export type Database = {
         Update: {
           amount?: number
           created_at?: string
+          pix_key?: string | null
+          recipient_name?: string | null
+          institution?: string | null
           id?: string
           notes?: string | null
           photographer_id?: string

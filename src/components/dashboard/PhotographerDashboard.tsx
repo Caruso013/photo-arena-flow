@@ -84,6 +84,9 @@ const PhotographerDashboard = () => {
   const [payoutAmount, setPayoutAmount] = useState('');
   const [isRequestingPayout, setIsRequestingPayout] = useState(false);
   const [payoutError, setPayoutError] = useState('');
+  const [pixKey, setPixKey] = useState('');
+  const [recipientName, setRecipientName] = useState('');
+  const [institution, setInstitution] = useState('');
   const [availableBalance, setAvailableBalance] = useState(0);
 
   useEffect(() => {
@@ -223,11 +226,30 @@ const PhotographerDashboard = () => {
         return;
       }
 
+      // Validate recipient info
+      if (!pixKey || pixKey.trim() === '') {
+        setPayoutError('Informe a chave PIX para receber o repasse');
+        return;
+      }
+
+      if (!recipientName || recipientName.trim() === '') {
+        setPayoutError('Informe o nome completo do beneficiário');
+        return;
+      }
+
+      if (!institution || institution.trim() === '') {
+        setPayoutError('Informe a instituição / banco do beneficiário');
+        return;
+      }
+
       const { error } = await supabase
         .from('payout_requests')
         .insert({
           photographer_id: user.id,
-          amount: amount
+          amount: amount,
+          pix_key: pixKey.trim(),
+          recipient_name: recipientName.trim(),
+          institution: institution.trim()
         });
 
       if (error) throw error;
@@ -244,12 +266,9 @@ const PhotographerDashboard = () => {
 
   const fetchStats = async () => {
     try {
-      console.log('═══════════════════════════════════════════');
-      console.log('🚀 Iniciando fetchStats');
-      console.log('👤 Profile ID:', profile?.id);
-      console.log('👤 User ID:', user?.id);
-      console.log('📧 Email:', profile?.email);
-      console.log('═══════════════════════════════════════════');
+      if (import.meta.env.DEV) {
+        console.debug('fetchStats start', { profileId: profile?.id, userId: user?.id, email: profile?.email });
+      }
       
       // Buscar todas as vendas completas
       const { data: salesData } = await supabase
@@ -278,7 +297,7 @@ const PhotographerDashboard = () => {
         console.error('❌ Erro ao buscar revenue shares:', rsError);
       }
 
-      console.log('📊 Revenue shares encontrados:', rsWithPurchase?.length || 0);
+  if (import.meta.env.DEV) console.debug('Revenue shares found:', rsWithPurchase?.length || 0);
 
       let availableSum = 0;
       let pendingSum = 0;
@@ -310,10 +329,9 @@ const PhotographerDashboard = () => {
 
       const finalAvailable = Math.max(availableSum - outstanding, 0);
       
-      console.log('💰 Pendente (< 12h):', pendingSum);
-      console.log('💰 Disponível (>= 12h):', availableSum);
-      console.log('💸 Solicitações pendentes:', outstanding);
-      console.log('🎯 SALDO FINAL DISPONÍVEL:', finalAvailable);
+      if (import.meta.env.DEV) {
+        console.debug('pendingSum', pendingSum, 'availableSum', availableSum, 'outstanding', outstanding, 'finalAvailable', finalAvailable);
+      }
       
       setAvailableBalance(finalAvailable);
 
@@ -397,7 +415,7 @@ const PhotographerDashboard = () => {
                     {stats.totalSales}
                   </p>
                 </div>
-                <div className="bg-blue-500/10 p-4 rounded-lg">
+                <div className="bg-blue-500/10 p-4 rounded-full">
                   <BarChart3 className="h-8 w-8 text-blue-600" />
                 </div>
               </div>
@@ -413,7 +431,7 @@ const PhotographerDashboard = () => {
                     {stats.monthlySales}
                   </p>
                 </div>
-                <div className="bg-purple-500/10 p-4 rounded-lg">
+                <div className="bg-purple-500/10 p-4 rounded-full">
                   <Camera className="h-8 w-8 text-purple-600" />
                 </div>
               </div>
@@ -430,7 +448,7 @@ const PhotographerDashboard = () => {
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">&lt; 12 horas</p>
                 </div>
-                <div className="bg-yellow-500/10 p-4 rounded-lg">
+                <div className="bg-yellow-500/10 p-4 rounded-full">
                   <CreditCard className="h-8 w-8 text-yellow-600" />
                 </div>
               </div>
@@ -449,7 +467,7 @@ const PhotographerDashboard = () => {
                     &gt;= 12 horas
                   </p>
                 </div>
-                <div className="bg-green-500/10 p-4 rounded-lg">
+                <div className="bg-green-500/10 p-4 rounded-full">
                   <DollarSign className="h-8 w-8 text-green-600" />
                 </div>
               </div>
@@ -684,6 +702,42 @@ const PhotographerDashboard = () => {
                       Máximo: {formatCurrency(availableBalance)}
                     </p>
                   </div>
+      
+                  <div>
+                    <Label htmlFor="pix-key">Chave PIX</Label>
+                    <Input
+                      id="pix-key"
+                      type="text"
+                      placeholder="Chave PIX (CPF/CNPJ, e-mail ou chave aleatória)"
+                      value={pixKey}
+                      onChange={(e) => setPixKey(e.target.value)}
+                      className="mt-2"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="recipient-name">Nome Completo</Label>
+                    <Input
+                      id="recipient-name"
+                      type="text"
+                      placeholder="Nome completo do beneficiário"
+                      value={recipientName}
+                      onChange={(e) => setRecipientName(e.target.value)}
+                      className="mt-2"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="institution">Instituição / Banco</Label>
+                    <Input
+                      id="institution"
+                      type="text"
+                      placeholder="Instituição (ex: Banco do Brasil, Nubank)"
+                      value={institution}
+                      onChange={(e) => setInstitution(e.target.value)}
+                      className="mt-2"
+                    />
+                  </div>
                   
                   {payoutError && (
                     <Alert variant="destructive">
@@ -718,19 +772,22 @@ const PhotographerDashboard = () => {
                     ) : (
                       payoutRequests.slice(0, 5).map((request) => (
                         <div key={request.id} className="flex items-center justify-between p-3 border rounded-lg">
-                          <div>
-                            <p className="font-medium">{formatCurrency(Number(request.amount))}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {new Date(request.requested_at).toLocaleDateString()}
-                            </p>
-                          </div>
-                          <Badge variant={
-                            request.status === 'approved' ? 'default' :
-                            request.status === 'pending' ? 'secondary' : 'destructive'
-                          }>
-                            {request.status === 'approved' ? 'Aprovado' :
-                             request.status === 'pending' ? 'Pendente' : 'Rejeitado'}
-                          </Badge>
+                              <div className="flex-1">
+                                <p className="font-medium">{formatCurrency(Number(request.amount))}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  {new Date(request.requested_at).toLocaleDateString()}
+                                </p>
+                                {request.status === 'rejected' && request.notes && (
+                                  <p className="text-xs text-destructive italic mt-1">Motivo: {request.notes}</p>
+                                )}
+                              </div>
+                              <Badge variant={
+                                request.status === 'approved' ? 'default' :
+                                request.status === 'pending' ? 'secondary' : 'destructive'
+                              }>
+                                {request.status === 'approved' ? 'Aprovado' :
+                                 request.status === 'pending' ? 'Pendente' : 'Rejeitado'}
+                              </Badge>
                         </div>
                       ))
                     )}
