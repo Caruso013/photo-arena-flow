@@ -20,6 +20,9 @@ interface PayoutRequest {
     full_name: string;
     email: string;
   };
+  pix_key?: string | null;
+  recipient_name?: string | null;
+  institution?: string | null;
 }
 
 export const PayoutRequestsManager = () => {
@@ -73,7 +76,7 @@ export const PayoutRequestsManager = () => {
     }
   };
 
-  const handleProcess = async (requestId: string, newStatus: 'completed' | 'rejected') => {
+  const handleProcess = async (requestId: string, newStatus: 'approved' | 'rejected') => {
     setProcessingId(requestId);
     try {
       const { error } = await supabase
@@ -88,7 +91,7 @@ export const PayoutRequestsManager = () => {
       if (error) throw error;
 
       toast.success(
-        newStatus === 'completed' 
+        newStatus === 'approved' 
           ? 'Repasse aprovado com sucesso!' 
           : 'Repasse rejeitado'
       );
@@ -106,7 +109,7 @@ export const PayoutRequestsManager = () => {
     switch (status) {
       case 'pending':
         return <Badge variant="outline" className="gap-1"><Clock className="h-3 w-3" />Pendente</Badge>;
-      case 'completed':
+      case 'approved':
         return <Badge className="bg-green-600 gap-1"><CheckCircle2 className="h-3 w-3" />Concluído</Badge>;
       case 'rejected':
         return <Badge variant="destructive" className="gap-1"><XCircle className="h-3 w-3" />Rejeitado</Badge>;
@@ -168,6 +171,21 @@ export const PayoutRequestsManager = () => {
                       <div className="text-sm text-muted-foreground">
                         {request.photographer?.email}
                       </div>
+                        {request.recipient_name && (
+                          <div className="text-sm text-muted-foreground">
+                            Beneficiário: {request.recipient_name}
+                          </div>
+                        )}
+                        {request.pix_key && (
+                          <div className="text-sm text-muted-foreground">
+                            PIX: {request.pix_key}
+                          </div>
+                        )}
+                        {request.institution && (
+                          <div className="text-sm text-muted-foreground">
+                            Instituição: {request.institution}
+                          </div>
+                        )}
                       <div className="text-xs text-muted-foreground">
                         Solicitado em: {new Date(request.requested_at).toLocaleString('pt-BR')}
                       </div>
@@ -193,7 +211,7 @@ export const PayoutRequestsManager = () => {
 
                   <div className="flex gap-2">
                     <Button
-                      onClick={() => handleProcess(request.id, 'completed')}
+                      onClick={() => handleProcess(request.id, 'approved')}
                       disabled={processingId === request.id}
                       className="flex-1 gap-2"
                     >
