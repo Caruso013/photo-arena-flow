@@ -4,8 +4,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { formatCurrency } from '@/lib/utils';
-import { DollarSign, Camera, Calendar, Lock, Unlock, TrendingUp } from 'lucide-react';
+import { DollarSign, Camera, Calendar, Lock, Unlock, TrendingUp, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -44,12 +45,32 @@ export const PhotographerEarnings = () => {
   const [totalPending, setTotalPending] = useState(0);
   const [totalPhotosSold, setTotalPhotosSold] = useState(0);
   const [requestingPayout, setRequestingPayout] = useState(false);
+  const [pendingRequest, setPendingRequest] = useState<any>(null);
 
   useEffect(() => {
     if (user) {
       fetchEarnings();
+      checkPendingRequest();
     }
   }, [user]);
+
+  const checkPendingRequest = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('payout_requests')
+        .select('*')
+        .eq('photographer_id', user.id)
+        .in('status', ['pending', 'approved'])
+        .maybeSingle();
+      
+      if (error) throw error;
+      setPendingRequest(data);
+    } catch (error) {
+      console.error('Erro ao verificar solicitação pendente:', error);
+    }
+  };
 
   const fetchEarnings = async () => {
     try {
@@ -148,11 +169,21 @@ export const PhotographerEarnings = () => {
   };
 
   const requestPayout = async () => {
+    // 1. Verificar se já existe solicitação pendente/aprovada
+    if (pendingRequest) {
+      toast.error(
+        `Você já possui uma solicitação ${pendingRequest.status === 'pending' ? 'pendente' : 'aprovada'} no valor de ${formatCurrency(pendingRequest.amount)}. Aguarde o processamento.`
+      );
+      return;
+    }
+
+    // 2. Verificar saldo disponível
     if (totalAvailable <= 0) {
       toast.error('Não há valor disponível para saque');
       return;
     }
 
+    // 3. Criar solicitação com loading
     setRequestingPayout(true);
     try {
       const { error } = await supabase
@@ -163,13 +194,26 @@ export const PhotographerEarnings = () => {
           status: 'pending',
         });
 
-      if (error) throw error;
+      if (error) {
+        // Se erro for de constraint unique, mostrar mensagem amigável
+        if (error.code === '23505') {
+          toast.error('Você já possui uma solicitação pendente. Aguarde o processamento.');
+        } else {
+          throw error;
+        }
+        return;
+      }
 
+      // 4. Atualizar estado local imediatamente
+      setTotalAvailable(0);
       toast.success('Solicitação de repasse enviada com sucesso!');
-      fetchEarnings();
+      
+      // 5. Recarregar dados
+      await fetchEarnings();
+      await checkPendingRequest();
     } catch (error) {
       console.error('Erro ao solicitar repasse:', error);
-      toast.error('Erro ao solicitar repasse');
+      toast.error('Erro ao solicitar repasse. Tente novamente.');
     } finally {
       setRequestingPayout(false);
     }
@@ -194,6 +238,21 @@ export const PhotographerEarnings = () => {
 
   return (
     <div className="space-y-6">
+      {/* Alerta de Solicitação em Andamento */}
+      {pendingRequest && (
+        <Alert className="border-orange-500 bg-orange-50 dark:bg-orange-950/20">
+          <AlertCircle className="h-4 w-4 text-orange-600" />
+          <AlertTitle>Solicitação em Andamento</AlertTitle>
+          <AlertDescription>
+            Você possui uma solicitação de repasse {pendingRequest.status === 'pending' ? 'pendente' : 'aprovada'} 
+            {' '}no valor de <strong>{formatCurrency(pendingRequest.amount)}</strong>.
+            {pendingRequest.status === 'pending' 
+              ? ' Aguardando análise do administrador.' 
+              : ' Seu pagamento será processado em breve.'}
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Alerta de Saldo Pendente */}
       {totalPending > 0 && (
         <Card className="border-2 border-yellow-500/50 bg-yellow-50 dark:bg-yellow-950/20">
@@ -231,11 +290,20 @@ export const PhotographerEarnings = () => {
             </div>
             <Button
               onClick={requestPayout}
-              disabled={totalAvailable <= 0 || requestingPayout}
+              disabled={totalAvailable <= 0 || requestingPayout || !!pendingRequest}
               className="w-full mt-4 gap-2"
             >
-              <DollarSign className="h-4 w-4" />
-              Solicitar Repasse
+              {requestingPayout ? (
+                <>
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  Processando...
+                </>
+              ) : (
+                <>
+                  <DollarSign className="h-4 w-4" />
+                  Solicitar Repasse
+                </>
+              )}
             </Button>
           </CardContent>
         </Card>
