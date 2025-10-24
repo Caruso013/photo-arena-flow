@@ -318,19 +318,20 @@ const PhotographerDashboard = () => {
         }
       });
 
-      // Descontar solicitações pendentes/aprovadas do saldo disponível
+      // Descontar solicitações pendentes/aprovadas/completed do saldo disponível
+      // Apenas 'rejected' libera o saldo de volta
       const { data: reqs } = await supabase
         .from('payout_requests')
         .select('amount, status')
-        .eq('photographer_id', user?.id);
+        .eq('photographer_id', user?.id)
+        .in('status', ['pending', 'approved', 'completed']);
 
-      const outstanding = reqs?.filter((r: any) => r.status !== 'rejected')
-        .reduce((s: number, r: any) => s + Number(r.amount || 0), 0) || 0;
+      const blockedAmount = reqs?.reduce((sum, r) => sum + Number(r.amount || 0), 0) || 0;
 
-      const finalAvailable = Math.max(availableSum - outstanding, 0);
+      const finalAvailable = Math.max(availableSum - blockedAmount, 0);
       
       if (import.meta.env.DEV) {
-        console.debug('pendingSum', pendingSum, 'availableSum', availableSum, 'outstanding', outstanding, 'finalAvailable', finalAvailable);
+        console.debug('pendingSum', pendingSum, 'availableSum', availableSum, 'blockedAmount', blockedAmount, 'finalAvailable', finalAvailable);
       }
       
       setAvailableBalance(finalAvailable);
@@ -411,12 +412,12 @@ const PhotographerDashboard = () => {
               <div className="flex items-center p-6">
                 <div className="flex-1">
                   <p className="text-sm font-medium text-muted-foreground mb-1">Vendas Totais</p>
-                  <p className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent">
+                  <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
                     {stats.totalSales}
                   </p>
                 </div>
                 <div className="bg-blue-500/10 p-4 rounded-full">
-                  <BarChart3 className="h-8 w-8 text-blue-600" />
+                  <BarChart3 className="h-8 w-8 text-blue-600 dark:text-blue-400" />
                 </div>
               </div>
             </CardContent>
@@ -427,12 +428,12 @@ const PhotographerDashboard = () => {
               <div className="flex items-center p-6">
                 <div className="flex-1">
                   <p className="text-sm font-medium text-muted-foreground mb-1">Vendas no Mês</p>
-                  <p className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-purple-500 bg-clip-text text-transparent">
+                  <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">
                     {stats.monthlySales}
                   </p>
                 </div>
                 <div className="bg-purple-500/10 p-4 rounded-full">
-                  <Camera className="h-8 w-8 text-purple-600" />
+                  <Camera className="h-8 w-8 text-purple-600 dark:text-purple-400" />
                 </div>
               </div>
             </CardContent>
@@ -443,13 +444,13 @@ const PhotographerDashboard = () => {
               <div className="flex items-center p-6">
                 <div className="flex-1">
                   <p className="text-sm font-medium text-muted-foreground mb-1">A Receber</p>
-                  <p className="text-3xl font-bold bg-gradient-to-r from-yellow-600 to-yellow-500 bg-clip-text text-transparent">
+                  <p className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">
                     {formatCurrency(stats.pendingAmount)}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">&lt; 12 horas</p>
                 </div>
                 <div className="bg-yellow-500/10 p-4 rounded-full">
-                  <CreditCard className="h-8 w-8 text-yellow-600" />
+                  <CreditCard className="h-8 w-8 text-yellow-600 dark:text-yellow-400" />
                 </div>
               </div>
             </CardContent>
@@ -460,7 +461,7 @@ const PhotographerDashboard = () => {
               <div className="flex items-center p-6">
                 <div className="flex-1">
                   <p className="text-sm font-medium text-muted-foreground mb-1">Disponível pra Repasse</p>
-                  <p className="text-3xl font-bold bg-gradient-to-r from-green-600 to-green-500 bg-clip-text text-transparent">
+                  <p className="text-3xl font-bold text-green-600 dark:text-green-400">
                     {formatCurrency(stats.availableAmount)}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
@@ -468,7 +469,7 @@ const PhotographerDashboard = () => {
                   </p>
                 </div>
                 <div className="bg-green-500/10 p-4 rounded-full">
-                  <DollarSign className="h-8 w-8 text-green-600" />
+                  <DollarSign className="h-8 w-8 text-green-600 dark:text-green-400" />
                 </div>
               </div>
             </CardContent>

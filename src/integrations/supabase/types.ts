@@ -321,14 +321,14 @@ export type Database = {
         Row: {
           amount: number
           created_at: string
-          pix_key: string | null
-          recipient_name: string | null
-          institution: string | null
           id: string
+          institution: string | null
           notes: string | null
           photographer_id: string
+          pix_key: string | null
           processed_at: string | null
           processed_by: string | null
+          recipient_name: string | null
           requested_at: string
           status: string
           updated_at: string
@@ -336,14 +336,14 @@ export type Database = {
         Insert: {
           amount: number
           created_at?: string
-          pix_key?: string | null
-          recipient_name?: string | null
-          institution?: string | null
           id?: string
+          institution?: string | null
           notes?: string | null
           photographer_id: string
+          pix_key?: string | null
           processed_at?: string | null
           processed_by?: string | null
+          recipient_name?: string | null
           requested_at?: string
           status?: string
           updated_at?: string
@@ -351,14 +351,14 @@ export type Database = {
         Update: {
           amount?: number
           created_at?: string
-          pix_key?: string | null
-          recipient_name?: string | null
-          institution?: string | null
           id?: string
+          institution?: string | null
           notes?: string | null
           photographer_id?: string
+          pix_key?: string | null
           processed_at?: string | null
           processed_by?: string | null
+          recipient_name?: string | null
           requested_at?: string
           status?: string
           updated_at?: string
