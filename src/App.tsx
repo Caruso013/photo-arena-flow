@@ -49,6 +49,7 @@ const AdminUsers = lazy(() => import("./pages/dashboard/admin/Users"));
 const AdminOrganizations = lazy(() => import("./pages/dashboard/admin/Organizations"));
 const AdminFinancial = lazy(() => import("./pages/dashboard/admin/Financial"));
 const AdminReports = lazy(() => import("./pages/dashboard/admin/Reports"));
+const AdminSystemConfig = lazy(() => import("./pages/dashboard/admin/SystemConfig"));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -105,6 +106,7 @@ const AppContent = () => {
             <Route path="admin/organizations" element={<AdminOrganizations />} />
             <Route path="admin/financial" element={<AdminFinancial />} />
             <Route path="admin/reports" element={<AdminReports />} />
+            <Route path="admin/config" element={<AdminSystemConfig />} />
           </Route>
           <Route path="/events" element={<Events />} />
           <Route path="/eventos-proximos" element={<EventosProximos />} />
