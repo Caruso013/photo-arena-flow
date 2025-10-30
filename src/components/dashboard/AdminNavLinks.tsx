@@ -17,8 +17,9 @@ const AdminNavLinks = () => {
     { title: 'Eventos', url: '/dashboard/admin/events', icon: Calendar },
     { title: 'Financeiro', url: '/dashboard/admin/financial', icon: TrendingUp },
     { title: 'Orgs', url: '/dashboard/admin/organizations', icon: Building2 },
-    { title: 'Campanhas', url: '/dashboard/admin/events', icon: Activity },
+    { title: 'Relatórios', url: '/dashboard/admin/reports', icon: FileText },
     { title: 'Usuários', url: '/dashboard/admin/users', icon: Users },
+    { title: 'Config', url: '/dashboard/admin/config', icon: Settings },
     { title: 'Perfil', url: '/dashboard/profile', icon: Settings }
   ];
 

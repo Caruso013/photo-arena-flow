@@ -59,6 +59,7 @@ interface SubEvent {
   location: string | null;
   event_time: string | null;
   photo_count?: number;
+  cover_image_url?: string | null;
 }
 
 interface Photo {
@@ -79,6 +80,7 @@ const Campaign = () => {
   const { addToCart } = useCart();
   
   const [campaign, setCampaign] = useState<Campaign | null>(null);
+  const [campaignPhotographers, setCampaignPhotographers] = useState<Array<{ full_name: string; email: string }>>([]);
   const [subEvents, setSubEvents] = useState<SubEvent[]>([]);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [selectedSubEvent, setSelectedSubEvent] = useState<string | null>(null);
@@ -105,6 +107,7 @@ const Campaign = () => {
   useEffect(() => {
     if (id) {
       fetchCampaign();
+      fetchCampaignPhotographers();
       fetchSubEvents();
     }
   }, [id]);
@@ -190,14 +193,40 @@ const Campaign = () => {
     }
   };
 
+  const fetchCampaignPhotographers = async () => {
+    if (!id) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('campaign_photographers')
+        .select(`
+          photographer_id,
+          profiles!campaign_photographers_photographer_id_fkey(full_name, email)
+        `)
+        .eq('campaign_id', id)
+        .eq('is_active', true);
+
+      if (error) throw error;
+      
+      const photographers = (data || []).map((cp: any) => ({
+        full_name: cp.profiles?.full_name || 'Fotógrafo',
+        email: cp.profiles?.email || ''
+      }));
+      
+      setCampaignPhotographers(photographers);
+    } catch (error) {
+      console.error('Error fetching photographers:', error);
+    }
+  };
+
   const fetchSubEvents = async () => {
     if (!id) return;
 
     try {
       const { data, error } = await supabase
-        .from('sub_events')
+        .from('sub_events' as any)
         .select(`
-          id, title, description, location, event_time,
+          id, title, description, location, event_time, cover_image_url,
           photos:photos(count)
         `)
         .eq('campaign_id', id)
@@ -206,14 +235,14 @@ const Campaign = () => {
 
       if (error) throw error;
       
-      const subEventsWithCount = (data || []).map(se => ({
+      const subEventsWithCount = (data || []).map((se: any) => ({
         ...se,
         photo_count: se.photos?.[0]?.count || 0
       }));
       
       setSubEvents(subEventsWithCount);
     } catch (error) {
-      // Silenciar erro de sub-eventos - não é crítico
+      console.error('Error fetching sub events:', error);
     }
   };
 
@@ -471,15 +500,41 @@ const Campaign = () => {
               <CardHeader className="pb-3 sm:pb-4">
                 <CardTitle className="flex items-center gap-2 text-primary text-base sm:text-lg">
                   <Camera className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
-                  <span className="truncate">Fotógrafo Responsável</span>
+                  <span className="truncate">
+                    {campaignPhotographers.length > 1 ? 'Fotógrafos do Evento' : 'Fotógrafo Responsável'}
+                  </span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
-                <p className="text-base sm:text-lg font-bold text-foreground truncate">{campaign.photographer?.full_name}</p>
-                <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1 mt-1">
-                  <User className="h-3 w-3 flex-shrink-0" />
-                  <span className="truncate">{campaign.photographer?.email}</span>
-                </p>
+                {campaignPhotographers.length > 0 ? (
+                  <div className="space-y-2">
+                    {campaignPhotographers.map((photographer, idx) => (
+                      <div key={idx} className="flex items-start gap-2">
+                        <User className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm sm:text-base font-bold text-foreground truncate">
+                            {photographer.full_name}
+                          </p>
+                          <p className="text-xs sm:text-sm text-muted-foreground truncate">
+                            {photographer.email}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : campaign.photographer ? (
+                  <>
+                    <p className="text-base sm:text-lg font-bold text-foreground truncate">
+                      {campaign.photographer.full_name}
+                    </p>
+                    <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                      <User className="h-3 w-3 flex-shrink-0" />
+                      <span className="truncate">{campaign.photographer.email}</span>
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Nenhum fotógrafo atribuído</p>
+                )}
               </CardContent>
             </Card>
 
@@ -556,11 +611,11 @@ const Campaign = () => {
                   }`}
                   onClick={() => setSelectedSubEvent(subEvent.id)}
                 >
-                  {/* Preview da foto */}
-                  {albumPreviews[subEvent.id] && (
+                  {/* Preview da capa ou foto */}
+                  {(subEvent.cover_image_url || albumPreviews[subEvent.id]) && (
                     <div className="aspect-[4/5] relative">
                       <img 
-                        src={albumPreviews[subEvent.id]} 
+                        src={subEvent.cover_image_url || albumPreviews[subEvent.id]} 
                         alt={subEvent.title}
                         className="w-full h-full object-cover"
                       />
