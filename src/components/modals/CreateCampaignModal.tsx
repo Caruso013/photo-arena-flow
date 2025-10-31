@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Calendar, MapPin, Percent } from 'lucide-react';
+import { usePlatformPercentage } from '@/hooks/usePlatformPercentage';
 
 interface CreateCampaignModalProps {
   organizationId?: string;
@@ -25,6 +26,7 @@ export default function CreateCampaignModal({
 }: CreateCampaignModalProps) {
   const { profile } = useAuth();
   const isAdmin = profile?.role === 'admin';
+  const { percentage: platformPercentage, loading: loadingPercentage } = usePlatformPercentage();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -32,8 +34,8 @@ export default function CreateCampaignModal({
     description: '',
     location: '',
     event_date: '',
-    photographer_percentage: 93, // Padrão: fotógrafo fica com tudo (93%)
-    organization_percentage: 0,   // Padrão: sem organização
+    photographer_percentage: 100 - platformPercentage,
+    organization_percentage: 0,
     organization_id: organizationId || '',
   });
   const { toast } = useToast();
@@ -47,8 +49,9 @@ export default function CreateCampaignModal({
 
   // Quando muda a porcentagem do fotógrafo, ajusta automaticamente a organização
   const handlePhotographerPercentageChange = (value: number) => {
-    const photographerPct = Math.max(0, Math.min(93, value));
-    const organizationPct = 93 - photographerPct;
+    const availableForSplit = 100 - platformPercentage;
+    const photographerPct = Math.max(0, Math.min(availableForSplit, value));
+    const organizationPct = availableForSplit - photographerPct;
     
     setFormData(prev => ({
       ...prev,
@@ -59,8 +62,9 @@ export default function CreateCampaignModal({
 
   // Quando muda a porcentagem da organização, ajusta automaticamente o fotógrafo
   const handleOrganizationPercentageChange = (value: number) => {
-    const organizationPct = Math.max(0, Math.min(93, value));
-    const photographerPct = 93 - organizationPct;
+    const availableForSplit = 100 - platformPercentage;
+    const organizationPct = Math.max(0, Math.min(availableForSplit, value));
+    const photographerPct = availableForSplit - organizationPct;
     
     setFormData(prev => ({
       ...prev,
@@ -70,11 +74,12 @@ export default function CreateCampaignModal({
   };
 
   const calculatePercentages = () => {
-    const platform = 7; // FIXO
+    const platform = platformPercentage;
     const photographer = formData.photographer_percentage;
     const organization = formData.organization_percentage;
     const sum = platform + photographer + organization;
-    const isValid = sum === 100 && photographer + organization === 93;
+    const availableForSplit = 100 - platformPercentage;
+    const isValid = sum === 100 && photographer + organization === availableForSplit;
     
     return {
       platform,
@@ -82,7 +87,7 @@ export default function CreateCampaignModal({
       organization,
       sum,
       isValid,
-      remaining: 93 - photographer - organization
+      remaining: availableForSplit - photographer - organization
     };
   };
 
@@ -99,10 +104,12 @@ export default function CreateCampaignModal({
     }
 
     const percentages = calculatePercentages();
+    const availableForSplit = 100 - platformPercentage;
+    
     if (!percentages.isValid) {
       toast({
         title: "Erro na divisão de receita",
-        description: `A divisão entre fotógrafo e organização deve somar 93% (plataforma mantém 7% fixo). Atualmente: ${percentages.photographer + percentages.organization}%`,
+        description: `A divisão entre fotógrafo e organização deve somar ${availableForSplit}% (plataforma mantém ${platformPercentage}% fixo). Atualmente: ${percentages.photographer + percentages.organization}%`,
         variant: "destructive",
       });
       return;
@@ -119,11 +126,10 @@ export default function CreateCampaignModal({
           location: formData.location || null,
           event_date: formData.event_date || null,
           organization_id: formData.organization_id || null,
-          platform_percentage: 7, // SEMPRE 7%
           photographer_percentage: formData.photographer_percentage,
           organization_percentage: formData.organization_percentage,
           is_active: true,
-          photographer_id: isAdmin ? null : profile?.id, // Admin não é fotógrafo, fotógrafos se candidatam
+          photographer_id: isAdmin ? null : profile?.id,
         });
 
       if (error) throw error;
@@ -139,7 +145,7 @@ export default function CreateCampaignModal({
         description: '',
         location: '',
         event_date: '',
-        photographer_percentage: 93,
+        photographer_percentage: 100 - platformPercentage,
         organization_percentage: 0,
         organization_id: organizationId || '',
       });
@@ -179,7 +185,7 @@ export default function CreateCampaignModal({
               : (
                 <div className="space-y-1">
                   <p>Crie seu evento e comece a fazer upload de fotos.</p>
-                  <p className="font-semibold text-primary">Taxa da plataforma: 7% | Você recebe: 93% de cada venda</p>
+                  <p className="font-semibold text-primary">Taxa da plataforma: {platformPercentage}% | Você recebe: {100 - platformPercentage}% de cada venda</p>
                 </div>
               )
             }
@@ -264,21 +270,21 @@ export default function CreateCampaignModal({
 
           {/* Seção de Divisão de Receita - apenas para admin */}
           {isAdmin && (
-          <div className="space-y-4 p-4 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20 rounded-lg border-2 border-blue-200 dark:border-blue-900/30">
-            <div className="flex items-center justify-between">
+          <div className="space-y-4 p-4 bg-muted/50 rounded-lg border-2 border-border">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <h4 className="font-semibold text-lg flex items-center gap-2">
-                <Percent className="h-5 w-5 text-blue-600" />
+                <Percent className="h-5 w-5 text-primary" />
                 Divisão de Receita
               </h4>
-              <Badge className="bg-blue-600">
-                Taxa Plataforma: 7% (fixa)
+              <Badge variant="secondary">
+                Taxa Plataforma: {platformPercentage}% (fixa)
               </Badge>
             </div>
             
-            <div className="p-3 bg-white/50 dark:bg-gray-900/50 rounded-md border">
+            <div className="p-3 bg-card rounded-md border">
               <p className="text-sm text-muted-foreground">
-                ℹ️ A plataforma mantém <strong>7% fixo</strong> de cada venda. 
-                Os <strong>93% restantes</strong> são divididos entre fotógrafo e organização (se houver).
+                ℹ️ A plataforma mantém <strong>{platformPercentage}% fixo</strong> de cada venda. 
+                Os <strong>{100 - platformPercentage}% restantes</strong> são divididos entre fotógrafo e organização (se houver).
               </p>
             </div>
 
@@ -286,36 +292,36 @@ export default function CreateCampaignModal({
               <div className="space-y-2">
                 <Label htmlFor="photographer_percentage" className="text-base font-medium">
                   <div className="flex items-center gap-2">
-                    <Percent className="h-4 w-4 text-green-600" />
-                    % Fotógrafo (dos 93%)
+                    <Percent className="h-4 w-4" />
+                    % Fotógrafo (dos {100 - platformPercentage}%)
                   </div>
                 </Label>
                 <Input
                   id="photographer_percentage"
                   type="number"
                   min="0"
-                  max="93"
+                  max={100 - platformPercentage}
                   value={formData.photographer_percentage}
                   onChange={(e) => handlePhotographerPercentageChange(Number(e.target.value))}
                   className="text-lg font-semibold"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Máximo: 93% (sem organização)
+                  Máximo: {100 - platformPercentage}% (sem organização)
                 </p>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="organization_percentage" className="text-base font-medium">
                   <div className="flex items-center gap-2">
-                    <Percent className="h-4 w-4 text-amber-600" />
-                    % Organização (dos 93%)
+                    <Percent className="h-4 w-4" />
+                    % Organização (dos {100 - platformPercentage}%)
                   </div>
                 </Label>
                 <Input
                   id="organization_percentage"
                   type="number"
                   min="0"
-                  max="93"
+                  max={100 - platformPercentage}
                   value={formData.organization_percentage}
                   onChange={(e) => handleOrganizationPercentageChange(Number(e.target.value))}
                   className="text-lg font-semibold"
@@ -330,46 +336,46 @@ export default function CreateCampaignModal({
             {/* Preview Visual da Divisão */}
             <div className={`p-4 rounded-lg border-2 transition-all ${
               percentages.isValid 
-                ? 'bg-green-50 border-green-300 dark:bg-green-950/20 dark:border-green-800' 
-                : 'bg-red-50 border-red-300 dark:bg-red-950/20 dark:border-red-800'
+                ? 'bg-success/10 border-success/30' 
+                : 'bg-destructive/10 border-destructive/30'
             }`}>
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                 <h5 className="font-semibold flex items-center gap-2">
                   Exemplo de Venda: R$ 100,00
                 </h5>
                 {percentages.isValid ? (
-                  <Badge className="bg-green-600">✓ Divisão Válida</Badge>
+                  <Badge variant="default">✓ Divisão Válida</Badge>
                 ) : (
-                  <Badge variant="destructive">✗ Deve somar 93%</Badge>
+                  <Badge variant="destructive">✗ Deve somar {100 - platformPercentage}%</Badge>
                 )}
               </div>
               
               <div className="space-y-2">
-                <div className="flex justify-between items-center p-2 bg-blue-100 dark:bg-blue-900/30 rounded">
-                  <span className="font-medium">Plataforma (7%)</span>
-                  <span className="font-bold text-blue-700 dark:text-blue-400">R$ 7,00</span>
+                <div className="flex justify-between items-center p-2 bg-primary/10 rounded">
+                  <span className="font-medium">Plataforma ({platformPercentage}%)</span>
+                  <span className="font-bold text-primary">R$ {platformPercentage.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between items-center p-2 bg-green-100 dark:bg-green-900/30 rounded">
+                <div className="flex justify-between items-center p-2 bg-success/10 rounded">
                   <span className="font-medium">Fotógrafo ({percentages.photographer}%)</span>
-                  <span className="font-bold text-green-700 dark:text-green-400">
+                  <span className="font-bold text-success">
                     R$ {percentages.photographer.toFixed(2)}
                   </span>
                 </div>
-                <div className="flex justify-between items-center p-2 bg-amber-100 dark:bg-amber-900/30 rounded">
+                <div className="flex justify-between items-center p-2 bg-accent/10 rounded">
                   <span className="font-medium">Organização ({percentages.organization}%)</span>
-                  <span className="font-bold text-amber-700 dark:text-amber-400">
+                  <span className="font-bold text-accent-foreground">
                     R$ {percentages.organization.toFixed(2)}
                   </span>
                 </div>
-                <div className="flex justify-between items-center p-2 bg-gray-200 dark:bg-gray-700 rounded font-bold border-t-2 border-gray-400">
+                <div className="flex justify-between items-center p-2 bg-muted rounded font-bold border-t-2 border-border">
                   <span>TOTAL</span>
                   <span>{percentages.sum}%</span>
                 </div>
               </div>
               
               {!percentages.isValid && (
-                <p className="text-sm text-red-600 dark:text-red-400 mt-2 font-medium">
-                  ⚠️ A soma de fotógrafo + organização deve ser exatamente 93%! (Atualmente: {percentages.photographer + percentages.organization}%)
+                <p className="text-sm text-destructive mt-2 font-medium">
+                  ⚠️ A soma de fotógrafo + organização deve ser exatamente {100 - platformPercentage}%! (Atualmente: {percentages.photographer + percentages.organization}%)
                 </p>
               )}
             </div>
