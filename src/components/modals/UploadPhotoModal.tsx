@@ -384,9 +384,9 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
           ) : (
             <>
           {/* Explicação da estrutura */}
-          <Alert className="bg-blue-50 border-blue-200 p-3 sm:p-4">
-            <Info className="h-4 w-4 text-blue-600 flex-shrink-0" />
-            <AlertDescription className="text-xs sm:text-sm text-blue-900">
+          <Alert className="bg-primary/10 border-primary/20 p-3 sm:p-4">
+            <Info className="h-4 w-4 text-primary flex-shrink-0" />
+            <AlertDescription className="text-xs sm:text-sm text-foreground">
               <strong>Como funciona:</strong> Selecione um <strong>Evento</strong> e opcionalmente uma <strong>Pasta (Álbum)</strong> dentro dele para organizar suas fotos.
             </AlertDescription>
           </Alert>
@@ -417,11 +417,11 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
           </div>
 
           {selectedCampaign && (
-            <div className="space-y-2 p-2 sm:p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="space-y-2 p-2 sm:p-3 bg-secondary/50 border border-border rounded-lg">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
-                  <FolderOpen className="h-4 w-4 text-amber-700 flex-shrink-0" />
-                  <Label className="font-semibold text-amber-900 text-sm sm:text-base truncate">
+                  <FolderOpen className="h-4 w-4 text-secondary-foreground flex-shrink-0" />
+                  <Label className="font-semibold text-foreground text-sm sm:text-base truncate">
                     2. Pasta/Álbum (Opcional)
                   </Label>
                 </div>
@@ -440,7 +440,7 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
               
               {/* Formulário de criar pasta */}
               {creatingNewFolder && (
-                <div className="space-y-2 p-3 bg-white border border-amber-300 rounded">
+                <div className="space-y-2 p-3 bg-card border border-border rounded">
                   <Input
                     placeholder="Nome da pasta (ex: Treino Manhã)"
                     value={newFolderName}
@@ -469,7 +469,7 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
               {subEvents.length > 0 ? (
                 <>
                   <Select value={selectedSubEvent || "none"} onValueChange={(value) => setSelectedSubEvent(value === "none" ? "" : value)}>
-                    <SelectTrigger className="h-11 bg-white">
+                    <SelectTrigger className="h-11 bg-card">
                       <SelectValue placeholder="📁 Escolha uma pasta ou deixe em branco" />
                     </SelectTrigger>
                     <SelectContent>

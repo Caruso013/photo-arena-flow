@@ -186,8 +186,8 @@ export default function PaymentModal({
 
         {!showCheckout ? (
           <div className="space-y-6">
-            <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 p-4 rounded-lg">
-              <p className="text-sm text-blue-900 dark:text-blue-100">
+            <div className="bg-primary/10 border border-primary/20 p-4 rounded-lg">
+              <p className="text-sm text-foreground">
                 <strong>Passo 1 de 2:</strong> Preencha seus dados e clique em "Continuar" para ir ao pagamento seguro do Mercado Pago.
               </p>
             </div>
@@ -308,12 +308,12 @@ export default function PaymentModal({
 
             <Separator />
 
-            <div className="bg-blue-50 dark:bg-blue-950/30 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+            <div className="bg-primary/10 p-4 rounded-lg border border-primary/20">
               <div className="flex items-center gap-2 mb-2">
-                <CreditCard className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                <span className="font-medium text-blue-900 dark:text-blue-100">Pagamento Seguro via Mercado Pago</span>
+                <CreditCard className="h-4 w-4 text-primary" />
+                <span className="font-medium text-foreground">Pagamento Seguro via Mercado Pago</span>
               </div>
-              <ul className="text-sm text-blue-700 dark:text-blue-200 space-y-1">
+              <ul className="text-sm text-muted-foreground space-y-1">
                 <li>✓ Cartão de crédito ou débito</li>
                 <li>✓ PIX (aprovação instantânea)</li>
                 <li>✓ Boleto bancário</li>
@@ -346,11 +346,11 @@ export default function PaymentModal({
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 p-4 rounded-lg">
-              <p className="text-sm text-green-900 dark:text-green-100 mb-2">
+            <div className="bg-success/10 border border-success/20 p-4 rounded-lg">
+              <p className="text-sm text-foreground mb-2">
                 <strong>Passo 2 de 2:</strong> Complete o pagamento usando o formulário abaixo
               </p>
-              <ul className="text-xs text-green-700 dark:text-green-200 space-y-1">
+              <ul className="text-xs text-muted-foreground space-y-1">
                 <li>• Use PIX para aprovação instantânea</li>
                 <li>• Após o pagamento, você receberá um e-mail de confirmação</li>
                 <li>• A foto estará disponível em "Minhas Compras"</li>

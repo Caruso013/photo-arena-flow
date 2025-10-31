@@ -177,11 +177,11 @@ export const PhotographerApplicationForm = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           {application.status === 'pending' && (
-            <div className="flex items-start gap-2 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <Clock className="h-5 w-5 text-yellow-600 mt-0.5" />
+            <div className="flex items-start gap-2 p-4 bg-accent/10 border border-accent/20 rounded-lg">
+              <Clock className="h-5 w-5 text-accent-foreground mt-0.5 flex-shrink-0" />
               <div>
-                <p className="font-medium text-yellow-900">Solicitação em análise</p>
-                <p className="text-sm text-yellow-700">
+                <p className="font-medium text-foreground">Solicitação em análise</p>
+                <p className="text-sm text-muted-foreground">
                   Nossa equipe está analisando sua solicitação. Você será notificado em breve!
                 </p>
               </div>
@@ -189,11 +189,11 @@ export const PhotographerApplicationForm = () => {
           )}
           
           {application.status === 'approved' && (
-            <div className="flex items-start gap-2 p-4 bg-green-50 border border-green-200 rounded-lg">
-              <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5" />
+            <div className="flex items-start gap-2 p-4 bg-success/10 border border-success/20 rounded-lg">
+              <CheckCircle2 className="h-5 w-5 text-success mt-0.5 flex-shrink-0" />
               <div>
-                <p className="font-medium text-green-900">Parabéns! Você foi aprovado!</p>
-                <p className="text-sm text-green-700">
+                <p className="font-medium text-foreground">Parabéns! Você foi aprovado!</p>
+                <p className="text-sm text-muted-foreground">
                   Sua conta foi atualizada para fotógrafo. Recarregue a página para ver as novas funcionalidades.
                 </p>
               </div>
@@ -244,16 +244,16 @@ export const PhotographerApplicationForm = () => {
       </CardHeader>
       <CardContent>
         {application?.status === 'rejected' && (
-          <div className="mb-4 flex items-start gap-2 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
+          <div className="mb-4 flex items-start gap-2 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+            <AlertCircle className="h-5 w-5 text-destructive mt-0.5 flex-shrink-0" />
             <div>
-              <p className="font-medium text-red-900">Solicitação anterior rejeitada</p>
+              <p className="font-medium text-foreground">Solicitação anterior rejeitada</p>
               {application.rejection_reason && (
-                <p className="text-sm text-red-700 mt-1">
+                <p className="text-sm text-muted-foreground mt-1">
                   Motivo: {application.rejection_reason}
                 </p>
               )}
-              <p className="text-sm text-red-700 mt-1">
+              <p className="text-sm text-muted-foreground mt-1">
                 Você pode enviar uma nova solicitação.
               </p>
             </div>
