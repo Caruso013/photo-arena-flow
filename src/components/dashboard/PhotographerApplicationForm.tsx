@@ -89,6 +89,15 @@ export const PhotographerApplicationForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!user) {
+      toast({
+        title: "Faça login",
+        description: "Você precisa estar autenticado para enviar a solicitação.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!validateForm()) {
       toast({
         title: "Erro de validação",
