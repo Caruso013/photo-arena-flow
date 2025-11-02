@@ -791,6 +791,33 @@ export type Database = {
           },
         ]
       }
+      system_config: {
+        Row: {
+          description: string | null
+          id: string
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          description?: string | null
+          id?: string
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value: Json
+        }
+        Update: {
+          description?: string | null
+          id?: string
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: []
+      }
     }
     Views: {
       campaign_revenue_distribution: {
@@ -928,6 +955,7 @@ export type Database = {
       }
     }
     Functions: {
+      get_platform_percentage: { Args: never; Returns: number }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["user_role"]
