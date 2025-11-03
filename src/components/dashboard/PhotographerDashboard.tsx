@@ -439,36 +439,42 @@ const PhotographerDashboard = () => {
             </CardContent>
           </Card>
 
-          <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 border-2 hover:border-yellow-500/20 animate-fade-in" style={{ animationDelay: '0.2s' }}>
+          <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 border-2 border-amber-500/40 bg-amber-50/30 dark:bg-amber-950/20 animate-fade-in" style={{ animationDelay: '0.2s' }}>
             <CardContent className="p-0">
               <div className="flex items-center p-6">
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-muted-foreground mb-1">A Receber</p>
-                  <p className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">
+                  <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">
+                    🔒 A Receber
+                  </p>
+                  <p className="text-3xl font-bold text-amber-600 dark:text-amber-400">
                     {formatCurrency(stats.pendingAmount)}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">&lt; 12 horas</p>
+                  <p className="text-xs text-amber-700 dark:text-amber-300 mt-1 font-medium">
+                    ⏳ Vendas &lt; 12h atrás
+                  </p>
                 </div>
-                <div className="bg-yellow-500/10 p-4 rounded-full">
-                  <CreditCard className="h-8 w-8 text-yellow-600 dark:text-yellow-400" />
+                <div className="bg-amber-500/20 p-4 rounded-full">
+                  <CreditCard className="h-8 w-8 text-amber-600 dark:text-amber-400" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 border-2 hover:border-green-500/20 animate-fade-in" style={{ animationDelay: '0.3s' }}>
+          <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 border-2 border-green-500/40 bg-green-50/30 dark:bg-green-950/20 animate-fade-in" style={{ animationDelay: '0.3s' }}>
             <CardContent className="p-0">
               <div className="flex items-center p-6">
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-muted-foreground mb-1">Disponível pra Repasse</p>
+                  <p className="text-sm font-medium text-green-800 dark:text-green-200 mb-1">
+                    ✅ Disponível pra Repasse
+                  </p>
                   <p className="text-3xl font-bold text-green-600 dark:text-green-400">
                     {formatCurrency(stats.availableAmount)}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    &gt;= 12 horas
+                  <p className="text-xs text-green-700 dark:text-green-300 mt-1 font-medium">
+                    💰 Vendas após 12h
                   </p>
                 </div>
-                <div className="bg-green-500/10 p-4 rounded-full">
+                <div className="bg-green-500/20 p-4 rounded-full">
                   <DollarSign className="h-8 w-8 text-green-600 dark:text-green-400" />
                 </div>
               </div>

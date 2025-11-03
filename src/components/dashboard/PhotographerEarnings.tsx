@@ -253,21 +253,39 @@ export const PhotographerEarnings = () => {
         </Alert>
       )}
 
+      {/* Alerta Informativo sobre 12 horas */}
+      <Alert className="border-2 border-primary/30 bg-primary/5">
+        <AlertCircle className="h-5 w-5 text-primary" />
+        <AlertTitle className="text-base font-semibold">⏰ Período de Segurança de 12 Horas</AlertTitle>
+        <AlertDescription className="text-sm space-y-2">
+          <p>
+            <strong>Por segurança</strong>, o valor de cada venda fica disponível para saque apenas <strong>12 horas após a compra</strong>.
+          </p>
+          <ul className="list-disc list-inside space-y-1 ml-2">
+            <li>✅ Protege contra fraudes e chargebacks</li>
+            <li>✅ Garante que o pagamento foi confirmado</li>
+            <li>✅ Tempo para processar eventuais estornos</li>
+          </ul>
+        </AlertDescription>
+      </Alert>
+
       {/* Alerta de Saldo Pendente */}
       {totalPending > 0 && (
-        <Card className="border-2 border-yellow-500/50 bg-yellow-50 dark:bg-yellow-950/20">
+        <Card className="border-2 border-amber-500/50 bg-amber-50 dark:bg-amber-950/20">
           <CardContent className="pt-6">
             <div className="flex items-start gap-3">
-              <div className="p-2 rounded-full bg-yellow-500/20">
-                <Lock className="h-5 w-5 text-yellow-600" />
+              <div className="p-3 rounded-full bg-amber-500/20">
+                <Lock className="h-6 w-6 text-amber-600 dark:text-amber-400" />
               </div>
               <div className="flex-1">
-                <h3 className="font-semibold text-lg mb-1">Vendas Pendentes</h3>
-                <p className="text-sm text-muted-foreground mb-2">
-                  {totalPhotosSold} foto{totalPhotosSold !== 1 ? 's' : ''} vendida{totalPhotosSold !== 1 ? 's' : ''} com valor pendente de {formatCurrency(totalPending)}
+                <h3 className="font-semibold text-lg mb-1 text-amber-900 dark:text-amber-100">
+                  🔒 Vendas Aguardando Liberação
+                </h3>
+                <p className="text-sm mb-2 text-amber-800 dark:text-amber-200">
+                  Você tem <strong>{formatCurrency(totalPending)}</strong> em vendas recentes (menos de 12h)
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  💡 Após 12 horas da venda, o valor fica disponível para saque. Isso garante segurança contra fraudes e estornos.
+                <p className="text-xs text-amber-700 dark:text-amber-300">
+                  ⏳ Esses valores ficarão disponíveis automaticamente após completar 12 horas de cada venda
                 </p>
               </div>
             </div>
@@ -308,19 +326,19 @@ export const PhotographerEarnings = () => {
           </CardContent>
         </Card>
 
-        <Card className="border-2 border-yellow-500/30">
+        <Card className="border-2 border-amber-500/40 bg-amber-50/50 dark:bg-amber-950/20">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Lock className="h-4 w-4 text-yellow-600" />
-              Pendente (menos de 12h)
+              <Lock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+              🔒 Pendente (menos de 12h)
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">
+            <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">
               {formatCurrency(totalPending)}
             </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              Disponível após período de segurança
+            <p className="text-xs text-amber-700 dark:text-amber-300 mt-2 font-medium">
+              ⏳ Aguardando período de segurança
             </p>
           </CardContent>
         </Card>
