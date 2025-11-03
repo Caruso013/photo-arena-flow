@@ -4,8 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Mail, Phone, Clock } from 'lucide-react';
+import { Mail, Phone, Clock, MessageCircle } from 'lucide-react';
 import MainLayout from '@/components/layout/MainLayout';
+
+const WHATSAPP_NUMBER = '5511957719467'; // Número configurável
 
 const Contato = () => {
   return (
@@ -41,12 +43,21 @@ const Contato = () => {
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-3">
-                    <Phone className="h-4 w-4 text-primary" />
-                    <div>
-                      <p className="font-medium text-sm md:text-base">Telefone/WhatsApp</p>
-                      <p className="text-muted-foreground text-sm md:text-base">(11) 95771-9467</p>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <Phone className="h-4 w-4 text-primary" />
+                      <div>
+                        <p className="font-medium text-sm md:text-base">Telefone/WhatsApp</p>
+                        <p className="text-muted-foreground text-sm md:text-base">(11) 95771-9467</p>
+                      </div>
                     </div>
+                    <Button 
+                      onClick={() => window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=Olá! Gostaria de mais informações sobre a plataforma.`, '_blank')}
+                      className="w-full gap-2 bg-[#25D366] hover:bg-[#20BA5A] text-white"
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                      Falar no WhatsApp
+                    </Button>
                   </div>
                   
                   <div className="flex items-center gap-3">
