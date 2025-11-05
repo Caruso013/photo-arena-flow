@@ -27,6 +27,7 @@ const Campaign = lazy(() => import("./pages/Campaign"));
 const EventosProximos = lazy(() => import("./pages/EventosProximos"));
 const FAQ = lazy(() => import("./pages/FAQ"));
 const Sobre = lazy(() => import("./pages/Sobre"));
+const Tutorial = lazy(() => import("./pages/Tutorial"));
 const PaymentTest = lazy(() => import("./pages/PaymentTest"));
 const CheckoutSuccess = lazy(() => import("./pages/CheckoutSuccess"));
 const CheckoutProcessing = lazy(() => import("./pages/CheckoutProcessing"));
@@ -116,6 +117,7 @@ const AppContent = () => {
           <Route path="/fotografos" element={<Fotografos />} />
           <Route path="/faq" element={<FAQ />} />
           <Route path="/sobre" element={<Sobre />} />
+          <Route path="/tutorial" element={<Tutorial />} />
           <Route path="/payment-test" element={<PaymentTest />} />
           <Route path="/checkout/processando" element={<CheckoutProcessing />} />
           <Route path="/checkout/sucesso" element={<CheckoutSuccess />} />

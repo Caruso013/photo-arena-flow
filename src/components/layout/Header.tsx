@@ -33,6 +33,7 @@ const Header = () => {
     { to: '/events', label: 'EVENTOS' },
     { to: '/fotografos', label: 'FOTÓGRAFOS' },
     { to: '/sobre', label: 'SOBRE' },
+    { to: '/tutorial', label: 'COMO FUNCIONA' },
     { to: '/faq', label: 'AJUDA' },
     { to: '/contato', label: 'CONTATO' },
   ];
