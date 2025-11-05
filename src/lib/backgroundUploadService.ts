@@ -176,6 +176,17 @@ class BackgroundUploadService {
       }, 500);
 
       try {
+        // Get next sequence number for this campaign
+        const { data: maxSeqData } = await supabase
+          .from('photos')
+          .select('upload_sequence')
+          .eq('campaign_id', task.campaignId)
+          .order('upload_sequence', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        const nextSequence = (maxSeqData?.upload_sequence || 0) + 1;
+
         // Upload original photo (private)
         const { data: originalData, error: originalError } = await supabase.storage
           .from('photos-original')
@@ -217,6 +228,7 @@ class BackgroundUploadService {
             title: task.title,
             price: task.price,
             is_available: true,
+            upload_sequence: nextSequence,
           });
 
         if (dbError) throw dbError;

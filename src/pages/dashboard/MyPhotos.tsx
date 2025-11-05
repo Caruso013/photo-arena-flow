@@ -35,7 +35,8 @@ const MyPhotos = () => {
           campaign:campaigns(title)
         `)
         .eq('photographer_id', user?.id)
-        .order('created_at', { ascending: false })
+        .order('upload_sequence', { ascending: true })
+        .order('created_at', { ascending: true })
         .limit(50);
 
       if (error) throw error;

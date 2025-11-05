@@ -282,7 +282,9 @@ const Campaign = () => {
         query = query.eq('sub_event_id', selectedSubEvent);
       }
 
-      query = query.order('created_at', { ascending: false });
+      query = query
+        .order('upload_sequence', { ascending: true })
+        .order('created_at', { ascending: true });
 
       const { data, error } = await query;
 
