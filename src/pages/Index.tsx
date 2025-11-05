@@ -68,9 +68,14 @@ const Index = () => {
               </div>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                {campaigns.map((campaign) => (
-                  <Link to={`/campaign/${campaign.id}`} key={campaign.id} className="group">
-                    <Card className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-primary/20">
+                {campaigns.map((campaign, index) => (
+                  <Link 
+                    to={`/campaign/${campaign.id}`} 
+                    key={campaign.id} 
+                    className="group animate-fade-in"
+                    style={{ animationDelay: `${index * 0.1}s` }}
+                  >
+                    <Card className="overflow-hidden cursor-pointer border-2 transition-all duration-300 hover:border-primary/40 hover:shadow-2xl hover:-translate-y-2 active:scale-95">
                       <div className="aspect-[4/5] bg-gradient-dark relative">
                         {campaign.cover_image_url ? (
                           <img

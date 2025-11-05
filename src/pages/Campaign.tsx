@@ -121,6 +121,43 @@ const Campaign = () => {
     }
   }, [selectedSubEvent]);
 
+  // Prefetch da próxima página quando próximo do final
+  useEffect(() => {
+    const prefetchNextPage = async () => {
+      if (!id || page >= totalPages || loadingPhotos) return;
+      
+      const nextPage = page + 1;
+      const from = (nextPage - 1) * PHOTOS_PER_PAGE;
+      const to = from + PHOTOS_PER_PAGE - 1;
+      
+      try {
+        let query = supabase
+          .from('photos')
+          .select('id, title, original_url, watermarked_url, thumbnail_url, price, is_available, sub_event_id')
+          .eq('campaign_id', id)
+          .eq('is_available', true)
+          .range(from, to);
+
+        if (selectedSubEvent) {
+          query = query.eq('sub_event_id', selectedSubEvent);
+        }
+
+        query = query
+          .order('upload_sequence', { ascending: true })
+          .order('created_at', { ascending: true });
+
+        // Prefetch silencioso (não atualiza state)
+        await query;
+      } catch (error) {
+        // Silenciosamente ignorar erros de prefetch
+      }
+    };
+
+    // Iniciar prefetch quando chegar na página atual
+    const timer = setTimeout(prefetchNextPage, 500);
+    return () => clearTimeout(timer);
+  }, [id, page, totalPages, selectedSubEvent, loadingPhotos]);
+
   // Buscar fotos quando mudar de página
   useEffect(() => {
     if (id && page > 1) {
