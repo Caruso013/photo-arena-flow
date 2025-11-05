@@ -518,6 +518,7 @@ export type Database = {
           thumbnail_url: string | null
           title: string | null
           updated_at: string
+          upload_sequence: number | null
           watermarked_url: string
         }
         Insert: {
@@ -532,6 +533,7 @@ export type Database = {
           thumbnail_url?: string | null
           title?: string | null
           updated_at?: string
+          upload_sequence?: number | null
           watermarked_url: string
         }
         Update: {
@@ -546,6 +548,7 @@ export type Database = {
           thumbnail_url?: string | null
           title?: string | null
           updated_at?: string
+          upload_sequence?: number | null
           watermarked_url?: string
         }
         Relationships: [
