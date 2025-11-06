@@ -5,7 +5,20 @@ import { useSearch } from '@/contexts/SearchContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
-import { Search, User, LogIn, Menu } from 'lucide-react';
+import { 
+  Search, 
+  User, 
+  LogIn, 
+  Menu, 
+  Home,
+  Calendar,
+  Camera,
+  Info,
+  BookOpen,
+  HelpCircle,
+  Mail,
+  ShoppingCart
+} from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -13,10 +26,12 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
+import { useCart } from '@/contexts/CartContext';
 
 const Header = () => {
   const { user } = useAuth();
   const { searchTerm, setSearchTerm } = useSearch();
+  const { items } = useCart();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
@@ -29,13 +44,13 @@ const Header = () => {
   };
 
   const navItems = [
-    { to: '/', label: 'HOME' },
-    { to: '/events', label: 'EVENTOS' },
-    { to: '/fotografos', label: 'FOTÓGRAFOS' },
-    { to: '/sobre', label: 'SOBRE' },
-    { to: '/tutorial', label: 'COMO FUNCIONA' },
-    { to: '/faq', label: 'AJUDA' },
-    { to: '/contato', label: 'CONTATO' },
+    { to: '/', label: 'HOME', icon: Home },
+    { to: '/events', label: 'EVENTOS', icon: Calendar },
+    { to: '/fotografos', label: 'FOTÓGRAFOS', icon: Camera },
+    { to: '/sobre', label: 'SOBRE', icon: Info },
+    { to: '/tutorial', label: 'COMO FUNCIONA', icon: BookOpen },
+    { to: '/faq', label: 'AJUDA', icon: HelpCircle },
+    { to: '/contato', label: 'CONTATO', icon: Mail },
   ];
 
   const isActive = (path: string) => location.pathname === path;
@@ -57,6 +72,22 @@ const Header = () => {
           {/* Desktop Actions */}
           <div className="hidden md:flex items-center gap-3">
             <ThemeToggle />
+            
+            {/* Cart Button */}
+            <Link to="/cart">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="relative gap-2 text-header-foreground hover:text-primary hover:bg-primary/10"
+              >
+                <ShoppingCart className="h-5 w-5" />
+                {items.length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                    {items.length}
+                  </span>
+                )}
+              </Button>
+            </Link>
             
             {/* Search - Desktop */}
             <div className="relative hidden lg:block">
@@ -107,6 +138,22 @@ const Header = () => {
                 <SheetTitle className="text-primary">Menu</SheetTitle>
               </SheetHeader>
               <div className="flex flex-col gap-4 mt-6">
+                {/* Cart Button Mobile */}
+                <Link to="/cart" onClick={() => setMobileMenuOpen(false)}>
+                  <Button 
+                    variant="outline" 
+                    className="w-full gap-2 border-primary text-primary relative"
+                  >
+                    <ShoppingCart className="h-4 w-4" />
+                    Carrinho
+                    {items.length > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                        {items.length}
+                      </span>
+                    )}
+                  </Button>
+                </Link>
+
                 {/* Auth Buttons Mobile */}
                 {user ? (
                   <Link to="/dashboard" onClick={() => setMobileMenuOpen(false)}>
@@ -134,20 +181,24 @@ const Header = () => {
 
                 {/* Navigation Mobile */}
                 <div className="border-t border-white/10 pt-4 mt-2">
-                  {navItems.map((item) => (
-                    <Link
-                      key={item.to}
-                      to={item.to}
-                      onClick={() => setMobileMenuOpen(false)}
-                      className={`block py-3 px-4 rounded-lg mb-1 transition-colors ${
-                        isActive(item.to)
-                          ? 'bg-primary text-primary-foreground font-medium'
-                          : 'hover:bg-white/10'
-                      }`}
-                    >
-                      {item.label}
-                    </Link>
-                  ))}
+                  {navItems.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <Link
+                        key={item.to}
+                        to={item.to}
+                        onClick={() => setMobileMenuOpen(false)}
+                        className={`flex items-center gap-3 py-3 px-4 rounded-lg mb-1 transition-colors ${
+                          isActive(item.to)
+                            ? 'bg-primary text-primary-foreground font-medium'
+                            : 'hover:bg-white/10'
+                        }`}
+                      >
+                        <Icon className="h-5 w-5" />
+                        {item.label}
+                      </Link>
+                    );
+                  })}
                 </div>
 
                 {/* Search Mobile */}
@@ -171,20 +222,24 @@ const Header = () => {
       {/* Navigation - Desktop */}
       <nav className="border-t border-white/10 hidden md:block">
         <div className="container mx-auto px-4">
-          <div className="flex items-center justify-start space-x-8 py-3 text-sm">
-            {navItems.map((item) => (
-              <Link
-                key={item.to}
-                to={item.to}
-                className={`transition-colors whitespace-nowrap ${
-                  isActive(item.to)
-                    ? 'text-primary font-medium'
-                    : 'hover:text-primary'
-                }`}
-              >
-                {item.label}
-              </Link>
-            ))}
+          <div className="flex items-center justify-start space-x-6 py-3 text-sm">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className={`flex items-center gap-2 transition-all duration-200 whitespace-nowrap px-3 py-1.5 rounded-md ${
+                    isActive(item.to)
+                      ? 'text-primary font-medium bg-primary/10'
+                      : 'hover:text-primary hover:bg-primary/5'
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  {item.label}
+                </Link>
+              );
+            })}
           </div>
         </div>
       </nav>

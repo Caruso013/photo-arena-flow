@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -29,15 +29,27 @@ export default function CreateCampaignModal({
   const { percentage: platformPercentage, loading: loadingPercentage } = usePlatformPercentage();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  
+  // Atualiza os valores iniciais quando a plataforma percentage é carregada
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     location: '',
     event_date: '',
-    photographer_percentage: 100 - platformPercentage,
+    photographer_percentage: 91, // 100 - 9 (taxa fixa da plataforma)
     organization_percentage: 0,
     organization_id: organizationId || '',
   });
+
+  // Atualiza photographer_percentage quando platformPercentage muda
+  useEffect(() => {
+    if (!loadingPercentage && platformPercentage > 0) {
+      setFormData(prev => ({
+        ...prev,
+        photographer_percentage: 100 - platformPercentage,
+      }));
+    }
+  }, [platformPercentage, loadingPercentage]);
   const { toast } = useToast();
 
   const handleInputChange = (field: string, value: string | number) => {
@@ -145,7 +157,7 @@ export default function CreateCampaignModal({
         description: '',
         location: '',
         event_date: '',
-        photographer_percentage: 100 - platformPercentage,
+        photographer_percentage: 91, // 100 - 9 (taxa fixa)
         organization_percentage: 0,
         organization_id: organizationId || '',
       });

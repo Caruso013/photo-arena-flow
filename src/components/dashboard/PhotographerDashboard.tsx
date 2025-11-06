@@ -410,14 +410,14 @@ const PhotographerDashboard = () => {
           <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 border-2 hover:border-blue-500/20 animate-fade-in">
             <CardContent className="p-0">
               <div className="flex items-center p-6">
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-muted-foreground mb-1">Vendas Totais</p>
                   <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
                     {stats.totalSales}
                   </p>
                 </div>
-                <div className="bg-blue-500/10 p-4 rounded-full">
-                  <BarChart3 className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+                <div className="flex items-center justify-center h-12 w-12 rounded-full bg-blue-500/10 flex-shrink-0">
+                  <BarChart3 className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                 </div>
               </div>
             </CardContent>
@@ -426,14 +426,14 @@ const PhotographerDashboard = () => {
           <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 border-2 hover:border-purple-500/20 animate-fade-in" style={{ animationDelay: '0.1s' }}>
             <CardContent className="p-0">
               <div className="flex items-center p-6">
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-muted-foreground mb-1">Vendas no Mês</p>
                   <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">
                     {stats.monthlySales}
                   </p>
                 </div>
-                <div className="bg-purple-500/10 p-4 rounded-full">
-                  <Camera className="h-8 w-8 text-purple-600 dark:text-purple-400" />
+                <div className="flex items-center justify-center h-12 w-12 rounded-full bg-purple-500/10 flex-shrink-0">
+                  <Camera className="h-6 w-6 text-purple-600 dark:text-purple-400" />
                 </div>
               </div>
             </CardContent>
@@ -442,7 +442,7 @@ const PhotographerDashboard = () => {
           <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 border-2 border-amber-500/40 bg-amber-50/30 dark:bg-amber-950/20 animate-fade-in" style={{ animationDelay: '0.2s' }}>
             <CardContent className="p-0">
               <div className="flex items-center p-6">
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">
                     🔒 A Receber
                   </p>
@@ -453,8 +453,8 @@ const PhotographerDashboard = () => {
                     ⏳ Vendas &lt; 12h atrás
                   </p>
                 </div>
-                <div className="bg-amber-500/20 p-4 rounded-full">
-                  <CreditCard className="h-8 w-8 text-amber-600 dark:text-amber-400" />
+                <div className="flex items-center justify-center h-12 w-12 rounded-full bg-amber-500/20 flex-shrink-0">
+                  <CreditCard className="h-6 w-6 text-amber-600 dark:text-amber-400" />
                 </div>
               </div>
             </CardContent>
@@ -463,7 +463,7 @@ const PhotographerDashboard = () => {
           <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 border-2 border-green-500/40 bg-green-50/30 dark:bg-green-950/20 animate-fade-in" style={{ animationDelay: '0.3s' }}>
             <CardContent className="p-0">
               <div className="flex items-center p-6">
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-green-800 dark:text-green-200 mb-1">
                     ✅ Disponível pra Repasse
                   </p>
@@ -474,8 +474,8 @@ const PhotographerDashboard = () => {
                     💰 Vendas após 12h
                   </p>
                 </div>
-                <div className="bg-green-500/20 p-4 rounded-full">
-                  <DollarSign className="h-8 w-8 text-green-600 dark:text-green-400" />
+                <div className="flex items-center justify-center h-12 w-12 rounded-full bg-green-500/20 flex-shrink-0">
+                  <DollarSign className="h-6 w-6 text-green-600 dark:text-green-400" />
                 </div>
               </div>
             </CardContent>
