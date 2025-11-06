@@ -6,6 +6,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Camera, MapPin, Calendar } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import MainLayout from '@/components/layout/MainLayout';
+import { logger } from '@/lib/logger';
+import { handleError } from '@/lib/errorHandler';
 
 interface Campaign {
   id: string;
@@ -43,7 +45,11 @@ const Index = () => {
       if (error) throw error;
       setCampaigns(data || []);
     } catch (error) {
-      console.error('Error fetching campaigns:', error);
+      logger.error('Error fetching campaigns:', error);
+      handleError(error, { 
+        context: 'fetch',
+        showToast: false // Não mostrar toast na home, apenas logar
+      });
     } finally {
       setLoading(false);
     }
