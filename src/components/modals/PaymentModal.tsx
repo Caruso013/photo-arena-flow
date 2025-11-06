@@ -4,10 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { MaskedInput, masks, validateCPF } from '@/components/ui/masked-input';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { CreditCard, Loader2, ShoppingCart, ArrowLeft } from 'lucide-react';
+import { CreditCard, Loader2, ShoppingCart, ArrowLeft, AlertCircle } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { emailService } from '@/lib/emailService';
 
@@ -61,7 +62,9 @@ export default function PaymentModal({
   const totalItems = itemsToProcess.length;
 
   const handleInputChange = (field: string, value: string) => {
-    setBuyerData(prev => ({ ...prev, [field]: value }));
+    // Remove formatação para validação
+    const cleanValue = value.replace(/\D/g, '');
+    setBuyerData(prev => ({ ...prev, [field]: cleanValue }));
   };
 
   const isFormValid = () => {
@@ -69,7 +72,8 @@ export default function PaymentModal({
            buyerData.surname.length >= 2 && 
            buyerData.email.includes('@') && 
            (buyerData.phone.length === 10 || buyerData.phone.length === 11) && 
-           buyerData.document.length === 11;
+           buyerData.document.length === 11 &&
+           validateCPF(buyerData.document); // Validar CPF
   };
 
   useEffect(() => {
@@ -276,13 +280,13 @@ export default function PaymentModal({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="phone">Telefone (10 ou 11 dígitos) *</Label>
-                <Input
+                <Label htmlFor="phone">Telefone *</Label>
+                <MaskedInput
                   id="phone"
+                  mask={masks.phone}
                   value={buyerData.phone}
-                  onChange={(e) => handleInputChange('phone', e.target.value.replace(/\D/g, ''))}
-                  placeholder="11999999999"
-                  maxLength={11}
+                  onChange={(e) => handleInputChange('phone', e.target.value)}
+                  placeholder="(11) 99999-9999"
                   className={buyerData.phone && buyerData.phone.length < 10 ? 'border-red-500' : ''}
                 />
                 {buyerData.phone && buyerData.phone.length < 10 && (
@@ -291,15 +295,21 @@ export default function PaymentModal({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="document">CPF (11 dígitos) *</Label>
-                <Input
+                <Label htmlFor="document">CPF *</Label>
+                <MaskedInput
                   id="document"
+                  mask={masks.cpf}
                   value={buyerData.document}
-                  onChange={(e) => handleInputChange('document', e.target.value.replace(/\D/g, ''))}
-                  placeholder="00000000000"
-                  maxLength={11}
+                  onChange={(e) => handleInputChange('document', e.target.value)}
+                  placeholder="000.000.000-00"
                   className={buyerData.document && buyerData.document.length < 11 ? 'border-red-500' : ''}
                 />
+                {buyerData.document && buyerData.document.length === 11 && !validateCPF(buyerData.document) && (
+                  <div className="flex items-center gap-1 text-sm text-red-500">
+                    <AlertCircle className="h-3.5 w-3.5" />
+                    <span>CPF inválido</span>
+                  </div>
+                )}
                 {buyerData.document && buyerData.document.length < 11 && (
                   <p className="text-sm text-red-500">CPF deve conter 11 dígitos</p>
                 )}

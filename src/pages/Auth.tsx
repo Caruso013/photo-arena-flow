@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -37,16 +38,87 @@ const Auth = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validações
+    if (!loginEmail.trim()) {
+      toast({
+        title: "Email obrigatório",
+        description: "Por favor, informe seu email.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!loginPassword) {
+      toast({
+        title: "Senha obrigatória",
+        description: "Por favor, informe sua senha.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setIsLoading(true);
-    await signIn(loginEmail, loginPassword);
+    const { error } = await signIn(loginEmail, loginPassword);
     setIsLoading(false);
+    
+    // Redirecionar automaticamente após login bem-sucedido
+    if (!error) {
+      navigate('/dashboard');
+    }
   };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validações
+    if (!signupName.trim()) {
+      toast({
+        title: "Nome obrigatório",
+        description: "Por favor, informe seu nome completo.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (signupName.trim().length < 3) {
+      toast({
+        title: "Nome muito curto",
+        description: "O nome deve ter pelo menos 3 caracteres.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!signupEmail.trim()) {
+      toast({
+        title: "Email obrigatório",
+        description: "Por favor, informe seu email.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (signupPassword.length < 6) {
+      toast({
+        title: "Senha muito curta",
+        description: "A senha deve ter pelo menos 6 caracteres.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setIsLoading(true);
-    await signUp(signupEmail, signupPassword, signupName);
+    const { error } = await signUp(signupEmail, signupPassword, signupName, signupRole);
     setIsLoading(false);
+    
+    // Limpar formulário apenas se não houver erro
+    if (!error) {
+      setSignupEmail('');
+      setSignupPassword('');
+      setSignupName('');
+      setSignupRole('user');
+    }
   };
 
   const handleForgotPassword = async (e: React.FormEvent) => {
@@ -217,14 +289,15 @@ const Auth = () => {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signup-password" className="text-sm">Senha</Label>
-                    <Input
+                    <PasswordInput
                       id="signup-password"
-                      type="password"
                       placeholder="********"
                       value={signupPassword}
-                      onChange={(e) => setSignupPassword(e.target.value)}
+                      onValueChange={setSignupPassword}
                       required
                       className="h-11 sm:h-12 text-sm"
+                      minLength={6}
+                      showStrength={true}
                     />
                   </div>
                   <div className="space-y-2">
@@ -234,10 +307,25 @@ const Auth = () => {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="user" className="text-sm">Usuário (Comprar fotos)</SelectItem>
-                        <SelectItem value="photographer" className="text-sm">Fotógrafo (Vender fotos)</SelectItem>
+                        <SelectItem value="user" className="text-sm">
+                          <div className="flex flex-col">
+                            <span className="font-medium">👤 Usuário</span>
+                            <span className="text-xs text-muted-foreground">Comprar e baixar fotos dos eventos</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="photographer" className="text-sm">
+                          <div className="flex flex-col">
+                            <span className="font-medium">📸 Fotógrafo</span>
+                            <span className="text-xs text-muted-foreground">Criar eventos e vender fotos</span>
+                          </div>
+                        </SelectItem>
                       </SelectContent>
                     </Select>
+                    <p className="text-xs text-muted-foreground">
+                      {signupRole === 'photographer' 
+                        ? 'Como fotógrafo, você poderá criar eventos e vender suas fotos.' 
+                        : 'Como usuário, você poderá comprar fotos dos eventos.'}
+                    </p>
                   </div>
                   <Button type="submit" className="w-full h-11 sm:h-12 text-sm font-medium" disabled={isLoading}>
                     {isLoading ? "Cadastrando..." : "Criar conta"}

@@ -1,14 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useSearch } from '@/contexts/SearchContext';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Camera, MapPin, Calendar } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Camera } from 'lucide-react';
 import MainLayout from '@/components/layout/MainLayout';
 import { SkeletonCard } from '@/components/ui/skeleton-card';
-import { LazyImage } from '@/components/ui/lazy-image';
 import { EventFilters, FilterState } from '@/components/events/EventFilters';
+import { EventCard } from '@/components/events/EventCard';
 
 interface Campaign {
   id: string;
@@ -145,58 +142,11 @@ const Events = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {filteredCampaigns.map((campaign, index) => (
-                <Link 
-                  to={`/campaign/${campaign.id}`} 
+                <EventCard 
                   key={campaign.id}
-                  className="group animate-fade-in"
-                  style={{ animationDelay: `${index * 0.1}s` }}
-                >
-                  <Card className="overflow-hidden cursor-pointer border-2 transition-all duration-300 hover:border-primary/40 hover:shadow-2xl hover:-translate-y-2 active:scale-95">
-                    <div className="aspect-[4/5] bg-gradient-dark relative">
-                      {campaign.cover_image_url ? (
-                        <LazyImage
-                          src={campaign.cover_image_url}
-                          alt={campaign.title}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-secondary">
-                          <div className="text-center text-secondary-foreground px-4">
-                            <Camera className="h-12 md:h-16 w-12 md:w-16 mx-auto mb-2 md:mb-4 text-primary" />
-                            <h3 className="text-lg md:text-xl font-bold mb-2">{campaign.title}</h3>
-                          </div>
-                        </div>
-                      )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                      <div className="absolute bottom-2 md:bottom-4 left-2 md:left-4 right-2 md:right-4 text-white">
-                        <h3 className="text-base md:text-xl font-bold mb-1 group-hover:text-primary transition-colors">{campaign.title}</h3>
-                        <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-4 text-xs md:text-sm">
-                          <div className="flex items-center gap-1">
-                            <MapPin className="h-3 w-3" />
-                            <span className="truncate">{campaign.location}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            <span>{new Date(campaign.event_date).toLocaleDateString('pt-BR')}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <CardContent className="p-3 md:p-4">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <p className="text-xs md:text-sm text-muted-foreground truncate">
-                            Por: {campaign.photographer?.full_name}
-                          </p>
-                        </div>
-                        <Button size="sm" className="text-xs md:text-sm">
-                          Ver Fotos
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
+                  campaign={campaign}
+                  index={index}
+                />
               ))}
             </div>
           </>

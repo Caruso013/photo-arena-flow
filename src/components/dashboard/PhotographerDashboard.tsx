@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { MaskedInput, masks } from '@/components/ui/masked-input';
 import { Upload, Camera, DollarSign, BarChart3, Plus, Eye, Edit, CreditCard, AlertCircle, CalendarPlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -85,6 +86,25 @@ const PhotographerDashboard = () => {
   const [isRequestingPayout, setIsRequestingPayout] = useState(false);
   const [payoutError, setPayoutError] = useState('');
   const [pixKey, setPixKey] = useState('');
+  const [pixKeyType, setPixKeyType] = useState<'cpf' | 'cnpj' | 'email' | 'phone' | 'random' | null>(null);
+  
+  // Detectar tipo de chave PIX automaticamente
+  const detectPixKeyType = (value: string) => {
+    const cleanValue = value.replace(/\D/g, '');
+    
+    if (/^\d+$/.test(cleanValue)) {
+      if (cleanValue.length <= 11) return 'cpf';
+      if (cleanValue.length <= 14) return 'cnpj';
+      if (cleanValue.length <= 11) return 'phone';
+    }
+    if (/@/.test(value)) return 'email';
+    return 'random';
+  };
+  
+  const handlePixKeyChange = (value: string) => {
+    setPixKey(value);
+    setPixKeyType(detectPixKeyType(value));
+  };
   const [recipientName, setRecipientName] = useState('');
   const [institution, setInstitution] = useState('');
   const [availableBalance, setAvailableBalance] = useState(0);
@@ -712,14 +732,51 @@ const PhotographerDashboard = () => {
       
                   <div>
                     <Label htmlFor="pix-key">Chave PIX</Label>
-                    <Input
-                      id="pix-key"
-                      type="text"
-                      placeholder="Chave PIX (CPF/CNPJ, e-mail ou chave aleatória)"
-                      value={pixKey}
-                      onChange={(e) => setPixKey(e.target.value)}
-                      className="mt-2"
-                    />
+                    {pixKeyType === 'cpf' ? (
+                      <MaskedInput
+                        id="pix-key"
+                        mask={masks.cpf}
+                        placeholder="000.000.000-00"
+                        value={pixKey}
+                        onChange={(e) => handlePixKeyChange(e.target.value)}
+                        className="mt-2"
+                      />
+                    ) : pixKeyType === 'cnpj' ? (
+                      <MaskedInput
+                        id="pix-key"
+                        mask={masks.cnpj}
+                        placeholder="00.000.000/0000-00"
+                        value={pixKey}
+                        onChange={(e) => handlePixKeyChange(e.target.value)}
+                        className="mt-2"
+                      />
+                    ) : pixKeyType === 'phone' ? (
+                      <MaskedInput
+                        id="pix-key"
+                        mask={masks.phone}
+                        placeholder="(11) 99999-9999"
+                        value={pixKey}
+                        onChange={(e) => handlePixKeyChange(e.target.value)}
+                        className="mt-2"
+                      />
+                    ) : (
+                      <Input
+                        id="pix-key"
+                        type="text"
+                        placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória"
+                        value={pixKey}
+                        onChange={(e) => handlePixKeyChange(e.target.value)}
+                        className="mt-2"
+                      />
+                    )}
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {pixKeyType === 'cpf' && 'Formato: CPF'}
+                      {pixKeyType === 'cnpj' && 'Formato: CNPJ'}
+                      {pixKeyType === 'phone' && 'Formato: Telefone'}
+                      {pixKeyType === 'email' && 'Formato: E-mail'}
+                      {pixKeyType === 'random' && 'Formato: Chave aleatória'}
+                      {!pixKeyType && 'Digite para detectar o tipo automaticamente'}
+                    </p>
                   </div>
 
                   <div>

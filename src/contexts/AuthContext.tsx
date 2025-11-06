@@ -2,6 +2,8 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
+import { logger } from '@/lib/logger';
+import { handleError } from '@/lib/errorHandler';
 
 export type UserRole = 'user' | 'photographer' | 'admin' | 'organizer';
 export type OrganizationRole = 'admin' | 'organization' | 'photographer' | 'user';
@@ -19,7 +21,7 @@ interface AuthContextType {
   session: Session | null;
   profile: UserProfile | null;
   loading: boolean;
-  signUp: (email: string, password: string, fullName?: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, fullName?: string, role?: UserRole) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<UserProfile>) => Promise<{ error: Error | null }>;
@@ -110,7 +112,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 setLoading(false);
               }
             } catch (error) {
-              console.error('Error fetching profile:', error);
+              logger.error('Error fetching profile:', error);
               if (mounted) {
                 setProfile(null);
                 setLoading(false);
@@ -129,7 +131,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!mounted) return;
       
       if (error) {
-        console.error('Error getting session:', error);
+        logger.error('Error getting session:', error);
         // If there's an error getting session, clear everything
         setSession(null);
         setUser(null);
@@ -159,7 +161,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  const signUp = async (email: string, password: string, fullName?: string) => {
+  const signUp = async (email: string, password: string, fullName?: string, role: UserRole = 'user') => {
     
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -168,34 +170,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         emailRedirectTo: `${window.location.origin}/`,
         data: {
           full_name: fullName,
+          role: role,
         },
       },
     });
 
     if (error) {
-      console.error('Erro no cadastro:', error);
-      let errorMessage = "Não foi possível criar sua conta. ";
-      
-      if (error.message.includes('already registered')) {
-        errorMessage = "Este email já está cadastrado. Tente fazer login.";
-      } else if (error.message.includes('password')) {
-        errorMessage = "A senha deve conter pelo menos 6 caracteres, incluindo letras, números e símbolos.";
-      } else if (error.message.includes('email')) {
-        errorMessage = "Por favor, digite um email válido.";
-      } else {
-        errorMessage += "Entre em contato: contato@stafotos.com";
-      }
-      
-      toast({
-        title: "Erro no cadastro",
-        description: errorMessage,
-        variant: "destructive",
+      logger.error('Erro no cadastro:', error);
+      handleError(error, { 
+        context: 'signup',
+        showToast: true 
       });
     } else {
       
+      const roleLabel = role === 'photographer' ? 'fotógrafo' : 'usuário';
       toast({
         title: "Cadastro realizado com sucesso! ✅",
-        description: "Verifique seu email para confirmar a conta. Se não receber em alguns minutos, verifique a pasta de spam ou entre em contato.",
+        description: `Conta de ${roleLabel} criada! Verifique seu email para confirmar. Se não receber em alguns minutos, verifique a pasta de spam.`,
       });
 
       // Enviar email de boas-vindas em background (não bloqueia o cadastro)
@@ -203,15 +194,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         try {
           const { data: emailData, error: emailError } = await supabase.functions.invoke('send-welcome-email', {
-            body: { email, fullName: fullName || 'Usuário' }
+            body: { email, fullName: fullName || 'Usuário', role }
           });
           
           if (emailError) {
-            console.error('❌ Erro ao enviar email de boas-vindas:', emailError);
-          } else {
+            logger.error('Erro ao enviar email de boas-vindas:', emailError);
           }
         } catch (emailError) {
-          console.error('❌ Exceção ao enviar email de boas-vindas:', emailError);
+          logger.error('Exceção ao enviar email de boas-vindas:', emailError);
         }
       }, 0);
     }
@@ -226,24 +216,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     if (error) {
-      console.error('Erro no login:', error);
-      let errorMessage = "Não foi possível fazer login. ";
-      
-      if (error.message.includes('Invalid login')) {
-        errorMessage = "Email ou senha incorretos. Verifique suas credenciais.";
-      } else if (error.message.includes('Email not confirmed')) {
-        errorMessage = "Confirme seu email antes de fazer login. Verifique sua caixa de entrada.";
-      } else if (error.message.includes('Too many requests')) {
-        errorMessage = "Muitas tentativas. Aguarde alguns minutos e tente novamente.";
-      } else {
-        errorMessage += "Entre em contato: contato@stafotos.com";
-      }
-      
-      toast({
-        title: "Erro no login",
-        description: errorMessage,
-        variant: "destructive",
+      logger.error('Erro no login:', error);
+      handleError(error, { 
+        context: 'login',
+        showToast: true 
       });
+    } else if (data?.user) {
+      // Carregar o perfil imediatamente após login bem-sucedido
+      const profileData = await fetchProfile(data.user.id);
+      if (profileData) {
+        setProfile(profileData);
+      }
     }
     
     return { error };
@@ -304,11 +287,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .eq('id', user.id);
 
     if (error) {
-      console.error('Erro ao atualizar perfil:', error);
-      toast({
-        title: "Erro ao atualizar perfil",
-        description: "Não foi possível atualizar suas informações. Tente novamente ou entre em contato: contato@stafotos.com",
-        variant: "destructive",
+      logger.error('Erro ao atualizar perfil:', error);
+      handleError(error, { 
+        context: 'update_profile',
+        showToast: true 
       });
     } else {
       // Refresh profile data
