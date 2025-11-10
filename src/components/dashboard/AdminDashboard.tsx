@@ -244,8 +244,8 @@ const AdminDashboard = () => {
                 value={organizations.filter(o => o.is_active).length}
                 subtitle={`${organizations.length} total`}
                 icon={Building2}
-                iconColor="bg-blue-500 text-white"
-                bgGradient="from-blue-50 to-blue-100"
+                iconColor="bg-primary text-primary-foreground"
+                bgGradient="from-primary/10 to-primary/20"
               />
               
               <StatCard
@@ -253,8 +253,8 @@ const AdminDashboard = () => {
                 value={users.length}
                 subtitle="Total na plataforma"
                 icon={Users}
-                iconColor="bg-green-500 text-white"
-                bgGradient="from-green-50 to-green-100"
+                iconColor="bg-accent text-accent-foreground"
+                bgGradient="from-accent/10 to-accent/20"
               />
               
               <StatCard
@@ -262,8 +262,8 @@ const AdminDashboard = () => {
                 value={campaigns.filter(c => c.is_active).length}
                 subtitle={`${campaigns.length} total`}
                 icon={Camera}
-                iconColor="bg-purple-500 text-white"
-                bgGradient="from-purple-50 to-purple-100"
+                iconColor="bg-secondary text-secondary-foreground"
+                bgGradient="from-secondary/10 to-secondary/20"
               />
               
               <StatCard
@@ -271,8 +271,8 @@ const AdminDashboard = () => {
                 value={eventApplications.filter(app => app.status === 'pending').length}
                 subtitle="Requer aprovação"
                 icon={UserCheck}
-                iconColor="bg-orange-500 text-white"
-                bgGradient="from-orange-50 to-orange-100"
+                iconColor="bg-muted text-muted-foreground"
+                bgGradient="from-muted/30 to-muted/50"
               />
             </div>
 

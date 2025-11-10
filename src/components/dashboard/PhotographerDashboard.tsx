@@ -427,75 +427,75 @@ const PhotographerDashboard = () => {
 
         {/* Stats Cards - métricas do fotógrafo */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 border-2 hover:border-blue-500/20 animate-fade-in">
+          <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 border-2 hover:border-primary/20 animate-fade-in">
             <CardContent className="p-0">
-              <div className="flex items-center p-6">
+              <div className="flex items-center p-4 sm:p-6">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-muted-foreground mb-1">Vendas Totais</p>
-                  <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground mb-1">Vendas Totais</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-primary">
                     {stats.totalSales}
                   </p>
                 </div>
-                <div className="flex items-center justify-center h-12 w-12 rounded-full bg-blue-500/10 flex-shrink-0">
-                  <BarChart3 className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                <div className="flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-primary/10 flex-shrink-0">
+                  <BarChart3 className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 border-2 hover:border-purple-500/20 animate-fade-in" style={{ animationDelay: '0.1s' }}>
+          <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 border-2 hover:border-accent/20 animate-fade-in" style={{ animationDelay: '0.1s' }}>
             <CardContent className="p-0">
-              <div className="flex items-center p-6">
+              <div className="flex items-center p-4 sm:p-6">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-muted-foreground mb-1">Vendas no Mês</p>
-                  <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground mb-1">Vendas no Mês</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-accent-foreground">
                     {stats.monthlySales}
                   </p>
                 </div>
-                <div className="flex items-center justify-center h-12 w-12 rounded-full bg-purple-500/10 flex-shrink-0">
-                  <Camera className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                <div className="flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-accent flex-shrink-0">
+                  <Camera className="h-5 w-5 sm:h-6 sm:w-6 text-accent-foreground" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 border-2 border-amber-500/40 bg-amber-50/30 dark:bg-amber-950/20 animate-fade-in" style={{ animationDelay: '0.2s' }}>
+          <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 border-2 border-muted bg-muted/30 animate-fade-in" style={{ animationDelay: '0.2s' }}>
             <CardContent className="p-0">
-              <div className="flex items-center p-6">
+              <div className="flex items-center p-4 sm:p-6">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground mb-1">
                     🔒 A Receber
                   </p>
-                  <p className="text-3xl font-bold text-amber-600 dark:text-amber-400">
+                  <p className="text-2xl sm:text-3xl font-bold text-foreground">
                     {formatCurrency(stats.pendingAmount)}
                   </p>
-                  <p className="text-xs text-amber-700 dark:text-amber-300 mt-1 font-medium">
+                  <p className="text-[10px] sm:text-xs text-muted-foreground mt-1 font-medium">
                     ⏳ Vendas &lt; 12h atrás
                   </p>
                 </div>
-                <div className="flex items-center justify-center h-12 w-12 rounded-full bg-amber-500/20 flex-shrink-0">
-                  <CreditCard className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+                <div className="flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-muted flex-shrink-0">
+                  <CreditCard className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 border-2 border-green-500/40 bg-green-50/30 dark:bg-green-950/20 animate-fade-in" style={{ animationDelay: '0.3s' }}>
+          <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 border-2 border-primary/40 bg-primary/5 animate-fade-in" style={{ animationDelay: '0.3s' }}>
             <CardContent className="p-0">
-              <div className="flex items-center p-6">
+              <div className="flex items-center p-4 sm:p-6">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-green-800 dark:text-green-200 mb-1">
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground mb-1">
                     ✅ Disponível pra Repasse
                   </p>
-                  <p className="text-3xl font-bold text-green-600 dark:text-green-400">
+                  <p className="text-2xl sm:text-3xl font-bold text-primary">
                     {formatCurrency(stats.availableAmount)}
                   </p>
-                  <p className="text-xs text-green-700 dark:text-green-300 mt-1 font-medium">
+                  <p className="text-[10px] sm:text-xs text-muted-foreground mt-1 font-medium">
                     💰 Vendas após 12h
                   </p>
                 </div>
-                <div className="flex items-center justify-center h-12 w-12 rounded-full bg-green-500/20 flex-shrink-0">
-                  <DollarSign className="h-6 w-6 text-green-600 dark:text-green-400" />
+                <div className="flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-primary/10 flex-shrink-0">
+                  <DollarSign className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
                 </div>
               </div>
             </CardContent>
@@ -504,20 +504,20 @@ const PhotographerDashboard = () => {
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="campaigns" className="space-y-6">
-          <TabsList className="grid w-full max-w-3xl grid-cols-4">
-            <TabsTrigger value="campaigns" className="gap-2">
-              <Camera className="h-4 w-4" />
-              Meus Eventos
+          <TabsList className="grid w-full max-w-3xl grid-cols-2 sm:grid-cols-4 h-auto sm:h-10 p-1">
+            <TabsTrigger value="campaigns" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-2 py-2 sm:py-0 h-14 sm:h-9">
+              <Camera className="h-4 w-4 flex-shrink-0" />
+              <span className="text-xs sm:text-sm">Eventos</span>
             </TabsTrigger>
-            <TabsTrigger value="photos" className="gap-2">
-              <Eye className="h-4 w-4" />
-              Minhas Fotos
+            <TabsTrigger value="photos" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-2 py-2 sm:py-0 h-14 sm:h-9">
+              <Eye className="h-4 w-4 flex-shrink-0" />
+              <span className="text-xs sm:text-sm">Fotos</span>
             </TabsTrigger>
-            <TabsTrigger value="payouts" className="gap-2">
-              <CreditCard className="h-4 w-4" />
-              Repasses
+            <TabsTrigger value="payouts" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-2 py-2 sm:py-0 h-14 sm:h-9">
+              <CreditCard className="h-4 w-4 flex-shrink-0" />
+              <span className="text-xs sm:text-sm">Repasses</span>
             </TabsTrigger>
-            <TabsTrigger value="profile" className="gap-2">
+            <TabsTrigger value="profile" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-2 py-2 sm:py-0 h-14 sm:h-9">
               <Edit className="h-4 w-4" />
               Perfil
             </TabsTrigger>
