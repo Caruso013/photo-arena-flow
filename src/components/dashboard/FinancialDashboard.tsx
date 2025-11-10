@@ -401,7 +401,7 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
   return (
     <div className="space-y-6">
       {/* Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
         <Card className="hover:shadow-lg transition-all hover:-translate-y-1 border-2 border-primary/20">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Receita Total</CardTitle>
@@ -410,7 +410,7 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-primary">
+            <div className="text-2xl sm:text-3xl font-bold text-primary">
               {formatCurrency(totalRevenue)}
             </div>
             <p className="text-xs text-muted-foreground mt-2">
@@ -422,12 +422,12 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
         <Card className="hover:shadow-lg transition-all hover:-translate-y-1">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Fotógrafos Ativos</CardTitle>
-            <div className="p-2 bg-blue-500/10 rounded-lg">
-              <Users className="h-5 w-5 text-blue-600" />
+            <div className="p-2 bg-accent/10 rounded-lg">
+              <Users className="h-5 w-5 text-accent-foreground" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{photographerStats.length}</div>
+            <div className="text-2xl sm:text-3xl font-bold">{photographerStats.length}</div>
             <p className="text-xs text-muted-foreground mt-2">
               Com vendas este período
             </p>
@@ -437,12 +437,12 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
         <Card className="hover:shadow-lg transition-all hover:-translate-y-1">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Fotos Vendidas</CardTitle>
-            <div className="p-2 bg-green-500/10 rounded-lg">
-              <Camera className="h-5 w-5 text-green-600" />
+            <div className="p-2 bg-secondary/10 rounded-lg">
+              <Camera className="h-5 w-5 text-secondary-foreground" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">
+            <div className="text-2xl sm:text-3xl font-bold">
               {photographerStats.reduce((sum, p) => sum + p.total_photos, 0)}
             </div>
             <p className="text-xs text-muted-foreground mt-2">
@@ -452,15 +452,15 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
         </Card>
 
         {userRole === 'photographer' && userStats && (
-          <Card className="hover:shadow-lg transition-all hover:-translate-y-1 border-2 border-yellow-500/30 bg-gradient-to-br from-yellow-50/50 to-transparent dark:from-yellow-950/20">
+          <Card className="hover:shadow-lg transition-all hover:-translate-y-1 border-2 border-primary/30 bg-primary/5">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Sua Posição</CardTitle>
-              <div className="p-2 bg-yellow-500/10 rounded-lg">
-                <Target className="h-5 w-5 text-yellow-600" />
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <Target className="h-5 w-5 text-primary" />
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">#{userStats.rank}</div>
+              <div className="text-2xl sm:text-3xl font-bold">#{userStats.rank}</div>
               <p className="text-xs text-muted-foreground mt-2">
                 {formatCurrency(userStats.total_revenue)} em vendas
               </p>

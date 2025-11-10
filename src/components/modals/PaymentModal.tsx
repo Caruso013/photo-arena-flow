@@ -205,7 +205,7 @@ export default function PaymentModal({
                 />
                 <div className="flex-1">
                   <h4 className="font-medium">{itemsToProcess[0].title || 'Foto'}</h4>
-                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                  <p className="text-2xl font-bold text-primary">
                     {formatCurrency(totalPrice)}
                   </p>
                 </div>
@@ -226,16 +226,16 @@ export default function PaymentModal({
                       />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{item.title || 'Foto'}</p>
-                        <p className="text-sm font-bold text-green-600">
+                        <p className="text-sm font-bold text-primary">
                           {formatCurrency(item.price || 0)}
                         </p>
                       </div>
                     </div>
                   ))}
                 </div>
-                <div className="flex justify-between items-center pt-2 border-t">
+                <div className="flex justify-between items-center pt-2 border-t border-border">
                   <span className="font-bold">Total:</span>
-                  <span className="text-2xl font-bold text-green-600">
+                  <span className="text-2xl font-bold text-primary">
                     {formatCurrency(totalPrice)}
                   </span>
                 </div>
@@ -287,10 +287,10 @@ export default function PaymentModal({
                   value={buyerData.phone}
                   onChange={(e) => handleInputChange('phone', e.target.value)}
                   placeholder="(11) 99999-9999"
-                  className={buyerData.phone && buyerData.phone.length < 10 ? 'border-red-500' : ''}
+                  className={buyerData.phone && buyerData.phone.length < 10 ? 'border-destructive' : ''}
                 />
                 {buyerData.phone && buyerData.phone.length < 10 && (
-                  <p className="text-sm text-red-500">Digite o telefone completo (DDD + número)</p>
+                  <p className="text-sm text-destructive">Digite o telefone completo (DDD + número)</p>
                 )}
               </div>
 
@@ -302,16 +302,16 @@ export default function PaymentModal({
                   value={buyerData.document}
                   onChange={(e) => handleInputChange('document', e.target.value)}
                   placeholder="000.000.000-00"
-                  className={buyerData.document && buyerData.document.length < 11 ? 'border-red-500' : ''}
+                  className={buyerData.document && buyerData.document.length < 11 ? 'border-destructive' : ''}
                 />
                 {buyerData.document && buyerData.document.length === 11 && !validateCPF(buyerData.document) && (
-                  <div className="flex items-center gap-1 text-sm text-red-500">
+                  <div className="flex items-center gap-1 text-sm text-destructive">
                     <AlertCircle className="h-3.5 w-3.5" />
                     <span>CPF inválido</span>
                   </div>
                 )}
                 {buyerData.document && buyerData.document.length < 11 && (
-                  <p className="text-sm text-red-500">CPF deve conter 11 dígitos</p>
+                  <p className="text-sm text-destructive">CPF deve conter 11 dígitos</p>
                 )}
               </div>
             </div>
@@ -372,7 +372,7 @@ export default function PaymentModal({
                 <h4 className="font-medium text-sm">
                   {totalItems === 1 ? itemsToProcess[0].title || 'Foto' : `${totalItems} fotos`}
                 </h4>
-                <p className="text-xl font-bold text-green-600 dark:text-green-400">
+                <p className="text-xl font-bold text-primary">
                   {formatCurrency(totalPrice)}
                 </p>
               </div>
