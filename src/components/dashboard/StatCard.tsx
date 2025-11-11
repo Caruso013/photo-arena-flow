@@ -26,7 +26,7 @@ export default function StatCard({
   bgGradient = "from-background to-background"
 }: StatCardProps) {
   return (
-    <Card className={`relative overflow-hidden bg-gradient-to-br ${bgGradient} dark:from-card dark:to-secondary border dark:border-border shadow-md hover:shadow-lg transition-all duration-200`}>
+    <Card className={`relative overflow-hidden bg-gradient-to-br ${bgGradient} dark:from-card dark:to-secondary border dark:border-border shadow-md hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 cursor-pointer group`}>
       <CardContent className="p-4 sm:p-6">
         <div className="flex items-center justify-between">
           <div className="space-y-1 flex-1 min-w-0">
@@ -50,7 +50,7 @@ export default function StatCard({
               <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{subtitle}</p>
             )}
           </div>
-          <div className={`flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full ${iconColor} flex-shrink-0 ml-2`}>
+          <div className={`flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full ${iconColor} flex-shrink-0 ml-2 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6`}>
             <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
           </div>
         </div>
