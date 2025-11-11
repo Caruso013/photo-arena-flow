@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { MaskedInput, masks } from '@/components/ui/masked-input';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Upload, Camera, DollarSign, BarChart3, Plus, Eye, Edit, CreditCard, AlertCircle, CalendarPlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -19,6 +20,8 @@ import CreateCampaignModal from '@/components/modals/CreateCampaignModal';
 import CreateAlbumModal from '@/components/modals/CreateAlbumModal';
 import EditCampaignCoverModal from '@/components/modals/EditCampaignCoverModal';
 import { ProfileEditor } from '../profile/ProfileEditor';
+import { SalesChart } from './SalesChart';
+import { useSalesData } from '@/hooks/useSalesData';
 
 interface Campaign {
   id: string;
@@ -66,6 +69,7 @@ interface PayoutRequest {
 
 const PhotographerDashboard = () => {
   const { profile, user } = useAuth();
+  const { data: salesData, loading: loadingSales } = useSalesData(30, user?.id);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [allPhotos, setAllPhotos] = useState<Photo[]>([]); // Todas as fotos para a aba
@@ -503,8 +507,12 @@ const PhotographerDashboard = () => {
         </div>
 
         {/* Main Content Tabs */}
-        <Tabs defaultValue="campaigns" className="space-y-6">
-          <TabsList className="grid w-full max-w-3xl grid-cols-2 sm:grid-cols-4 h-auto sm:h-10 p-1">
+        <Tabs defaultValue="analytics" className="space-y-6">
+          <TabsList className="grid w-full max-w-4xl grid-cols-2 sm:grid-cols-5 h-auto sm:h-10 p-1">
+            <TabsTrigger value="analytics" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-2 py-2 sm:py-0 h-14 sm:h-9">
+              <BarChart3 className="h-4 w-4 flex-shrink-0" />
+              <span className="text-xs sm:text-sm">Analytics</span>
+            </TabsTrigger>
             <TabsTrigger value="campaigns" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-2 py-2 sm:py-0 h-14 sm:h-9">
               <Camera className="h-4 w-4 flex-shrink-0" />
               <span className="text-xs sm:text-sm">Eventos</span>
@@ -522,6 +530,21 @@ const PhotographerDashboard = () => {
               Perfil
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="analytics">
+            {loadingSales ? (
+              <div className="space-y-4">
+                <Skeleton className="h-[300px] w-full" />
+              </div>
+            ) : (
+              <SalesChart 
+                data={salesData} 
+                title="Minhas Vendas - Últimos 30 Dias"
+                description="Acompanhe a evolução das suas vendas e receita"
+                type="area"
+              />
+            )}
+          </TabsContent>
 
           <TabsContent value="campaigns" className="space-y-4">
             <div className="flex justify-between items-center">
