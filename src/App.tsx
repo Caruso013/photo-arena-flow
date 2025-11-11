@@ -10,6 +10,7 @@ import { SearchProvider } from "@/contexts/SearchContext";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import UploadManager from "@/components/UploadManager";
 import { useServiceWorker } from "@/hooks/useServiceWorker";
+import { useWebVitals } from "@/hooks/useWebVitals";
 import { lazy, Suspense } from "react";
 
 // Páginas principais (carregamento imediato)
@@ -81,6 +82,12 @@ const queryClient = new QueryClient({
 // Componente interno para usar hooks
 const AppContent = () => {
   const { isSupported } = useServiceWorker();
+  
+  // Rastrear Web Vitals (CLS, INP, FCP, LCP, TTFB)
+  useWebVitals({
+    reportToConsole: import.meta.env.DEV,
+    reportToSentry: import.meta.env.PROD,
+  });
 
   return (
     <HashRouter

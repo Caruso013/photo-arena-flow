@@ -9,7 +9,8 @@ import {
   Calendar, 
   Folder, 
   ChevronRight,
-  Image as ImageIcon 
+  Image as ImageIcon,
+  X
 } from 'lucide-react';
 import { LazyImage } from '@/components/ui/lazy-image';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,6 +19,15 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+  SheetClose,
+} from "@/components/ui/sheet";
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface SubEvent {
   id: string;
@@ -48,6 +58,8 @@ export const EventCard: React.FC<EventCardProps> = ({ campaign, index }) => {
   const [subEvents, setSubEvents] = useState<SubEvent[]>([]);
   const [loadingSubEvents, setLoadingSubEvents] = useState(false);
   const [totalPhotos, setTotalPhotos] = useState(0);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     fetchSubEvents();
@@ -149,62 +161,130 @@ export const EventCard: React.FC<EventCardProps> = ({ campaign, index }) => {
                 Por: {campaign.photographer?.full_name}
               </p>
               
-              {/* Pastas/Sub-eventos */}
+              {/* Pastas/Sub-eventos - Mobile usa Sheet, Desktop usa HoverCard */}
               {subEvents.length > 0 && (
-                <HoverCard openDelay={200}>
-                  <HoverCardTrigger asChild>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="h-auto p-0 text-xs text-muted-foreground hover:text-primary hover:bg-transparent"
-                    >
-                      <Folder className="h-3 w-3 mr-1" />
-                      {subEvents.length} {subEvents.length === 1 ? 'pasta' : 'pastas'}
-                      <ChevronRight className="h-3 w-3 ml-1" />
-                    </Button>
-                  </HoverCardTrigger>
-                  <HoverCardContent 
-                    className="w-80 p-3" 
-                    align="start"
-                    side="top"
-                  >
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 mb-3">
-                        <Folder className="h-4 w-4 text-primary" />
-                        <h4 className="font-semibold text-sm">Pastas do Evento</h4>
-                      </div>
-                      <div className="space-y-1.5 max-h-60 overflow-y-auto">
-                        {subEvents.map((subEvent) => (
-                          <Link 
-                            key={subEvent.id}
-                            to={`/campaign/${campaign.id}`}
-                            className="block"
-                          >
-                            <div className="flex items-start gap-2 p-2 rounded-md hover:bg-accent transition-colors group/item">
-                              <div className="w-12 h-12 bg-muted rounded flex items-center justify-center flex-shrink-0">
-                                <Folder className="h-5 w-5 text-muted-foreground" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium line-clamp-1 group-hover/item:text-primary transition-colors">
-                                  {subEvent.title}
-                                </p>
-                                {subEvent.location && (
-                                  <p className="text-xs text-muted-foreground truncate flex items-center gap-1 mt-0.5">
-                                    <MapPin className="h-3 w-3 flex-shrink-0" />
-                                    {subEvent.location}
-                                  </p>
-                                )}
-                                <p className="text-xs text-muted-foreground mt-0.5">
-                                  {subEvent.photo_count} {subEvent.photo_count === 1 ? 'foto' : 'fotos'}
-                                </p>
-                              </div>
+                <>
+                  {isMobile ? (
+                    <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+                      <SheetTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-auto p-0 text-xs text-muted-foreground hover:text-primary hover:bg-transparent"
+                        >
+                          <Folder className="h-3 w-3 mr-1" />
+                          {subEvents.length} {subEvents.length === 1 ? 'pasta' : 'pastas'}
+                          <ChevronRight className="h-3 w-3 ml-1" />
+                        </Button>
+                      </SheetTrigger>
+                      <SheetContent side="bottom" className="h-[85vh] rounded-t-2xl p-0">
+                        <SheetHeader className="p-4 border-b sticky top-0 bg-background z-10">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Folder className="h-5 w-5 text-primary" />
+                              <SheetTitle className="text-lg">Pastas do Evento</SheetTitle>
                             </div>
-                          </Link>
-                        ))}
-                      </div>
-                    </div>
-                  </HoverCardContent>
-                </HoverCard>
+                            <SheetClose asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </SheetClose>
+                          </div>
+                          <p className="text-sm text-muted-foreground text-left">
+                            {campaign.title}
+                          </p>
+                        </SheetHeader>
+                        <div className="p-4 space-y-2 overflow-y-auto h-[calc(85vh-80px)]">
+                          {subEvents.map((subEvent) => (
+                            <Link 
+                              key={subEvent.id}
+                              to={`/campaign/${campaign.id}`}
+                              className="block"
+                              onClick={() => setSheetOpen(false)}
+                            >
+                              <div className="flex items-start gap-3 p-3 rounded-lg bg-card border-2 border-border hover:border-primary transition-all active:scale-95">
+                                <div className="w-14 h-14 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
+                                  <Folder className="h-6 w-6 text-muted-foreground" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-base font-semibold line-clamp-2 mb-1">
+                                    {subEvent.title}
+                                  </p>
+                                  {subEvent.location && (
+                                    <p className="text-sm text-muted-foreground flex items-center gap-1 mb-1">
+                                      <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
+                                      <span className="truncate">{subEvent.location}</span>
+                                    </p>
+                                  )}
+                                  <Badge variant="secondary" className="text-xs">
+                                    <ImageIcon className="h-3 w-3 mr-1" />
+                                    {subEvent.photo_count} {subEvent.photo_count === 1 ? 'foto' : 'fotos'}
+                                  </Badge>
+                                </div>
+                                <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" />
+                              </div>
+                            </Link>
+                          ))}
+                        </div>
+                      </SheetContent>
+                    </Sheet>
+                  ) : (
+                    <HoverCard openDelay={200}>
+                      <HoverCardTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-auto p-0 text-xs text-muted-foreground hover:text-primary hover:bg-transparent"
+                        >
+                          <Folder className="h-3 w-3 mr-1" />
+                          {subEvents.length} {subEvents.length === 1 ? 'pasta' : 'pastas'}
+                          <ChevronRight className="h-3 w-3 ml-1" />
+                        </Button>
+                      </HoverCardTrigger>
+                      <HoverCardContent 
+                        className="w-80 p-3" 
+                        align="start"
+                        side="top"
+                      >
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 mb-3">
+                            <Folder className="h-4 w-4 text-primary" />
+                            <h4 className="font-semibold text-sm">Pastas do Evento</h4>
+                          </div>
+                          <div className="space-y-1.5 max-h-60 overflow-y-auto">
+                            {subEvents.map((subEvent) => (
+                              <Link 
+                                key={subEvent.id}
+                                to={`/campaign/${campaign.id}`}
+                                className="block"
+                              >
+                                <div className="flex items-start gap-2 p-2 rounded-md hover:bg-accent transition-colors group/item">
+                                  <div className="w-12 h-12 bg-muted rounded flex items-center justify-center flex-shrink-0">
+                                    <Folder className="h-5 w-5 text-muted-foreground" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium line-clamp-1 group-hover/item:text-primary transition-colors">
+                                      {subEvent.title}
+                                    </p>
+                                    {subEvent.location && (
+                                      <p className="text-xs text-muted-foreground truncate flex items-center gap-1 mt-0.5">
+                                        <MapPin className="h-3 w-3 flex-shrink-0" />
+                                        {subEvent.location}
+                                      </p>
+                                    )}
+                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                      {subEvent.photo_count} {subEvent.photo_count === 1 ? 'foto' : 'fotos'}
+                                    </p>
+                                  </div>
+                                </div>
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
+                      </HoverCardContent>
+                    </HoverCard>
+                  )}
+                </>
               )}
             </div>
             
