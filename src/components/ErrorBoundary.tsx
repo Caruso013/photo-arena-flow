@@ -1,4 +1,5 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
+import * as Sentry from '@sentry/react';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, Home, Mail, RefreshCw } from 'lucide-react';
 
@@ -9,6 +10,7 @@ interface Props {
 interface State {
   hasError: boolean;
   error?: Error;
+  eventId?: string;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
@@ -22,6 +24,15 @@ export class ErrorBoundary extends Component<Props, State> {
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Erro capturado pelo ErrorBoundary:', error, errorInfo);
+    
+    // Enviar erro para o Sentry
+    Sentry.withScope((scope) => {
+      scope.setContext('errorInfo', {
+        componentStack: errorInfo.componentStack,
+      });
+      const eventId = Sentry.captureException(error);
+      this.setState({ eventId });
+    });
   }
 
   private handleReload = () => {
@@ -69,6 +80,18 @@ export class ErrorBoundary extends Component<Props, State> {
                 <Home className="h-4 w-4" />
                 Voltar ao início
               </Button>
+              
+              {this.state.eventId && (
+                <Button 
+                  variant="secondary"
+                  onClick={() => Sentry.showReportDialog({ eventId: this.state.eventId })}
+                  className="gap-2 w-full"
+                  size="sm"
+                >
+                  <Mail className="h-4 w-4" />
+                  Reportar problema com detalhes
+                </Button>
+              )}
             </div>
             
             <div className="text-sm text-muted-foreground space-y-2">
