@@ -28,8 +28,10 @@ import {
   Building2,
   Clock,
   Folder,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Heart
 } from 'lucide-react';
+import { useFavorites } from '@/hooks/useFavorites';
 
 interface Campaign {
   id: string;
@@ -78,6 +80,7 @@ const Campaign = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { addToCart } = useCart();
+  const { toggleFavorite, isFavorited } = useFavorites();
   
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [campaignPhotographers, setCampaignPhotographers] = useState<Array<{ full_name: string; email: string }>>([]);
@@ -724,6 +727,23 @@ const Campaign = () => {
                           imgClassName="w-full h-full object-cover"
                           loading={index < 8 ? "eager" : "lazy"}
                         />
+                        
+                        {/* Botão Favorito */}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm hover:bg-background"
+                          onClick={() => toggleFavorite(photo.id)}
+                        >
+                          <Heart 
+                            className={`h-4 w-4 sm:h-5 sm:w-5 transition-all ${
+                              isFavorited(photo.id) 
+                                ? 'fill-destructive text-destructive' 
+                                : 'text-foreground'
+                            }`}
+                          />
+                        </Button>
+
                         <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
                           <Dialog>
                             <DialogTrigger asChild>

@@ -29,6 +29,9 @@ const Events = () => {
     dateFrom: '',
     dateTo: '',
     sortBy: 'recent',
+    photographer: '',
+    minPrice: '',
+    maxPrice: '',
   });
 
   const filteredCampaigns = useMemo(() => {
