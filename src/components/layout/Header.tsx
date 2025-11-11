@@ -5,6 +5,7 @@ import { useSearch } from '@/contexts/SearchContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
+import { NotificationBell } from '@/components/layout/NotificationBell';
 import { 
   Search, 
   User, 
@@ -72,6 +73,7 @@ const Header = () => {
           {/* Desktop Actions */}
           <div className="hidden md:flex items-center gap-3">
             <ThemeToggle />
+            <NotificationBell />
             
             {/* Cart Button */}
             <Link to="/cart">
