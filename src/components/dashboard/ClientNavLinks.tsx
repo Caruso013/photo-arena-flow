@@ -16,7 +16,7 @@ const ClientNavLinks = () => {
   ];
 
   return (
-    <nav className="border-b bg-card sticky top-16 z-30 md:static md:z-auto">
+    <nav className="border-b bg-background/95 backdrop-blur-sm sticky top-16 z-30 md:static md:z-auto shadow-sm">
       <div className="container px-4">
         <div className="flex items-center gap-1 overflow-x-auto">
           {navItems.map((item) => (
@@ -25,10 +25,10 @@ const ClientNavLinks = () => {
               to={item.url}
               className={({ isActive }) =>
                 cn(
-                  'flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap border-b-2',
+                  'flex items-center gap-2 px-4 py-3 text-sm font-medium transition-all whitespace-nowrap border-b-2',
                   isActive
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted'
+                    ? 'border-primary text-primary bg-primary/5'
+                    : 'border-transparent text-foreground/70 hover:text-foreground hover:bg-accent/50 hover:border-border'
                 )
               }
             >

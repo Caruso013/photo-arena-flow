@@ -45,6 +45,12 @@ const Financial = lazy(() => import("./pages/dashboard/Financial"));
 const Profile = lazy(() => import("./pages/dashboard/Profile"));
 const PhotographerApplication = lazy(() => import("./pages/dashboard/PhotographerApplication"));
 
+// Photographer routes (lazy)
+const PhotographerEvents = lazy(() => import("./pages/dashboard/photographer/PhotographerEvents"));
+const PhotographerEarnings = lazy(() => import("./pages/dashboard/photographer/PhotographerEarnings"));
+const PhotographerReports = lazy(() => import("./pages/dashboard/photographer/PhotographerReports"));
+const PhotographerSettings = lazy(() => import("./pages/dashboard/photographer/PhotographerSettings"));
+
 // Admin routes (lazy)
 const AdminOverview = lazy(() => import("./pages/dashboard/admin/Overview"));
 const AdminEvents = lazy(() => import("./pages/dashboard/admin/Events"));
@@ -120,6 +126,11 @@ const AppContent = () => {
             <Route path="admin/reports" element={<AdminReports />} />
             <Route path="admin/config" element={<AdminSystemConfig />} />
             <Route path="admin/coupons" element={<AdminCouponManagement />} />
+            <Route path="photographer/events" element={<PhotographerEvents />} />
+            <Route path="photographer/photos" element={<MyPhotos />} />
+            <Route path="photographer/earnings" element={<PhotographerEarnings />} />
+            <Route path="photographer/reports" element={<PhotographerReports />} />
+            <Route path="photographer/settings" element={<PhotographerSettings />} />
           </Route>
           <Route path="/events" element={<Events />} />
           <Route path="/cart" element={<Cart />} />
