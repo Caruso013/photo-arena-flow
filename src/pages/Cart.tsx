@@ -45,6 +45,10 @@ const Cart = () => {
 
   const handleCheckout = () => {
     if (totalItems === 0) return;
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
     setShowPayment(true);
   };
 

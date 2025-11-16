@@ -20,10 +20,14 @@ const PhotographerEarnings = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchEarnings();
-  }, [user]);
+    if (user?.id) {
+      fetchEarnings();
+    }
+  }, [user?.id]);
 
   const fetchEarnings = async () => {
+    if (!user?.id) return;
+    
     try {
       // Buscar todas as compras de fotos do fotógrafo
       const { data: purchases, error } = await supabase
@@ -32,7 +36,7 @@ const PhotographerEarnings = () => {
           *,
           photos!inner(photographer_id, price)
         `)
-        .eq('photos.photographer_id', user?.id);
+        .eq('photos.photographer_id', user.id);
 
       if (error) throw error;
 

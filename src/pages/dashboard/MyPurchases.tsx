@@ -58,7 +58,6 @@ const MyPurchases = () => {
         throw error;
       }
       
-      console.log('Purchases loaded:', data?.length || 0);
       setPurchases(data || []);
     } catch (error) {
       console.error('Error fetching purchases:', error);

@@ -77,11 +77,12 @@ export default function CreateEventDialog({ isOpen, onClose, onEventCreated }: C
       });
       
       onEventCreated();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating campaign:', error);
+      const errorMessage = error?.message || "Falha ao criar evento. Tente novamente.";
       toast({
-        title: "Erro",
-        description: "Falha ao criar evento. Tente novamente.",
+        title: "Erro ao criar evento",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
