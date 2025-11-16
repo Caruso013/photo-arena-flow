@@ -62,10 +62,8 @@ const Auth = () => {
     const { error } = await signIn(loginEmail, loginPassword);
     setIsLoading(false);
     
-    // Redirecionar automaticamente após login bem-sucedido
-    if (!error) {
-      navigate('/dashboard');
-    }
+    // NÃO redirecionar aqui - deixar o useEffect fazer isso
+    // O useEffect já redireciona quando user muda
   };
 
   const handleSignup = async (e: React.FormEvent) => {

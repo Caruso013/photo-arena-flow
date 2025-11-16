@@ -50,7 +50,7 @@ const MyPurchases = () => {
           )
         `)
         .eq('buyer_id', user?.id)
-        .in('status', ['pending', 'completed'])
+        .eq('status', 'completed') // Apenas compras confirmadas pelo webhook do Mercado Pago
         .order('created_at', { ascending: false });
 
       if (error) {

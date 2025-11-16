@@ -57,7 +57,6 @@ const DashboardSidebar = ({ isOpen, onToggle }: DashboardSidebarProps) => {
 
   const adminItems = [
     { title: 'Visão Geral', url: '/dashboard/admin', icon: LayoutDashboard },
-    { title: 'Eventos', url: '/dashboard/admin/events', icon: Calendar },
     { title: 'Fotógrafos', url: '/dashboard/admin/photographers', icon: Camera },
     { title: 'Usuários', url: '/dashboard/admin/users', icon: Users },
     { title: 'Organizações', url: '/dashboard/admin/organizations', icon: Building2 },

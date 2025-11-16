@@ -21,6 +21,7 @@ import NotFound from "./pages/NotFound";
 // Lazy loading para páginas secundárias
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Events = lazy(() => import("./pages/Events"));
+const Cart = lazy(() => import("./pages/Cart"));
 const Contato = lazy(() => import("./pages/Contato"));
 const AdminLogin = lazy(() => import("./pages/AdminLogin"));
 const Fotografos = lazy(() => import("./pages/Fotografos"));
@@ -53,6 +54,7 @@ const AdminOrganizations = lazy(() => import("./pages/dashboard/admin/Organizati
 const AdminFinancial = lazy(() => import("./pages/dashboard/admin/Financial"));
 const AdminReports = lazy(() => import("./pages/dashboard/admin/Reports"));
 const AdminSystemConfig = lazy(() => import("./pages/dashboard/admin/SystemConfig"));
+const AdminCouponManagement = lazy(() => import("./pages/dashboard/admin/CouponManagement"));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -117,8 +119,10 @@ const AppContent = () => {
             <Route path="admin/financial" element={<AdminFinancial />} />
             <Route path="admin/reports" element={<AdminReports />} />
             <Route path="admin/config" element={<AdminSystemConfig />} />
+            <Route path="admin/coupons" element={<AdminCouponManagement />} />
           </Route>
           <Route path="/events" element={<Events />} />
+          <Route path="/cart" element={<Cart />} />
           <Route path="/eventos-proximos" element={<EventosProximos />} />
           <Route path="/campaign/:id" element={<Campaign />} />
           <Route path="/contato" element={<Contato />} />

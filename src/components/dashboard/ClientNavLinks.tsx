@@ -1,22 +1,18 @@
 import { NavLink } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { 
-  Camera, 
   Calendar, 
-  TrendingUp, 
-  Building2, 
-  Activity, 
-  Users, 
-  Settings,
-  FileText,
-  Ticket
+  ShoppingCart, 
+  Heart,
+  Camera
 } from 'lucide-react';
 
-const AdminNavLinks = () => {
+const ClientNavLinks = () => {
   const navItems = [
-    { title: 'Eventos', url: '/dashboard/admin/events', icon: Calendar },
-    { title: 'Cupons', url: '/dashboard/admin/coupons', icon: Ticket },
-    { title: 'Config', url: '/dashboard/admin/config', icon: Settings },
+    { title: 'Eventos', url: '/dashboard', icon: Calendar },
+    { title: 'Minhas Compras', url: '/dashboard/purchases', icon: ShoppingCart },
+    { title: 'Favoritos', url: '/dashboard/favorites', icon: Heart },
+    { title: 'Seja Fotógrafo', url: '/dashboard/photographer-application', icon: Camera },
   ];
 
   return (
@@ -46,4 +42,4 @@ const AdminNavLinks = () => {
   );
 };
 
-export default AdminNavLinks;
+export default ClientNavLinks;

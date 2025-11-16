@@ -29,9 +29,11 @@ import {
   Clock,
   Folder,
   Image as ImageIcon,
-  Heart
+  Heart,
+  ScanFace
 } from 'lucide-react';
 import { useFavorites } from '@/hooks/useFavorites';
+import { FaceRecognitionModal } from '@/components/FaceRecognitionModal';
 
 interface Campaign {
   id: string;
@@ -45,6 +47,7 @@ interface Campaign {
   organization_id: string | null;
   created_at: string;
   photographer?: {
+    avatar_url: any;
     full_name: string;
     email: string;
   };
@@ -72,7 +75,6 @@ interface Photo {
   thumbnail_url: string | null;
   price: number;
   is_available: boolean;
-  sub_event_id: string | null;
 }
 
 const Campaign = () => {
@@ -83,7 +85,9 @@ const Campaign = () => {
   const { toggleFavorite, isFavorited } = useFavorites();
   
   const [campaign, setCampaign] = useState<Campaign | null>(null);
-  const [campaignPhotographers, setCampaignPhotographers] = useState<Array<{ full_name: string; email: string }>>([]);
+  const [campaignPhotographers, setCampaignPhotographers] = useState<Array<{
+    avatar_url: any; full_name: string; email: string 
+}>>([]);
   const [subEvents, setSubEvents] = useState<SubEvent[]>([]);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [selectedSubEvent, setSelectedSubEvent] = useState<string | null>(null);
@@ -93,6 +97,7 @@ const Campaign = () => {
   const [loadingPhotos, setLoadingPhotos] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
   const [albumPreviews, setAlbumPreviews] = useState<Record<string, string>>({});
+  const [showFaceRecognition, setShowFaceRecognition] = useState(false);
   
   // Paginação
   const [page, setPage] = useState(1);
@@ -136,16 +141,10 @@ const Campaign = () => {
       try {
         let query = supabase
           .from('photos')
-          .select('id, title, original_url, watermarked_url, thumbnail_url, price, is_available, sub_event_id')
+          .select('id, title, original_url, watermarked_url, thumbnail_url, price, is_available')
           .eq('campaign_id', id)
           .eq('is_available', true)
-          .range(from, to);
-
-        if (selectedSubEvent) {
-          query = query.eq('sub_event_id', selectedSubEvent);
-        }
-
-        query = query
+          .range(from, to)
           .order('upload_sequence', { ascending: true })
           .order('created_at', { ascending: true });
 
@@ -168,42 +167,11 @@ const Campaign = () => {
     }
   }, [page]);
 
-  // Otimização: Buscar previews em paralelo
+  // Otimização: Buscar previews em paralelo (desabilitado - sub_events não existe)
   useEffect(() => {
-    const fetchAlbumPreviews = async () => {
-      if (subEvents.length === 0) return;
-      
-      try {
-        // Buscar todos os previews em paralelo (muito mais rápido!)
-        const previewPromises = subEvents.map(async (subEvent) => {
-          const { data } = await supabase
-            .from('photos')
-            .select('thumbnail_url, watermarked_url')
-            .eq('sub_event_id', subEvent.id)
-            .eq('is_available', true)
-            .limit(1)
-            .maybeSingle();
-          
-          return { id: subEvent.id, url: data?.thumbnail_url || data?.watermarked_url };
-        });
-        
-        const results = await Promise.all(previewPromises);
-        
-        const previews: Record<string, string> = {};
-        results.forEach(result => {
-          if (result.url) {
-            previews[result.id] = result.url;
-          }
-        });
-        
-        setAlbumPreviews(previews);
-      } catch (error) {
-        // Silenciar erro de preview - não é crítico
-      }
-    };
-    
-    fetchAlbumPreviews();
-  }, [subEvents]);
+    // Funcionalidade desabilitada até sub_events ser implementado
+    // A tabela sub_events ainda não foi criada neste projeto
+  }, []);
 
   const fetchCampaign = async () => {
     if (!id) return;
@@ -214,7 +182,7 @@ const Campaign = () => {
         .select(`
           id, title, description, event_date, location, cover_image_url,
           is_active, photographer_id, organization_id, created_at,
-          photographer:profiles!campaigns_photographer_id_fkey(full_name, email),
+          photographer:profiles!campaigns_photographer_id_fkey(full_name, email, avatar_url),
           organization:organizations(name, description)
         `)
         .eq('id', id)
@@ -241,7 +209,7 @@ const Campaign = () => {
         .from('campaign_photographers')
         .select(`
           photographer_id,
-          profiles!campaign_photographers_photographer_id_fkey(full_name, email)
+          profiles!campaign_photographers_photographer_id_fkey(full_name, email, avatar_url)
         `)
         .eq('campaign_id', id)
         .eq('is_active', true);
@@ -250,7 +218,8 @@ const Campaign = () => {
       
       const photographers = (data || []).map((cp: any) => ({
         full_name: cp.profiles?.full_name || 'Fotógrafo',
-        email: cp.profiles?.email || ''
+        email: cp.profiles?.email || '',
+        avatar_url: cp.profiles?.avatar_url || null
       }));
       
       setCampaignPhotographers(photographers);
@@ -260,30 +229,9 @@ const Campaign = () => {
   };
 
   const fetchSubEvents = async () => {
-    if (!id) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('sub_events' as any)
-        .select(`
-          id, title, description, location, event_time, cover_image_url,
-          photos:photos(count)
-        `)
-        .eq('campaign_id', id)
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      
-      const subEventsWithCount = (data || []).map((se: any) => ({
-        ...se,
-        photo_count: se.photos?.[0]?.count || 0
-      }));
-      
-      setSubEvents(subEventsWithCount);
-    } catch (error) {
-      console.error('Error fetching sub events:', error);
-    }
+    // Tabela sub_events não existe ainda neste projeto
+    // Desabilitando funcionalidade de álbuns temporariamente
+    setSubEvents([]);
   };
 
   const fetchPhotos = async (pageNum: number) => {
@@ -302,10 +250,6 @@ const Campaign = () => {
         .eq('campaign_id', id)
         .eq('is_available', true);
 
-      if (selectedSubEvent) {
-        countQuery = countQuery.eq('sub_event_id', selectedSubEvent);
-      }
-
       const { count } = await countQuery;
       const total = count || 0;
       setTotalPages(Math.ceil(total / PHOTOS_PER_PAGE));
@@ -313,16 +257,10 @@ const Campaign = () => {
       // Depois buscar as fotos
       let query = supabase
         .from('photos')
-        .select('id, title, original_url, watermarked_url, thumbnail_url, price, is_available, sub_event_id')
+        .select('id, title, original_url, watermarked_url, thumbnail_url, price, is_available')
         .eq('campaign_id', id)
         .eq('is_available', true)
-        .range(from, to);
-
-      if (selectedSubEvent) {
-        query = query.eq('sub_event_id', selectedSubEvent);
-      }
-
-      query = query
+        .range(from, to)
         .order('upload_sequence', { ascending: true })
         .order('created_at', { ascending: true });
 
@@ -494,12 +432,29 @@ const Campaign = () => {
           </Button>
           
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowFaceRecognition(true)}
+              className="gap-1 h-9 text-xs sm:text-sm"
+              title="Buscar minhas fotos por reconhecimento facial"
+            >
+              <ScanFace className="h-4 w-4" />
+              <span className="hidden md:inline">Buscar por Rosto</span>
+            </Button>
             <CartDrawer />
             <Camera className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
             <span className="font-semibold text-sm sm:text-base">STA Fotos</span>
           </div>
         </div>
       </header>
+
+      {/* Modal de Reconhecimento Facial */}
+      <FaceRecognitionModal
+        open={showFaceRecognition}
+        onOpenChange={setShowFaceRecognition}
+        campaignId={id}
+      />
 
       <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
         {/* Campaign Header */}
@@ -549,10 +504,25 @@ const Campaign = () => {
               </CardHeader>
               <CardContent className="pt-0">
                 {campaignPhotographers.length > 0 ? (
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {campaignPhotographers.map((photographer, idx) => (
-                      <div key={idx} className="flex items-start gap-2">
-                        <User className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+                      <div key={idx} className="flex items-center gap-3">
+                        <div className="relative flex-shrink-0">
+                          {photographer.avatar_url ? (
+                            <img 
+                              src={photographer.avatar_url} 
+                              alt={photographer.full_name}
+                              className="h-10 w-10 sm:h-12 sm:w-12 rounded-full object-cover border-2 border-primary/20"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                                e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                              }}
+                            />
+                          ) : null}
+                          <div className={`${photographer.avatar_url ? 'hidden' : 'flex'} h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-primary/10 items-center justify-center border-2 border-primary/20`}>
+                            <Camera className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+                          </div>
+                        </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm sm:text-base font-bold text-foreground truncate">
                             {photographer.full_name}
@@ -565,15 +535,32 @@ const Campaign = () => {
                     ))}
                   </div>
                 ) : campaign.photographer ? (
-                  <>
-                    <p className="text-base sm:text-lg font-bold text-foreground truncate">
-                      {campaign.photographer.full_name}
-                    </p>
-                    <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1 mt-1">
-                      <User className="h-3 w-3 flex-shrink-0" />
-                      <span className="truncate">{campaign.photographer.email}</span>
-                    </p>
-                  </>
+                  <div className="flex items-center gap-3">
+                    <div className="relative flex-shrink-0">
+                      {campaign.photographer.avatar_url ? (
+                        <img 
+                          src={campaign.photographer.avatar_url} 
+                          alt={campaign.photographer.full_name}
+                          className="h-10 w-10 sm:h-12 sm:w-12 rounded-full object-cover border-2 border-primary/20"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                            e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                          }}
+                        />
+                      ) : null}
+                      <div className={`${campaign.photographer.avatar_url ? 'hidden' : 'flex'} h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-primary/10 items-center justify-center border-2 border-primary/20`}>
+                        <Camera className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+                      </div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-base sm:text-lg font-bold text-foreground truncate">
+                        {campaign.photographer.full_name}
+                      </p>
+                      <p className="text-xs sm:text-sm text-muted-foreground truncate">
+                        {campaign.photographer.email}
+                      </p>
+                    </div>
+                  </div>
                 ) : (
                   <p className="text-sm text-muted-foreground">Nenhum fotógrafo atribuído</p>
                 )}

@@ -222,11 +222,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         showToast: true 
       });
     } else if (data?.user) {
+      // Atualizar user e session imediatamente
+      setUser(data.user);
+      setSession(data.session);
+      
       // Carregar o perfil imediatamente após login bem-sucedido
       const profileData = await fetchProfile(data.user.id);
       if (profileData) {
         setProfile(profileData);
       }
+      
+      // Garantir que loading está false
+      setLoading(false);
     }
     
     return { error };
