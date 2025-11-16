@@ -4,13 +4,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-
+import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from '@/components/ui/use-toast';
-import { Settings, AlertCircle, Save } from 'lucide-react';
+import { Settings, AlertCircle, Save, Lock, Unlock } from 'lucide-react';
 
 const SystemConfig = () => {
-  const [platformPercentage, setPlatformPercentage] = useState(9);
+  const [fixedPercentage, setFixedPercentage] = useState(7); // Taxa fixa sempre 7%
+  const [variablePercentage, setVariablePercentage] = useState(3);
+  const [variableEnabled, setVariableEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -20,16 +22,31 @@ const SystemConfig = () => {
 
   const fetchConfig = async () => {
     try {
-      const { data, error } = await supabase
+      // Buscar configuração da taxa fixa
+      const { data: fixedData, error: fixedError } = await supabase
         .from('system_config' as any)
         .select('value')
         .eq('key', 'platform_percentage')
         .single() as any;
 
-      if (error) throw error;
+      if (fixedError) throw fixedError;
 
-      if (data && data.value && typeof data.value === 'object' && 'value' in data.value) {
-        setPlatformPercentage(Number(data.value.value));
+      // Buscar configuração da taxa variável
+      const { data: variableData, error: variableError } = await supabase
+        .from('system_config' as any)
+        .select('value')
+        .eq('key', 'variable_percentage')
+        .single() as any;
+
+      if (variableError) throw variableError;
+
+      if (fixedData?.value?.value) {
+        setFixedPercentage(Number(fixedData.value.value));
+      }
+
+      if (variableData?.value) {
+        setVariablePercentage(Number(variableData.value.value) || 0);
+        setVariableEnabled(variableData.value.enabled !== false);
       }
     } catch (error) {
       console.error('Error fetching config:', error);
@@ -44,11 +61,11 @@ const SystemConfig = () => {
   };
 
   const updateConfig = async () => {
-    // Validação: 5% a 20%
-    if (platformPercentage < 5 || platformPercentage > 20) {
+    // Validação: taxa variável 0% a 20%
+    if (variablePercentage < 0 || variablePercentage > 20) {
       toast({
         title: "Valor inválido",
-        description: "A porcentagem deve estar entre 5% e 20%",
+        description: "A taxa variável deve estar entre 0% e 20%",
         variant: "destructive",
       });
       return;
@@ -56,19 +73,27 @@ const SystemConfig = () => {
 
     setSaving(true);
     try {
-      const { error } = await supabase
+      // Atualizar taxa variável
+      const { error: variableError } = await supabase
         .from('system_config' as any)
         .update({
-          value: { value: platformPercentage, min: 5, max: 20 },
+          value: { 
+            value: variablePercentage, 
+            min: 0, 
+            max: 20,
+            enabled: variableEnabled 
+          },
           updated_at: new Date().toISOString()
         })
-        .eq('key', 'platform_percentage');
+        .eq('key', 'variable_percentage');
 
-      if (error) throw error;
+      if (variableError) throw variableError;
+
+      const totalPercentage = fixedPercentage + (variableEnabled ? variablePercentage : 0);
 
       toast({
         title: "Configuração atualizada!",
-        description: `A porcentagem da plataforma foi alterada para ${platformPercentage}%. Novos eventos usarão esta porcentagem.`,
+        description: `Taxa da plataforma: ${fixedPercentage}% fixo + ${variableEnabled ? variablePercentage : 0}% variável = ${totalPercentage}% total. Novos eventos usarão esta taxa.`,
       });
     } catch (error) {
       console.error('Error updating config:', error);
@@ -94,6 +119,9 @@ const SystemConfig = () => {
     );
   }
 
+  const totalPercentage = fixedPercentage + (variableEnabled ? variablePercentage : 0);
+  const availablePercentage = 100 - totalPercentage;
+
   return (
     <div className="container max-w-4xl py-8">
       <div className="mb-6">
@@ -108,46 +136,103 @@ const SystemConfig = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Porcentagem da Plataforma</CardTitle>
+          <CardTitle>Taxas da Plataforma</CardTitle>
           <CardDescription>
-            Define a taxa que a plataforma recebe sobre cada venda de foto
+            Configure a taxa fixa + taxa variável que a plataforma recebe sobre cada venda
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="space-y-4">
+          {/* Taxa Fixa - Bloqueada */}
+          <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
             <div className="flex items-center justify-between">
-              <Label htmlFor="platform-percentage" className="text-base font-medium">
-                Taxa da Plataforma
-              </Label>
+              <div className="flex items-center gap-2">
+                <Lock className="h-5 w-5 text-muted-foreground" />
+                <Label className="text-base font-medium">Taxa Fixa (Bloqueada)</Label>
+              </div>
+              <span className="text-3xl font-bold text-primary">{fixedPercentage}%</span>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              A taxa fixa de {fixedPercentage}% não pode ser alterada. Esta é a receita base da plataforma.
+            </p>
+          </div>
+
+          {/* Taxa Variável - Ajustável */}
+          <div className="space-y-4 p-4 border rounded-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Unlock className="h-5 w-5 text-primary" />
+                <Label htmlFor="variable-enabled" className="text-base font-medium">
+                  Taxa Variável (Controlável)
+                </Label>
+              </div>
               <div className="flex items-center gap-3">
-                <Input
-                  id="platform-percentage"
-                  type="number"
-                  min={5}
-                  max={20}
-                  step={0.5}
-                  value={platformPercentage}
-                  onChange={(e) => setPlatformPercentage(Number(e.target.value))}
-                  className="w-24 text-center text-lg font-bold"
+                <Switch
+                  id="variable-enabled"
+                  checked={variableEnabled}
+                  onCheckedChange={setVariableEnabled}
                 />
-                <span className="text-2xl font-bold text-primary">{platformPercentage}%</span>
+                <span className="text-sm text-muted-foreground">
+                  {variableEnabled ? 'Ativa' : 'Inativa'}
+                </span>
               </div>
             </div>
 
-            <div className="space-y-2">
-              <input
-                type="range"
-                min={5}
-                max={20}
-                step={0.5}
-                value={platformPercentage}
-                onChange={(e) => setPlatformPercentage(Number(e.target.value))}
-                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
-              />
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Mínimo: 5%</span>
-                <span>Máximo: 20%</span>
-              </div>
+            {variableEnabled && (
+              <>
+                <div className="flex items-center justify-between pt-2">
+                  <Label htmlFor="variable-percentage" className="text-sm font-medium">
+                    Percentual Variável
+                  </Label>
+                  <div className="flex items-center gap-3">
+                    <Input
+                      id="variable-percentage"
+                      type="number"
+                      min={0}
+                      max={20}
+                      step={0.5}
+                      value={variablePercentage}
+                      onChange={(e) => setVariablePercentage(Number(e.target.value))}
+                      className="w-24 text-center text-lg font-bold"
+                    />
+                    <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                      {variablePercentage}%
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <input
+                    type="range"
+                    min={0}
+                    max={20}
+                    step={0.5}
+                    value={variablePercentage}
+                    onChange={(e) => setVariablePercentage(Number(e.target.value))}
+                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>Mínimo: 0%</span>
+                    <span>Máximo: 20%</span>
+                  </div>
+                </div>
+              </>
+            )}
+
+            <p className="text-sm text-muted-foreground">
+              {variableEnabled 
+                ? `Você pode ajustar a taxa variável de 0% a 20% conforme necessário.`
+                : 'Ative a taxa variável para ter controle adicional sobre a receita da plataforma.'}
+            </p>
+          </div>
+
+          {/* Resumo Total */}
+          <div className="p-4 bg-primary/10 dark:bg-primary/20 border border-primary/30 rounded-lg">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-lg font-semibold">Taxa Total da Plataforma</span>
+              <span className="text-4xl font-bold text-primary">{totalPercentage}%</span>
+            </div>
+            <div className="text-sm text-muted-foreground">
+              {fixedPercentage}% (fixa) + {variableEnabled ? variablePercentage : 0}% (variável) = {totalPercentage}% total
             </div>
           </div>
 
@@ -155,23 +240,26 @@ const SystemConfig = () => {
             <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
             <AlertDescription className="text-blue-900 dark:text-blue-100">
               <strong>Importante:</strong> Esta alteração afetará apenas <strong>NOVOS eventos</strong> criados após salvar. 
-              Eventos existentes manterão suas porcentagens originais.
+              Eventos existentes manterão suas taxas originais.
             </AlertDescription>
           </Alert>
 
           <div className="border-t pt-6">
-            <h4 className="font-medium mb-3">Exemplo de Divisão de Receita</h4>
+            <h4 className="font-medium mb-3">Exemplo de Divisão de Receita (em R$ 100,00)</h4>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between p-3 bg-primary/5 dark:bg-primary/10 rounded-lg">
-                <span>🏢 Plataforma ({platformPercentage}%)</span>
-                <span className="font-bold">R$ {(platformPercentage).toFixed(2)}</span>
+                <span>🏢 Plataforma - Taxa Fixa ({fixedPercentage}%)</span>
+                <span className="font-bold">R$ {(fixedPercentage).toFixed(2)}</span>
               </div>
-              <div className="flex justify-between p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
-                <span>📸 Fotógrafo + Organização ({100 - platformPercentage}%)</span>
-                <span className="font-bold">R$ {(100 - platformPercentage).toFixed(2)}</span>
-              </div>
-              <div className="text-xs text-muted-foreground pt-2">
-                *Valores baseados em uma venda de R$ 100,00
+              {variableEnabled && variablePercentage > 0 && (
+                <div className="flex justify-between p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
+                  <span>🏢 Plataforma - Taxa Variável ({variablePercentage}%)</span>
+                  <span className="font-bold">R$ {(variablePercentage).toFixed(2)}</span>
+                </div>
+              )}
+              <div className="flex justify-between p-3 bg-green-50 dark:bg-green-950/20 rounded-lg">
+                <span>📸 Fotógrafo + Organização ({availablePercentage}%)</span>
+                <span className="font-bold">R$ {(availablePercentage).toFixed(2)}</span>
               </div>
             </div>
           </div>
