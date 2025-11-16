@@ -39,10 +39,14 @@ const PhotographerEvents = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchMyCampaigns();
-  }, [user]);
+    if (user?.id) {
+      fetchMyCampaigns();
+    }
+  }, [user?.id]);
 
   const fetchMyCampaigns = async () => {
+    if (!user?.id) return;
+    
     try {
       const { data, error } = await supabase
         .from('campaigns')
@@ -50,7 +54,7 @@ const PhotographerEvents = () => {
           *,
           photos(count)
         `)
-        .eq('photographer_id', user?.id)
+        .eq('photographer_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -63,6 +67,11 @@ const PhotographerEvents = () => {
       setCampaigns(campaignsWithCount);
     } catch (error) {
       console.error('Error fetching campaigns:', error);
+      toast({
+        title: "Erro ao carregar eventos",
+        description: "Não foi possível carregar seus eventos. Tente novamente.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -81,6 +90,7 @@ const PhotographerEvents = () => {
 
       if (photosError) {
         console.error('Error deleting photos:', photosError);
+        // Continuar mesmo com erro nas fotos, pois elas podem não existir
       }
 
       // Por último, deletar a campanha
