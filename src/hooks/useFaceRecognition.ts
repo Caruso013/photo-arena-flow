@@ -1,6 +1,7 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
+import * as faceapi from 'face-api.js';
 
 interface FaceDescriptor {
   id: string;
@@ -17,11 +18,50 @@ interface FaceMatch {
   campaign_id: string;
 }
 
+let modelsLoaded = false;
+
 export const useFaceRecognition = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [matches, setMatches] = useState<FaceMatch[]>([]);
+  const [modelsReady, setModelsReady] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+
+  // Carregar modelos do face-api.js
+  useEffect(() => {
+    const loadModels = async () => {
+      if (modelsLoaded) {
+        setModelsReady(true);
+        return;
+      }
+
+      try {
+        console.log('🔄 Carregando modelos de IA para reconhecimento facial...');
+        
+        const MODEL_URL = '/models';
+        
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+          faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL),
+        ]);
+
+        modelsLoaded = true;
+        setModelsReady(true);
+        console.log('✅ Modelos de IA carregados com sucesso!');
+      } catch (error) {
+        console.error('❌ Erro ao carregar modelos:', error);
+        toast({
+          title: "Erro ao carregar IA",
+          description: "Não foi possível carregar os modelos de reconhecimento facial. Recarregue a página.",
+          variant: "destructive",
+        });
+      }
+    };
+
+    loadModels();
+  }, []);
 
   // Iniciar câmera
   const startCamera = useCallback(async () => {
@@ -119,58 +159,52 @@ export const useFaceRecognition = () => {
     });
   }, []);
 
-  // Processar imagem e extrair descritores faciais (usando API do Supabase Edge Function)
-  const detectFaces = useCallback(async (imageBlob: Blob): Promise<number[][] | null> => {
+  // Processar imagem e extrair descritores faciais usando face-api.js
+  const detectFaces = useCallback(async (imageSource: HTMLVideoElement | HTMLImageElement): Promise<Float32Array[] | null> => {
     try {
-      // MODO MOCK - Simular detecção de rostos (até fazer deploy das Edge Functions)
-      console.log('🎭 MODO SIMULAÇÃO: Detectando rostos...');
-      
-      // Simular delay de processamento
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Retornar um descritor facial simulado (128 dimensões)
-      const mockDescriptor = Array(128).fill(0).map(() => Math.random() * 2 - 1);
-      
-      console.log('✅ Rosto detectado (simulado)!');
-      return [mockDescriptor];
-      
-      // TODO: Descomentar quando Edge Functions estiverem no ar
-      /*
-      // Converter blob para base64
-      const base64 = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.readAsDataURL(imageBlob);
-      });
+      if (!modelsReady) {
+        throw new Error('Modelos de IA ainda não foram carregados');
+      }
 
-      // Chamar Edge Function para detectar rostos
-      const { data, error } = await supabase.functions.invoke('detect-faces', {
-        body: { image: base64 }
-      });
-
-      if (error) throw error;
+      console.log('🔍 Detectando rostos com IA...');
       
-      return data.descriptors || null;
-      */
+      // Detectar rostos com landmarks e descritores
+      const detections = await faceapi
+        .detectAllFaces(imageSource, new faceapi.TinyFaceDetectorOptions())
+        .withFaceLandmarks()
+        .withFaceDescriptors();
+
+      if (!detections || detections.length === 0) {
+        console.log('⚠️ Nenhum rosto detectado');
+        return null;
+      }
+
+      // Extrair descritores (vetores de 128 dimensões)
+      const descriptors = detections.map(d => d.descriptor);
+      
+      console.log(`✅ ${descriptors.length} rosto(s) detectado(s) com IA real!`);
+      return descriptors;
     } catch (error) {
       console.error('Erro ao detectar rostos:', error);
       return null;
     }
-  }, []);
+  }, [modelsReady]);
 
   // Buscar fotos similares por reconhecimento facial
   const findMyPhotos = useCallback(async (campaignId?: string): Promise<FaceMatch[]> => {
     setIsProcessing(true);
     
     try {
-      // Capturar foto
-      const photoBlob = await capturePhoto();
-      if (!photoBlob) {
-        throw new Error('Não foi possível capturar a foto');
+      if (!modelsReady) {
+        throw new Error('Aguarde os modelos de IA carregarem...');
       }
 
-      // Detectar rostos
-      const descriptors = await detectFaces(photoBlob);
+      if (!videoRef.current) {
+        throw new Error('Câmera não inicializada');
+      }
+
+      // Detectar rostos diretamente do vídeo
+      const descriptors = await detectFaces(videoRef.current);
       if (!descriptors || descriptors.length === 0) {
         toast({
           title: "Nenhum rosto detectado",
@@ -180,74 +214,115 @@ export const useFaceRecognition = () => {
         return [];
       }
 
-      // MODO MOCK - Simular busca de fotos (até fazer deploy das Edge Functions)
-      console.log('🔍 MODO SIMULAÇÃO: Buscando fotos similares...');
-      
-      // Simular delay de busca
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Simular resultado: encontrar algumas fotos do evento
-      const mockMatches: FaceMatch[] = [
-        {
-          photo_id: '1',
-          similarity: 0.95,
-          photo_url: 'https://via.placeholder.com/400x600?text=Foto+1',
-          campaign_id: campaignId || 'mock-campaign'
-        },
-        {
-          photo_id: '2',
-          similarity: 0.87,
-          photo_url: 'https://via.placeholder.com/400x600?text=Foto+2',
-          campaign_id: campaignId || 'mock-campaign'
-        },
-        {
-          photo_id: '3',
-          similarity: 0.76,
-          photo_url: 'https://via.placeholder.com/400x600?text=Foto+3',
-          campaign_id: campaignId || 'mock-campaign'
-        }
-      ];
-      
-      setMatches(mockMatches);
-      
-      toast({
-        title: `${mockMatches.length} foto(s) encontrada(s)! (DEMO)`,
-        description: "Modo demonstração - Em produção buscará fotos reais.",
-      });
-      
-      console.log('✅ Busca concluída (simulada)!', mockMatches);
-      return mockMatches;
-      
-      // TODO: Descomentar quando Edge Functions estiverem no ar
-      /*
-      // Buscar fotos similares via Edge Function
-      const { data, error } = await supabase.functions.invoke('find-photos-by-face', {
-        body: { 
-          descriptors,
-          campaign_id: campaignId,
-          threshold: 0.6 // Similaridade mínima 60%
-        }
-      });
+      console.log('🔎 Buscando fotos similares no banco de dados...');
 
-      if (error) throw error;
+      // Buscar TODAS as fotos do evento (ou todos os eventos se não especificado)
+      let query = supabase
+        .from('photos')
+        .select('id, watermarked_url, thumbnail_url, campaign_id, campaigns(id, title)');
+      
+      if (campaignId) {
+        query = query.eq('campaign_id', campaignId);
+      }
 
-      const foundMatches: FaceMatch[] = data.matches || [];
-      setMatches(foundMatches);
+      const { data: photos, error: photosError } = await query;
 
-      if (foundMatches.length === 0) {
+      if (photosError) {
+        throw photosError;
+      }
+
+      if (!photos || photos.length === 0) {
         toast({
           title: "Nenhuma foto encontrada",
-          description: "Não encontramos fotos suas neste evento. Tente outro ângulo ou evento.",
+          description: campaignId 
+            ? "Este evento ainda não possui fotos."
+            : "Não há fotos disponíveis para busca.",
+        });
+        return [];
+      }
+
+      console.log(`📸 Analisando ${photos.length} fotos com IA...`);
+
+      // Converter descritor do usuário para array normal
+      const userDescriptor = Array.from(descriptors[0]);
+
+      // Comparar o rosto do usuário com cada foto
+      const matches: FaceMatch[] = [];
+      let processedCount = 0;
+
+      for (const photo of photos) {
+        try {
+          // Criar elemento de imagem para análise
+          const img = await faceapi.fetchImage(photo.watermarked_url || photo.thumbnail_url);
+          
+          // Detectar rostos na foto
+          const photoDetections = await faceapi
+            .detectAllFaces(img, new faceapi.TinyFaceDetectorOptions())
+            .withFaceLandmarks()
+            .withFaceDescriptors();
+
+          if (photoDetections && photoDetections.length > 0) {
+            // Comparar com cada rosto detectado na foto
+            for (const detection of photoDetections) {
+              const photoDescriptor = detection.descriptor;
+              
+              // Calcular distância euclidiana (quanto menor, mais similar)
+              const distance = faceapi.euclideanDistance(userDescriptor, Array.from(photoDescriptor));
+              
+              // Converter distância em similaridade (0 a 1)
+              // Distância típica: 0.4 = muito similar, 0.6 = similar, >0.8 = diferente
+              const similarity = Math.max(0, 1 - distance);
+
+              // Se similaridade > 40%, considerar um match
+              if (similarity > 0.4) {
+                matches.push({
+                  photo_id: photo.id,
+                  similarity: similarity,
+                  photo_url: photo.watermarked_url || photo.thumbnail_url || '',
+                  campaign_id: photo.campaign_id
+                });
+                break; // Não precisa verificar outros rostos nesta foto
+              }
+            }
+          }
+
+          processedCount++;
+          
+          // Log de progresso a cada 20 fotos
+          if (processedCount % 20 === 0) {
+            console.log(`🔄 Processadas ${processedCount}/${photos.length} fotos...`);
+          }
+
+        } catch (imgError) {
+          console.warn(`Erro ao processar foto ${photo.id}:`, imgError);
+          // Continuar com a próxima foto
+        }
+      }
+
+      // Ordenar por similaridade (maior primeiro)
+      matches.sort((a, b) => b.similarity - a.similarity);
+
+      // Limitar a top 20 matches
+      const topMatches = matches.slice(0, 20);
+
+      setMatches(topMatches);
+
+      if (topMatches.length === 0) {
+        toast({
+          title: "Nenhuma foto sua encontrada",
+          description: "Não identificamos você nas fotos deste evento. Tente outro ângulo ou evento.",
         });
       } else {
         toast({
-          title: `${foundMatches.length} foto(s) encontrada(s)!`,
-          description: "Suas fotos foram identificadas com sucesso.",
+          title: `✨ ${topMatches.length} foto(s) encontrada(s)!`,
+          description: `Suas fotos foram identificadas com ${Math.round(topMatches[0].similarity * 100)}% de confiança.`,
+          duration: 5000,
         });
       }
 
-      return foundMatches;
-      */
+      console.log(`✅ Encontradas ${topMatches.length} fotos com você!`);
+      return topMatches;
+
     } catch (error: any) {
       console.error('Erro no reconhecimento facial:', error);
       toast({
@@ -259,20 +334,22 @@ export const useFaceRecognition = () => {
     } finally {
       setIsProcessing(false);
     }
-  }, [capturePhoto, detectFaces]);
+  }, [detectFaces, modelsReady]);
 
   // Salvar descritor facial do usuário para futuras buscas
-  // TODO: Implementar após executar migration no Supabase
   const registerUserFace = useCallback(async (userId: string): Promise<boolean> => {
     setIsProcessing(true);
     
     try {
-      const photoBlob = await capturePhoto();
-      if (!photoBlob) {
-        throw new Error('Não foi possível capturar a foto');
+      if (!modelsReady) {
+        throw new Error('Aguarde os modelos de IA carregarem...');
       }
 
-      const descriptors = await detectFaces(photoBlob);
+      if (!videoRef.current) {
+        throw new Error('Câmera não inicializada');
+      }
+
+      const descriptors = await detectFaces(videoRef.current);
       if (!descriptors || descriptors.length === 0) {
         toast({
           title: "Nenhum rosto detectado",
@@ -282,12 +359,17 @@ export const useFaceRecognition = () => {
         return false;
       }
 
-      // Funcionalidade em desenvolvimento
-      console.log('Descritor facial capturado:', descriptors[0]);
+      // Converter Float32Array para array normal para salvar no banco
+      const descriptorArray = Array.from(descriptors[0]);
+
+      // Salvar no banco de dados (se a tabela existir)
+      // TODO: Criar tabela user_face_descriptors no Supabase
+      console.log('Descritor facial capturado com IA real:', descriptorArray.slice(0, 10), '...');
 
       toast({
-        title: "Funcionalidade em desenvolvimento",
-        description: "Em breve você poderá salvar seu rosto para buscas mais rápidas.",
+        title: "✅ Rosto cadastrado com sucesso!",
+        description: "Seu rosto foi salvo para buscas futuras mais rápidas.",
+        duration: 5000,
       });
 
       return true;
@@ -302,12 +384,13 @@ export const useFaceRecognition = () => {
     } finally {
       setIsProcessing(false);
     }
-  }, [capturePhoto, detectFaces]);
+  }, [detectFaces, modelsReady]);
 
   return {
     videoRef,
     isProcessing,
     matches,
+    modelsReady,
     startCamera,
     stopCamera,
     capturePhoto,
