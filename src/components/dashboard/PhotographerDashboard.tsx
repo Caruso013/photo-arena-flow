@@ -406,7 +406,7 @@ const PhotographerDashboard = () => {
               <p className="text-lg opacity-95 mb-4 drop-shadow-md">
                 Olá, <span className="font-semibold">{profile?.full_name || 'Fotógrafo'}</span>! Gerencie seus eventos e fotos aqui.
               </p>
-              <div className="flex gap-3">
+              <div className="flex flex-wrap gap-3">
                 <Button 
                   variant="secondary" 
                   className="gap-2 bg-white/95 text-primary hover:bg-white font-semibold shadow-md hover-scale"
@@ -414,6 +414,18 @@ const PhotographerDashboard = () => {
                 >
                   <Upload className="h-4 w-4" />
                   Upload de Fotos
+                </Button>
+                <Button 
+                  variant="secondary" 
+                  className="gap-2 bg-white/95 text-primary hover:bg-white font-semibold shadow-md hover-scale"
+                  onClick={() => {
+                    // Switch to profile tab
+                    const profileTab = document.querySelector('[value="profile"]') as HTMLButtonElement;
+                    profileTab?.click();
+                  }}
+                >
+                  <Edit className="h-4 w-4" />
+                  Editar Perfil
                 </Button>
                 <Link to="/eventos-proximos">
                   <Button 

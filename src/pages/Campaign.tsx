@@ -162,10 +162,10 @@ const Campaign = () => {
 
   // Buscar fotos quando mudar de página
   useEffect(() => {
-    if (id && page > 1) {
+    if (id) {
       fetchPhotos(page);
     }
-  }, [page]);
+  }, [page, id]);
 
   // Otimização: Buscar previews em paralelo (desabilitado - sub_events não existe)
   useEffect(() => {
