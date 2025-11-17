@@ -78,40 +78,83 @@ export default function CheckoutSuccess() {
 
   return (
     <main className="container mx-auto px-4 py-8 space-y-6">
-      <header className="flex items-center gap-3">
-        <CheckCircle2 className="h-8 w-8 text-green-600" />
-        <h1 className="text-3xl font-bold">Compra realizada com sucesso!</h1>
-      </header>
+      {/* Confirmação Visual com Animação */}
+      <div className="mb-8 text-center">
+        <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-100 dark:bg-green-900 mb-4 animate-bounce">
+          <CheckCircle2 className="h-12 w-12 text-green-600 dark:text-green-400" />
+        </div>
+        <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+          Pagamento Confirmado!
+        </h1>
+        <p className="text-lg text-muted-foreground">
+          Sua compra foi processada com sucesso pelo Mercado Pago
+        </p>
+      </div>
+
+      <div className="max-w-4xl mx-auto">
+        <Card className="mb-6 border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/20">
+          <CardContent className="p-6">
+            <div className="flex items-start gap-4">
+              <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-400 mt-1 flex-shrink-0" />
+              <div className="space-y-2">
+                <h3 className="font-semibold text-green-900 dark:text-green-100">
+                  ✅ Compra Aprovada
+                </h3>
+                <p className="text-sm text-green-800 dark:text-green-200">
+                  Pagamento confirmado via webhook do Mercado Pago. Suas fotos já estão disponíveis para download!
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {loading ? (
-        <div className="flex items-center gap-2 text-muted-foreground">
+        <div className="flex items-center justify-center gap-2 text-muted-foreground py-8">
           <Loader2 className="h-5 w-5 animate-spin" />
           Carregando suas fotos...
         </div>
       ) : purchases.length === 0 ? (
-        <Card>
+        <Card className="max-w-2xl mx-auto">
           <CardContent className="py-10 text-center">
-            <p className="mb-4">Não encontramos itens desta compra.</p>
-            <Link to="/dashboard/purchases" className="underline">
-              Ir para Minhas Compras
+            <p className="mb-4 text-muted-foreground">
+              Não encontramos itens desta compra. O webhook pode estar processando...
+            </p>
+            <Link to="/dashboard/my-purchases">
+              <Button variant="outline">
+                Ir para Minhas Compras
+              </Button>
             </Link>
           </CardContent>
         </Card>
       ) : (
-        <section className="space-y-4">
-          <p className="text-muted-foreground">
-            Pagamento aprovado! Suas fotos já estão disponíveis para download e também em Minhas Compras.
-          </p>
+        <section className="space-y-6 max-w-6xl mx-auto">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-semibold">Suas Fotos</h2>
+            <Link to="/dashboard/my-purchases">
+              <Button variant="outline" size="sm">
+                Ver Todas as Compras
+              </Button>
+            </Link>
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {purchases.map((purchase) => (
-              <Card key={purchase.id} className="overflow-hidden">
-                <div className="aspect-square relative bg-muted">
-                  <LazyImage
-                    src={purchase.photo?.thumbnail_url || purchase.photo?.watermarked_url || ''}
-                    alt="Foto comprada"
-                    className="w-full h-full object-cover"
-                  />
+              <Card key={purchase.id} className="overflow-hidden hover:shadow-xl transition-all duration-300 border-2 border-green-200 dark:border-green-800">
+                <div className="relative">
+                  <div className="absolute top-2 right-2 z-10">
+                    <div className="bg-green-500 text-white px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 shadow-lg">
+                      <CheckCircle2 className="h-3 w-3" />
+                      Confirmado
+                    </div>
+                  </div>
+                  <div className="aspect-square relative bg-muted">
+                    <LazyImage
+                      src={purchase.photo?.thumbnail_url || purchase.photo?.watermarked_url || ''}
+                      alt="Foto comprada"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
                 </div>
                 <CardContent className="p-4">
                   <p className="font-medium mb-1 line-clamp-1">
