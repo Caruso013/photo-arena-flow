@@ -101,6 +101,13 @@ export type Database = {
             foreignKeyName: "campaign_photographers_campaign_id_fkey"
             columns: ["campaign_id"]
             isOneToOne: false
+            referencedRelation: "campaign_revenue_split_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_photographers_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
             referencedRelation: "campaigns"
             referencedColumns: ["id"]
           },
@@ -134,6 +141,7 @@ export type Database = {
           photographer_id: string | null
           photographer_percentage: number
           platform_percentage: number
+          progressive_discount_enabled: boolean | null
           title: string
           updated_at: string
         }
@@ -150,6 +158,7 @@ export type Database = {
           photographer_id?: string | null
           photographer_percentage?: number
           platform_percentage?: number
+          progressive_discount_enabled?: boolean | null
           title: string
           updated_at?: string
         }
@@ -166,6 +175,7 @@ export type Database = {
           photographer_id?: string | null
           photographer_percentage?: number
           platform_percentage?: number
+          progressive_discount_enabled?: boolean | null
           title?: string
           updated_at?: string
         }
@@ -187,6 +197,141 @@ export type Database = {
           {
             foreignKeyName: "campaigns_photographer_id_fkey"
             columns: ["photographer_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coupon_uses: {
+        Row: {
+          coupon_id: string
+          discount_amount: number
+          final_amount: number
+          id: string
+          original_amount: number
+          purchase_id: string | null
+          used_at: string
+          user_id: string
+        }
+        Insert: {
+          coupon_id: string
+          discount_amount: number
+          final_amount: number
+          id?: string
+          original_amount: number
+          purchase_id?: string | null
+          used_at?: string
+          user_id: string
+        }
+        Update: {
+          coupon_id?: string
+          discount_amount?: number
+          final_amount?: number
+          id?: string
+          original_amount?: number
+          purchase_id?: string | null
+          used_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coupon_uses_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupon_stats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coupon_uses_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coupon_uses_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "purchases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coupon_uses_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coupon_uses_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coupons: {
+        Row: {
+          code: string
+          created_at: string
+          created_by: string | null
+          current_uses: number
+          description: string | null
+          end_date: string | null
+          id: string
+          is_active: boolean
+          max_uses: number | null
+          min_purchase_amount: number | null
+          start_date: string
+          type: string
+          updated_at: string
+          value: number
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by?: string | null
+          current_uses?: number
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          min_purchase_amount?: number | null
+          start_date?: string
+          type: string
+          updated_at?: string
+          value: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          current_uses?: number
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          min_purchase_amount?: number | null
+          start_date?: string
+          type?: string
+          updated_at?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coupons_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coupons_created_by_fkey"
+            columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "public_profiles"
             referencedColumns: ["id"]
@@ -499,6 +644,41 @@ export type Database = {
           },
         ]
       }
+      photo_face_descriptors: {
+        Row: {
+          bounding_box: Json | null
+          confidence: number | null
+          created_at: string
+          descriptor: number[]
+          id: string
+          photo_id: string
+        }
+        Insert: {
+          bounding_box?: Json | null
+          confidence?: number | null
+          created_at?: string
+          descriptor: number[]
+          id?: string
+          photo_id: string
+        }
+        Update: {
+          bounding_box?: Json | null
+          confidence?: number | null
+          created_at?: string
+          descriptor?: number[]
+          id?: string
+          photo_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "photo_face_descriptors_photo_id_fkey"
+            columns: ["photo_id"]
+            isOneToOne: false
+            referencedRelation: "photos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       photographer_applications: {
         Row: {
           created_at: string | null
@@ -631,6 +811,13 @@ export type Database = {
             foreignKeyName: "photos_campaign_id_fkey"
             columns: ["campaign_id"]
             isOneToOne: false
+            referencedRelation: "campaign_revenue_split_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "photos_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
             referencedRelation: "campaigns"
             referencedColumns: ["id"]
           },
@@ -695,6 +882,8 @@ export type Database = {
           id: string
           photo_id: string
           photographer_id: string
+          progressive_discount_amount: number | null
+          progressive_discount_percentage: number | null
           status: string
           stripe_payment_intent_id: string | null
         }
@@ -705,6 +894,8 @@ export type Database = {
           id?: string
           photo_id: string
           photographer_id: string
+          progressive_discount_amount?: number | null
+          progressive_discount_percentage?: number | null
           status?: string
           stripe_payment_intent_id?: string | null
         }
@@ -715,6 +906,8 @@ export type Database = {
           id?: string
           photo_id?: string
           photographer_id?: string
+          progressive_discount_amount?: number | null
+          progressive_discount_percentage?: number | null
           status?: string
           stripe_payment_intent_id?: string | null
         }
@@ -857,6 +1050,13 @@ export type Database = {
             foreignKeyName: "sub_events_campaign_id_fkey"
             columns: ["campaign_id"]
             isOneToOne: false
+            referencedRelation: "campaign_revenue_split_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_events_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
             referencedRelation: "campaigns"
             referencedColumns: ["id"]
           },
@@ -886,6 +1086,30 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
           value?: Json
+        }
+        Relationships: []
+      }
+      user_face_descriptors: {
+        Row: {
+          created_at: string
+          descriptor: number[]
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          descriptor: number[]
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          descriptor?: number[]
+          id?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -954,6 +1178,62 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      campaign_revenue_split_view: {
+        Row: {
+          id: string | null
+          organization_id: string | null
+          organization_name: string | null
+          organization_percentage: number | null
+          photographer_id: string | null
+          photographer_name: string | null
+          photographer_percentage: number | null
+          platform_percentage: number | null
+          title: string | null
+          validation_status: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaigns_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_photographer_id_fkey"
+            columns: ["photographer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_photographer_id_fkey"
+            columns: ["photographer_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coupon_stats: {
+        Row: {
+          code: string | null
+          current_uses: number | null
+          end_date: string | null
+          id: string | null
+          is_active: boolean | null
+          max_uses: number | null
+          start_date: string | null
+          total_discount_given: number | null
+          total_final_value: number | null
+          total_original_value: number | null
+          total_uses: number | null
+          type: string | null
+          unique_users: number | null
+          value: number | null
+        }
+        Relationships: []
       }
       public_profiles: {
         Row: {
@@ -1026,7 +1306,23 @@ export type Database = {
       }
     }
     Functions: {
+      apply_progressive_discount: {
+        Args: { p_quantity: number; p_unit_price: number }
+        Returns: {
+          discount_amount: number
+          discount_percentage: number
+          quantity: number
+          subtotal: number
+          total: number
+          unit_price: number
+        }[]
+      }
+      calculate_progressive_discount: {
+        Args: { p_quantity: number }
+        Returns: number
+      }
       get_platform_percentage: { Args: never; Returns: number }
+      get_total_platform_percentage: { Args: never; Returns: number }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["user_role"]
@@ -1045,6 +1341,15 @@ export type Database = {
       is_organization_owner: {
         Args: { _org_id: string; _user_id: string }
         Returns: boolean
+      }
+      validate_coupon: {
+        Args: { p_code: string; p_purchase_amount: number; p_user_id: string }
+        Returns: {
+          coupon_id: string
+          discount_amount: number
+          message: string
+          valid: boolean
+        }[]
       }
     }
     Enums: {

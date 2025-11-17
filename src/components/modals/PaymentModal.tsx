@@ -34,6 +34,7 @@ interface PaymentModalProps {
   photo?: Photo; // Single photo (backwards compatibility)
   photos?: Photo[]; // Multiple photos (cart)
   onPaymentSuccess?: (paymentData: any) => void;
+  appliedCoupon?: any; // Optional coupon validation result
 }
 
 export default function PaymentModal({ 
@@ -41,7 +42,8 @@ export default function PaymentModal({
   onClose, 
   photo, 
   photos,
-  onPaymentSuccess 
+  onPaymentSuccess,
+  appliedCoupon
 }: PaymentModalProps) {
   const { user } = useAuth();
   const { toast } = useToast();
