@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from '@/components/ui/use-toast';
 import { Upload, X, Image as ImageIcon } from 'lucide-react';
+import { validateCoverUpload } from '@/lib/uploadValidations';
 
 interface EditAlbumCoverModalProps {
   albumId: string;
@@ -36,13 +37,15 @@ const EditAlbumCoverModal: React.FC<EditAlbumCoverModalProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith('image/')) {
-      setError('Por favor, selecione uma imagem válida');
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      setError('A imagem deve ter no máximo 5MB');
+    // Validar arquivo usando biblioteca centralizada
+    const validation = validateCoverUpload(file);
+    if (!validation.isValid) {
+      setError(validation.error || 'Arquivo inválido');
+      toast({
+        title: "Arquivo inválido",
+        description: validation.error,
+        variant: "destructive",
+      });
       return;
     }
 

@@ -29,14 +29,16 @@ const PhotographerEarnings = () => {
     if (!user?.id) return;
     
     try {
-      // Buscar todas as compras de fotos do fotógrafo
+      // Buscar compras recentes de fotos do fotógrafo (últimas 200)
       const { data: purchases, error } = await supabase
         .from('purchases')
         .select(`
           *,
           photos!inner(photographer_id, price)
         `)
-        .eq('photos.photographer_id', user.id);
+        .eq('photos.photographer_id', user.id)
+        .order('created_at', { ascending: false })
+        .range(0, 199); // Limitar a 200 compras mais recentes
 
       if (error) throw error;
 

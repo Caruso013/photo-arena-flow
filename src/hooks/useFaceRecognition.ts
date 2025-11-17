@@ -216,10 +216,12 @@ export const useFaceRecognition = () => {
 
       console.log('🔎 Buscando fotos similares no banco de dados...');
 
-      // Buscar TODAS as fotos do evento (ou todos os eventos se não especificado)
+      // Buscar fotos mais recentes do evento (limitado a 200 para performance)
       let query = supabase
         .from('photos')
-        .select('id, watermarked_url, thumbnail_url, campaign_id, campaigns(id, title)');
+        .select('id, watermarked_url, thumbnail_url, campaign_id, campaigns(id, title)')
+        .order('created_at', { ascending: false })
+        .range(0, 199); // Limitar a 200 fotos mais recentes
       
       if (campaignId) {
         query = query.eq('campaign_id', campaignId);

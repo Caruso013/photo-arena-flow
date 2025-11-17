@@ -2,3 +2,18 @@ project_id = "gtpqppvyjrnnuhlsbpqd"
 
 [functions.mercadopago-webhook]
 verify_jwt = false
+
+[functions.encrypt-sensitive-data]
+verify_jwt = true
+
+[functions.backup-face-descriptors]
+verify_jwt = true
+
+[functions.restore-face-descriptors]
+verify_jwt = true
+
+[functions.create-payment-preference]
+verify_jwt = true
+
+[functions.send-application-notification]
+verify_jwt = true

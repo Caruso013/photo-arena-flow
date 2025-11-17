@@ -55,7 +55,8 @@ const PhotographerEvents = () => {
           photos(count)
         `)
         .eq('photographer_id', user.id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(0, 49); // Limitar a 50 campanhas mais recentes
 
       if (error) throw error;
       

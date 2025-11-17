@@ -51,7 +51,8 @@ const MyPurchases = () => {
         `)
         .eq('buyer_id', user?.id)
         .eq('status', 'completed') // Apenas compras confirmadas pelo webhook do Mercado Pago
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(0, 99); // Limitar a 100 compras mais recentes
 
       if (error) {
         console.error('Error fetching purchases:', error);
