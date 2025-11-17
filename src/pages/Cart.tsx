@@ -135,9 +135,9 @@ const Cart = () => {
             {progressiveDiscountPercent > 0 && (
               <div className="mb-4">
                 <ProgressiveDiscountDisplay 
-                  totalItems={totalItems} 
-                  discountPercent={progressiveDiscountPercent}
-                  variant="badge"
+                  quantity={totalItems} 
+                  unitPrice={totalPrice / totalItems}
+                  compact={true}
                 />
               </div>
             )}
@@ -204,9 +204,10 @@ const Cart = () => {
                     </div>
                     <div className="text-xs text-muted-foreground">
                       <ProgressiveDiscountDisplay 
-                        totalItems={totalItems} 
-                        discountPercent={progressiveDiscountPercent}
-                        variant="compact"
+                        quantity={totalItems} 
+                        unitPrice={totalPrice / totalItems}
+                        showIncentive={true}
+                        compact={true}
                       />
                     </div>
                   </>

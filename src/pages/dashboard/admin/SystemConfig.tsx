@@ -11,8 +11,8 @@ import { Settings, AlertCircle, Save, Lock, Unlock } from 'lucide-react';
 
 const SystemConfig = () => {
   const [fixedPercentage, setFixedPercentage] = useState(7); // Taxa fixa sempre 7%
-  const [variablePercentage, setVariablePercentage] = useState(3);
-  const [variableEnabled, setVariableEnabled] = useState(true);
+  const [variablePercentage, setVariablePercentage] = useState(0);
+  const [variableEnabled, setVariableEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -61,11 +61,22 @@ const SystemConfig = () => {
   };
 
   const updateConfig = async () => {
-    // Validação: taxa variável 0% a 20%
-    if (variablePercentage < 0 || variablePercentage > 20) {
+    // Validação: taxa variável 0% a 2% (para atingir máximo de 9% com os 7% fixos)
+    if (variablePercentage < 0 || variablePercentage > 2) {
       toast({
         title: "Valor inválido",
-        description: "A taxa variável deve estar entre 0% e 20%",
+        description: "A taxa variável deve estar entre 0% e 2%",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validação: taxa total entre 7% e 9%
+    const totalPercentage = fixedPercentage + (variableEnabled ? variablePercentage : 0);
+    if (totalPercentage < 7 || totalPercentage > 9) {
+      toast({
+        title: "Valor inválido",
+        description: "A taxa total da plataforma deve estar entre 7% e 9%",
         variant: "destructive",
       });
       return;
@@ -80,8 +91,9 @@ const SystemConfig = () => {
           value: { 
             value: variablePercentage, 
             min: 0, 
-            max: 20,
-            enabled: variableEnabled 
+            max: 2,
+            enabled: variableEnabled,
+            description: 'Taxa variável adicional (0% a 2%, para atingir até 9% total)'
           },
           updated_at: new Date().toISOString()
         })
@@ -93,7 +105,7 @@ const SystemConfig = () => {
 
       toast({
         title: "Configuração atualizada!",
-        description: `Taxa da plataforma: ${fixedPercentage}% fixo + ${variableEnabled ? variablePercentage : 0}% variável = ${totalPercentage}% total. Novos eventos usarão esta taxa.`,
+        description: `Taxa da plataforma: ${fixedPercentage}% fixo + ${variableEnabled ? variablePercentage : 0}% variável = ${totalPercentage}% total (entre 7% e 9%). Novos eventos usarão esta taxa.`,
       });
     } catch (error) {
       console.error('Error updating config:', error);
@@ -147,12 +159,12 @@ const SystemConfig = () => {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Lock className="h-5 w-5 text-muted-foreground" />
-                <Label className="text-base font-medium">Taxa Fixa (Bloqueada)</Label>
+                <Label className="text-base font-medium">Taxa Fixa (Bloqueada em 7%)</Label>
               </div>
               <span className="text-3xl font-bold text-primary">{fixedPercentage}%</span>
             </div>
             <p className="text-sm text-muted-foreground">
-              A taxa fixa de {fixedPercentage}% não pode ser alterada. Esta é a receita base da plataforma.
+              A taxa fixa de {fixedPercentage}% não pode ser alterada. Esta é a taxa mínima da plataforma.
             </p>
           </div>
 
@@ -179,17 +191,17 @@ const SystemConfig = () => {
 
             {variableEnabled && (
               <>
-                <div className="flex items-center justify-between pt-2">
+                  <div className="flex items-center justify-between pt-2">
                   <Label htmlFor="variable-percentage" className="text-sm font-medium">
-                    Percentual Variável
+                    Percentual Variável (0% a 2%)
                   </Label>
                   <div className="flex items-center gap-3">
                     <Input
                       id="variable-percentage"
                       type="number"
                       min={0}
-                      max={20}
-                      step={0.5}
+                      max={2}
+                      step={0.1}
                       value={variablePercentage}
                       onChange={(e) => setVariablePercentage(Number(e.target.value))}
                       className="w-24 text-center text-lg font-bold"
@@ -204,15 +216,15 @@ const SystemConfig = () => {
                   <input
                     type="range"
                     min={0}
-                    max={20}
-                    step={0.5}
+                    max={2}
+                    step={0.1}
                     value={variablePercentage}
                     onChange={(e) => setVariablePercentage(Number(e.target.value))}
                     className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
                   />
                   <div className="flex justify-between text-xs text-muted-foreground">
                     <span>Mínimo: 0%</span>
-                    <span>Máximo: 20%</span>
+                    <span>Máximo: 2%</span>
                   </div>
                 </div>
               </>
@@ -220,8 +232,8 @@ const SystemConfig = () => {
 
             <p className="text-sm text-muted-foreground">
               {variableEnabled 
-                ? `Você pode ajustar a taxa variável de 0% a 20% conforme necessário.`
-                : 'Ative a taxa variável para ter controle adicional sobre a receita da plataforma.'}
+                ? `Você pode ajustar a taxa variável de 0% a 2% para atingir até 9% total (7% fixo + até 2% variável).`
+                : 'Ative a taxa variável para ter controle adicional sobre a receita da plataforma (até 9% total).'}
             </p>
           </div>
 
@@ -239,7 +251,8 @@ const SystemConfig = () => {
           <Alert className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
             <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
             <AlertDescription className="text-blue-900 dark:text-blue-100">
-              <strong>Importante:</strong> Esta alteração afetará apenas <strong>NOVOS eventos</strong> criados após salvar. 
+              <strong>Importante:</strong> A taxa da plataforma está limitada entre <strong>7% e 9%</strong>. 
+              Esta alteração afetará apenas <strong>NOVOS eventos</strong> criados após salvar. 
               Eventos existentes manterão suas taxas originais.
             </AlertDescription>
           </Alert>
