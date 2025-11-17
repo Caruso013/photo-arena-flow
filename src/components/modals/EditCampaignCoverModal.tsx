@@ -69,6 +69,18 @@ const EditCampaignCoverModal: React.FC<EditCampaignCoverModalProps> = ({
     setError('');
 
     try {
+      // VALIDAÇÕES DE SEGURANÇA
+      const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+      const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      
+      if (selectedFile.size > MAX_SIZE) {
+        throw new Error(`Arquivo muito grande (${(selectedFile.size / 1024 / 1024).toFixed(2)}MB). Máximo: 5MB`);
+      }
+      
+      if (!ALLOWED_TYPES.includes(selectedFile.type)) {
+        throw new Error('Tipo de arquivo inválido. Use apenas: JPG, PNG ou WebP');
+      }
+
       const fileExt = selectedFile.name.split('.').pop();
       const fileName = `${campaignId}_${Date.now()}.${fileExt}`;
       const filePath = `${fileName}`;

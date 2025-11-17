@@ -243,6 +243,18 @@ export const useFaceRecognition = () => {
 
       console.log(`📸 Analisando ${photos.length} fotos com IA...`);
 
+      // Limitar número de fotos para evitar timeout
+      const MAX_PHOTOS = 100;
+      const photosToProcess = photos.slice(0, MAX_PHOTOS);
+      
+      if (photos.length > MAX_PHOTOS) {
+        console.warn(`⚠️ Limitando busca a ${MAX_PHOTOS} fotos (total: ${photos.length})`);
+        toast({
+          title: "Busca limitada",
+          description: `Analisando as ${MAX_PHOTOS} fotos mais recentes de ${photos.length} disponíveis.`,
+        });
+      }
+
       // Converter descritor do usuário para array normal
       const userDescriptor = Array.from(descriptors[0]);
 
@@ -250,10 +262,24 @@ export const useFaceRecognition = () => {
       const matches: FaceMatch[] = [];
       let processedCount = 0;
 
-      for (const photo of photos) {
+      // Processar em batches paralelos para melhor performance
+      const BATCH_SIZE = 5;
+      
+      const processPhoto = async (photo: any): Promise<FaceMatch | null> => {
         try {
-          // Criar elemento de imagem para análise
-          const img = await faceapi.fetchImage(photo.watermarked_url || photo.thumbnail_url);
+          // Criar elemento de imagem com suporte a CORS
+          const img = document.createElement('img');
+          img.crossOrigin = 'anonymous';
+          
+          // Usar thumbnail para economizar banda e memória
+          const imageUrl = photo.thumbnail_url || photo.watermarked_url;
+          img.src = imageUrl;
+          
+          // Aguardar carregamento
+          await new Promise<void>((resolve, reject) => {
+            img.onload = () => resolve();
+            img.onerror = () => reject(new Error('Falha ao carregar imagem'));
+          });
           
           // Detectar rostos na foto
           const photoDetections = await faceapi
@@ -270,32 +296,47 @@ export const useFaceRecognition = () => {
               const distance = faceapi.euclideanDistance(userDescriptor, Array.from(photoDescriptor));
               
               // Converter distância em similaridade (0 a 1)
-              // Distância típica: 0.4 = muito similar, 0.6 = similar, >0.8 = diferente
               const similarity = Math.max(0, 1 - distance);
 
-              // Se similaridade > 40%, considerar um match
-              if (similarity > 0.4) {
-                matches.push({
+              // Threshold aumentado para 60% (reduz falsos positivos)
+              if (similarity > 0.6) {
+                // Limpar imagem da memória
+                img.remove();
+                
+                return {
                   photo_id: photo.id,
                   similarity: similarity,
                   photo_url: photo.watermarked_url || photo.thumbnail_url || '',
                   campaign_id: photo.campaign_id
-                });
-                break; // Não precisa verificar outros rostos nesta foto
+                };
               }
             }
           }
 
-          processedCount++;
-          
-          // Log de progresso a cada 20 fotos
-          if (processedCount % 20 === 0) {
-            console.log(`🔄 Processadas ${processedCount}/${photos.length} fotos...`);
-          }
+          // Limpar imagem da memória
+          img.remove();
+          return null;
 
         } catch (imgError) {
           console.warn(`Erro ao processar foto ${photo.id}:`, imgError);
-          // Continuar com a próxima foto
+          return null;
+        }
+      };
+      
+      // Processar em batches paralelos
+      for (let i = 0; i < photosToProcess.length; i += BATCH_SIZE) {
+        const batch = photosToProcess.slice(i, i + BATCH_SIZE);
+        const batchResults = await Promise.all(batch.map(processPhoto));
+        
+        // Filtrar nulls e adicionar matches
+        const validMatches = batchResults.filter((m): m is FaceMatch => m !== null);
+        matches.push(...validMatches);
+        
+        processedCount += batch.length;
+        
+        // Log de progresso
+        if (processedCount % 20 === 0 || processedCount === photosToProcess.length) {
+          console.log(`🔄 Processadas ${processedCount}/${photosToProcess.length} fotos... (${matches.length} matches)`);
         }
       }
 
@@ -313,9 +354,16 @@ export const useFaceRecognition = () => {
           description: "Não identificamos você nas fotos deste evento. Tente outro ângulo ou evento.",
         });
       } else {
+        const avgConfidence = Math.round(
+          topMatches.reduce((sum, m) => sum + m.similarity, 0) / topMatches.length * 100
+        );
+        const highConfidenceCount = topMatches.filter(m => m.similarity > 0.8).length;
+        
         toast({
           title: `✨ ${topMatches.length} foto(s) encontrada(s)!`,
-          description: `Suas fotos foram identificadas com ${Math.round(topMatches[0].similarity * 100)}% de confiança.`,
+          description: highConfidenceCount > 0 
+            ? `${highConfidenceCount} com alta confiança (${Math.round(topMatches[0].similarity * 100)}%)`
+            : `Confiança média: ${avgConfidence}%`,
           duration: 5000,
         });
       }
