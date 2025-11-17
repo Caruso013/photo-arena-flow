@@ -51,11 +51,11 @@ serve(async (req) => {
       });
     }
 
-    // Buscar informações de todas as fotos
+    // Buscar informações de todas as fotos COM PREÇOS REAIS do banco
     const photoIds = photos.map(p => p.id);
     const { data: photosData, error: photosError } = await supabase
       .from('photos')
-      .select('id, photographer_id, campaign_id')
+      .select('id, photographer_id, campaign_id, price')
       .in('id', photoIds);
 
     if (photosError || !photosData || photosData.length === 0) {
@@ -65,34 +65,51 @@ serve(async (req) => {
       });
     }
 
-    // Calcular preço total
-    const totalAmount = photos.reduce((sum, p) => sum + Number(p.price), 0);
-
-    // Criar purchases no banco para cada foto
-    const purchases = [];
-    for (const photo of photos) {
-      const photoData = photosData.find(p => p.id === photo.id);
-      if (!photoData) continue;
-
-      const { data: purchase, error: purchaseError } = await supabase
-        .from('purchases')
-        .insert({
-          photo_id: photo.id,
-          buyer_id: buyer.id,
-          photographer_id: photoData.photographer_id,
-          amount: photo.price,
-          status: 'pending',
-        })
-        .select()
-        .single();
-
-      if (!purchaseError && purchase) {
-        purchases.push(purchase);
-      }
+    // VALIDAÇÃO CRÍTICA: Calcular preço total do BANCO (não confiar no cliente)
+    const realTotalAmount = photosData.reduce((sum, p) => sum + Number(p.price), 0);
+    const clientTotalAmount = photos.reduce((sum, p) => sum + Number(p.price), 0);
+    
+    // Verificar se cliente não manipulou os preços
+    if (Math.abs(realTotalAmount - clientTotalAmount) > 0.01) {
+      console.error('⚠️ TENTATIVA DE FRAUDE: Preços não conferem!', {
+        real: realTotalAmount,
+        client: clientTotalAmount,
+        buyer: buyerInfo.email
+      });
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: 'Preços não conferem. Recarregue a página e tente novamente.' 
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    if (purchases.length === 0) {
-      return new Response(JSON.stringify({ success: false, error: 'Erro ao criar compras' }), {
+    const totalAmount = realTotalAmount;
+
+    // Criar purchases no banco ATOMICAMENTE (todas de uma vez)
+    const purchasesToInsert = photosData.map(photoData => {
+      const photoPrice = photoData.price; // Usar preço do banco, não do cliente
+      return {
+        photo_id: photoData.id,
+        buyer_id: buyer.id,
+        photographer_id: photoData.photographer_id,
+        amount: photoPrice,
+        status: 'pending',
+      };
+    });
+
+    const { data: purchases, error: purchasesInsertError } = await supabase
+      .from('purchases')
+      .insert(purchasesToInsert)
+      .select();
+
+    if (purchasesInsertError || !purchases || purchases.length !== photosData.length) {
+      console.error('Erro ao criar purchases:', purchasesInsertError);
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: 'Erro ao criar compras. Nenhum valor foi cobrado.' 
+      }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });

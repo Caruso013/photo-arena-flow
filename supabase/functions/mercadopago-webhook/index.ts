@@ -107,6 +107,30 @@ serve(async (req) => {
       const purchaseIds = externalReference.split(',').map(id => id.trim()).filter(Boolean);
       
       for (const pid of purchaseIds) {
+        // IDEMPOTÊNCIA: Verificar status atual antes de atualizar
+        const { data: currentPurchase } = await supabase
+          .from('purchases')
+          .select('status')
+          .eq('id', pid)
+          .single();
+        
+        if (!currentPurchase) {
+          console.warn(`⚠️ Purchase ${pid} não encontrado`);
+          continue;
+        }
+        
+        // Se já está no status final, pular (webhook duplicado)
+        if (currentPurchase.status === purchaseStatus) {
+          console.log(`⏭️ Purchase ${pid} já está ${purchaseStatus}, skip`);
+          continue;
+        }
+        
+        // Não permitir voltar de 'completed' para outro status
+        if (currentPurchase.status === 'completed' && purchaseStatus !== 'completed') {
+          console.warn(`⚠️ Purchase ${pid} já completed, ignorando mudança para ${purchaseStatus}`);
+          continue;
+        }
+        
         const { error: updateError } = await supabase
           .from('purchases')
           .update({ 
@@ -117,9 +141,9 @@ serve(async (req) => {
           
         if (updateError) {
           console.error(`❌ Erro ao atualizar purchase ${pid}:`, updateError);
-          throw updateError; // Interromper se houver erro
+          throw updateError;
         } else {
-          console.log(`✅ Purchase ${pid} atualizada para ${purchaseStatus}`);
+          console.log(`✅ Purchase ${pid}: ${currentPurchase.status} → ${purchaseStatus}`);
         }
       }
       
