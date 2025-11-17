@@ -41,6 +41,7 @@ const MyEvents = lazy(() => import("./pages/dashboard/MyEvents"));
 const MyPhotos = lazy(() => import("./pages/dashboard/MyPhotos"));
 const MyPurchases = lazy(() => import("./pages/dashboard/MyPurchases"));
 const MyFavorites = lazy(() => import("./pages/dashboard/MyFavorites"));
+const FaceBackupManager = lazy(() => import("./pages/dashboard/FaceBackupManager"));
 const Financial = lazy(() => import("./pages/dashboard/Financial"));
 const Profile = lazy(() => import("./pages/dashboard/Profile"));
 const PhotographerApplication = lazy(() => import("./pages/dashboard/PhotographerApplication"));
@@ -114,6 +115,7 @@ const AppContent = () => {
             <Route path="photos" element={<MyPhotos />} />
             <Route path="purchases" element={<MyPurchases />} />
             <Route path="favorites" element={<MyFavorites />} />
+            <Route path="face-backup" element={<FaceBackupManager />} />
             <Route path="financial" element={<Financial />} />
             <Route path="profile" element={<Profile />} />
             <Route path="photographer-application" element={<PhotographerApplication />} />

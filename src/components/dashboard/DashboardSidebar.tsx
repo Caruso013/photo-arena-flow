@@ -16,6 +16,7 @@ import {
   UserCircle,
   X,
   Heart,
+  Database,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -41,6 +42,7 @@ const DashboardSidebar = ({ isOpen, onToggle }: DashboardSidebarProps) => {
     { title: 'Eventos', url: '/dashboard', icon: Calendar },
     { title: 'Minhas Compras', url: '/dashboard/purchases', icon: ShoppingCart },
     { title: 'Favoritos', url: '/dashboard/favorites', icon: Heart },
+    { title: 'Backup Facial', url: '/dashboard/face-backup', icon: Database },
     { title: 'Seja Fotógrafo', url: '/dashboard/photographer-application', icon: Camera },
   ];
 
@@ -50,6 +52,7 @@ const DashboardSidebar = ({ isOpen, onToggle }: DashboardSidebarProps) => {
     { title: 'Eventos Próximos', url: '/eventos-proximos', icon: Calendar },
     { title: 'Minhas Compras', url: '/dashboard/purchases', icon: ShoppingCart },
     { title: 'Favoritos', url: '/dashboard/favorites', icon: Heart },
+    { title: 'Backup Facial', url: '/dashboard/face-backup', icon: Database },
     { title: 'Minhas Fotos', url: '/dashboard/photos', icon: Image },
     { title: 'Financeiro', url: '/dashboard/financial', icon: DollarSign },
     { title: 'Perfil', url: '/dashboard/profile', icon: UserCircle },
