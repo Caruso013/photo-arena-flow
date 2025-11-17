@@ -1,21 +1,44 @@
 // Service Worker para uploads em background
 // Este arquivo deve ser colocado na pasta public/
 
-const CACHE_NAME = 'upload-cache-v1';
+const CACHE_NAME = 'upload-cache-v2';
 const urlsToCache = [
   '/',
-  '/static/js/bundle.js',
-  '/static/css/main.css'
 ];
 
 // Instalar Service Worker
 self.addEventListener('install', (event) => {
+  // Skip waiting para ativar imediatamente
+  self.skipWaiting();
+  
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
-        return cache.addAll(urlsToCache);
+        // Cache apenas a raiz, sem arquivos estáticos específicos
+        return cache.addAll(urlsToCache).catch((error) => {
+          console.warn('Cache addAll falhou, continuando sem cache:', error);
+        });
       })
   );
+});
+
+// Ativar Service Worker e limpar caches antigos
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cacheName) => {
+          if (cacheName !== CACHE_NAME) {
+            console.log('Removendo cache antigo:', cacheName);
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    })
+  );
+  
+  // Assumir controle imediatamente
+  return self.clients.claim();
 });
 
 // Interceptar requisições de rede
@@ -26,12 +49,12 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   
+  // Estratégia: Network first, fallback para cache
   event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        return response || fetch(event.request);
-      }
-    )
+    fetch(event.request)
+      .catch(() => {
+        return caches.match(event.request);
+      })
   );
 });
 

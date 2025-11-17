@@ -330,27 +330,6 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
       return;
     }
 
-    // Validar rate limit
-    if (!checkRateLimit(`upload-${profile.id}`, 'upload')) {
-      toast({
-        title: "Muitos uploads",
-        description: "Você está fazendo uploads muito rápido. Aguarde um momento.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Validar todos os arquivos
-    const validation = validateMultiplePhotos(Array.from(files));
-    if (!validation.isValid) {
-      toast({
-        title: "Arquivos inválidos",
-        description: validation.error,
-        variant: "destructive",
-      });
-      return;
-    }
-
     // Criar lote de upload em background
     const batchId = backgroundUploadService.createUploadBatch(
       files,
