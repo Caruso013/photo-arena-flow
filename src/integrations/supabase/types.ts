@@ -377,6 +377,42 @@ export type Database = {
         }
         Relationships: []
       }
+      face_descriptor_backups: {
+        Row: {
+          backup_path: string
+          created_at: string
+          descriptor_count: number
+          file_size: number
+          id: string
+          is_automatic: boolean
+          metadata: Json | null
+          restored_at: string | null
+          user_id: string
+        }
+        Insert: {
+          backup_path: string
+          created_at?: string
+          descriptor_count?: number
+          file_size?: number
+          id?: string
+          is_automatic?: boolean
+          metadata?: Json | null
+          restored_at?: string | null
+          user_id: string
+        }
+        Update: {
+          backup_path?: string
+          created_at?: string
+          descriptor_count?: number
+          file_size?: number
+          id?: string
+          is_automatic?: boolean
+          metadata?: Json | null
+          restored_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       favorites: {
         Row: {
           created_at: string
@@ -1321,6 +1357,7 @@ export type Database = {
         Args: { p_quantity: number }
         Returns: number
       }
+      cleanup_old_face_backups: { Args: never; Returns: undefined }
       get_platform_percentage: { Args: never; Returns: number }
       get_total_platform_percentage: { Args: never; Returns: number }
       has_role: {
