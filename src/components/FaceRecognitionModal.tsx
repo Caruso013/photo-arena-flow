@@ -26,6 +26,7 @@ export const FaceRecognitionModal: React.FC<FaceRecognitionModalProps> = ({
     videoRef,
     isProcessing,
     matches,
+    modelsReady,
     startCamera,
     stopCamera,
     findMyPhotos,
@@ -74,13 +75,13 @@ export const FaceRecognitionModal: React.FC<FaceRecognitionModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="w-[95vw] max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <ScanFace className="h-5 w-5" />
+          <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <ScanFace className="h-4 w-4 sm:h-5 sm:w-5" />
             Reconhecimento Facial
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-sm">
             Posicione seu rosto na câmera para encontrar suas fotos automaticamente
           </DialogDescription>
         </DialogHeader>
@@ -126,23 +127,37 @@ export const FaceRecognitionModal: React.FC<FaceRecognitionModalProps> = ({
               </div>
             )}
 
-            {/* Guia de posicionamento facial */}
+            {/* Guia de posicionamento facial - Responsivo */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="border-2 border-white/40 rounded-full w-64 h-64 flex items-center justify-center">
-                <div className="border-2 border-white/60 rounded-full w-56 h-56" />
+              <div className="border-2 border-white/40 rounded-full w-48 h-48 sm:w-64 sm:h-64 flex items-center justify-center">
+                <div className="border-2 border-white/60 rounded-full w-40 h-40 sm:w-56 sm:h-56" />
               </div>
             </div>
           </div>
 
           {/* Instruções */}
-          <div className="bg-muted rounded-lg p-4 space-y-2">
-            <h4 className="font-semibold text-sm">Como usar:</h4>
-            <ul className="text-sm text-muted-foreground space-y-1">
-              <li>• Posicione seu rosto dentro do círculo</li>
-              <li>• Certifique-se de estar bem iluminado</li>
-              <li>• Mantenha o rosto centralizado e visível</li>
-              <li>• Clique em "Buscar Minhas Fotos" para iniciar</li>
+          <div className="bg-muted rounded-lg p-3 sm:p-4 space-y-2">
+            <h4 className="font-semibold text-sm flex items-center gap-2">
+              📸 Como usar:
+            </h4>
+            <ul className="text-xs sm:text-sm text-muted-foreground space-y-1">
+              <li>✓ Posicione seu rosto dentro do círculo</li>
+              <li>✓ Certifique-se de estar bem iluminado</li>
+              <li>✓ Mantenha o rosto centralizado e visível</li>
+              <li>✓ Clique em "Buscar Minhas Fotos" para iniciar</li>
             </ul>
+            
+            {/* Status da IA */}
+            <div className="mt-3 p-2 sm:p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md">
+              <p className="text-xs font-medium text-green-900 dark:text-green-100 flex items-center gap-1">
+                <span className="text-base">🤖</span> {modelsReady ? 'IA Pronta!' : 'Carregando IA...'}
+              </p>
+              <p className="text-xs text-green-800 dark:text-green-200 mt-1">
+                {modelsReady 
+                  ? 'Reconhecimento facial com inteligência artificial ativado. Seus rostos serão identificados com precisão.'
+                  : 'Aguarde enquanto carregamos os modelos de reconhecimento facial...'}
+              </p>
+            </div>
             
             {!cameraActive && (
               <div className="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
@@ -172,10 +187,10 @@ export const FaceRecognitionModal: React.FC<FaceRecognitionModalProps> = ({
           )}
 
           {/* Ações */}
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <Button
               variant="outline"
-              className="flex-1"
+              className="flex-1 text-sm"
               onClick={() => onOpenChange(false)}
               disabled={isProcessing}
             >
@@ -184,28 +199,39 @@ export const FaceRecognitionModal: React.FC<FaceRecognitionModalProps> = ({
             </Button>
             
             <Button
-              className="flex-1"
+              className="flex-1 text-sm"
               onClick={handleScanFace}
-              disabled={!cameraActive || isProcessing}
+              disabled={!cameraActive || isProcessing || !modelsReady}
             >
               {isProcessing ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   Processando...
                 </>
+              ) : !modelsReady ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Carregando IA...
+                </>
               ) : (
                 <>
                   <ScanFace className="h-4 w-4 mr-2" />
-                  Buscar Minhas Fotos
+                  <span className="hidden sm:inline">Buscar Minhas Fotos</span>
+                  <span className="sm:hidden">Buscar Fotos</span>
                 </>
               )}
             </Button>
           </div>
 
           {/* Aviso de privacidade */}
-          <p className="text-xs text-muted-foreground text-center">
-            🔒 Suas imagens são processadas de forma segura e não são armazenadas
-          </p>
+          <div className="text-center">
+            <p className="text-xs text-muted-foreground">
+              🔒 Suas imagens são processadas localmente e não são armazenadas
+            </p>
+            <p className="text-xs text-muted-foreground/70 mt-1">
+              Tecnologia 100% segura e privada
+            </p>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
