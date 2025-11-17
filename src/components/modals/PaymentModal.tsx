@@ -11,7 +11,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { CreditCard, Loader2, ShoppingCart, ArrowLeft, AlertCircle } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { emailService } from '@/lib/emailService';
-import { checkRateLimit } from '@/lib/rateLimit';
 
 declare global {
   interface Window {
