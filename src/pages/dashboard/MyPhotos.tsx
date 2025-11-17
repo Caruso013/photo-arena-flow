@@ -27,19 +27,30 @@ const MyPhotos = () => {
   }, [user]);
 
   const fetchMyPhotos = async () => {
+    if (!user?.id) {
+      setLoading(false);
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from('photos')
         .select(`
-          *,
+          id,
+          title,
+          watermarked_url,
+          thumbnail_url,
+          price,
           campaign:campaigns(title)
         `)
-        .eq('photographer_id', user?.id)
+        .eq('photographer_id', user.id)
         .order('upload_sequence', { ascending: true })
         .order('created_at', { ascending: true })
         .limit(50);
 
       if (error) throw error;
+      
+      console.log('MyPhotos: fetched', data?.length || 0, 'photos');
       setPhotos(data || []);
     } catch (error) {
       console.error('Error fetching photos:', error);
