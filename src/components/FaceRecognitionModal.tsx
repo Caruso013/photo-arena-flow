@@ -63,11 +63,29 @@ export const FaceRecognitionModal: React.FC<FaceRecognitionModalProps> = ({
   };
 
   const handleScanFace = async () => {
+    console.log('🎯 Iniciando busca facial...');
+    console.log('- Câmera ativa:', cameraActive);
+    console.log('- Modelos prontos:', modelsReady);
+    console.log('- Campaign ID:', campaignId);
+    
+    if (!cameraActive) {
+      setCameraError('Câmera não está ativa. Permita o acesso à câmera.');
+      return;
+    }
+    
+    if (!modelsReady) {
+      setCameraError('Aguarde os modelos de IA carregarem completamente.');
+      return;
+    }
+    
     const foundMatches = await findMyPhotos(campaignId);
+    
+    console.log('✅ Busca concluída. Matches:', foundMatches.length);
     
     if (foundMatches.length > 0) {
       // Redirecionar para as fotos encontradas
       const photoIds = foundMatches.map(m => m.photo_id).join(',');
+      console.log('🔄 Redirecionando para fotos:', photoIds);
       navigate(`/campaign/${campaignId || foundMatches[0].campaign_id}?photos=${photoIds}`);
       onOpenChange(false);
     }

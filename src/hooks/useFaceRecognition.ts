@@ -31,30 +31,48 @@ export const useFaceRecognition = () => {
   useEffect(() => {
     const loadModels = async () => {
       if (modelsLoaded) {
+        console.log('✅ Modelos já carregados anteriormente');
         setModelsReady(true);
         return;
       }
 
       try {
         console.log('🔄 Carregando modelos de IA para reconhecimento facial...');
+        console.log('📁 Buscando modelos em: /models');
         
         const MODEL_URL = '/models';
         
-        await Promise.all([
-          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
-          faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL),
-        ]);
+        // Carregar modelos um por um para melhor diagnóstico
+        console.log('⏳ Carregando Tiny Face Detector...');
+        await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+        console.log('✅ Tiny Face Detector carregado');
+        
+        console.log('⏳ Carregando Face Landmark 68...');
+        await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+        console.log('✅ Face Landmark 68 carregado');
+        
+        console.log('⏳ Carregando Face Recognition...');
+        await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+        console.log('✅ Face Recognition carregado');
+        
+        console.log('⏳ Carregando Face Expression...');
+        await faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL);
+        console.log('✅ Face Expression carregado');
 
         modelsLoaded = true;
         setModelsReady(true);
-        console.log('✅ Modelos de IA carregados com sucesso!');
+        console.log('🎉 TODOS os modelos de IA carregados com sucesso!');
+        
+        toast({
+          title: "✅ IA Pronta!",
+          description: "Reconhecimento facial ativado com sucesso.",
+        });
       } catch (error) {
-        console.error('❌ Erro ao carregar modelos:', error);
+        console.error('❌ ERRO ao carregar modelos:', error);
+        console.error('Stack trace:', error);
         toast({
           title: "Erro ao carregar IA",
-          description: "Não foi possível carregar os modelos de reconhecimento facial. Recarregue a página.",
+          description: "Não foi possível carregar os modelos de reconhecimento facial. Verifique sua conexão e recarregue a página.",
           variant: "destructive",
         });
       }
@@ -203,17 +221,22 @@ export const useFaceRecognition = () => {
         throw new Error('Câmera não inicializada');
       }
 
+      console.log('📸 Capturando seu rosto da câmera...');
+      
       // Detectar rostos diretamente do vídeo
       const descriptors = await detectFaces(videoRef.current);
+      
       if (!descriptors || descriptors.length === 0) {
+        console.error('❌ Nenhum rosto detectado na câmera');
         toast({
           title: "Nenhum rosto detectado",
-          description: "Por favor, posicione seu rosto na câmera e tente novamente.",
+          description: "Por favor, posicione seu rosto na câmera e tente novamente. Certifique-se de estar bem iluminado.",
           variant: "destructive",
         });
         return [];
       }
 
+      console.log(`✅ ${descriptors.length} rosto(s) detectado(s) na sua câmera!`);
       console.log('🔎 Buscando fotos similares no banco de dados...');
 
       // Buscar fotos mais recentes do evento (limitado a 200 para performance)
@@ -275,13 +298,28 @@ export const useFaceRecognition = () => {
           
           // Usar thumbnail para economizar banda e memória
           const imageUrl = photo.thumbnail_url || photo.watermarked_url;
+          
+          // Log detalhado para debug
+          console.log(`🖼️ Carregando foto ${photo.id} de ${imageUrl}`);
+          
           img.src = imageUrl;
           
-          // Aguardar carregamento
-          await new Promise<void>((resolve, reject) => {
-            img.onload = () => resolve();
-            img.onerror = () => reject(new Error('Falha ao carregar imagem'));
-          });
+          // Aguardar carregamento com timeout
+          await Promise.race([
+            new Promise<void>((resolve, reject) => {
+              img.onload = () => {
+                console.log(`✅ Foto ${photo.id} carregada com sucesso`);
+                resolve();
+              };
+              img.onerror = (e) => {
+                console.error(`❌ Erro ao carregar foto ${photo.id}:`, e);
+                reject(new Error('Falha ao carregar imagem'));
+              };
+            }),
+            new Promise<never>((_, reject) => 
+              setTimeout(() => reject(new Error('Timeout ao carregar imagem')), 10000)
+            )
+          ]);
           
           // Detectar rostos na foto
           const photoDetections = await faceapi
@@ -320,7 +358,49 @@ export const useFaceRecognition = () => {
           return null;
 
         } catch (imgError) {
-          console.warn(`Erro ao processar foto ${photo.id}:`, imgError);
+          console.warn(`⚠️ Erro ao processar foto ${photo.id}:`, imgError);
+          
+          // Tentar novamente SEM crossOrigin (fallback para problemas de CORS)
+          try {
+            console.log(`🔄 Tentando carregar foto ${photo.id} sem CORS...`);
+            const img2 = document.createElement('img');
+            const imageUrl = photo.thumbnail_url || photo.watermarked_url;
+            img2.src = imageUrl;
+            
+            await new Promise<void>((resolve, reject) => {
+              img2.onload = () => resolve();
+              img2.onerror = () => reject(new Error('Falha ao carregar imagem'));
+            });
+            
+            // Detectar rostos na foto (segunda tentativa)
+            const photoDetections = await faceapi
+              .detectAllFaces(img2, new faceapi.TinyFaceDetectorOptions())
+              .withFaceLandmarks()
+              .withFaceDescriptors();
+
+            if (photoDetections && photoDetections.length > 0) {
+              for (const detection of photoDetections) {
+                const photoDescriptor = detection.descriptor;
+                const distance = faceapi.euclideanDistance(userDescriptor, Array.from(photoDescriptor));
+                const similarity = Math.max(0, 1 - distance);
+
+                if (similarity > 0.6) {
+                  img2.remove();
+                  return {
+                    photo_id: photo.id,
+                    similarity: similarity,
+                    photo_url: photo.watermarked_url || photo.thumbnail_url || '',
+                    campaign_id: photo.campaign_id
+                  };
+                }
+              }
+            }
+            
+            img2.remove();
+          } catch (fallbackError) {
+            console.error(`❌ Falha completa ao processar foto ${photo.id}:`, fallbackError);
+          }
+          
           return null;
         }
       };
