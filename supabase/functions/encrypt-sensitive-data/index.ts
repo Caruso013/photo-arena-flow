@@ -1,3 +1,4 @@
+// @ts-nocheck - Deno Edge Function (ignore TypeScript errors for Deno imports)
 /**
  * Edge Function: Encrypt Sensitive Data (PIX keys, bank info)
  * 
@@ -63,7 +64,7 @@ async function deriveKey(masterKey: string, salt: Uint8Array): Promise<CryptoKey
   return crypto.subtle.deriveKey(
     {
       name: 'PBKDF2',
-      salt: salt,
+      salt: salt as BufferSource,
       iterations: 100000,
       hash: 'SHA-256',
     },
@@ -194,10 +195,12 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in encrypt-sensitive-data:', error);
     
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message,
+        error: errorMessage,
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
