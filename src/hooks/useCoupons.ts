@@ -51,7 +51,7 @@ export function useCoupons() {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('coupons' as any)
+        .from('coupons')
         .select('*')
         .order('created_at', { ascending: false });
 
@@ -76,7 +76,7 @@ export function useCoupons() {
   const createCoupon = async (couponData: Omit<Coupon, 'id' | 'created_at' | 'updated_at' | 'current_uses'>) => {
     try {
       const { data, error } = await supabase
-        .from('coupons' as any)
+        .from('coupons')
         .insert({
           ...couponData,
           code: couponData.code.toUpperCase().trim(),
@@ -88,7 +88,7 @@ export function useCoupons() {
 
       toast({
         title: 'Cupom criado!',
-        description: `Código: ${data.code}`,
+        description: `Código: ${data?.code}`,
       });
 
       await fetchCoupons();
@@ -107,7 +107,7 @@ export function useCoupons() {
   const updateCoupon = async (id: string, updates: Partial<Coupon>) => {
     try {
       const { error } = await supabase
-        .from('coupons' as any)
+        .from('coupons')
         .update({
           ...updates,
           code: updates.code ? updates.code.toUpperCase().trim() : undefined,
@@ -136,7 +136,7 @@ export function useCoupons() {
   const deleteCoupon = async (id: string) => {
     try {
       const { error } = await supabase
-        .from('coupons' as any)
+        .from('coupons')
         .delete()
         .eq('id', id);
 
@@ -217,7 +217,7 @@ export function useCoupons() {
         .order('total_discount_given', { ascending: false });
 
       if (error) throw error;
-      return (data || []) as CouponStats[];
+      return (data as unknown as CouponStats[]) || [];
     } catch (error: any) {
       console.error('Erro ao carregar estatísticas:', error);
       return [];
