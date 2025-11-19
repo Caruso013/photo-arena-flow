@@ -239,16 +239,24 @@ export const useFaceRecognition = () => {
       console.log(`✅ ${descriptors.length} rosto(s) detectado(s) na sua câmera!`);
       console.log('🔎 Buscando fotos similares no banco de dados...');
 
-      // Buscar fotos mais recentes do evento (limitado a 200 para performance)
+      // SEMPRE buscar fotos apenas do evento/álbum atual (campaignId obrigatório)
+      if (!campaignId) {
+        toast({
+          title: "Erro",
+          description: "É necessário estar em um evento específico para usar reconhecimento facial.",
+          variant: "destructive",
+        });
+        return [];
+      }
+
+      // Buscar fotos do evento específico (limitado a 200 para performance)
       let query = supabase
         .from('photos')
         .select('id, watermarked_url, thumbnail_url, campaign_id, campaigns(id, title)')
+        .eq('campaign_id', campaignId) // SEMPRE filtrar pelo evento atual
+        .eq('is_available', true)
         .order('created_at', { ascending: false })
         .range(0, 199); // Limitar a 200 fotos mais recentes
-      
-      if (campaignId) {
-        query = query.eq('campaign_id', campaignId);
-      }
 
       const { data: photos, error: photosError } = await query;
 
