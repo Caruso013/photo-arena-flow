@@ -33,13 +33,13 @@ const EditAlbumCoverModal: React.FC<EditAlbumCoverModalProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     // Validar arquivo usando biblioteca centralizada
-    const validation = validateCoverUpload(file);
-    if (!validation.isValid) {
+    const validation = await validateCoverUpload(file);
+    if (!validation.valid) {
       setError(validation.error || 'Arquivo inválido');
       toast({
         title: "Arquivo inválido",

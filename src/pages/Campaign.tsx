@@ -160,12 +160,20 @@ const Campaign = () => {
     return () => clearTimeout(timer);
   }, [id, page, totalPages, selectedSubEvent, loadingPhotos]);
 
-  // Buscar fotos quando mudar de página
+  // Buscar fotos quando mudar de página OU mudar de álbum
   useEffect(() => {
     if (id) {
+      setPage(1); // Reset para primeira página ao mudar de álbum
+      fetchPhotos(1);
+    }
+  }, [selectedSubEvent, id]);
+
+  // Buscar fotos quando mudar de página (sem resetar)
+  useEffect(() => {
+    if (id && page > 1) {
       fetchPhotos(page);
     }
-  }, [page, id]);
+  }, [page]);
 
   // Otimização: Buscar previews em paralelo (desabilitado - sub_events não existe)
   useEffect(() => {
@@ -229,9 +237,25 @@ const Campaign = () => {
   };
 
   const fetchSubEvents = async () => {
-    // Tabela sub_events não existe ainda neste projeto
-    // Desabilitando funcionalidade de álbuns temporariamente
-    setSubEvents([]);
+    if (!id) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('sub_events')
+        .select('id, title, description, location, event_time, photo_count')
+        .eq('campaign_id', id)
+        .eq('is_active', true)
+        .gte('photo_count', 5) // APENAS álbuns com 5 ou mais fotos
+        .order('event_time', { ascending: false });
+
+      if (error) throw error;
+      
+      console.log(`📂 Encontrados ${data?.length || 0} álbuns com 5+ fotos`);
+      setSubEvents(data || []);
+    } catch (error) {
+      console.error('Error fetching sub-events:', error);
+      setSubEvents([]);
+    }
   };
 
   const fetchPhotos = async (pageNum: number) => {
@@ -243,12 +267,17 @@ const Campaign = () => {
       const from = (pageNum - 1) * PHOTOS_PER_PAGE;
       const to = from + PHOTOS_PER_PAGE - 1;
 
-      // Primeiro, contar o total de fotos
+      // Primeiro, contar o total de fotos (com filtro de sub_event se aplicável)
       let countQuery = supabase
         .from('photos')
         .select('id', { count: 'exact', head: true })
         .eq('campaign_id', id)
         .eq('is_available', true);
+
+      // Filtrar por sub_event se selecionado
+      if (selectedSubEvent) {
+        countQuery = countQuery.eq('sub_event_id', selectedSubEvent);
+      }
 
       const { count } = await countQuery;
       const total = count || 0;
@@ -257,17 +286,24 @@ const Campaign = () => {
       // Depois buscar as fotos
       let query = supabase
         .from('photos')
-        .select('id, title, original_url, watermarked_url, thumbnail_url, price, is_available')
+        .select('id, title, original_url, watermarked_url, thumbnail_url, price, is_available, sub_event_id')
         .eq('campaign_id', id)
         .eq('is_available', true)
         .range(from, to)
         .order('upload_sequence', { ascending: true })
         .order('created_at', { ascending: true });
 
+      // Filtrar por sub_event se selecionado
+      if (selectedSubEvent) {
+        query = query.eq('sub_event_id', selectedSubEvent);
+        console.log(`📂 Buscando fotos do álbum ${selectedSubEvent}`);
+      }
+
       const { data, error } = await query;
 
       if (error) throw error;
       
+      console.log(`📸 ${data?.length || 0} fotos carregadas (página ${pageNum})`);
       setPhotos(data || []);
     } catch (error) {
       toast({

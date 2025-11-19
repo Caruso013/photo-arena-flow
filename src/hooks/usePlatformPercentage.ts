@@ -8,16 +8,13 @@ export const usePlatformPercentage = () => {
   useEffect(() => {
     const fetchPercentage = async () => {
       try {
-        const { data, error } = await supabase
-          .from('system_config' as any)
-          .select('value')
-          .eq('key', 'platform_percentage')
-          .single() as any;
+        const { data, error } = await supabase.rpc('get_total_platform_percentage');
 
         if (error) throw error;
         
-        if (data && data.value && typeof data.value === 'object' && 'value' in data.value) {
-          setPercentage(Number(data.value.value));
+        // Função RPC retorna diretamente o número
+        if (data) {
+          setPercentage(Number(data));
         }
       } catch (error) {
         console.error('Error fetching platform percentage:', error);
