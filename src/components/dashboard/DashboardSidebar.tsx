@@ -37,31 +37,36 @@ const DashboardSidebar = ({ isOpen, onToggle }: DashboardSidebarProps) => {
     trackTouch: true,
   });
 
-  // Menu items por role
+  // Menu items por role - Principais funções na sidebar
   const userItems = [
-    { title: 'Eventos', url: '/dashboard', icon: Calendar },
+    { title: 'Início', url: '/', icon: Home },
+    { title: 'Eventos', url: '/events', icon: Calendar },
     { title: 'Minhas Compras', url: '/dashboard/purchases', icon: ShoppingCart },
     { title: 'Favoritos', url: '/dashboard/favorites', icon: Heart },
     { title: 'Backup Facial', url: '/dashboard/face-backup', icon: Database },
+    { title: 'Perfil', url: '/dashboard/profile', icon: UserCircle },
     { title: 'Seja Fotógrafo', url: '/dashboard/photographer-application', icon: Camera },
   ];
 
   const photographerItems = [
-    { title: 'Visão Geral', url: '/dashboard', icon: LayoutDashboard },
+    { title: 'Início', url: '/', icon: Home },
+    { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
     { title: 'Meus Eventos', url: '/dashboard/events', icon: Calendar },
     { title: 'Eventos Próximos', url: '/eventos-proximos', icon: Calendar },
+    { title: 'Minhas Fotos', url: '/dashboard/photos', icon: Image },
     { title: 'Minhas Compras', url: '/dashboard/purchases', icon: ShoppingCart },
     { title: 'Favoritos', url: '/dashboard/favorites', icon: Heart },
     { title: 'Backup Facial', url: '/dashboard/face-backup', icon: Database },
-    { title: 'Minhas Fotos', url: '/dashboard/photos', icon: Image },
     { title: 'Financeiro', url: '/dashboard/financial', icon: DollarSign },
     { title: 'Perfil', url: '/dashboard/profile', icon: UserCircle },
   ];
 
   const adminItems = [
-    { title: 'Visão Geral', url: '/dashboard/admin', icon: LayoutDashboard },
+    { title: 'Início', url: '/', icon: Home },
+    { title: 'Dashboard Admin', url: '/dashboard/admin', icon: LayoutDashboard },
     { title: 'Fotógrafos', url: '/dashboard/admin/photographers', icon: Camera },
     { title: 'Usuários', url: '/dashboard/admin/users', icon: Users },
+    { title: 'Eventos', url: '/dashboard/admin/events', icon: Calendar },
     { title: 'Organizações', url: '/dashboard/admin/organizations', icon: Building2 },
     { title: 'Financeiro', url: '/dashboard/admin/financial', icon: DollarSign },
     { title: 'Relatórios', url: '/dashboard/admin/reports', icon: FileText },

@@ -887,6 +887,7 @@ export type Database = {
           email: string
           full_name: string | null
           id: string
+          photographer_platform_percentage: number | null
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string
         }
@@ -896,6 +897,7 @@ export type Database = {
           email: string
           full_name?: string | null
           id: string
+          photographer_platform_percentage?: number | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
         }
@@ -905,6 +907,7 @@ export type Database = {
           email?: string
           full_name?: string | null
           id?: string
+          photographer_platform_percentage?: number | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
         }
@@ -1049,6 +1052,7 @@ export type Database = {
           id: string
           is_active: boolean
           location: string | null
+          photo_count: number | null
           title: string
           updated_at: string
         }
@@ -1060,6 +1064,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           location?: string | null
+          photo_count?: number | null
           title: string
           updated_at?: string
         }
@@ -1071,6 +1076,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           location?: string | null
+          photo_count?: number | null
           title?: string
           updated_at?: string
         }
@@ -1358,6 +1364,10 @@ export type Database = {
         Returns: number
       }
       cleanup_old_face_backups: { Args: never; Returns: undefined }
+      get_photographer_platform_percentage: {
+        Args: { p_photographer_id: string }
+        Returns: number
+      }
       get_platform_percentage: { Args: never; Returns: number }
       get_total_platform_percentage: { Args: never; Returns: number }
       has_role: {

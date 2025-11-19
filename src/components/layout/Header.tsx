@@ -45,10 +45,8 @@ const Header = () => {
   };
 
   const navItems = [
-    { to: '/', label: 'HOME', icon: Home },
     { to: '/events', label: 'EVENTOS', icon: Calendar },
     { to: '/fotografos', label: 'FOTÓGRAFOS', icon: Camera },
-    { to: '/sobre', label: 'SOBRE', icon: Info },
     { to: '/tutorial', label: 'COMO FUNCIONA', icon: BookOpen },
     { to: '/faq', label: 'AJUDA', icon: HelpCircle },
     { to: '/contato', label: 'CONTATO', icon: Mail },

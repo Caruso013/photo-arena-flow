@@ -9,6 +9,7 @@ interface WatermarkedPhotoProps {
   position?: 'center' | 'corner' | 'full';
   opacity?: number;
   loading?: 'lazy' | 'eager';
+  onDownload?: () => void;
 }
 
 const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = ({
@@ -20,6 +21,7 @@ const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = ({
   position = 'full',
   opacity = 0.85,
   loading = 'lazy',
+  onDownload,
 }) => {
   const watermarkPositionClass =
     position === 'center'
@@ -27,6 +29,29 @@ const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = ({
       : position === 'corner'
       ? 'right-2 bottom-2 w-16 h-16'
       : 'inset-0 w-full h-full'; // position === 'full'
+
+  // Download para Safari/iOS usando fetch + blob
+  const handleDownload = async () => {
+    if (onDownload) {
+      onDownload();
+      return;
+    }
+
+    try {
+      const response = await fetch(src);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = alt || 'foto.jpg';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Erro ao baixar imagem:', error);
+    }
+  };
 
   return (
     <div className="relative w-full h-full">
@@ -36,6 +61,7 @@ const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = ({
         className={imgClassName}
         loading={loading}
         decoding="async"
+        crossOrigin="anonymous"
       />
 
       {/* watermark overlay in front */}
@@ -50,6 +76,7 @@ const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = ({
         loading={loading}
         decoding="async"
         aria-hidden
+        crossOrigin="anonymous"
       />
     </div>
   );
