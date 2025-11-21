@@ -1,85 +1,108 @@
 /**
- * OptimizedImage Component
- * Componente otimizado para carregar imagens do Supabase com:
- * - Transformação automática (WebP, resize, quality)
- * - Lazy loading
- * - Placeholder blur
- * - Loading state
+ * OptimizedImage Component v2
+ * Componente avançado com blur-up, lazy loading e cache
  */
 
-import React, { useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import React, { useState, useEffect, useRef } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  getOptimizedImageUrl,
+  createLazyLoadObserver,
+  shouldEagerLoad,
+  ImageSize
+} from '@/lib/imageOptimization';
 
 interface OptimizedImageProps {
   src: string;
   alt: string;
-  size?: 'thumbnail' | 'medium' | 'large' | 'original';
+  size?: ImageSize;
   className?: string;
-  placeholderSrc?: string;
+  index?: number; // Posição na lista (para eager loading)
   onClick?: () => void;
+  onLoad?: () => void;
 }
-
-const SIZE_CONFIG = {
-  thumbnail: { width: 400, height: 300, quality: 80 },
-  medium: { width: 800, height: 600, quality: 85 },
-  large: { width: 1200, height: 900, quality: 90 },
-  original: null // Sem transformação
-};
 
 export const OptimizedImage: React.FC<OptimizedImageProps> = ({
   src,
   alt,
   size = 'medium',
   className = '',
-  placeholderSrc,
-  onClick
+  index = 0,
+  onClick,
+  onLoad
 }) => {
+  const [currentSrc, setCurrentSrc] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
+  const [shouldLoad, setShouldLoad] = useState(shouldEagerLoad(index));
 
-  // Gerar URL otimizada
-  const getOptimizedUrl = () => {
-    if (size === 'original' || !src.includes('supabase')) {
-      return src;
-    }
+  // URLs em cascata: blur → thumbnail → imagem solicitada
+  const blurUrl = getOptimizedImageUrl(src, 'blur');
+  const thumbnailUrl = getOptimizedImageUrl(src, 'thumbnail');
+  const targetUrl = getOptimizedImageUrl(src, size);
 
-    const config = SIZE_CONFIG[size];
-    if (!config) return src;
+  // Configurar lazy loading com Intersection Observer
+  useEffect(() => {
+    if (shouldLoad || !imgRef.current) return;
 
-    try {
-      // Extrair bucket e path do URL
-      const urlParts = src.split('/storage/v1/object/public/');
-      if (urlParts.length !== 2) return src;
+    const observer = createLazyLoadObserver((entry) => {
+      if (entry.isIntersecting) {
+        setShouldLoad(true);
+        observer.unobserve(entry.target);
+      }
+    });
 
-      const [bucket, ...pathParts] = urlParts[1].split('/');
-      const path = pathParts.join('/');
+    observer.observe(imgRef.current);
 
-      return supabase.storage
-        .from(bucket)
-        .getPublicUrl(path, {
-          transform: {
-            width: config.width,
-            height: config.height,
-            quality: config.quality
-          }
-        }).data.publicUrl;
-    } catch (error) {
-      console.error('Error generating optimized URL:', error);
-      return src;
-    }
-  };
+    return () => observer.disconnect();
+  }, [shouldLoad]);
 
-  const optimizedUrl = getOptimizedUrl();
+  // Carregamento em cascata: blur → thumbnail → target
+  useEffect(() => {
+    if (!shouldLoad) return;
 
-  const handleLoad = () => {
-    setIsLoading(false);
-  };
+    let isMounted = true;
 
-  const handleError = () => {
-    setIsLoading(false);
-    setHasError(true);
-  };
+    const loadSequence = async () => {
+      try {
+        // 1. Mostrar blur imediatamente
+        setCurrentSrc(blurUrl);
+
+        // 2. Pré-carregar thumbnail
+        const thumbnailImg = new Image();
+        thumbnailImg.src = thumbnailUrl;
+        await thumbnailImg.decode();
+
+        if (isMounted) {
+          setCurrentSrc(thumbnailUrl);
+        }
+
+        // 3. Carregar imagem final
+        const finalImg = new Image();
+        finalImg.src = targetUrl;
+        await finalImg.decode();
+
+        if (isMounted) {
+          setCurrentSrc(targetUrl);
+          setIsLoading(false);
+          onLoad?.();
+        }
+      } catch (error) {
+        console.error('Error loading image:', error);
+        if (isMounted) {
+          setHasError(true);
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadSequence();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [shouldLoad, blurUrl, thumbnailUrl, targetUrl, onLoad]);
 
   if (hasError) {
     return (
@@ -92,34 +115,38 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
   }
 
   return (
-    <div className={`relative ${className}`}>
-      {/* Skeleton placeholder enquanto carrega */}
-      {isLoading && (
-        <Skeleton className="absolute inset-0" />
-      )}
+    <div className={`relative overflow-hidden ${className}`}>
+      {/* Skeleton enquanto não começar a carregar */}
+      {!shouldLoad && <Skeleton className="absolute inset-0" />}
 
-      {/* Thumbnail como placeholder blur (se fornecido) */}
-      {isLoading && placeholderSrc && (
+      {/* Imagem com blur-up progressivo */}
+      {shouldLoad && (
         <img
-          src={placeholderSrc}
+          ref={imgRef}
+          src={currentSrc}
           alt={alt}
-          className="absolute inset-0 w-full h-full object-cover blur-sm"
-          aria-hidden="true"
+          loading={shouldEagerLoad(index) ? 'eager' : 'lazy'}
+          decoding="async"
+          onClick={onClick}
+          className={`w-full h-full object-cover transition-all duration-500 ${
+            currentSrc === blurUrl ? 'blur-lg scale-110' : 
+            currentSrc === thumbnailUrl ? 'blur-sm' : 
+            'blur-0'
+          } ${
+            isLoading ? 'opacity-70' : 'opacity-100'
+          }`}
+          style={{
+            willChange: isLoading ? 'filter, opacity' : 'auto'
+          }}
         />
       )}
 
-      {/* Imagem principal */}
-      <img
-        src={optimizedUrl}
-        alt={alt}
-        loading="lazy"
-        onLoad={handleLoad}
-        onError={handleError}
-        onClick={onClick}
-        className={`w-full h-full object-cover transition-opacity duration-300 ${
-          isLoading ? 'opacity-0' : 'opacity-100'
-        }`}
-      />
+      {/* Indicador de loading */}
+      {isLoading && shouldLoad && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/5">
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+      )}
     </div>
   );
 };
@@ -127,28 +154,24 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
 /**
  * Exemplo de uso:
  * 
- * // Thumbnail em listagem
- * <OptimizedImage
- *   src={photo.watermarked_url}
- *   alt={photo.title}
- *   size="thumbnail"
- *   placeholderSrc={photo.thumbnail_url}
- *   className="aspect-square rounded-lg"
- * />
+ * // Em uma galeria de fotos
+ * {photos.map((photo, index) => (
+ *   <OptimizedImage
+ *     key={photo.id}
+ *     src={photo.watermarked_url}
+ *     alt={photo.title}
+ *     size="thumbnail"
+ *     index={index}
+ *     className="aspect-square rounded-lg"
+ *     onClick={() => openModal(photo)}
+ *   />
+ * ))}
  * 
- * // Imagem média em modal
+ * // Modal com imagem grande
  * <OptimizedImage
- *   src={photo.watermarked_url}
- *   alt={photo.title}
- *   size="medium"
- *   className="max-w-4xl mx-auto"
- * />
- * 
- * // Imagem grande para visualização
- * <OptimizedImage
- *   src={photo.original_url}
- *   alt={photo.title}
+ *   src={selectedPhoto.watermarked_url}
+ *   alt={selectedPhoto.title}
  *   size="large"
- *   className="w-full"
+ *   className="max-w-4xl mx-auto"
  * />
  */
