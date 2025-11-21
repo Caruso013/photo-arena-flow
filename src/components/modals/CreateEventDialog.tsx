@@ -7,7 +7,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Calendar, MapPin, Loader2 } from 'lucide-react';
+import { Calendar, MapPin, Loader2, Gift } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface CreateEventDialogProps {
   isOpen: boolean;
@@ -23,10 +25,11 @@ export default function CreateEventDialog({ isOpen, onClose, onEventCreated }: C
     description: '',
     location: '',
     event_date: '',
+    progressive_discount_enabled: false,
   });
   const { toast } = useToast();
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -58,6 +61,7 @@ export default function CreateEventDialog({ isOpen, onClose, onEventCreated }: C
           photographer_percentage: 91, // Padrão: 91% para fotógrafo (9% plataforma)
           organization_percentage: 0,
           is_active: true,
+          progressive_discount_enabled: formData.progressive_discount_enabled,
           photographer_id: profile?.id,
         });
 
@@ -74,6 +78,7 @@ export default function CreateEventDialog({ isOpen, onClose, onEventCreated }: C
         description: '',
         location: '',
         event_date: '',
+        progressive_discount_enabled: false,
       });
       
       onEventCreated();
@@ -158,11 +163,53 @@ export default function CreateEventDialog({ isOpen, onClose, onEventCreated }: C
           </div>
 
           <div className="p-3 bg-primary/10 dark:bg-primary/20 border border-primary/30 rounded-lg">
-            <p className="text-sm text-foreground">
+            <p className="text-sm text-foreground mb-3">
               💰 <strong>Comissão:</strong> Você recebe 91% do valor de cada foto vendida. 
               A plataforma retém 9% para manutenção do serviço.
             </p>
           </div>
+
+          <div className="flex items-center justify-between p-3 bg-primary/10 rounded-lg border border-primary/20">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <Gift className="h-4 w-4 text-primary" />
+                <Label htmlFor="progressive_discount" className="text-sm font-medium cursor-pointer">
+                  Ativar Descontos Progressivos
+                </Label>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Incentive compras maiores com descontos automáticos
+              </p>
+            </div>
+            <Switch 
+              id="progressive_discount"
+              checked={formData.progressive_discount_enabled} 
+              onCheckedChange={(checked) => handleInputChange('progressive_discount_enabled', checked)}
+            />
+          </div>
+
+          {formData.progressive_discount_enabled && (
+            <Alert className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+              <Gift className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <AlertDescription className="text-blue-900 dark:text-blue-100">
+                <div className="space-y-1 text-xs">
+                  <p className="font-medium mb-1">Tabela de descontos automáticos:</p>
+                  <div className="flex justify-between">
+                    <span>• 2 a 4 fotos</span>
+                    <span className="font-semibold">5% OFF</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>• 5 a 9 fotos</span>
+                    <span className="font-semibold">10% OFF</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>• 10 ou mais fotos</span>
+                    <span className="font-semibold">20% OFF</span>
+                  </div>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
 
           <div className="flex justify-end gap-3 pt-4">
             <Button
