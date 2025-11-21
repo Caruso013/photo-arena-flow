@@ -789,6 +789,57 @@ export type Database = {
           },
         ]
       }
+      photographer_goals: {
+        Row: {
+          created_at: string | null
+          events_target: number | null
+          id: string
+          is_active: boolean | null
+          month: string
+          photographer_id: string
+          photos_target: number | null
+          sales_target: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          events_target?: number | null
+          id?: string
+          is_active?: boolean | null
+          month: string
+          photographer_id: string
+          photos_target?: number | null
+          sales_target?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          events_target?: number | null
+          id?: string
+          is_active?: boolean | null
+          month?: string
+          photographer_id?: string
+          photos_target?: number | null
+          sales_target?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "photographer_goals_photographer_id_fkey"
+            columns: ["photographer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "photographer_goals_photographer_id_fkey"
+            columns: ["photographer_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       photos: {
         Row: {
           campaign_id: string

@@ -30,10 +30,12 @@ import {
   Folder,
   Image as ImageIcon,
   Heart,
-  ScanFace
+  ScanFace,
+  Edit
 } from 'lucide-react';
 import { useFavorites } from '@/hooks/useFavorites';
 import { FaceRecognitionModal } from '@/components/FaceRecognitionModal';
+import EditEventModal from '@/components/modals/EditEventModal';
 
 interface Campaign {
   id: string;
@@ -80,7 +82,7 @@ interface Photo {
 const Campaign = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { addToCart } = useCart();
   const { toggleFavorite, isFavorited } = useFavorites();
   
@@ -93,6 +95,7 @@ const Campaign = () => {
   const [selectedSubEvent, setSelectedSubEvent] = useState<string | null>(null);
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showEditEventModal, setShowEditEventModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingPhotos, setLoadingPhotos] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
@@ -508,23 +511,38 @@ const Campaign = () => {
               </div>
             )}
             <div className="absolute inset-0 bg-black/20" />
-            <div className="absolute bottom-3 sm:bottom-4 left-3 sm:left-4 text-white">
-              <h1 className="text-xl sm:text-3xl font-bold mb-1 sm:mb-2">{campaign.title}</h1>
-              <div className="flex flex-wrap gap-2 sm:gap-4 text-xs sm:text-sm">
-                {campaign.event_date && (
-                  <div className="flex items-center gap-1">
-                    <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
-                    <span className="hidden sm:inline">{new Date(campaign.event_date).toLocaleDateString('pt-BR')}</span>
-                    <span className="sm:hidden">{new Date(campaign.event_date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</span>
-                  </div>
-                )}
-                {campaign.location && (
-                  <div className="flex items-center gap-1 max-w-[200px] sm:max-w-none">
-                    <MapPin className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-                    <span className="truncate">{campaign.location}</span>
-                  </div>
-                )}
+            <div className="absolute bottom-3 sm:bottom-4 left-3 sm:left-4 right-3 sm:right-4 flex items-end justify-between">
+              <div className="text-white flex-1">
+                <h1 className="text-xl sm:text-3xl font-bold mb-1 sm:mb-2">{campaign.title}</h1>
+                <div className="flex flex-wrap gap-2 sm:gap-4 text-xs sm:text-sm">
+                  {campaign.event_date && (
+                    <div className="flex items-center gap-1">
+                      <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="hidden sm:inline">{new Date(campaign.event_date).toLocaleDateString('pt-BR')}</span>
+                      <span className="sm:hidden">{new Date(campaign.event_date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</span>
+                    </div>
+                  )}
+                  {campaign.location && (
+                    <div className="flex items-center gap-1 max-w-[200px] sm:max-w-none">
+                      <MapPin className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                      <span className="truncate">{campaign.location}</span>
+                    </div>
+                  )}
+                </div>
               </div>
+              
+              {/* Botão Editar - apenas para fotógrafo dono ou admin */}
+              {campaign && (profile?.role === 'admin' || campaign.photographer_id === user?.id) && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setShowEditEventModal(true)}
+                  className="gap-2 bg-white/95 hover:bg-white shadow-lg"
+                >
+                  <Edit className="h-4 w-4" />
+                  <span className="hidden sm:inline">Editar Evento</span>
+                </Button>
+              )}
             </div>
           </div>
 
@@ -899,6 +917,27 @@ const Campaign = () => {
               image_url: selectedPhoto.thumbnail_url || selectedPhoto.watermarked_url
             }}
             onPaymentSuccess={handlePaymentSuccess}
+          />
+        )}
+
+        {/* Edit Event Modal */}
+        {showEditEventModal && campaign && (
+          <EditEventModal
+            campaignId={campaign.id}
+            campaignData={{
+              title: campaign.title,
+              description: campaign.description || undefined,
+              location: campaign.location || undefined,
+              event_date: campaign.event_date || undefined,
+              is_active: campaign.is_active,
+              cover_image_url: campaign.cover_image_url || undefined
+            }}
+            open={showEditEventModal}
+            onClose={() => setShowEditEventModal(false)}
+            onEventUpdated={() => {
+              fetchCampaign();
+              setShowEditEventModal(false);
+            }}
           />
         )}
       </div>
