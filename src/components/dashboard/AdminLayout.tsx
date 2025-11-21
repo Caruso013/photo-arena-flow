@@ -2,7 +2,6 @@ import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import AdminHeader from './AdminHeader';
-import AdminNavLinks from './AdminNavLinks';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -26,7 +25,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <AdminHeader />
-      <AdminNavLinks />
       
       <main className="flex-1 container px-4 py-8">
         {children}
