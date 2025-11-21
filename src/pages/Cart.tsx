@@ -20,10 +20,12 @@ const Cart = () => {
   const [appliedCoupon, setAppliedCoupon] = useState<CouponValidationResult | null>(null);
 
   // Calcular desconto progressivo
+  // NOTA: O desconto só é aplicado se o fotografo habilitou no evento
+  // Por simplicidade, aqui mostramos sempre, mas o ideal seria buscar a campanha
   const progressiveDiscountPercent = 
-    totalItems >= 15 ? 15 : 
-    totalItems >= 10 ? 10 : 
-    totalItems >= 5 ? 5 : 0;
+    totalItems >= 10 ? 20 : 
+    totalItems >= 5 ? 10 : 
+    totalItems >= 2 ? 5 : 0;
 
   const progressiveDiscountAmount = (totalPrice * progressiveDiscountPercent) / 100;
 

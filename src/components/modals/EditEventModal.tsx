@@ -7,8 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { toast } from '@/components/ui/use-toast';
-import { Save, Calendar, MapPin, AlignLeft, Upload, X, Image as ImageIcon } from 'lucide-react';
+import { Save, Calendar, MapPin, AlignLeft, Upload, X, Image as ImageIcon, Gift } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface EditEventModalProps {
   campaignId: string;
@@ -19,6 +20,7 @@ interface EditEventModalProps {
     event_date?: string;
     is_active: boolean;
     cover_image_url?: string;
+    progressive_discount_enabled?: boolean;
   };
   open: boolean;
   onClose: () => void;
@@ -37,6 +39,7 @@ const EditEventModal: React.FC<EditEventModalProps> = ({
   const [location, setLocation] = useState(campaignData.location || '');
   const [eventDate, setEventDate] = useState(campaignData.event_date || '');
   const [isActive, setIsActive] = useState(campaignData.is_active);
+  const [progressiveDiscountEnabled, setProgressiveDiscountEnabled] = useState(campaignData.progressive_discount_enabled ?? false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>(campaignData.cover_image_url || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -71,6 +74,7 @@ const EditEventModal: React.FC<EditEventModalProps> = ({
         location: location.trim() || null,
         event_date: eventDate || null,
         is_active: isActive,
+        progressive_discount_enabled: progressiveDiscountEnabled,
         cover_image_url: coverImageUrl
       }).eq('id', campaignId);
 
@@ -116,6 +120,45 @@ const EditEventModal: React.FC<EditEventModalProps> = ({
               <Label>Evento Ativo</Label>
               <Switch checked={isActive} onCheckedChange={setIsActive} />
             </div>
+            <div className="flex items-center justify-between p-3 bg-primary/10 rounded-lg border border-primary/20">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <Gift className="h-4 w-4 text-primary" />
+                  <Label className="text-sm font-medium">Descontos Progressivos</Label>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {progressiveDiscountEnabled 
+                    ? 'Clientes ganham descontos ao comprar múltiplas fotos' 
+                    : 'Desativado - clientes pagam preço integral'}
+                </p>
+              </div>
+              <Switch 
+                checked={progressiveDiscountEnabled} 
+                onCheckedChange={setProgressiveDiscountEnabled} 
+              />
+            </div>
+            {progressiveDiscountEnabled && (
+              <Alert className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+                <Gift className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <AlertDescription className="text-blue-900 dark:text-blue-100">
+                  <div className="space-y-1 text-xs">
+                    <p className="font-medium mb-1">Tabela de descontos automáticos:</p>
+                    <div className="flex justify-between">
+                      <span>• 2 a 4 fotos</span>
+                      <span className="font-semibold">5% OFF</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>• 5 a 9 fotos</span>
+                      <span className="font-semibold">10% OFF</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>• 10 ou mais fotos</span>
+                      <span className="font-semibold">20% OFF</span>
+                    </div>
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
           </TabsContent>
           <TabsContent value="cover" className="space-y-4">
             {previewUrl && <img src={previewUrl} className="w-full aspect-video object-cover rounded" />}
