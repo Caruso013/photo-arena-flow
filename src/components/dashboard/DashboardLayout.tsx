@@ -10,9 +10,6 @@ import {
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 import DashboardSidebar from './DashboardSidebar';
-import AdminNavLinks from './AdminNavLinks';
-import PhotographerNavLinks from './PhotographerNavLinks';
-import ClientNavLinks from './ClientNavLinks';
 import { DynamicBreadcrumb } from '@/components/layout/DynamicBreadcrumb';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { LogOut, Settings, User, Menu } from 'lucide-react';
@@ -107,11 +104,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
             </div>
           </div>
         </header>
-
-        {/* Navigation Links - Role-based */}
-        {profile?.role === 'admin' && <AdminNavLinks />}
-        {profile?.role === 'photographer' && <PhotographerNavLinks />}
-        {(profile?.role === 'user' || !profile?.role) && <ClientNavLinks />}
 
         {/* Main Content */}
         <main className="flex-1 px-4 py-4 md:py-8">
