@@ -50,20 +50,20 @@ export const ProgressiveDiscountToggle: React.FC<ProgressiveDiscountToggleProps>
             <Alert className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
               <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
               <AlertDescription className="text-blue-900 dark:text-blue-100">
-                <div className="space-y-2">
+                  <div className="space-y-2">
                   <p className="font-medium">Tabela de descontos ativa:</p>
                   <div className="space-y-1 text-sm">
                     <div className="flex justify-between">
-                      <span>• 5 a 10 fotos</span>
+                      <span>• 2 a 4 fotos</span>
                       <span className="font-semibold">5% de desconto</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>• 11 a 20 fotos</span>
+                      <span>• 5 a 9 fotos</span>
                       <span className="font-semibold">10% de desconto</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>• 21 ou mais fotos</span>
-                      <span className="font-semibold">15% de desconto</span>
+                      <span>• 10 ou mais fotos</span>
+                      <span className="font-semibold">20% de desconto</span>
                     </div>
                   </div>
                 </div>
