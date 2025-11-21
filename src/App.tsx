@@ -51,6 +51,7 @@ const PhotographerEvents = lazy(() => import("./pages/dashboard/photographer/Pho
 const PhotographerEarnings = lazy(() => import("./pages/dashboard/photographer/PhotographerEarnings"));
 const PhotographerReports = lazy(() => import("./pages/dashboard/photographer/PhotographerReports"));
 const PhotographerSettings = lazy(() => import("./pages/dashboard/photographer/PhotographerSettings"));
+const Goals = lazy(() => import("./pages/dashboard/photographer/Goals"));
 
 // Admin routes (lazy)
 const AdminOverview = lazy(() => import("./pages/dashboard/admin/Overview"));
@@ -132,6 +133,7 @@ const AppContent = () => {
             <Route path="photographer/photos" element={<MyPhotos />} />
             <Route path="photographer/earnings" element={<PhotographerEarnings />} />
             <Route path="photographer/reports" element={<PhotographerReports />} />
+            <Route path="photographer/goals" element={<Goals />} />
             <Route path="photographer/settings" element={<PhotographerSettings />} />
           </Route>
           <Route path="/events" element={<Events />} />

@@ -19,6 +19,7 @@ import UploadPhotoModal from '@/components/modals/UploadPhotoModal';
 import CreateCampaignModal from '@/components/modals/CreateCampaignModal';
 import CreateAlbumModal from '@/components/modals/CreateAlbumModal';
 import EditCampaignCoverModal from '@/components/modals/EditCampaignCoverModal';
+import PhotographerGoals from './PhotographerGoals';
 import { ProfileEditor } from '../profile/ProfileEditor';
 import { SalesChart } from './SalesChart';
 import { useSalesData } from '@/hooks/useSalesData';
@@ -544,18 +545,24 @@ const PhotographerDashboard = () => {
           </TabsList>
 
           <TabsContent value="analytics">
-            {loadingSales ? (
-              <div className="space-y-4">
-                <Skeleton className="h-[300px] w-full" />
+            <div className="grid gap-6 lg:grid-cols-2">
+              <div>
+                {loadingSales ? (
+                  <div className="space-y-4">
+                    <Skeleton className="h-[300px] w-full" />
+                  </div>
+                ) : (
+                  <SalesChart 
+                    data={salesData} 
+                    title="Minhas Vendas - Últimos 30 Dias"
+                    description="Acompanhe a evolução das suas vendas e receita"
+                    type="area"
+                  />
+                )}
               </div>
-            ) : (
-              <SalesChart 
-                data={salesData} 
-                title="Minhas Vendas - Últimos 30 Dias"
-                description="Acompanhe a evolução das suas vendas e receita"
-                type="area"
-              />
-            )}
+              
+              <PhotographerGoals />
+            </div>
           </TabsContent>
 
           <TabsContent value="campaigns" className="space-y-4">
