@@ -47,6 +47,7 @@ interface Campaign {
   is_active: boolean;
   photographer_id: string;
   organization_id: string | null;
+  progressive_discount_enabled?: boolean;
   created_at: string;
   photographer?: {
     avatar_url: any;
@@ -192,7 +193,7 @@ const Campaign = () => {
         .from('campaigns')
         .select(`
           id, title, description, event_date, location, cover_image_url,
-          is_active, photographer_id, organization_id, created_at,
+          is_active, photographer_id, organization_id, created_at, progressive_discount_enabled,
           photographer:profiles!campaigns_photographer_id_fkey(full_name, email, avatar_url),
           organization:organizations(name, description)
         `)
@@ -352,6 +353,8 @@ const Campaign = () => {
       price: photo.price,
       watermarked_url: photo.watermarked_url,
       thumbnail_url: photo.thumbnail_url,
+      campaign_id: campaign?.id || '',
+      progressive_discount_enabled: campaign?.progressive_discount_enabled || false,
     });
   };
 

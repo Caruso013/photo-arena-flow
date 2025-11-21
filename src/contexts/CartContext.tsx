@@ -7,6 +7,8 @@ interface Photo {
   price: number;
   watermarked_url: string;
   thumbnail_url: string | null;
+  campaign_id: string;
+  progressive_discount_enabled?: boolean;
 }
 
 interface CartContextType {
