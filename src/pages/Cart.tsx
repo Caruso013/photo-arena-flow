@@ -11,6 +11,7 @@ import { ProgressiveDiscountDisplay } from "@/components/cart/ProgressiveDiscoun
 import PaymentModal from "@/components/modals/PaymentModal";
 import { Badge } from "@/components/ui/badge";
 import { CouponValidationResult } from "@/hooks/useCoupons";
+import { formatCurrency } from "@/lib/utils";
 
 const Cart = () => {
   const navigate = useNavigate();
@@ -20,12 +21,12 @@ const Cart = () => {
   const [appliedCoupon, setAppliedCoupon] = useState<CouponValidationResult | null>(null);
 
   // Calcular desconto progressivo
-  // NOTA: O desconto só é aplicado se o fotografo habilitou no evento
-  // Por simplicidade, aqui mostramos sempre, mas o ideal seria buscar a campanha
-  const progressiveDiscountPercent = 
-    totalItems >= 10 ? 20 : 
-    totalItems >= 5 ? 10 : 
-    totalItems >= 2 ? 5 : 0;
+  // Verificar se TODAS as fotos do carrinho têm desconto progressivo habilitado
+  const allPhotosHaveDiscountEnabled = items.length > 0 && items.every(item => item.progressive_discount_enabled === true);
+  
+  const progressiveDiscountPercent = allPhotosHaveDiscountEnabled
+    ? (totalItems >= 10 ? 20 : totalItems >= 5 ? 10 : totalItems >= 2 ? 5 : 0)
+    : 0;
 
   const progressiveDiscountAmount = (totalPrice * progressiveDiscountPercent) / 100;
 
@@ -159,7 +160,7 @@ const Cart = () => {
                           {item.title || "Foto sem título"}
                         </h3>
                         <p className="text-xl sm:text-2xl font-bold text-primary mb-2 sm:mb-4">
-                          R$ {Number(item.price).toFixed(2)}
+                          {formatCurrency(Number(item.price))}
                         </p>
                         <Button
                           variant="outline"
@@ -188,7 +189,7 @@ const Cart = () => {
                 {/* Subtotal */}
                 <div className="flex justify-between text-lg">
                   <span>Subtotal ({totalItems} {totalItems === 1 ? 'foto' : 'fotos'})</span>
-                  <span className="font-semibold">R$ {totalPrice.toFixed(2)}</span>
+                  <span className="font-semibold">{formatCurrency(totalPrice)}</span>
                 </div>
 
                 {/* Desconto Progressivo */}
@@ -202,7 +203,7 @@ const Cart = () => {
                           {progressiveDiscountPercent}% OFF
                         </Badge>
                       </div>
-                      <span className="font-semibold">-R$ {progressiveDiscountAmount.toFixed(2)}</span>
+                      <span className="font-semibold">-{formatCurrency(progressiveDiscountAmount)}</span>
                     </div>
                     <div className="text-xs text-muted-foreground">
                       <ProgressiveDiscountDisplay 
@@ -228,14 +229,14 @@ const Cart = () => {
                 {/* Total Final */}
                 <div className="flex justify-between text-xl sm:text-2xl font-bold">
                   <span>Total</span>
-                  <span className="text-primary">R$ {finalTotal.toFixed(2)}</span>
+                  <span className="text-primary">{formatCurrency(finalTotal)}</span>
                 </div>
 
                 {/* Economia total */}
                 {(progressiveDiscountAmount > 0 || couponDiscountAmount > 0) && (
                   <div className="bg-green-50 dark:bg-green-950/20 p-3 rounded-lg border border-green-200 dark:border-green-800">
                     <p className="text-sm text-green-900 dark:text-green-100 font-medium">
-                      🎉 Você está economizando R$ {(progressiveDiscountAmount + couponDiscountAmount).toFixed(2)}!
+                      🎉 Você está economizando {formatCurrency(progressiveDiscountAmount + couponDiscountAmount)}!
                     </p>
                   </div>
                 )}
