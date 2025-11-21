@@ -13,6 +13,7 @@ import { TrendingUp, DollarSign, Camera, Trophy, Target, Users, Award, FileText,
 import { PayoutRequestsManager } from './PayoutRequestsManager';
 import { PhotographerEarnings } from './PhotographerEarnings';
 import { useToast } from '@/hooks/use-toast';
+import { usePhotographerGoals } from '@/hooks/usePhotographerGoals';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -41,6 +42,7 @@ interface FinancialDashboardProps {
 const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { currentGoal, progress } = usePhotographerGoals();
 
   // Se view é payouts ou earnings, mostrar componentes específicos
   if (view === 'payouts' && userRole === 'admin') {
@@ -65,66 +67,107 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
     try {
       setLoading(true);
 
-      // Fetch photographer performance stats
-      const { data: salesData, error: salesError } = await supabase
-        .from('purchases')
-        .select(`
-          photographer_id,
-          amount,
-          photo:photos(title, price),
-          photographer:profiles!photographer_id(full_name),
-          created_at
-        `)
-        .eq('status', 'completed');
-
-      if (salesError) throw salesError;
-
-      // Process photographer stats
-      const photographerMap = new Map<string, PhotographerStats>();
-      let totalRevenueSum = 0;
-
-      salesData?.forEach(sale => {
-        const photographerId = sale.photographer_id;
-        const photographerName = sale.photographer?.full_name || 'Fotógrafo Desconhecido';
-        const amount = Number(sale.amount || 0);
-        
-        totalRevenueSum += amount;
-
-        if (!photographerMap.has(photographerId)) {
-          photographerMap.set(photographerId, {
-            photographer_id: photographerId,
-            photographer_name: photographerName,
-            total_sales: 0,
-            total_photos: 0,
-            total_revenue: 0,
-            avg_photo_price: 0,
-            rank: 0
-          });
-        }
-
-        const stats = photographerMap.get(photographerId)!;
-        stats.total_sales += 1;
-        stats.total_photos += 1;
-        stats.total_revenue += amount;
-      });
-
-      // Calculate averages and sort by revenue
-      const sortedStats = Array.from(photographerMap.values())
-        .map(stats => ({
-          ...stats,
-          avg_photo_price: stats.total_sales > 0 ? stats.total_revenue / stats.total_sales : 0
-        }))
-        .sort((a, b) => b.total_revenue - a.total_revenue)
-        .map((stats, index) => ({ ...stats, rank: index + 1 }));
-
-      setPhotographerStats(sortedStats);
-      setTotalRevenue(totalRevenueSum);
-
-      // Find current user stats if photographer
+      // Se for fotógrafo, buscar apenas seus revenue_shares
       if (userRole === 'photographer' && user) {
-        const currentUserStats = sortedStats.find(s => s.photographer_id === user.id);
-        setUserStats(currentUserStats || null);
+        // Buscar revenue_shares do fotógrafo
+        const { data: revenueSharesData, error: revenueError } = await supabase
+          .from('revenue_shares')
+          .select('photographer_amount, created_at')
+          .eq('photographer_id', user.id);
+
+        if (revenueError) throw revenueError;
+
+        // Calcular receita do fotógrafo
+        const photographerRevenue = revenueSharesData?.reduce(
+          (sum, share) => sum + Number(share.photographer_amount || 0),
+          0
+        ) || 0;
+
+        // Buscar compras do fotógrafo para stats
+        const { data: salesData, error: salesError } = await supabase
+          .from('purchases')
+          .select(`
+            photographer_id,
+            amount,
+            photo:photos(title, price),
+            photographer:profiles!photographer_id(full_name),
+            created_at
+          `)
+          .eq('status', 'completed')
+          .eq('photographer_id', user.id);
+
+        if (salesError) throw salesError;
+
+        const stats: PhotographerStats = {
+          photographer_id: user.id,
+          photographer_name: salesData?.[0]?.photographer?.full_name || 'Você',
+          total_sales: salesData?.length || 0,
+          total_photos: salesData?.length || 0,
+          total_revenue: photographerRevenue,
+          avg_photo_price: salesData?.length ? photographerRevenue / salesData.length : 0,
+          rank: 0
+        };
+
+        setUserStats(stats);
+        setTotalRevenue(photographerRevenue);
+        setPhotographerStats([stats]);
+      } else {
+        // Para admin, buscar todos os fotógrafos
+        const { data: salesData, error: salesError } = await supabase
+          .from('purchases')
+          .select(`
+            photographer_id,
+            amount,
+            photo:photos(title, price),
+            photographer:profiles!photographer_id(full_name),
+            created_at
+          `)
+          .eq('status', 'completed');
+
+        if (salesError) throw salesError;
+
+        // Process photographer stats
+        const photographerMap = new Map<string, PhotographerStats>();
+        let totalRevenueSum = 0;
+
+        salesData?.forEach(sale => {
+          const photographerId = sale.photographer_id;
+          const photographerName = sale.photographer?.full_name || 'Fotógrafo Desconhecido';
+          const amount = Number(sale.amount || 0);
+          
+          totalRevenueSum += amount;
+
+          if (!photographerMap.has(photographerId)) {
+            photographerMap.set(photographerId, {
+              photographer_id: photographerId,
+              photographer_name: photographerName,
+              total_sales: 0,
+              total_photos: 0,
+              total_revenue: 0,
+              avg_photo_price: 0,
+              rank: 0
+            });
+          }
+
+          const stats = photographerMap.get(photographerId)!;
+          stats.total_sales += 1;
+          stats.total_photos += 1;
+          stats.total_revenue += amount;
+        });
+
+        // Calculate averages and sort by revenue
+        const sortedStats = Array.from(photographerMap.values())
+          .map(stats => ({
+            ...stats,
+            avg_photo_price: stats.total_sales > 0 ? stats.total_revenue / stats.total_sales : 0
+          }))
+          .sort((a, b) => b.total_revenue - a.total_revenue)
+          .map((stats, index) => ({ ...stats, rank: index + 1 }));
+
+        setPhotographerStats(sortedStats);
+        setTotalRevenue(totalRevenueSum);
       }
+
 
       // Buscar dados reais de revenue_shares agrupados por mês
       const { data: revenueSharesData, error: revenueError } = await supabase
@@ -715,25 +758,58 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
                   <CardDescription>Acompanhe seu progresso e conquistas</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div>
-                    <div className="flex justify-between mb-2">
-                      <span className="text-sm">Meta de Vendas Mensais</span>
-                      <span className="text-sm">
-                        {userStats.total_sales}/50
-                      </span>
+                  {currentGoal ? (
+                    <>
+                      <div>
+                        <div className="flex justify-between mb-2">
+                          <span className="text-sm">Meta de Fotos Vendidas</span>
+                          <span className="text-sm font-semibold">
+                            {progress.photosRealized}/{currentGoal.photos_target || 0}
+                          </span>
+                        </div>
+                        <Progress 
+                          value={currentGoal.photos_target ? (progress.photosRealized / currentGoal.photos_target) * 100 : 0} 
+                          className="h-2"
+                        />
+                      </div>
+                      
+                      <div>
+                        <div className="flex justify-between mb-2">
+                          <span className="text-sm">Meta de Receita</span>
+                          <span className="text-sm font-semibold">
+                            {formatCurrency(progress.salesRealized)}/{formatCurrency(currentGoal.sales_target || 0)}
+                          </span>
+                        </div>
+                        <Progress 
+                          value={currentGoal.sales_target ? (progress.salesRealized / currentGoal.sales_target) * 100 : 0}
+                          className="h-2"
+                        />
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between mb-2">
+                          <span className="text-sm">Meta de Eventos</span>
+                          <span className="text-sm font-semibold">
+                            {progress.eventsRealized}/{currentGoal.events_target || 0}
+                          </span>
+                        </div>
+                        <Progress 
+                          value={currentGoal.events_target ? (progress.eventsRealized / currentGoal.events_target) * 100 : 0}
+                          className="h-2"
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-center py-6">
+                      <Target className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                      <p className="text-sm text-muted-foreground">
+                        Você ainda não definiu metas para este mês
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Defina suas metas na seção "Metas e Objetivos"
+                      </p>
                     </div>
-                    <Progress value={(userStats.total_sales / 50) * 100} />
-                  </div>
-                  
-                  <div>
-                    <div className="flex justify-between mb-2">
-                      <span className="text-sm">Meta de Receita</span>
-                      <span className="text-sm">
-                        {formatCurrency(userStats.total_revenue)}/R$ 5.000
-                      </span>
-                    </div>
-                    <Progress value={(userStats.total_revenue / 5000) * 100} />
-                  </div>
+                  )}
                   
                   <div className="pt-4 border-t">
                     <div className="text-center">
