@@ -26,6 +26,7 @@ interface FavoritePhoto {
     campaigns: {
       title: string;
       id: string;
+      progressive_discount_enabled?: boolean;
     } | null;
   } | null;
 }
@@ -63,7 +64,8 @@ const MyFavorites = () => {
             is_available,
             campaigns (
               id,
-              title
+              title,
+              progressive_discount_enabled
             )
           )
         `)
@@ -95,6 +97,8 @@ const MyFavorites = () => {
       price: photo.price,
       watermarked_url: photo.watermarked_url,
       thumbnail_url: photo.thumbnail_url,
+      campaign_id: photo.campaigns?.id || '',
+      progressive_discount_enabled: photo.campaigns?.progressive_discount_enabled || false,
     });
   };
 
