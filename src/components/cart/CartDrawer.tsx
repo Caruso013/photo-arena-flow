@@ -13,6 +13,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useState } from "react";
 import PaymentModal from "@/components/modals/PaymentModal";
 import { Badge } from "@/components/ui/badge";
+import { formatCurrency } from "@/lib/utils";
 
 export const CartDrawer = () => {
   const { items, removeFromCart, totalItems, totalPrice, clearCart } = useCart();
@@ -62,7 +63,7 @@ export const CartDrawer = () => {
                       <div className="flex-1 min-w-0">
                         <p className="font-medium truncate">{item.title || "Sem título"}</p>
                         <p className="text-lg font-bold text-primary">
-                          R$ {Number(item.price).toFixed(2)}
+                          {formatCurrency(Number(item.price))}
                         </p>
                       </div>
                       <Button
@@ -80,7 +81,7 @@ export const CartDrawer = () => {
               <div className="border-t pt-4 space-y-4">
                 <div className="flex justify-between text-lg font-bold">
                   <span>Total:</span>
-                  <span className="text-primary">R$ {totalPrice.toFixed(2)}</span>
+                  <span className="text-primary">{formatCurrency(totalPrice)}</span>
                 </div>
                 <div className="space-y-2">
                   <Button onClick={handleCheckout} className="w-full" size="lg">

@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent } from '@/components/ui/card';
 import { Sparkles, TrendingUp, Gift } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils';
 
 interface ProgressiveDiscountDisplayProps {
   quantity: number;
@@ -39,7 +40,7 @@ export const ProgressiveDiscountDisplay: React.FC<ProgressiveDiscountDisplayProp
     return (
       <Badge variant="outline" className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 gap-1">
         <Gift className="h-3 w-3" />
-        -{discount.discountPercentage}% (R$ {discount.discountAmount.toFixed(2)})
+        -{discount.discountPercentage}% ({formatCurrency(discount.discountAmount)})
       </Badge>
     );
   }
@@ -67,10 +68,10 @@ export const ProgressiveDiscountDisplay: React.FC<ProgressiveDiscountDisplayProp
               </div>
               <div className="text-right">
                 <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                  -R$ {discount.discountAmount.toFixed(2)}
+                  -{formatCurrency(discount.discountAmount)}
                 </p>
                 <p className="text-xs text-green-700 dark:text-green-300">
-                  de R$ {discount.subtotal.toFixed(2)}
+                  de {formatCurrency(discount.subtotal)}
                 </p>
               </div>
             </div>
@@ -174,7 +175,7 @@ export const ProgressiveDiscountLine: React.FC<{
         <Gift className="h-4 w-4" />
         <span className="text-sm">Desconto Progressivo ({discount.discountPercentage}%)</span>
       </div>
-      <span className="font-semibold">-R$ {discount.discountAmount.toFixed(2)}</span>
+      <span className="font-semibold">-{formatCurrency(discount.discountAmount)}</span>
     </div>
   );
 };

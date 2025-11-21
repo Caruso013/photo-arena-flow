@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Ticket, Check, X, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { formatCurrency } from '@/lib/utils';
 
 interface CouponInputProps {
   purchaseAmount: number;
@@ -94,7 +95,7 @@ export const CouponInput: React.FC<CouponInputProps> = ({
                 Desconto do Cupom
               </span>
               <span className="text-xl font-bold text-green-600 dark:text-green-400">
-                -R$ {appliedCoupon.discount_amount.toFixed(2)}
+                -{formatCurrency(appliedCoupon.discount_amount)}
               </span>
             </div>
           </div>
@@ -158,7 +159,7 @@ export const CouponDiscountLine: React.FC<{ appliedCoupon: CouponValidationResul
           Aplicado
         </Badge>
       </div>
-      <span className="font-semibold">-R$ {appliedCoupon.discount_amount.toFixed(2)}</span>
+      <span className="font-semibold">-{formatCurrency(appliedCoupon.discount_amount)}</span>
     </div>
   );
 };
