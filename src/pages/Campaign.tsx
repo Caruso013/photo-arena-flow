@@ -803,7 +803,7 @@ const Campaign = () => {
                               <div className="relative">
                                 <AntiScreenshotProtection>
                                   <WatermarkedPhoto
-                                    src={photo.watermarked_url || photo.original_url}
+                                    src={photo.watermarked_url}
                                     alt={photo.title || 'Foto'}
                                     position="full"
                                     opacity={0.85}
