@@ -1432,6 +1432,42 @@ export type Database = {
           },
         ]
       }
+      scheduled_cleanup_jobs: {
+        Row: {
+          active: boolean | null
+          command: string | null
+          database: string | null
+          job_id: number | null
+          job_name: string | null
+          nodename: string | null
+          nodeport: number | null
+          schedule: string | null
+          username: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          command?: string | null
+          database?: string | null
+          job_id?: number | null
+          job_name?: string | null
+          nodename?: string | null
+          nodeport?: number | null
+          schedule?: string | null
+          username?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          command?: string | null
+          database?: string | null
+          job_id?: number | null
+          job_name?: string | null
+          nodename?: string | null
+          nodeport?: number | null
+          schedule?: string | null
+          username?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       apply_progressive_discount: {
@@ -1467,6 +1503,17 @@ export type Database = {
           total_rows: number
         }[]
       }
+      get_cleanup_job_history: {
+        Args: { job_name_filter?: string; limit_rows?: number }
+        Returns: {
+          end_time: string
+          job_name: string
+          return_message: string
+          run_time: string
+          start_time: string
+          status: string
+        }[]
+      }
       get_photographer_platform_percentage: {
         Args: { p_photographer_id: string }
         Returns: number
@@ -1490,6 +1537,10 @@ export type Database = {
       }
       is_organization_owner: {
         Args: { _org_id: string; _user_id: string }
+        Returns: boolean
+      }
+      toggle_cleanup_job: {
+        Args: { enable_job: boolean; job_name_param: string }
         Returns: boolean
       }
       validate_coupon: {
