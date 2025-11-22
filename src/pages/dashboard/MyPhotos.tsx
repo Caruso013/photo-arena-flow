@@ -23,8 +23,12 @@ const MyPhotos = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchMyPhotos();
-  }, [user]);
+    if (user?.id) {
+      fetchMyPhotos();
+    } else {
+      setLoading(false);
+    }
+  }, [user?.id]);
 
   const fetchMyPhotos = async () => {
     if (!user?.id) {
@@ -97,7 +101,7 @@ const MyPhotos = () => {
                     <p className="text-sm font-medium line-clamp-1">
                       {photo.campaign?.title}
                     </p>
-                    <p className="text-xs">R$ {photo.price}</p>
+                    <p className="text-xs">R$ {photo.price.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                   </div>
                 </div>
               </div>

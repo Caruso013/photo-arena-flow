@@ -68,35 +68,25 @@ export const EventCard: React.FC<EventCardProps> = ({ campaign, index }) => {
   const fetchSubEvents = async () => {
     setLoadingSubEvents(true);
     try {
+      // Buscar sub-eventos com contagem de fotos em uma única query
       const { data, error } = await supabase
         .from('sub_events')
-        .select('id, title, location')
+        .select('id, title, location, photo_count')
         .eq('campaign_id', campaign.id)
         .order('created_at', { ascending: true });
 
       if (error) throw error;
 
-      // Buscar contagem de fotos para cada sub-evento
-      const subEventsWithCount = await Promise.all(
-        (data || []).map(async (se) => {
-          const { count } = await supabase
-            .from('photos')
-            .select('*', { count: 'exact', head: true })
-            .eq('campaign_id', campaign.id)
-            .eq('sub_event_id', se.id)
-            .eq('is_available', true);
-          
-          return { ...se, photo_count: count || 0 };
-        })
-      );
-
-      setSubEvents(subEventsWithCount);
+      const subEventsData = data || [];
+      setSubEvents(subEventsData);
       
-      // Calcular total de fotos
-      const total = subEventsWithCount.reduce((sum, se) => sum + se.photo_count, 0);
+      // Calcular total de fotos (photo_count já vem da tabela)
+      const total = subEventsData.reduce((sum, se) => sum + (se.photo_count || 0), 0);
       setTotalPhotos(total);
     } catch (error) {
       console.error('Error fetching sub-events:', error);
+      setSubEvents([]);
+      setTotalPhotos(0);
     } finally {
       setLoadingSubEvents(false);
     }
