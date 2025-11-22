@@ -47,12 +47,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, email, full_name, role, avatar_url')
+        .select('id, email, full_name, role, avatar_url, is_banned')
         .eq('id', userId)
         .maybeSingle();
 
       if (error) throw error;
       if (!data) return null;
+
+      // Se usuário está banido, fazer logout automático
+      if (data.is_banned) {
+        await supabase.auth.signOut();
+        toast({
+          title: "Conta bloqueada",
+          description: "Sua conta foi suspensa. Entre em contato com o suporte.",
+          variant: "destructive",
+        });
+        return null;
+      }
       
       return {
         id: data.id,

@@ -63,12 +63,22 @@ const EditEventModal: React.FC<EditEventModalProps> = ({
       if (selectedFile) {
         const fileName = `${campaignId}_${Date.now()}.${selectedFile.name.split('.').pop()}`;
         const { error: uploadError } = await supabase.storage.from('campaign-covers').upload(fileName, selectedFile);
-        if (uploadError) throw uploadError;
+        
+        if (uploadError) {
+          console.error('Upload error:', uploadError);
+          toast({ 
+            title: "Erro no upload", 
+            description: "Não foi possível enviar a imagem. Tente novamente.",
+            variant: "destructive" 
+          });
+          throw uploadError;
+        }
+        
         const { data: urlData } = supabase.storage.from('campaign-covers').getPublicUrl(fileName);
         coverImageUrl = urlData.publicUrl;
       }
 
-      await supabase.from('campaigns').update({
+      const { error: updateError } = await supabase.from('campaigns').update({
         title: title.trim(),
         description: description.trim() || null,
         location: location.trim() || null,
@@ -77,6 +87,8 @@ const EditEventModal: React.FC<EditEventModalProps> = ({
         progressive_discount_enabled: progressiveDiscountEnabled,
         cover_image_url: coverImageUrl
       }).eq('id', campaignId);
+
+      if (updateError) throw updateError;
 
       toast({ title: "Evento atualizado!" });
       onEventUpdated();
