@@ -16,6 +16,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 interface PhotoEarning {
   photo_id: string;
@@ -46,6 +48,12 @@ export const PhotographerEarnings = () => {
   const [totalPhotosSold, setTotalPhotosSold] = useState(0);
   const [requestingPayout, setRequestingPayout] = useState(false);
   const [pendingRequest, setPendingRequest] = useState<any>(null);
+  const [showPixForm, setShowPixForm] = useState(false);
+  const [pixData, setPixData] = useState({
+    pix_key: '',
+    recipient_name: '',
+    institution: '',
+  });
 
   useEffect(() => {
     if (user) {
@@ -169,6 +177,12 @@ export const PhotographerEarnings = () => {
   };
 
   const requestPayout = async () => {
+    // Validar dados PIX
+    if (!pixData.pix_key.trim() || !pixData.recipient_name.trim()) {
+      toast.error('Preencha todos os campos obrigatórios do PIX');
+      return;
+    }
+
     // 1. Verificar se já existe solicitação pendente/aprovada
     if (pendingRequest) {
       toast.error(
@@ -192,10 +206,12 @@ export const PhotographerEarnings = () => {
           photographer_id: user?.id,
           amount: totalAvailable,
           status: 'pending',
+          pix_key: pixData.pix_key.trim(),
+          recipient_name: pixData.recipient_name.trim(),
+          institution: pixData.institution.trim() || null,
         });
 
       if (error) {
-        // Se erro for de constraint unique, mostrar mensagem amigável
         if (error.code === '23505') {
           toast.error('Você já possui uma solicitação pendente. Aguarde o processamento.');
         } else {
@@ -204,8 +220,10 @@ export const PhotographerEarnings = () => {
         return;
       }
 
-      // 4. Atualizar estado local imediatamente
+      // 4. Atualizar estado local
       setTotalAvailable(0);
+      setShowPixForm(false);
+      setPixData({ pix_key: '', recipient_name: '', institution: '' });
       toast.success('Solicitação de repasse enviada com sucesso!');
       
       // 5. Recarregar dados
@@ -306,23 +324,75 @@ export const PhotographerEarnings = () => {
             <div className="text-2xl font-bold text-green-600">
               {formatCurrency(totalAvailable)}
             </div>
-            <Button
-              onClick={requestPayout}
-              disabled={totalAvailable <= 0 || requestingPayout || !!pendingRequest}
-              className="w-full mt-4 gap-2"
-            >
-              {requestingPayout ? (
-                <>
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                  Processando...
-                </>
-              ) : (
-                <>
+            <Dialog open={showPixForm} onOpenChange={setShowPixForm}>
+              <DialogTrigger asChild>
+                <Button
+                  disabled={totalAvailable <= 0 || requestingPayout || !!pendingRequest}
+                  className="w-full mt-4 gap-2"
+                >
                   <DollarSign className="h-4 w-4" />
                   Solicitar Repasse
-                </>
-              )}
-            </Button>
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Dados para Repasse via PIX</DialogTitle>
+                  <DialogDescription>
+                    Informe seus dados para receber o pagamento de {formatCurrency(totalAvailable)}
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="recipient_name">
+                      Nome do Beneficiário <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="recipient_name"
+                      placeholder="Nome completo"
+                      value={pixData.recipient_name}
+                      onChange={(e) => setPixData({ ...pixData, recipient_name: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="pix_key">
+                      Chave PIX <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="pix_key"
+                      placeholder="CPF, e-mail, telefone ou chave aleatória"
+                      value={pixData.pix_key}
+                      onChange={(e) => setPixData({ ...pixData, pix_key: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="institution">Instituição Bancária (Opcional)</Label>
+                    <Input
+                      id="institution"
+                      placeholder="Ex: Banco do Brasil, Nubank..."
+                      value={pixData.institution}
+                      onChange={(e) => setPixData({ ...pixData, institution: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setShowPixForm(false)}>
+                    Cancelar
+                  </Button>
+                  <Button onClick={requestPayout} disabled={requestingPayout}>
+                    {requestingPayout ? (
+                      <>
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-2" />
+                        Processando...
+                      </>
+                    ) : (
+                      'Solicitar Repasse'
+                    )}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </CardContent>
         </Card>
 

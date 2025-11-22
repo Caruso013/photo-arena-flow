@@ -83,6 +83,25 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
           0
         ) || 0;
 
+        // Buscar TODOS os fotógrafos para calcular rank correto
+        const { data: allPhotographersData } = await supabase
+          .from('revenue_shares')
+          .select('photographer_id, photographer_amount');
+
+        // Agregar receita por fotógrafo
+        const photographerRevenueMap = new Map<string, number>();
+        allPhotographersData?.forEach(share => {
+          const current = photographerRevenueMap.get(share.photographer_id) || 0;
+          photographerRevenueMap.set(share.photographer_id, current + Number(share.photographer_amount || 0));
+        });
+
+        // Ordenar e calcular rank
+        const sortedPhotographers = Array.from(photographerRevenueMap.entries())
+          .map(([id, revenue]) => ({ id, revenue }))
+          .sort((a, b) => b.revenue - a.revenue);
+
+        const photographerRank = sortedPhotographers.findIndex(p => p.id === user.id) + 1;
+
         // Buscar compras do fotógrafo para stats
         const { data: salesData, error: salesError } = await supabase
           .from('purchases')
@@ -105,7 +124,7 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
           total_photos: salesData?.length || 0,
           total_revenue: photographerRevenue,
           avg_photo_price: salesData?.length ? photographerRevenue / salesData.length : 0,
-          rank: 0
+          rank: photographerRank
         };
 
         setUserStats(stats);
