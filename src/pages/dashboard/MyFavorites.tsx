@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFavorites } from '@/hooks/useFavorites';
@@ -32,6 +33,7 @@ interface FavoritePhoto {
 }
 
 const MyFavorites = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { toggleFavorite, isFavorited } = useFavorites();
   const { addToCart } = useCart();
@@ -146,7 +148,7 @@ const MyFavorites = () => {
           <p className="text-muted-foreground mb-4">
             Comece a favoritar suas fotos preferidas para encontrá-las facilmente aqui
           </p>
-          <Button onClick={() => window.location.href = '/events'}>
+          <Button onClick={() => navigate('/events')}>
             Explorar Eventos
           </Button>
         </Card>
