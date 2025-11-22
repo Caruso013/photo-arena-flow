@@ -10,6 +10,7 @@ interface WatermarkedPhotoProps {
   opacity?: number;
   loading?: 'lazy' | 'eager';
   onDownload?: () => void;
+  isPurchased?: boolean; // Se true, mostra foto original sem marca d'água
 }
 
 const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = ({
@@ -22,6 +23,7 @@ const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = ({
   opacity = 0.85,
   loading = 'lazy',
   onDownload,
+  isPurchased = false,
 }) => {
   const watermarkPositionClass =
     position === 'center'
@@ -53,6 +55,23 @@ const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = ({
     }
   };
 
+  // Se a foto foi comprada, mostra apenas a imagem original sem marca d'água
+  if (isPurchased) {
+    return (
+      <div className="relative w-full h-full">
+        <img 
+          src={src} 
+          alt={alt} 
+          className={imgClassName}
+          loading={loading}
+          decoding="async"
+          crossOrigin="anonymous"
+        />
+      </div>
+    );
+  }
+
+  // Fotos não compradas: marca d'água forte e visível
   return (
     <div className="relative w-full h-full">
       <img 
@@ -64,7 +83,7 @@ const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = ({
         crossOrigin="anonymous"
       />
 
-      {/* watermark overlay in front */}
+      {/* watermark overlay in front - FORTE para fotos não compradas */}
       <img
         src={watermarkSrc}
         alt="Marca d'água"
