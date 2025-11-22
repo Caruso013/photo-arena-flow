@@ -14,6 +14,7 @@ import { useState } from "react";
 import PaymentModal from "@/components/modals/PaymentModal";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils";
+import WatermarkedPhoto from "@/components/WatermarkedPhoto";
 
 export const CartDrawer = () => {
   const { items, removeFromCart, totalItems, totalPrice, clearCart } = useCart();
@@ -55,11 +56,13 @@ export const CartDrawer = () => {
                 <div className="space-y-4 pr-4">
                   {items.map((item) => (
                     <div key={item.id} className="flex gap-3 border rounded-lg p-3">
-                      <img
-                        src={item.thumbnail_url || item.watermarked_url}
-                        alt={item.title || "Foto"}
-                        className="w-20 h-20 object-cover rounded"
-                      />
+                      <div className="w-20 h-20 flex-shrink-0">
+                        <WatermarkedPhoto
+                          src={item.watermarked_url}
+                          alt={item.title || "Foto"}
+                          imgClassName="w-full h-full object-cover rounded"
+                        />
+                      </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium truncate">{item.title || "Sem título"}</p>
                         <p className="text-lg font-bold text-primary">
