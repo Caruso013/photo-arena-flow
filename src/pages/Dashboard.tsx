@@ -1,10 +1,11 @@
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 
 const Dashboard = () => {
   const { user, profile, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -19,6 +20,11 @@ const Dashboard = () => {
 
   if (!user || !profile) {
     return <Navigate to="/auth" />;
+  }
+
+  // Redirecionar organizações para seu dashboard específico
+  if (profile.role === 'organizer' && location.pathname === '/dashboard') {
+    return <Navigate to="/dashboard/organization/revenue" replace />;
   }
 
   return (
