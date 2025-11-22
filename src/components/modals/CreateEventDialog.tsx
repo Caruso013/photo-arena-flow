@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Calendar, MapPin, Loader2, Gift } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Card } from '@/components/ui/card';
 
 interface CreateEventDialogProps {
   isOpen: boolean;
@@ -27,6 +28,7 @@ export default function CreateEventDialog({ isOpen, onClose, onEventCreated }: C
     event_date: '',
     progressive_discount_enabled: false,
   });
+  const [albums, setAlbums] = useState<Array<{ title: string; description: string }>>([{ title: '', description: '' }]);
   const { toast } = useToast();
 
   const handleInputChange = (field: string, value: string | boolean) => {
@@ -51,21 +53,47 @@ export default function CreateEventDialog({ isOpen, onClose, onEventCreated }: C
     try {
       setLoading(true);
       
-      const { error } = await supabase
+      const { data: newCampaign, error } = await supabase
         .from('campaigns')
         .insert({
           title: formData.title,
           description: formData.description || null,
           location: formData.location || null,
           event_date: formData.event_date || null,
-          photographer_percentage: 91, // Padrão: 91% para fotógrafo (9% plataforma)
+          photographer_percentage: 91,
           organization_percentage: 0,
           is_active: true,
           progressive_discount_enabled: formData.progressive_discount_enabled,
           photographer_id: profile?.id,
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
+
+      // Criar álbuns se houver algum preenchido
+      const filledAlbums = albums.filter(album => album.title.trim());
+      if (filledAlbums.length > 0 && newCampaign) {
+        const albumsToInsert = filledAlbums.map(album => ({
+          campaign_id: newCampaign.id,
+          title: album.title.trim(),
+          description: album.description.trim() || null,
+          is_active: true,
+        }));
+
+        const { error: albumsError } = await supabase
+          .from('sub_events')
+          .insert(albumsToInsert);
+
+        if (albumsError) {
+          console.error('Erro ao criar álbuns:', albumsError);
+          toast({
+            title: "Aviso",
+            description: "Evento criado, mas houve erro ao criar alguns álbuns.",
+            variant: "default",
+          });
+        }
+      }
 
       toast({
         title: "Sucesso!",
@@ -80,6 +108,7 @@ export default function CreateEventDialog({ isOpen, onClose, onEventCreated }: C
         event_date: '',
         progressive_discount_enabled: false,
       });
+      setAlbums([{ title: '', description: '' }]);
       
       onEventCreated();
     } catch (error: any) {
@@ -210,6 +239,64 @@ export default function CreateEventDialog({ isOpen, onClose, onEventCreated }: C
               </AlertDescription>
             </Alert>
           )}
+
+          {/* Seção de Álbuns (Opcional) */}
+          <div className="space-y-3">
+            <Label className="text-base font-semibold">Álbuns Iniciais (Opcional)</Label>
+            <p className="text-sm text-muted-foreground -mt-2">
+              Crie álbuns para organizar as fotos do evento
+            </p>
+            
+            {albums.map((album, index) => (
+              <Card key={index} className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">Álbum {index + 1}</Label>
+                  {albums.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setAlbums(albums.filter((_, i) => i !== index))}
+                      className="h-8"
+                    >
+                      Remover
+                    </Button>
+                  )}
+                </div>
+                <Input
+                  placeholder="Nome do álbum"
+                  value={album.title}
+                  onChange={(e) => {
+                    const newAlbums = [...albums];
+                    newAlbums[index].title = e.target.value;
+                    setAlbums(newAlbums);
+                  }}
+                  className="bg-background text-foreground border-input"
+                />
+                <Textarea
+                  placeholder="Descrição (opcional)"
+                  value={album.description}
+                  onChange={(e) => {
+                    const newAlbums = [...albums];
+                    newAlbums[index].description = e.target.value;
+                    setAlbums(newAlbums);
+                  }}
+                  rows={2}
+                  className="bg-background text-foreground border-input"
+                />
+              </Card>
+            ))}
+            
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setAlbums([...albums, { title: '', description: '' }])}
+              className="w-full"
+            >
+              + Adicionar Outro Álbum
+            </Button>
+          </div>
 
           <div className="flex justify-end gap-3 pt-4">
             <Button

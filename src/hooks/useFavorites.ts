@@ -99,9 +99,16 @@ export const useFavorites = () => {
         toast.success('Adicionado aos favoritos');
         return true;
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error toggling favorite:', error);
-      toast.error('Erro ao atualizar favoritos');
+      const errorMsg = error?.message || 'Erro ao atualizar favoritos';
+      toast.error(errorMsg);
+      
+      // Se erro for de autenticação, sugerir login
+      if (error?.code === 'PGRST116' || error?.message?.includes('JWT')) {
+        toast.error('Sessão expirada. Faça login novamente.');
+      }
+      
       return isFavorited;
     }
   };

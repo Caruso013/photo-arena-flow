@@ -55,6 +55,7 @@ const DashboardSidebar = ({ isOpen, onToggle }: DashboardSidebarProps) => {
     { title: 'Eventos Próximos', url: '/eventos-proximos', icon: Calendar },
     { title: 'Minhas Fotos', url: '/dashboard/photos', icon: Image },
     { title: 'Financeiro', url: '/dashboard/financial', icon: DollarSign },
+    { title: 'Relatórios por Álbum', url: '/dashboard/photographer/album-reports', icon: FileText },
     { title: 'Metas e Objetivos', url: '/dashboard/photographer/goals', icon: FileText },
     { title: 'Perfil', url: '/dashboard/profile', icon: UserCircle },
   ];
