@@ -4,8 +4,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency } from '@/lib/utils';
-import { Folder, DollarSign, Camera, TrendingUp } from 'lucide-react';
+import { Folder, DollarSign, Camera, TrendingUp, Image, ShoppingCart, Percent, BarChart3 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 
 interface AlbumReport {
   album_id: string;
@@ -16,16 +17,32 @@ interface AlbumReport {
   avg_photo_price: number;
 }
 
+interface OverallMetrics {
+  total_photos_uploaded: number;
+  total_photos_sold: number;
+  conversion_rate: number;
+  avg_photos_per_order: number;
+  active_carts: number;
+}
+
 const AlbumReports = () => {
   const { user } = useAuth();
   const [albums, setAlbums] = useState<AlbumReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [totalPhotosSold, setTotalPhotosSold] = useState(0);
+  const [metrics, setMetrics] = useState<OverallMetrics>({
+    total_photos_uploaded: 0,
+    total_photos_sold: 0,
+    conversion_rate: 0,
+    avg_photos_per_order: 0,
+    active_carts: 0,
+  });
 
   useEffect(() => {
     if (user) {
       fetchAlbumReports();
+      fetchOverallMetrics();
     }
   }, [user]);
 
@@ -106,6 +123,53 @@ const AlbumReports = () => {
     }
   };
 
+  const fetchOverallMetrics = async () => {
+    try {
+      // Buscar total de fotos enviadas pelo fotógrafo
+      const { count: totalPhotos } = await supabase
+        .from('photos')
+        .select('*', { count: 'exact', head: true })
+        .eq('photographer_id', user?.id);
+
+      // Buscar vendas completadas
+      const { data: completedPurchases } = await supabase
+        .from('purchases')
+        .select('id, photo_id')
+        .eq('photographer_id', user?.id)
+        .eq('status', 'completed');
+
+      // Contar fotos únicas vendidas
+      const uniquePhotosSold = new Set(completedPurchases?.map(p => p.photo_id) || []).size;
+
+      // Calcular média de fotos por pedido (agrupando por buyer)
+      const purchasesByBuyer = completedPurchases?.reduce((acc: any, purchase) => {
+        if (!acc[purchase.id]) acc[purchase.id] = [];
+        acc[purchase.id].push(purchase);
+        return acc;
+      }, {}) || {};
+
+      const totalOrders = Object.keys(purchasesByBuyer).length;
+      const avgPhotosPerOrder = totalOrders > 0 
+        ? (completedPurchases?.length || 0) / totalOrders 
+        : 0;
+
+      // Taxa de conversão
+      const conversionRate = totalPhotos && totalPhotos > 0 
+        ? (uniquePhotosSold / totalPhotos) * 100 
+        : 0;
+
+      setMetrics({
+        total_photos_uploaded: totalPhotos || 0,
+        total_photos_sold: uniquePhotosSold,
+        conversion_rate: conversionRate,
+        avg_photos_per_order: avgPhotosPerOrder,
+        active_carts: 0, // Deixar como 0 por enquanto
+      });
+    } catch (error) {
+      console.error('Erro ao buscar métricas gerais:', error);
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-6 space-y-6">
@@ -135,11 +199,72 @@ const AlbumReports = () => {
         </p>
       </div>
 
-      {/* Cards de Resumo */}
+      {/* Métricas Gerais - Estilo Instagram Analytics */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <BarChart3 className="h-5 w-5" />
+            Métricas Gerais de Desempenho
+          </CardTitle>
+          <CardDescription>
+            Visão geral das suas fotos e vendas
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Linha 1 */}
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Fotos enviadas</p>
+              <p className="text-3xl font-bold">{metrics.total_photos_uploaded}</p>
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Vendas de fotos</p>
+              <p className="text-3xl font-bold">{totalPhotosSold}</p>
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Média de fotos por pedido</p>
+              <p className="text-3xl font-bold">{metrics.avg_photos_per_order.toFixed(2)}</p>
+            </div>
+
+            {/* Linha 2 */}
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Taxa de conversão</p>
+              <p className="text-3xl font-bold">{metrics.conversion_rate.toFixed(2)}%</p>
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Álbuns com vendas</p>
+              <p className="text-3xl font-bold">{albums.length}</p>
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Receita Total</p>
+              <p className="text-3xl font-bold text-primary">{formatCurrency(totalRevenue)}</p>
+            </div>
+
+            {/* Barra de progresso de envios */}
+            <div className="md:col-span-3 space-y-3 pt-4 border-t">
+              <p className="text-sm font-medium">% de envios convertidos em vendas</p>
+              <div className="flex items-center gap-4">
+                <div className="flex-1">
+                  <div className="flex justify-between text-xs mb-1">
+                    <span>Fotos: {metrics.total_photos_uploaded}</span>
+                    <span>Vendas: {metrics.total_photos_sold}</span>
+                  </div>
+                  <Progress value={metrics.conversion_rate} className="h-3" />
+                </div>
+                <Badge variant="secondary" className="text-lg px-4 py-2">
+                  {metrics.conversion_rate.toFixed(1)}%
+                </Badge>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Cards de Resumo por Álbum */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Receita Total</CardTitle>
+            <CardTitle className="text-sm font-medium">Receita Total (Álbuns)</CardTitle>
             <DollarSign className="h-5 w-5 text-primary" />
           </CardHeader>
           <CardContent>
@@ -154,26 +279,26 @@ const AlbumReports = () => {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Fotos Vendidas</CardTitle>
+            <CardTitle className="text-sm font-medium">Fotos Vendidas (Álbuns)</CardTitle>
             <Camera className="h-5 w-5 text-accent-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{totalPhotosSold}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              Total de vendas
+              Total de vendas em álbuns
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Álbuns com Vendas</CardTitle>
+            <CardTitle className="text-sm font-medium">Álbuns Ativos</CardTitle>
             <Folder className="h-5 w-5 text-secondary-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{albums.length}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              Total de álbuns ativos
+              Com vendas registradas
             </p>
           </CardContent>
         </Card>
