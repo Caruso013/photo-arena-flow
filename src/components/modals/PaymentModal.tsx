@@ -201,7 +201,7 @@ export default function PaymentModal({
             {totalItems === 1 ? (
               <div className="flex items-center gap-4 p-4 bg-muted rounded-lg">
                 <img 
-                  src={itemsToProcess[0].image_url || itemsToProcess[0].thumbnail_url || itemsToProcess[0].watermarked_url} 
+                  src={itemsToProcess[0].thumbnail_url || itemsToProcess[0].watermarked_url} 
                   alt={itemsToProcess[0].title || 'Foto'}
                   className="w-16 h-16 object-cover rounded"
                 />
