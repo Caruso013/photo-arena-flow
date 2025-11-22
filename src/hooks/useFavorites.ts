@@ -71,11 +71,27 @@ export const useFavorites = () => {
 
   const toggleFavorite = async (photoId: string) => {
     if (!user) {
-      toast.error('Faça login para favoritar fotos');
+      toast.error('Faça login para favoritar fotos', {
+        action: {
+          label: 'Fazer Login',
+          onClick: () => window.location.href = '/#/auth'
+        }
+      });
       return false;
     }
 
     const isFavorited = favorites.has(photoId);
+
+    // Update UI otimisticamente
+    setFavorites(prev => {
+      const newSet = new Set(prev);
+      if (isFavorited) {
+        newSet.delete(photoId);
+      } else {
+        newSet.add(photoId);
+      }
+      return newSet;
+    });
 
     try {
       if (isFavorited) {
@@ -101,12 +117,29 @@ export const useFavorites = () => {
       }
     } catch (error: any) {
       console.error('Error toggling favorite:', error);
+      
+      // Reverter UI em caso de erro
+      setFavorites(prev => {
+        const newSet = new Set(prev);
+        if (isFavorited) {
+          newSet.add(photoId);
+        } else {
+          newSet.delete(photoId);
+        }
+        return newSet;
+      });
+      
       const errorMsg = error?.message || 'Erro ao atualizar favoritos';
       toast.error(errorMsg);
       
       // Se erro for de autenticação, sugerir login
       if (error?.code === 'PGRST116' || error?.message?.includes('JWT')) {
-        toast.error('Sessão expirada. Faça login novamente.');
+        toast.error('Sessão expirada. Faça login novamente.', {
+          action: {
+            label: 'Fazer Login',
+            onClick: () => window.location.href = '/#/auth'
+          }
+        });
       }
       
       return isFavorited;
