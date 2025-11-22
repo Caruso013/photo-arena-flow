@@ -1449,7 +1449,24 @@ export type Database = {
         Args: { p_quantity: number }
         Returns: number
       }
+      cleanup_old_audit_logs: {
+        Args: { days_to_keep?: number }
+        Returns: number
+      }
       cleanup_old_face_backups: { Args: never; Returns: undefined }
+      cleanup_old_notifications: {
+        Args: { days_to_keep?: number }
+        Returns: number
+      }
+      get_cache_statistics: {
+        Args: never
+        Returns: {
+          old_rows: number
+          table_name: string
+          table_size: string
+          total_rows: number
+        }[]
+      }
       get_photographer_platform_percentage: {
         Args: { p_photographer_id: string }
         Returns: number

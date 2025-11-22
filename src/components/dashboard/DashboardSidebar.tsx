@@ -69,6 +69,7 @@ const DashboardSidebar = ({ isOpen, onToggle }: DashboardSidebarProps) => {
     { title: 'Organizações', url: '/dashboard/admin/organizations', icon: Building2 },
     { title: 'Financeiro', url: '/dashboard/admin/financial', icon: DollarSign },
     { title: 'Relatórios', url: '/dashboard/admin/reports', icon: FileText },
+    { title: 'Cache', url: '/dashboard/admin/cache-management', icon: Database },
   ];
 
   const getMenuItems = () => {
