@@ -211,30 +211,36 @@ const MyPurchases = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {purchases.map((purchase) => {
-            const imageUrl = purchase.photo?.thumbnail_url || purchase.photo?.watermarked_url || purchase.photo?.original_url;
+            // ✅ FOTO COMPRADA: usa original_url SEM marca d'água
+            const imageUrl = purchase.photo?.original_url || purchase.photo?.thumbnail_url;
             const displayUrl = signedUrls[purchase.id] || imageUrl;
-            console.log('Purchase photo data:', {
-              id: purchase.id,
-              hasPhoto: !!purchase.photo,
-              imageUrl: displayUrl,
-              thumbnail: purchase.photo?.thumbnail_url,
-              watermarked: purchase.photo?.watermarked_url
-            });
+            const isCompleted = purchase.status === 'completed';
             
             return (
-              <Card key={purchase.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+              <Card key={purchase.id} className="overflow-hidden hover:shadow-lg transition-shadow border-green-200 dark:border-green-800">
                 <div className="aspect-square relative bg-muted">
                   {displayUrl ? (
-                    <img
-                      src={displayUrl}
-                      alt={purchase.photo?.title || "Foto comprada"}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        console.error('Image load error:', displayUrl);
-                        e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23ddd" width="100" height="100"/%3E%3Ctext fill="%23999" x="50%25" y="50%25" text-anchor="middle" dy=".3em"%3ESem imagem%3C/text%3E%3C/svg%3E';
-                      }}
-                      loading="lazy"
-                    />
+                    <>
+                      {/* Badge de confirmação */}
+                      <div className="absolute top-2 right-2 z-10">
+                        <div className="bg-green-500 text-white px-2 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          Comprada
+                        </div>
+                      </div>
+                      <img
+                        src={displayUrl}
+                        alt={purchase.photo?.title || "Foto comprada - sem marca d'água"}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          console.error('Image load error:', displayUrl);
+                          e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23ddd" width="100" height="100"/%3E%3Ctext fill="%23999" x="50%25" y="50%25" text-anchor="middle" dy=".3em"%3ESem imagem%3C/text%3E%3C/svg%3E';
+                        }}
+                        loading="lazy"
+                      />
+                    </>
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-muted-foreground">
                       <div className="text-center">
@@ -261,17 +267,23 @@ const MyPurchases = () => {
                     </p>
                   </div>
                   
-                  {purchase.status === 'completed' ? (
-                    <Button
-                      size="sm"
-                      className="w-full gap-2"
-                      onClick={() => handleDownload(purchase.photo.original_url, `foto-${purchase.photo.id}.jpg`)}
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                      </svg>
-                      Baixar Foto Original
-                    </Button>
+                  {/* ✅ Foto comprada: sem marca d'água, download liberado */}
+                  {isCompleted ? (
+                    <div className="space-y-2">
+                      <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 p-2 rounded text-xs text-green-700 dark:text-green-300">
+                        ✓ Foto original sem marca d'água
+                      </div>
+                      <Button
+                        size="sm"
+                        className="w-full gap-2"
+                        onClick={() => handleDownload(purchase.photo.original_url, `foto-${purchase.photo.id}.jpg`)}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        Baixar Alta Resolução
+                      </Button>
+                    </div>
                   ) : (
                     <Button
                       size="sm"
