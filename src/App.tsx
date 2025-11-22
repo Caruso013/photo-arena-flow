@@ -67,6 +67,7 @@ const AdminFinancial = lazy(() => import("./pages/dashboard/admin/Financial"));
 const AdminReports = lazy(() => import("./pages/dashboard/admin/Reports"));
 const AdminSystemConfig = lazy(() => import("./pages/dashboard/admin/SystemConfig"));
 const AdminCouponManagement = lazy(() => import("./pages/dashboard/admin/CouponManagement"));
+const CacheManagement = lazy(() => import("./pages/dashboard/admin/CacheManagement"));
 
 // Organization routes
 const OrganizationRevenue = lazy(() => import("./pages/dashboard/OrganizationRevenue"));
@@ -137,6 +138,7 @@ const AppContent = () => {
             <Route path="admin/reports" element={<AdminReports />} />
             <Route path="admin/config" element={<AdminSystemConfig />} />
             <Route path="admin/coupons" element={<AdminCouponManagement />} />
+            <Route path="admin/cache-management" element={<CacheManagement />} />
             <Route path="photographer/events" element={<PhotographerEvents />} />
             <Route path="photographer/photos" element={<MyPhotos />} />
             <Route path="photographer/earnings" element={<PhotographerEarnings />} />
