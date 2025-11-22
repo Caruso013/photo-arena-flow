@@ -38,16 +38,67 @@ export const OrganizationManager: React.FC<OrganizationManagerProps> = ({ organi
 
   const handleCreate = async () => {
     try {
-      const { error } = await supabase
+      // 1. Criar organização
+      const { data: orgData, error: orgError } = await supabase
         .from('organizations')
-        .insert([formData]);
+        .insert([formData])
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (orgError) throw orgError;
 
-      toast({
-        title: "Organização criada!",
-        description: "A organização foi criada com sucesso.",
-      });
+      // 2. Gerar credenciais de login
+      const login = formData.name
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]/g, '');
+      
+      const email = `${login}@sta.local`;
+      const password = `${formData.name}@sta`;
+
+      // 3. Criar usuário via Edge Function
+      const { data: authData, error: authError } = await supabase.functions.invoke(
+        'create-organization-user',
+        { 
+          body: { 
+            organizationId: orgData.id,
+            organizationName: formData.name,
+            email,
+            password
+          } 
+        }
+      );
+
+      if (authError) {
+        console.error('Error creating organization user:', authError);
+        toast({
+          title: "Aviso",
+          description: "Organização criada, mas houve erro ao criar login automático.",
+          variant: "destructive",
+        });
+      } else {
+        // 4. Mostrar credenciais em toast com instruções
+        toast({
+          title: "✅ Organização criada com sucesso!",
+          description: (
+            <div className="space-y-2 mt-2">
+              <p className="font-semibold">Credenciais de acesso:</p>
+              <div className="bg-muted p-3 rounded text-sm space-y-1">
+                <p><strong>Email:</strong> {email}</p>
+                <p><strong>Senha:</strong> {password}</p>
+                <p className="text-muted-foreground mt-2">
+                  Acesse em: /auth/organization
+                </p>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Copie e envie estas credenciais para a organização.
+              </p>
+            </div>
+          ),
+          duration: 15000,
+        });
+      }
 
       setCreateDialogOpen(false);
       setFormData({ name: '', description: '', admin_percentage: 30 });
