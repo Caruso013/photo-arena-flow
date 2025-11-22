@@ -100,9 +100,4 @@ self.addEventListener('message', (event) => {
         .then(() => caches.open(IMAGE_CACHE_NAME))
     );
   }
-  
-  // Suporte para atualização automática
-  if (event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
 });
