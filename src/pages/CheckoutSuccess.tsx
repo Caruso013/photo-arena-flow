@@ -149,14 +149,19 @@ export default function CheckoutSuccess() {
                     </div>
                   </div>
                   <div className="aspect-square relative bg-muted">
-                    <LazyImage
-                      src={purchase.photo?.thumbnail_url || purchase.photo?.watermarked_url || ''}
-                      alt="Foto comprada"
+                    {/* ✅ FOTO COMPRADA: mostra original SEM marca d'água */}
+                    <img
+                      src={purchase.photo?.original_url || purchase.photo?.thumbnail_url || ''}
+                      alt="Foto comprada - sem marca d'água"
                       className="w-full h-full object-cover"
+                      loading="lazy"
                     />
                   </div>
                 </div>
-                <CardContent className="p-4">
+                <CardContent className="p-4 space-y-2">
+                  <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 p-2 rounded text-xs text-green-700 dark:text-green-300">
+                    ✓ Foto original sem marca d'água
+                  </div>
                   <p className="font-medium mb-1 line-clamp-1">
                     {purchase.photo?.campaign?.title || 'Foto'}
                   </p>
@@ -165,10 +170,13 @@ export default function CheckoutSuccess() {
                   </p>
                   <Button
                     size="sm"
-                    className="w-full"
+                    className="w-full gap-2"
                     onClick={() => purchase.photo?.original_url && handleDownload(purchase.photo.original_url, `foto-${purchase.photo.id}.jpg`)}
                   >
-                    Baixar Original
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Baixar Alta Resolução
                   </Button>
                 </CardContent>
               </Card>
