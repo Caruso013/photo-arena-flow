@@ -291,19 +291,18 @@ const UserDashboard = () => {
             ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
                 {purchasedPhotos.map((purchase) => (
-                  <Card key={purchase.id} className="overflow-hidden hover:shadow-lg transition-all group">
+                  <Card key={purchase.id} className="overflow-hidden hover:shadow-lg transition-all group border border-green-200 dark:border-green-800">
                     <div className="relative">
                       <div className="aspect-square relative bg-muted overflow-hidden">
+                        {/* ✅ FOTO COMPRADA: mostra original SEM marca d'água */}
                         <img
-                          src={purchase.photo.watermarked_url || purchase.photo.thumbnail_url || purchase.photo.original_url}
-                          alt="Foto comprada"
+                          src={purchase.photo.original_url || purchase.photo.thumbnail_url}
+                          alt="Foto comprada - sem marca d'água"
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
                             if (purchase.photo.thumbnail_url && target.src !== purchase.photo.thumbnail_url) {
                               target.src = purchase.photo.thumbnail_url;
-                            } else if (purchase.photo.original_url && target.src !== purchase.photo.original_url) {
-                              target.src = purchase.photo.original_url;
                             }
                           }}
                         />
