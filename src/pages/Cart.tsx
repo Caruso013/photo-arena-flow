@@ -12,6 +12,8 @@ import PaymentModal from "@/components/modals/PaymentModal";
 import { Badge } from "@/components/ui/badge";
 import { CouponValidationResult } from "@/hooks/useCoupons";
 import { formatCurrency } from "@/lib/utils";
+import AntiScreenshotProtection from "@/components/security/AntiScreenshotProtection";
+import WatermarkedPhoto from "@/components/WatermarkedPhoto";
 
 const Cart = () => {
   const navigate = useNavigate();
@@ -150,11 +152,15 @@ const Cart = () => {
                 <Card key={item.id}>
                   <CardContent className="p-3 sm:p-4">
                     <div className="flex gap-3 sm:gap-4">
-                      <img
-                        src={item.thumbnail_url || item.watermarked_url}
-                        alt={item.title || "Foto"}
-                        className="w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 object-cover rounded-lg flex-shrink-0"
-                      />
+                      <AntiScreenshotProtection>
+                        <div className="w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 flex-shrink-0">
+                          <WatermarkedPhoto
+                            src={item.watermarked_url}
+                            alt={item.title || "Foto"}
+                            imgClassName="w-full h-full object-cover rounded-lg"
+                          />
+                        </div>
+                      </AntiScreenshotProtection>
                       <div className="flex-1 min-w-0 flex flex-col">
                         <h3 className="font-semibold text-sm sm:text-base lg:text-lg mb-1 sm:mb-2 truncate">
                           {item.title || "Foto sem título"}
