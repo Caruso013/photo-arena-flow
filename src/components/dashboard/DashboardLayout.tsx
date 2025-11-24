@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 import DashboardSidebar from './DashboardSidebar';
+import BottomNavigation from '@/components/layout/BottomNavigation';
 import { DynamicBreadcrumb } from '@/components/layout/DynamicBreadcrumb';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { LogOut, Settings, User, Menu } from 'lucide-react';
@@ -106,10 +107,13 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 px-4 py-4 md:py-8">
+        <main className="flex-1 px-4 py-4 md:py-8 pb-20 md:pb-8">
           <DynamicBreadcrumb />
           {children}
         </main>
+
+        {/* Bottom Navigation - Mobile Only */}
+        <BottomNavigation />
       </div>
     </div>
   );
