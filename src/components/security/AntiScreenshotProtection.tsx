@@ -52,6 +52,21 @@ const AntiScreenshotProtection: React.FC<AntiScreenshotProtectionProps> = ({ chi
       return false;
     };
 
+    // Prevenir long press no iOS (3D Touch)
+    const handleTouchStart = (e: TouchEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'IMG') {
+        e.preventDefault();
+      }
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'IMG') {
+        e.preventDefault();
+      }
+    };
+
     // Obscure on visibility change and window focus loss
     const handleVisibilityChange = () => setObscured(document.hidden);
     const handleWindowBlur = () => setObscured(true);
@@ -63,14 +78,19 @@ const AntiScreenshotProtection: React.FC<AntiScreenshotProtectionProps> = ({ chi
     document.addEventListener('selectstart', handleSelectStart);
     document.addEventListener('dragstart', handleDragStart);
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener('touchstart', handleTouchStart, { passive: false });
+    document.addEventListener('touchend', handleTouchEnd, { passive: false });
     window.addEventListener('blur', handleWindowBlur);
     window.addEventListener('focus', handleWindowFocus);
 
-    // Disable image dragging specifically
+    // Disable image dragging and iOS callouts specifically
     const images = document.querySelectorAll('img');
     images.forEach(img => {
       img.draggable = false;
+      (img.style as any).webkitUserSelect = 'none';
+      (img.style as any).webkitTouchCallout = 'none';
       img.addEventListener('dragstart', handleDragStart as any);
+      img.addEventListener('touchstart', handleTouchStart as any, { passive: false });
     });
 
     // Cleanup on component unmount
@@ -80,6 +100,8 @@ const AntiScreenshotProtection: React.FC<AntiScreenshotProtectionProps> = ({ chi
       document.removeEventListener('selectstart', handleSelectStart);
       document.removeEventListener('dragstart', handleDragStart);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.removeEventListener('touchstart', handleTouchStart);
+      document.removeEventListener('touchend', handleTouchEnd);
       window.removeEventListener('blur', handleWindowBlur);
       window.removeEventListener('focus', handleWindowFocus);
 
@@ -87,6 +109,7 @@ const AntiScreenshotProtection: React.FC<AntiScreenshotProtectionProps> = ({ chi
       images.forEach(img => {
         img.draggable = true;
         img.removeEventListener('dragstart', handleDragStart as any);
+        img.removeEventListener('touchstart', handleTouchStart as any);
       });
     };
   }, []);
@@ -97,6 +120,7 @@ const AntiScreenshotProtection: React.FC<AntiScreenshotProtectionProps> = ({ chi
       style={{ 
         userSelect: 'none',
         WebkitUserSelect: 'none',
+        WebkitTouchCallout: 'none',
         MozUserSelect: 'none',
         msUserSelect: 'none'
       }}
