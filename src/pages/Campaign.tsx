@@ -776,13 +776,25 @@ const Campaign = () => {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm hover:bg-background"
-                          onClick={() => toggleFavorite(photo.id)}
+                          className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm hover:bg-background w-9 h-9 sm:w-10 sm:h-10 active:scale-95 transition-transform"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!user) {
+                              toast({
+                                title: "Login necessário",
+                                description: "Faça login para favoritar fotos",
+                                variant: "destructive",
+                              });
+                              navigate('/auth');
+                              return;
+                            }
+                            toggleFavorite(photo.id);
+                          }}
                         >
                           <Heart 
                             className={`h-4 w-4 sm:h-5 sm:w-5 transition-all ${
                               isFavorited(photo.id) 
-                                ? 'fill-destructive text-destructive' 
+                                ? 'fill-destructive text-destructive animate-in zoom-in-50 duration-200' 
                                 : 'text-foreground'
                             }`}
                           />

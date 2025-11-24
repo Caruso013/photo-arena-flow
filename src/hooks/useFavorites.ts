@@ -81,6 +81,8 @@ export const useFavorites = () => {
     }
 
     const isFavorited = favorites.has(photoId);
+    let retryCount = 0;
+    const maxRetries = 2;
 
     // Update UI otimisticamente
     setFavorites(prev => {
@@ -93,28 +95,42 @@ export const useFavorites = () => {
       return newSet;
     });
 
-    try {
-      if (isFavorited) {
-        const { error } = await supabase
-          .from('favorites')
-          .delete()
-          .eq('user_id', user.id)
-          .eq('photo_id', photoId);
+    const attemptToggle = async (): Promise<boolean> => {
+      try {
+        if (isFavorited) {
+          const { error } = await supabase
+            .from('favorites')
+            .delete()
+            .eq('user_id', user.id)
+            .eq('photo_id', photoId);
 
-        if (error) throw error;
-        
-        toast.success('Removido dos favoritos');
-        return false;
-      } else {
-        const { error } = await supabase
-          .from('favorites')
-          .insert({ user_id: user.id, photo_id: photoId });
+          if (error) throw error;
+          
+          toast.success('Removido dos favoritos');
+          return false;
+        } else {
+          const { error } = await supabase
+            .from('favorites')
+            .insert({ user_id: user.id, photo_id: photoId });
 
-        if (error) throw error;
-        
-        toast.success('Adicionado aos favoritos');
-        return true;
+          if (error) throw error;
+          
+          toast.success('Adicionado aos favoritos');
+          return true;
+        }
+      } catch (error: any) {
+        // Retry em caso de erro de rede
+        if (retryCount < maxRetries && (error?.message?.includes('fetch') || error?.message?.includes('network'))) {
+          retryCount++;
+          await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+          return attemptToggle();
+        }
+        throw error;
       }
+    };
+
+    try {
+      return await attemptToggle();
     } catch (error: any) {
       console.error('Error toggling favorite:', error);
       
