@@ -2,6 +2,13 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import * as faceapi from 'face-api.js';
+import {
+  detectFaces,
+  calculateSimilarity,
+  loadFaceAPIModels,
+  getOptimizedConfig,
+  type FaceDetectionResult,
+} from '@/utils/faceDetection';
 
 interface FaceDescriptor {
   id: string;
@@ -37,42 +44,32 @@ export const useFaceRecognition = () => {
       }
 
       try {
+        const deviceConfig = getOptimizedConfig();
         console.log('🔄 Carregando modelos de IA para reconhecimento facial...');
-        console.log('📁 Buscando modelos em: /models');
+        console.log('📱 Dispositivo:', deviceConfig.isMobile ? 'Mobile' : 'Desktop');
+        console.log('🚀 WebGPU:', deviceConfig.hasWebGPU ? 'Disponível' : 'Não disponível');
         
-        const MODEL_URL = '/models';
+        const success = await loadFaceAPIModels();
         
-        // Carregar modelos um por um para melhor diagnóstico
-        console.log('⏳ Carregando Tiny Face Detector...');
-        await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
-        console.log('✅ Tiny Face Detector carregado');
-        
-        console.log('⏳ Carregando Face Landmark 68...');
-        await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
-        console.log('✅ Face Landmark 68 carregado');
-        
-        console.log('⏳ Carregando Face Recognition...');
-        await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
-        console.log('✅ Face Recognition carregado');
-        
-        console.log('⏳ Carregando Face Expression...');
-        await faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL);
-        console.log('✅ Face Expression carregado');
+        if (!success) {
+          throw new Error('Falha ao carregar modelos');
+        }
 
         modelsLoaded = true;
         setModelsReady(true);
-        console.log('🎉 TODOS os modelos de IA carregados com sucesso!');
+        console.log('🎉 Modelos de IA carregados com sucesso!');
         
         toast({
           title: "✅ IA Pronta!",
-          description: "Reconhecimento facial ativado com sucesso.",
+          description: deviceConfig.hasWebGPU 
+            ? "Reconhecimento facial com aceleração GPU disponível!"
+            : "Reconhecimento facial ativado.",
         });
       } catch (error) {
         console.error('❌ ERRO ao carregar modelos:', error);
-        console.error('Stack trace:', error);
         toast({
           title: "Erro ao carregar IA",
-          description: "Não foi possível carregar os modelos de reconhecimento facial. Verifique sua conexão e recarregue a página.",
+          description: "Não foi possível carregar os modelos. Recarregue a página.",
           variant: "destructive",
         });
       }
@@ -177,31 +174,27 @@ export const useFaceRecognition = () => {
     });
   }, []);
 
-  // Processar imagem e extrair descritores faciais usando face-api.js
-  const detectFaces = useCallback(async (imageSource: HTMLVideoElement | HTMLImageElement): Promise<Float32Array[] | null> => {
+  // Processar imagem e extrair descritores faciais usando IA otimizada
+  const detectFacesFromSource = useCallback(async (imageSource: HTMLVideoElement | HTMLImageElement): Promise<FaceDetectionResult[] | null> => {
     try {
       if (!modelsReady) {
         throw new Error('Modelos de IA ainda não foram carregados');
       }
 
-      console.log('🔍 Detectando rostos com IA...');
+      console.log('🔍 Detectando rostos com IA otimizada...');
       
-      // Detectar rostos com landmarks e descritores
-      const detections = await faceapi
-        .detectAllFaces(imageSource, new faceapi.TinyFaceDetectorOptions())
-        .withFaceLandmarks()
-        .withFaceDescriptors();
+      // Usar função otimizada que escolhe o melhor método
+      const results = await detectFaces(imageSource);
 
-      if (!detections || detections.length === 0) {
+      if (!results || results.length === 0) {
         console.log('⚠️ Nenhum rosto detectado');
         return null;
       }
 
-      // Extrair descritores (vetores de 128 dimensões)
-      const descriptors = detections.map(d => d.descriptor);
+      const avgConfidence = results.reduce((sum, r) => sum + r.confidence, 0) / results.length;
+      console.log(`✅ ${results.length} rosto(s) detectado(s) (confiança média: ${Math.round(avgConfidence * 100)}%)`);
       
-      console.log(`✅ ${descriptors.length} rosto(s) detectado(s) com IA real!`);
-      return descriptors;
+      return results;
     } catch (error) {
       console.error('Erro ao detectar rostos:', error);
       return null;
@@ -224,7 +217,7 @@ export const useFaceRecognition = () => {
       console.log('📸 Capturando seu rosto da câmera...');
       
       // Detectar rostos diretamente do vídeo
-      const descriptors = await detectFaces(videoRef.current);
+      const descriptors = await detectFacesFromSource(videoRef.current);
       
       if (!descriptors || descriptors.length === 0) {
         console.error('❌ Nenhum rosto detectado na câmera');
@@ -239,7 +232,8 @@ export const useFaceRecognition = () => {
       console.log(`✅ ${descriptors.length} rosto(s) detectado(s) na sua câmera!`);
       console.log('🔎 Buscando fotos similares no banco de dados...');
 
-      // SEMPRE buscar fotos apenas do evento/álbum atual (campaignId obrigatório)
+      // Converter descritor do usuário para array normal
+      const userDescriptor = Array.from(descriptors[0].descriptor);
       if (!campaignId) {
         toast({
           title: "Erro",
@@ -276,8 +270,9 @@ export const useFaceRecognition = () => {
 
       console.log(`📸 Analisando ${photos.length} fotos com IA...`);
 
-      // Limitar número de fotos para evitar timeout
-      const MAX_PHOTOS = 100;
+      // Usar configuração otimizada para mobile
+      const optimizedConfig = getOptimizedConfig();
+      const MAX_PHOTOS = optimizedConfig.maxPhotosToProcess;
       const photosToProcess = photos.slice(0, MAX_PHOTOS);
       
       if (photos.length > MAX_PHOTOS) {
@@ -288,15 +283,13 @@ export const useFaceRecognition = () => {
         });
       }
 
-      // Converter descritor do usuário para array normal
-      const userDescriptor = Array.from(descriptors[0]);
-
       // Comparar o rosto do usuário com cada foto
       const matches: FaceMatch[] = [];
       let processedCount = 0;
 
-      // Processar em batches paralelos para melhor performance
-      const BATCH_SIZE = 5;
+      // Processar em batches paralelos otimizados para o dispositivo
+      const batchConfig = getOptimizedConfig();
+      const BATCH_SIZE = batchConfig.batchSize;
       
       const processPhoto = async (photo: any): Promise<FaceMatch | null> => {
         try {
@@ -329,22 +322,14 @@ export const useFaceRecognition = () => {
             )
           ]);
           
-          // Detectar rostos na foto
-          const photoDetections = await faceapi
-            .detectAllFaces(img, new faceapi.TinyFaceDetectorOptions())
-            .withFaceLandmarks()
-            .withFaceDescriptors();
+          // Detectar rostos na foto usando método otimizado
+          const photoResults = await detectFaces(img);
 
-          if (photoDetections && photoDetections.length > 0) {
+          if (photoResults && photoResults.length > 0) {
             // Comparar com cada rosto detectado na foto
-            for (const detection of photoDetections) {
-              const photoDescriptor = detection.descriptor;
-              
-              // Calcular distância euclidiana (quanto menor, mais similar)
-              const distance = faceapi.euclideanDistance(userDescriptor, Array.from(photoDescriptor));
-              
-              // Converter distância em similaridade (0 a 1)
-              const similarity = Math.max(0, 1 - distance);
+            for (const result of photoResults) {
+              // Calcular similaridade usando função otimizada
+              const similarity = calculateSimilarity(userDescriptor, result.descriptor);
 
               // Threshold aumentado para 60% (reduz falsos positivos)
               if (similarity > 0.6) {
@@ -381,16 +366,11 @@ export const useFaceRecognition = () => {
             });
             
             // Detectar rostos na foto (segunda tentativa)
-            const photoDetections = await faceapi
-              .detectAllFaces(img2, new faceapi.TinyFaceDetectorOptions())
-              .withFaceLandmarks()
-              .withFaceDescriptors();
+            const photoResults = await detectFaces(img2);
 
-            if (photoDetections && photoDetections.length > 0) {
-              for (const detection of photoDetections) {
-                const photoDescriptor = detection.descriptor;
-                const distance = faceapi.euclideanDistance(userDescriptor, Array.from(photoDescriptor));
-                const similarity = Math.max(0, 1 - distance);
+            if (photoResults && photoResults.length > 0) {
+              for (const result of photoResults) {
+                const similarity = calculateSimilarity(userDescriptor, result.descriptor);
 
                 if (similarity > 0.6) {
                   img2.remove();
@@ -487,7 +467,7 @@ export const useFaceRecognition = () => {
         throw new Error('Câmera não inicializada');
       }
 
-      const descriptors = await detectFaces(videoRef.current);
+      const descriptors = await detectFacesFromSource(videoRef.current);
       if (!descriptors || descriptors.length === 0) {
         toast({
           title: "Nenhum rosto detectado",
@@ -498,7 +478,7 @@ export const useFaceRecognition = () => {
       }
 
       // Converter Float32Array para array normal para salvar no banco
-      const descriptorArray = Array.from(descriptors[0]);
+      const descriptorArray = Array.from(descriptors[0].descriptor);
 
       // Salvar no banco de dados (se a tabela existir)
       // TODO: Criar tabela user_face_descriptors no Supabase
