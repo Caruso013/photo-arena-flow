@@ -127,13 +127,13 @@ const MyFavorites = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 pb-20 md:pb-0">
       <div>
-        <h1 className="text-3xl font-bold flex items-center gap-2">
-          <Heart className="h-8 w-8 text-destructive fill-destructive" />
-          Minhas Fotos Favoritas
+        <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
+          <Heart className="h-6 w-6 sm:h-8 sm:w-8 text-destructive fill-destructive" />
+          <span>Meus Favoritos</span>
         </h1>
-        <p className="text-muted-foreground mt-2">
+        <p className="text-muted-foreground mt-2 text-sm sm:text-base">
           {favorites.length === 0 
             ? 'Você ainda não tem fotos favoritas' 
             : `${favorites.length} foto${favorites.length > 1 ? 's' : ''} favoritada${favorites.length > 1 ? 's' : ''}`
@@ -142,18 +142,18 @@ const MyFavorites = () => {
       </div>
 
       {favorites.length === 0 ? (
-        <Card className="p-12 text-center">
-          <Heart className="h-16 w-16 mx-auto mb-4 text-muted-foreground/50" />
-          <h3 className="text-xl font-semibold mb-2">Nenhum favorito ainda</h3>
-          <p className="text-muted-foreground mb-4">
+        <Card className="p-8 sm:p-12 text-center">
+          <Heart className="h-12 w-12 sm:h-16 sm:w-16 mx-auto mb-4 text-muted-foreground/50" />
+          <h3 className="text-lg sm:text-xl font-semibold mb-2">Nenhum favorito ainda</h3>
+          <p className="text-muted-foreground mb-4 text-sm sm:text-base">
             Comece a favoritar suas fotos preferidas para encontrá-las facilmente aqui
           </p>
-          <Button onClick={() => navigate('/events')}>
+          <Button onClick={() => navigate('/events')} size="lg" className="w-full sm:w-auto">
             Explorar Eventos
           </Button>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
           {favorites.map((favorite) => {
             const photo = favorite.photos;
             if (!photo) return null;
@@ -163,18 +163,19 @@ const MyFavorites = () => {
                 <div className="relative aspect-square overflow-hidden bg-muted">
                   <Dialog>
                     <DialogTrigger asChild>
-                      <button className="w-full h-full relative group/preview">
+                      <button className="w-full h-full relative group/preview active:scale-95 transition-transform">
                         <img
                           src={photo.thumbnail_url || photo.watermarked_url}
                           alt={photo.title || 'Foto'}
                           className="w-full h-full object-cover transition-transform duration-300 group-hover/preview:scale-110"
+                          loading="lazy"
                         />
                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/preview:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                          <Eye className="h-8 w-8 text-white" />
+                          <Eye className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
                         </div>
                       </button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
+                    <DialogContent className="max-w-[95vw] sm:max-w-4xl w-[90vw] max-h-[90vh] overflow-auto">
                       <WatermarkedPhoto src={photo.watermarked_url} alt={photo.title || 'Foto'} />
                     </DialogContent>
                   </Dialog>
@@ -182,16 +183,16 @@ const MyFavorites = () => {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm hover:bg-destructive hover:text-destructive-foreground"
+                    className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm hover:bg-destructive hover:text-destructive-foreground w-9 h-9 sm:w-10 sm:h-10"
                     onClick={() => handleRemoveFavorite(photo.id)}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
 
-                <CardContent className="p-4 space-y-3">
+                <CardContent className="p-3 sm:p-4 space-y-2 sm:space-y-3">
                   <div>
-                    <h3 className="font-semibold line-clamp-1">
+                    <h3 className="font-semibold line-clamp-1 text-sm sm:text-base">
                       {photo.title || 'Sem título'}
                     </h3>
                     {photo.campaigns && (
@@ -201,18 +202,18 @@ const MyFavorites = () => {
                     )}
                   </div>
 
-                  <div className="flex items-center justify-between">
-                    <span className="text-lg font-bold text-primary">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-base sm:text-lg font-bold text-primary flex-shrink-0">
                       {formatCurrency(photo.price)}
                     </span>
                     {photo.is_available && (
                       <Button
                         size="sm"
                         onClick={() => handleAddToCart(photo)}
-                        className="gap-2"
+                        className="gap-1 sm:gap-2 h-8 sm:h-9 text-xs sm:text-sm"
                       >
-                        <ShoppingCart className="h-4 w-4" />
-                        Carrinho
+                        <ShoppingCart className="h-3 w-3 sm:h-4 sm:w-4" />
+                        <span className="hidden sm:inline">Carrinho</span>
                       </Button>
                     )}
                   </div>
