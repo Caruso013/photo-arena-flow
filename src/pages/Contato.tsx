@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,10 +6,73 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Mail, Phone, Clock, MessageCircle } from 'lucide-react';
 import MainLayout from '@/components/layout/MainLayout';
+import { toast } from '@/components/ui/use-toast';
+import { useHapticFeedback } from '@/hooks/useHapticFeedback';
 
 const WHATSAPP_NUMBER = '5511957719467'; // Número configurável
 
 const Contato = () => {
+  const haptic = useHapticFeedback();
+  const [formData, setFormData] = useState({
+    nome: '',
+    email: '',
+    telefone: '',
+    assunto: '',
+    mensagem: ''
+  });
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { id, value } = e.target;
+    setFormData(prev => ({ ...prev, [id]: value }));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validação básica
+    if (!formData.nome.trim() || !formData.email.trim() || !formData.mensagem.trim()) {
+      haptic.warning();
+      toast({
+        title: "Campos obrigatórios",
+        description: "Por favor, preencha nome, email e mensagem.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Montar mensagem para WhatsApp
+    const whatsappMessage = `
+*Nova mensagem do site*
+
+*Nome:* ${formData.nome}
+*Email:* ${formData.email}
+${formData.telefone ? `*Telefone:* ${formData.telefone}` : ''}
+${formData.assunto ? `*Assunto:* ${formData.assunto}` : ''}
+
+*Mensagem:*
+${formData.mensagem}
+    `.trim();
+
+    // Abrir WhatsApp
+    const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(whatsappMessage)}`;
+    window.open(url, '_blank');
+    
+    haptic.success();
+    toast({
+      title: "Redirecionando para WhatsApp",
+      description: "Sua mensagem está pronta para ser enviada!",
+    });
+
+    // Limpar formulário
+    setFormData({
+      nome: '',
+      email: '',
+      telefone: '',
+      assunto: '',
+      mensagem: ''
+    });
+  };
+
   return (
     <MainLayout>
       <section className="container mx-auto px-4 py-8 md:py-12">
@@ -53,7 +116,7 @@ const Contato = () => {
                     </div>
                     <Button 
                       onClick={() => window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=Olá! Gostaria de mais informações sobre a plataforma.`, '_blank')}
-                      className="w-full gap-2 bg-[#25D366] hover:bg-[#20BA5A] text-white"
+                      className="w-full gap-2 bg-[#25D366] hover:bg-[#20BA5A] text-white min-h-[44px] h-11"
                     >
                       <MessageCircle className="h-4 w-4" />
                       Falar no WhatsApp
@@ -108,40 +171,73 @@ const Contato = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <form className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="nome" className="text-sm font-medium">Nome</Label>
-                      <Input id="nome" placeholder="Seu nome completo" className="text-base" />
+                      <Label htmlFor="nome" className="text-sm font-medium">Nome *</Label>
+                      <Input 
+                        id="nome" 
+                        placeholder="Seu nome completo" 
+                        className="text-base h-11 md:h-12" 
+                        value={formData.nome}
+                        onChange={handleInputChange}
+                        required
+                      />
                     </div>
                     <div>
-                      <Label htmlFor="email" className="text-sm font-medium">E-mail</Label>
-                      <Input id="email" type="email" placeholder="seu@email.com" className="text-base" />
+                      <Label htmlFor="email" className="text-sm font-medium">E-mail *</Label>
+                      <Input 
+                        id="email" 
+                        type="email" 
+                        placeholder="seu@email.com" 
+                        className="text-base h-11 md:h-12" 
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        required
+                      />
                     </div>
                   </div>
                   
                   <div>
                     <Label htmlFor="telefone" className="text-sm font-medium">Telefone (opcional)</Label>
-                    <Input id="telefone" placeholder="(11) 99999-9999" className="text-base" />
+                    <Input 
+                      id="telefone" 
+                      placeholder="(11) 99999-9999" 
+                      className="text-base h-11 md:h-12" 
+                      value={formData.telefone}
+                      onChange={handleInputChange}
+                    />
                   </div>
                   
                   <div>
                     <Label htmlFor="assunto" className="text-sm font-medium">Assunto</Label>
-                    <Input id="assunto" placeholder="Como podemos ajudar?" className="text-base" />
+                    <Input 
+                      id="assunto" 
+                      placeholder="Como podemos ajudar?" 
+                      className="text-base h-11 md:h-12" 
+                      value={formData.assunto}
+                      onChange={handleInputChange}
+                    />
                   </div>
                   
                   <div>
-                    <Label htmlFor="mensagem" className="text-sm font-medium">Mensagem</Label>
+                    <Label htmlFor="mensagem" className="text-sm font-medium">Mensagem *</Label>
                     <Textarea 
                       id="mensagem" 
                       placeholder="Descreva sua dúvida ou solicitação..."
                       rows={5}
                       className="text-base"
+                      value={formData.mensagem}
+                      onChange={handleInputChange}
+                      required
                     />
                   </div>
                   
-                  <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 h-12 text-base font-medium">
-                    Enviar Mensagem
+                  <Button 
+                    type="submit"
+                    className="w-full bg-primary text-primary-foreground hover:bg-primary/90 h-12 text-base font-medium min-h-[44px]"
+                  >
+                    Enviar via WhatsApp
                   </Button>
                 </form>
               </CardContent>

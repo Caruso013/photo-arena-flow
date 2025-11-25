@@ -22,7 +22,7 @@ const Footer = () => {
             <div className="space-y-2 text-sm">
               <div><Link to="/auth" className="hover:text-primary transition-colors">Login</Link></div>
               <div><Link to="/auth" className="hover:text-primary transition-colors">Cadastro</Link></div>
-              <div><Link to="/recuperacao" className="hover:text-primary transition-colors">Recuperação de acesso</Link></div>
+              <div><Link to="/auth?mode=forgot" className="hover:text-primary transition-colors">Recuperação de acesso</Link></div>
             </div>
           </div>
 
