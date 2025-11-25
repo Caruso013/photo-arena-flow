@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ResponsiveModal, ResponsiveModalHeader, ResponsiveModalTitle, ResponsiveModalDescription } from '@/components/ui/responsive-modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -165,30 +165,29 @@ export default function PaymentModal({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleModalClose}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            {showCheckout && (
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={handleBack}
-                className="mr-2"
-              >
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-            )}
-            <ShoppingCart className="h-5 w-5" />
-            {showCheckout ? 'Pagamento' : 'Comprar Foto'}
-          </DialogTitle>
-          <DialogDescription>
-            {showCheckout 
-              ? 'Complete o pagamento no formulário abaixo'
-              : 'Complete seus dados para prosseguir com o pagamento via Mercado Pago'
-            }
-          </DialogDescription>
-        </DialogHeader>
+    <ResponsiveModal open={isOpen} onOpenChange={handleModalClose} className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+      <ResponsiveModalHeader>
+        <ResponsiveModalTitle className="flex items-center gap-2">
+          {showCheckout && (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={handleBack}
+              className="mr-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          )}
+          <ShoppingCart className="h-5 w-5" />
+          {showCheckout ? 'Pagamento' : 'Comprar Foto'}
+        </ResponsiveModalTitle>
+        <ResponsiveModalDescription>
+          {showCheckout 
+            ? 'Complete o pagamento no formulário abaixo'
+            : 'Complete seus dados para prosseguir com o pagamento via Mercado Pago'
+          }
+        </ResponsiveModalDescription>
+      </ResponsiveModalHeader>
 
         {!showCheckout ? (
           <div className="space-y-6">
@@ -387,7 +386,6 @@ export default function PaymentModal({
             </div>
           </div>
         )}
-      </DialogContent>
-    </Dialog>
+    </ResponsiveModal>
   );
 }
