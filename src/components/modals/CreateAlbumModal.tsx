@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ResponsiveModal, ResponsiveModalHeader, ResponsiveModalTitle, ResponsiveModalDescription } from '@/components/ui/responsive-modal';
 import { toast } from '@/hooks/use-toast';
 import { FolderPlus, Calendar, MapPin } from 'lucide-react';
 
@@ -94,17 +94,16 @@ const CreateAlbumModal: React.FC<CreateAlbumModalProps> = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FolderPlus className="h-5 w-5" />
-            Criar Novo Álbum
-          </DialogTitle>
-          <DialogDescription>
-            Crie um álbum de fotos dentro de "{campaignTitle}"
-          </DialogDescription>
-        </DialogHeader>
+    <ResponsiveModal open={open} onOpenChange={onClose} className="sm:max-w-md">
+      <ResponsiveModalHeader>
+        <ResponsiveModalTitle className="flex items-center gap-2">
+          <FolderPlus className="h-5 w-5" />
+          Criar Novo Álbum
+        </ResponsiveModalTitle>
+        <ResponsiveModalDescription>
+          Crie um álbum de fotos dentro de "{campaignTitle}"
+        </ResponsiveModalDescription>
+      </ResponsiveModalHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
@@ -171,8 +170,7 @@ const CreateAlbumModal: React.FC<CreateAlbumModalProps> = ({
             </Button>
           </div>
         </form>
-      </DialogContent>
-    </Dialog>
+    </ResponsiveModal>
   );
 };
 

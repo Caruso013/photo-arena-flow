@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { EventCard } from '@/components/events/EventCard';
 
@@ -46,36 +46,36 @@ describe('EventCard', () => {
   };
 
   it('deve renderizar o card do evento com informações básicas', () => {
-    render(
+    const { getByText } = render(
       <BrowserRouter>
         <EventCard campaign={mockCampaign} index={0} />
       </BrowserRouter>
     );
 
-    expect(screen.getByText('Corrida de São Silvestre 2024')).toBeInTheDocument();
-    expect(screen.getByText('São Paulo, SP')).toBeInTheDocument();
-    expect(screen.getByText(/Por: João Silva/)).toBeInTheDocument();
+    expect(getByText('Corrida de São Silvestre 2024')).toBeInTheDocument();
+    expect(getByText('São Paulo, SP')).toBeInTheDocument();
+    expect(getByText(/Por: João Silva/)).toBeInTheDocument();
   });
 
   it('deve exibir a data do evento formatada', () => {
-    render(
+    const { getByText } = render(
       <BrowserRouter>
         <EventCard campaign={mockCampaign} index={0} />
       </BrowserRouter>
     );
 
     // A data pode estar formatada diferente dependendo do locale
-    expect(screen.getByText(/12\/2024/)).toBeInTheDocument();
+    expect(getByText(/12\/2024/)).toBeInTheDocument();
   });
 
   it('deve ter um link para a página do evento', () => {
-    render(
+    const { getAllByRole } = render(
       <BrowserRouter>
         <EventCard campaign={mockCampaign} index={0} />
       </BrowserRouter>
     );
 
-    const links = screen.getAllByRole('link');
+    const links = getAllByRole('link');
     const campaignLink = links.find(link => 
       link.getAttribute('href') === `/campaign/${mockCampaign.id}`
     );
@@ -83,12 +83,12 @@ describe('EventCard', () => {
   });
 
   it('deve exibir botão "Ver Fotos"', () => {
-    render(
+    const { getByText } = render(
       <BrowserRouter>
         <EventCard campaign={mockCampaign} index={0} />
       </BrowserRouter>
     );
 
-    expect(screen.getByText('Ver Fotos')).toBeInTheDocument();
+    expect(getByText('Ver Fotos')).toBeInTheDocument();
   });
 });
