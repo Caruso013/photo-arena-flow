@@ -148,10 +148,12 @@ const Fotografos = () => {
                         ))}
                       </div>
                       
-                      <Button className="w-full gap-2" size="sm">
-                        Ver Todos os Eventos
-                        <ArrowRight className="h-3 w-3" />
-                      </Button>
+                      <Link to={`/events?photographer=${photographer.id}`}>
+                        <Button className="w-full gap-2 min-h-[44px] h-11" size="sm">
+                          Ver Todos os Eventos
+                          <ArrowRight className="h-3 w-3" />
+                        </Button>
+                      </Link>
                     </div>
                   ) : (
                     <div className="text-center py-8 text-muted-foreground">

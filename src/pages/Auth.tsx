@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,6 +16,7 @@ import { toast } from '@/components/ui/use-toast';
 const Auth = () => {
   const { signIn, signUp, user, loading } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
@@ -35,6 +36,14 @@ const Auth = () => {
       navigate('/dashboard');
     }
   }, [user, navigate]);
+
+  // Detectar parâmetro mode=forgot na URL
+  useEffect(() => {
+    const mode = searchParams.get('mode');
+    if (mode === 'forgot') {
+      setShowForgotPassword(true);
+    }
+  }, [searchParams]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -203,18 +212,22 @@ const Auth = () => {
                       </p>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-2">
-                      <Button 
-                        type="button" 
-                        variant="outline" 
-                        className="flex-1 h-11 sm:h-12 text-sm"
-                        onClick={() => setShowForgotPassword(false)}
-                        disabled={isLoading}
-                      >
-                        Voltar
-                      </Button>
-                      <Button type="submit" className="flex-1 h-11 sm:h-12 text-sm" disabled={isLoading}>
-                        {isLoading ? "Enviando..." : "Enviar Email"}
-                      </Button>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    className="flex-1 h-11 sm:h-12 text-sm min-h-[44px]"
+                    onClick={() => setShowForgotPassword(false)}
+                    disabled={isLoading}
+                  >
+                    Voltar
+                  </Button>
+                  <Button 
+                    type="submit" 
+                    className="flex-1 h-11 sm:h-12 text-sm min-h-[44px]" 
+                    disabled={isLoading}
+                  >
+                    {isLoading ? "Enviando..." : "Enviar Email"}
+                  </Button>
                     </div>
                   </form>
                 ) : (
@@ -252,7 +265,11 @@ const Auth = () => {
                         className="h-11 sm:h-12 text-sm"
                       />
                     </div>
-                    <Button type="submit" className="w-full h-11 sm:h-12 text-sm font-medium" disabled={isLoading}>
+                    <Button 
+                      type="submit" 
+                      className="w-full h-11 sm:h-12 text-sm font-medium min-h-[44px]" 
+                      disabled={isLoading}
+                    >
                       {isLoading ? "Entrando..." : "Entrar"}
                     </Button>
                   </form>
@@ -325,7 +342,11 @@ const Auth = () => {
                         : 'Como usuário, você poderá comprar fotos dos eventos.'}
                     </p>
                   </div>
-                  <Button type="submit" className="w-full h-11 sm:h-12 text-sm font-medium" disabled={isLoading}>
+                  <Button 
+                    type="submit" 
+                    className="w-full h-11 sm:h-12 text-sm font-medium min-h-[44px]" 
+                    disabled={isLoading}
+                  >
                     {isLoading ? "Cadastrando..." : "Criar conta"}
                   </Button>
                 </form>
