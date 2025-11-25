@@ -102,7 +102,7 @@ export const ProgressiveDiscountDisplay: React.FC<ProgressiveDiscountDisplayProp
       )}
 
       {/* Próximo Nível de Desconto */}
-      {showIncentive && nextThreshold && discount.discountPercentage < 15 && (
+      {showIncentive && nextThreshold && discount.discountPercentage < 20 && (
         <div className="p-3 bg-muted rounded-lg border">
           <div className="flex items-center justify-between text-sm">
             <div className="flex items-center gap-2">
@@ -134,16 +134,16 @@ export const ProgressiveDiscountDisplay: React.FC<ProgressiveDiscountDisplayProp
             <p className="font-semibold mb-3 text-sm">🎁 Descontos Progressivos Disponíveis:</p>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between p-2 rounded bg-muted/50">
-                <span className="text-muted-foreground">5-10 fotos</span>
+                <span className="text-muted-foreground">2-4 fotos</span>
                 <Badge variant="outline">5% OFF</Badge>
               </div>
               <div className="flex justify-between p-2 rounded bg-muted/50">
-                <span className="text-muted-foreground">11-20 fotos</span>
+                <span className="text-muted-foreground">5-9 fotos</span>
                 <Badge variant="outline">10% OFF</Badge>
               </div>
               <div className="flex justify-between p-2 rounded bg-muted/50">
-                <span className="text-muted-foreground">21+ fotos</span>
-                <Badge variant="outline" className="bg-primary/10">15% OFF</Badge>
+                <span className="text-muted-foreground">10+ fotos</span>
+                <Badge variant="outline" className="bg-primary/10">20% OFF</Badge>
               </div>
             </div>
           </CardContent>

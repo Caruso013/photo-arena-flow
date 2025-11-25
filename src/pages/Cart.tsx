@@ -8,6 +8,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { CouponInput, CouponDiscountLine } from "@/components/cart/CouponInput";
 import { ProgressiveDiscountDisplay } from "@/components/cart/ProgressiveDiscountDisplay";
+import { useProgressiveDiscount } from "@/hooks/useProgressiveDiscount";
 import PaymentModal from "@/components/modals/PaymentModal";
 import { Badge } from "@/components/ui/badge";
 import { CouponValidationResult } from "@/hooks/useCoupons";
@@ -23,17 +24,21 @@ const Cart = () => {
   const [appliedCoupon, setAppliedCoupon] = useState<CouponValidationResult | null>(null);
 
   // Calcular desconto progressivo
-  // Verificar se TODAS as fotos do carrinho têm desconto progressivo habilitado
-  const allPhotosHaveDiscountEnabled = items.length > 0 && items.every(item => item.progressive_discount_enabled === true);
+  // Verificar se pelo menos uma foto tem desconto progressivo habilitado
+  // Nota: tratamos undefined como false para compatibilidade com itens antigos do localStorage
+  const hasDiscountEnabled = items.length > 0 && items.some(item => item.progressive_discount_enabled === true);
   
-  const progressiveDiscountPercent = allPhotosHaveDiscountEnabled
-    ? (totalItems >= 10 ? 20 : totalItems >= 5 ? 10 : totalItems >= 2 ? 5 : 0)
-    : 0;
-
-  const progressiveDiscountAmount = (totalPrice * progressiveDiscountPercent) / 100;
+  // Calcular preço médio por foto
+  const averagePrice = totalItems > 0 ? totalPrice / totalItems : 0;
+  
+  // Usar o hook para calcular o desconto
+  const progressiveDiscount = useProgressiveDiscount(totalItems, averagePrice, hasDiscountEnabled);
+  
+  const progressiveDiscountAmount = progressiveDiscount.discountAmount;
+  const progressiveDiscountPercent = progressiveDiscount.discountPercentage;
 
   // Subtotal após desconto progressivo
-  const subtotalAfterProgressiveDiscount = totalPrice - progressiveDiscountAmount;
+  const subtotalAfterProgressiveDiscount = progressiveDiscount.total;
 
   // Desconto do cupom
   const couponDiscountAmount = appliedCoupon?.valid ? appliedCoupon.discount_amount : 0;
@@ -141,7 +146,8 @@ const Cart = () => {
               <div className="mb-4">
                 <ProgressiveDiscountDisplay 
                   quantity={totalItems} 
-                  unitPrice={totalPrice / totalItems}
+                  unitPrice={averagePrice}
+                  isEnabled={hasDiscountEnabled}
                   compact={true}
                 />
               </div>
@@ -214,7 +220,8 @@ const Cart = () => {
                     <div className="text-xs text-muted-foreground">
                       <ProgressiveDiscountDisplay 
                         quantity={totalItems} 
-                        unitPrice={totalPrice / totalItems}
+                        unitPrice={averagePrice}
+                        isEnabled={hasDiscountEnabled}
                         showIncentive={true}
                         compact={true}
                       />
