@@ -1,11 +1,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useSearch } from '@/contexts/SearchContext';
-import { Camera } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { Camera, RefreshCw } from 'lucide-react';
 import MainLayout from '@/components/layout/MainLayout';
 import { SkeletonCard } from '@/components/ui/skeleton-card';
 import { EventFilters, FilterState } from '@/components/events/EventFilters';
 import { EventCard } from '@/components/events/EventCard';
+import { usePullToRefresh } from '@/hooks/usePullToRefresh';
+import { PullToRefreshIndicator } from '@/components/ui/PullToRefreshIndicator';
+import { useHapticFeedback } from '@/hooks/useHapticFeedback';
 
 interface Campaign {
   id: string;
@@ -15,6 +19,7 @@ interface Campaign {
   location: string;
   cover_image_url: string;
   created_at?: string;
+  photographer_id?: string;
   photographer: {
     full_name: string;
   };
@@ -22,6 +27,8 @@ interface Campaign {
 
 const Events = () => {
   const { searchTerm } = useSearch();
+  const [searchParams] = useSearchParams();
+  const haptic = useHapticFeedback();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<FilterState>({
@@ -34,6 +41,23 @@ const Events = () => {
     maxPrice: '',
   });
 
+  // Pull to refresh
+  const pullToRefresh = usePullToRefresh({
+    onRefresh: async () => {
+      haptic.light();
+      await fetchCampaigns();
+      haptic.success();
+    }
+  });
+
+  // Detectar filtro de fotógrafo na URL
+  useEffect(() => {
+    const photographerId = searchParams.get('photographer');
+    if (photographerId) {
+      setFilters(prev => ({ ...prev, photographer: photographerId }));
+    }
+  }, [searchParams]);
+
   const filteredCampaigns = useMemo(() => {
     let filtered = [...campaigns];
     
@@ -45,6 +69,13 @@ const Events = () => {
           campaign.title.toLowerCase().includes(term) ||
           campaign.location.toLowerCase().includes(term) ||
           campaign.photographer?.full_name.toLowerCase().includes(term)
+      );
+    }
+    
+    // Filtro por fotógrafo
+    if (filters.photographer.trim()) {
+      filtered = filtered.filter(
+        (campaign) => campaign.photographer_id === filters.photographer
       );
     }
     
@@ -110,6 +141,11 @@ const Events = () => {
 
   return (
     <MainLayout>
+      <PullToRefreshIndicator 
+        isPulling={pullToRefresh.isPulling}
+        isRefreshing={pullToRefresh.isRefreshing}
+        progress={pullToRefresh.progress}
+      />
       <section className="container mx-auto px-4 py-6 md:py-8">
         <div className="mb-6 md:mb-8">
           <h1 className="text-2xl md:text-3xl font-bold mb-2">Todos os Eventos</h1>
