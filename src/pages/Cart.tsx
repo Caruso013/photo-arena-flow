@@ -15,10 +15,12 @@ import { CouponValidationResult } from "@/hooks/useCoupons";
 import { formatCurrency } from "@/lib/utils";
 import AntiScreenshotProtection from "@/components/security/AntiScreenshotProtection";
 import WatermarkedPhoto from "@/components/WatermarkedPhoto";
+import { useHapticFeedback } from "@/hooks/useHapticFeedback";
 
 const Cart = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const haptic = useHapticFeedback();
   const { items, removeFromCart, clearCart, totalItems, totalPrice } = useCart();
   const [showPayment, setShowPayment] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState<CouponValidationResult | null>(null);
@@ -97,7 +99,7 @@ const Cart = () => {
               <p className="text-muted-foreground mb-8">
                 Adicione fotos ao carrinho para continuar com a compra
               </p>
-              <Button onClick={handleContinueShopping} size="lg">
+              <Button onClick={handleContinueShopping} size="lg" className="min-h-[44px]">
                 <ShoppingBag className="h-5 w-5 mr-2" />
                 Explorar Eventos
               </Button>
@@ -114,7 +116,7 @@ const Cart = () => {
         <Button 
           variant="ghost" 
           onClick={() => navigate(-1)}
-          className="mb-6"
+          className="mb-6 min-h-[44px]"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
           Voltar
@@ -177,8 +179,11 @@ const Cart = () => {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => removeFromCart(item.id)}
-                          className="text-destructive hover:text-destructive mt-auto"
+                          onClick={() => {
+                            haptic.light();
+                            removeFromCart(item.id);
+                          }}
+                          className="text-destructive hover:text-destructive mt-auto min-h-[44px]"
                         >
                           <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                           <span className="text-xs sm:text-sm">Remover</span>
@@ -257,8 +262,11 @@ const Cart = () => {
                 <Separator />
 
                 <Button 
-                  onClick={handleCheckout} 
-                  className="w-full" 
+                  onClick={() => {
+                    haptic.medium();
+                    handleCheckout();
+                  }}
+                  className="w-full min-h-[44px]" 
                   size="lg"
                 >
                   <ShoppingBag className="h-5 w-5 mr-2" />
@@ -268,7 +276,7 @@ const Cart = () => {
                 <Button 
                   variant="outline" 
                   onClick={handleContinueShopping}
-                  className="w-full"
+                  className="w-full min-h-[44px]"
                 >
                   Continuar Comprando
                 </Button>
