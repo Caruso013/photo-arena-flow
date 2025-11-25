@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ResponsiveModal, ResponsiveModalHeader, ResponsiveModalTitle, ResponsiveModalDescription } from '@/components/ui/responsive-modal';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -138,17 +138,16 @@ const EditCampaignCoverModal: React.FC<EditCampaignCoverModalProps> = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <ImageIcon className="h-5 w-5" />
-            Editar Capa do Evento
-          </DialogTitle>
-          <DialogDescription>
-            Atualize a imagem de capa de: <span className="font-semibold">{campaignTitle}</span>
-          </DialogDescription>
-        </DialogHeader>
+    <ResponsiveModal open={open} onOpenChange={onClose} className="max-w-2xl">
+      <ResponsiveModalHeader>
+        <ResponsiveModalTitle className="flex items-center gap-2">
+          <ImageIcon className="h-5 w-5" />
+          Editar Capa do Evento
+        </ResponsiveModalTitle>
+        <ResponsiveModalDescription>
+          Atualize a imagem de capa de: <span className="font-semibold">{campaignTitle}</span>
+        </ResponsiveModalDescription>
+      </ResponsiveModalHeader>
 
         <div className="space-y-4">
           {previewUrl && (
@@ -231,8 +230,7 @@ const EditCampaignCoverModal: React.FC<EditCampaignCoverModalProps> = ({
             </Button>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+    </ResponsiveModal>
   );
 };
 
