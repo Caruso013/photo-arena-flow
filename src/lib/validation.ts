@@ -64,7 +64,34 @@ export const contactSchema = z.object({
     .max(1000, 'Mensagem muito longa'),
 });
 
+// Authentication validation
+export const signUpSchema = z.object({
+  email: z.string()
+    .trim()
+    .min(1, 'Email é obrigatório')
+    .email('Email inválido')
+    .max(255, 'Email muito longo'),
+  password: z.string()
+    .min(6, 'Senha deve ter pelo menos 6 caracteres')
+    .max(72, 'Senha muito longa'),
+  fullName: z.string()
+    .trim()
+    .min(2, 'Nome deve ter pelo menos 2 caracteres')
+    .max(100, 'Nome muito longo'),
+});
+
+export const signInSchema = z.object({
+  email: z.string()
+    .trim()
+    .min(1, 'Email é obrigatório')
+    .email('Email inválido'),
+  password: z.string()
+    .min(1, 'Senha é obrigatória'),
+});
+
 export type BuyerInfo = z.infer<typeof buyerInfoSchema>;
 export type CampaignForm = z.infer<typeof campaignSchema>;
 export type PhotoUploadForm = z.infer<typeof photoUploadSchema>;
 export type ContactForm = z.infer<typeof contactSchema>;
+export type SignUpForm = z.infer<typeof signUpSchema>;
+export type SignInForm = z.infer<typeof signInSchema>;
