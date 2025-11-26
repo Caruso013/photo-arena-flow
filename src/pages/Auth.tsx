@@ -8,10 +8,12 @@ import { PasswordInput } from '@/components/ui/password-input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Camera, ArrowLeft } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Camera, ArrowLeft, AlertCircle, CheckCircle2, Mail } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
+import { signUpSchema, signInSchema } from '@/lib/validation';
 
 const Auth = () => {
   const { signIn, signUp, user, loading } = useAuth();
@@ -20,6 +22,7 @@ const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Login form state
   const [loginEmail, setLoginEmail] = useState('');
@@ -47,23 +50,22 @@ const Auth = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrors({});
     
-    // Validações
-    if (!loginEmail.trim()) {
-      toast({
-        title: "Email obrigatório",
-        description: "Por favor, informe seu email.",
-        variant: "destructive",
-      });
-      return;
-    }
+    // Validar com zod
+    const validation = signInSchema.safeParse({ 
+      email: loginEmail, 
+      password: loginPassword 
+    });
     
-    if (!loginPassword) {
-      toast({
-        title: "Senha obrigatória",
-        description: "Por favor, informe sua senha.",
-        variant: "destructive",
+    if (!validation.success) {
+      const fieldErrors: Record<string, string> = {};
+      validation.error.errors.forEach((err) => {
+        if (err.path[0]) {
+          fieldErrors[err.path[0] as string] = err.message;
+        }
       });
+      setErrors(fieldErrors);
       return;
     }
     
@@ -71,47 +73,40 @@ const Auth = () => {
     const { error } = await signIn(loginEmail, loginPassword);
     setIsLoading(false);
     
-    // NÃO redirecionar aqui - deixar o useEffect fazer isso
-    // O useEffect já redireciona quando user muda
+    if (error) {
+      // Traduzir erros do Supabase
+      if (error.message.includes('Invalid login credentials') || 
+          error.message.includes('invalid') ||
+          error.message.includes('Invalid email or password')) {
+        setErrors({ general: 'Email ou senha incorretos. Verifique seus dados e tente novamente.' });
+      } else if (error.message.includes('Email not confirmed')) {
+        setErrors({ general: 'Confirme seu email antes de fazer login. Verifique sua caixa de entrada e spam.' });
+      } else {
+        setErrors({ general: error.message });
+      }
+    }
   };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrors({});
     
-    // Validações
-    if (!signupName.trim()) {
-      toast({
-        title: "Nome obrigatório",
-        description: "Por favor, informe seu nome completo.",
-        variant: "destructive",
-      });
-      return;
-    }
+    // Validar com zod
+    const validation = signUpSchema.safeParse({
+      email: signupEmail,
+      password: signupPassword,
+      fullName: signupName
+    });
     
-    if (signupName.trim().length < 3) {
-      toast({
-        title: "Nome muito curto",
-        description: "O nome deve ter pelo menos 3 caracteres.",
-        variant: "destructive",
+    if (!validation.success) {
+      const fieldErrors: Record<string, string> = {};
+      validation.error.errors.forEach((err) => {
+        if (err.path[0]) {
+          const field = err.path[0] === 'fullName' ? 'name' : err.path[0];
+          fieldErrors[field as string] = err.message;
+        }
       });
-      return;
-    }
-    
-    if (!signupEmail.trim()) {
-      toast({
-        title: "Email obrigatório",
-        description: "Por favor, informe seu email.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (signupPassword.length < 6) {
-      toast({
-        title: "Senha muito curta",
-        description: "A senha deve ter pelo menos 6 caracteres.",
-        variant: "destructive",
-      });
+      setErrors(fieldErrors);
       return;
     }
     
@@ -119,12 +114,24 @@ const Auth = () => {
     const { error } = await signUp(signupEmail, signupPassword, signupName, signupRole);
     setIsLoading(false);
     
-    // Limpar formulário apenas se não houver erro
     if (!error) {
       setSignupEmail('');
       setSignupPassword('');
       setSignupName('');
       setSignupRole('user');
+    } else {
+      // Traduzir erros do Supabase
+      if (error.message.includes('already registered') || 
+          error.message.includes('already exists') ||
+          error.message.includes('User already registered')) {
+        setErrors({ email: 'Este email já está cadastrado. Tente fazer login ou use outro email.' });
+      } else if (error.message.includes('Invalid email')) {
+        setErrors({ email: 'Email inválido. Verifique e tente novamente.' });
+      } else if (error.message.includes('password') || error.message.includes('weak')) {
+        setErrors({ password: 'Senha muito fraca. Use pelo menos 6 caracteres com letras e números.' });
+      } else {
+        setErrors({ general: error.message });
+      }
     }
   };
 
@@ -232,21 +239,36 @@ const Auth = () => {
                   </form>
                 ) : (
                   <form onSubmit={handleLogin} className="space-y-3 sm:space-y-4">
+                    {errors.general && (
+                      <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription className="text-sm">{errors.general}</AlertDescription>
+                      </Alert>
+                    )}
                     <div className="space-y-2">
-                      <Label htmlFor="email" className="text-sm">Email</Label>
+                      <Label htmlFor="email" className="text-sm">Email *</Label>
                       <Input
                         id="email"
                         type="email"
                         placeholder="seu@email.com"
                         value={loginEmail}
-                        onChange={(e) => setLoginEmail(e.target.value)}
+                        onChange={(e) => {
+                          setLoginEmail(e.target.value);
+                          setErrors({ ...errors, email: '', general: '' });
+                        }}
                         required
-                        className="h-11 sm:h-12 text-sm"
+                        className={`h-11 sm:h-12 text-sm ${errors.email ? 'border-destructive' : ''}`}
                       />
+                      {errors.email && (
+                        <p className="text-xs text-destructive flex items-center gap-1">
+                          <AlertCircle className="h-3 w-3" />
+                          {errors.email}
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <Label htmlFor="password" className="text-sm">Senha</Label>
+                        <Label htmlFor="password" className="text-sm">Senha *</Label>
                         <button
                           type="button"
                           onClick={() => setShowForgotPassword(true)}
@@ -260,10 +282,19 @@ const Auth = () => {
                         type="password"
                         placeholder="********"
                         value={loginPassword}
-                        onChange={(e) => setLoginPassword(e.target.value)}
+                        onChange={(e) => {
+                          setLoginPassword(e.target.value);
+                          setErrors({ ...errors, password: '', general: '' });
+                        }}
                         required
-                        className="h-11 sm:h-12 text-sm"
+                        className={`h-11 sm:h-12 text-sm ${errors.password ? 'border-destructive' : ''}`}
                       />
+                      {errors.password && (
+                        <p className="text-xs text-destructive flex items-center gap-1">
+                          <AlertCircle className="h-3 w-3" />
+                          {errors.password}
+                        </p>
+                      )}
                     </div>
                     <Button 
                       type="submit" 
@@ -278,45 +309,78 @@ const Auth = () => {
 
               <TabsContent value="signup" className="space-y-3 sm:space-y-4 mt-4">
                 <form onSubmit={handleSignup} className="space-y-3 sm:space-y-4">
+                  {errors.general && (
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription className="text-sm">{errors.general}</AlertDescription>
+                    </Alert>
+                  )}
                   <div className="space-y-2">
-                    <Label htmlFor="signup-name" className="text-sm">Nome completo</Label>
+                    <Label htmlFor="signup-name" className="text-sm">Nome completo *</Label>
                     <Input
                       id="signup-name"
                       type="text"
-                      placeholder="Seu nome"
+                      placeholder="Seu nome completo"
                       value={signupName}
-                      onChange={(e) => setSignupName(e.target.value)}
+                      onChange={(e) => {
+                        setSignupName(e.target.value);
+                        setErrors({ ...errors, name: '' });
+                      }}
                       required
-                      className="h-11 sm:h-12 text-sm"
+                      className={`h-11 sm:h-12 text-sm ${errors.name ? 'border-destructive' : ''}`}
                     />
+                    {errors.name && (
+                      <p className="text-xs text-destructive flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3" />
+                        {errors.name}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="signup-email" className="text-sm">Email</Label>
+                    <Label htmlFor="signup-email" className="text-sm">Email *</Label>
                     <Input
                       id="signup-email"
                       type="email"
                       placeholder="seu@email.com"
                       value={signupEmail}
-                      onChange={(e) => setSignupEmail(e.target.value)}
+                      onChange={(e) => {
+                        setSignupEmail(e.target.value);
+                        setErrors({ ...errors, email: '' });
+                      }}
                       required
-                      className="h-11 sm:h-12 text-sm"
+                      className={`h-11 sm:h-12 text-sm ${errors.email ? 'border-destructive' : ''}`}
                     />
+                    {errors.email && (
+                      <p className="text-xs text-destructive flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3" />
+                        {errors.email}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="signup-password" className="text-sm">Senha</Label>
+                    <Label htmlFor="signup-password" className="text-sm">Senha *</Label>
                     <PasswordInput
                       id="signup-password"
-                      placeholder="********"
+                      placeholder="Mínimo 6 caracteres"
                       value={signupPassword}
-                      onValueChange={setSignupPassword}
+                      onValueChange={(value) => {
+                        setSignupPassword(value);
+                        setErrors({ ...errors, password: '' });
+                      }}
                       required
-                      className="h-11 sm:h-12 text-sm"
+                      className={`h-11 sm:h-12 text-sm ${errors.password ? 'border-destructive' : ''}`}
                       minLength={6}
                       showStrength={true}
                     />
+                    {errors.password && (
+                      <p className="text-xs text-destructive flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3" />
+                        {errors.password}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="role" className="text-sm">Tipo de conta</Label>
+                    <Label htmlFor="role" className="text-sm">Tipo de conta *</Label>
                     <Select value={signupRole} onValueChange={(value: 'user' | 'photographer') => setSignupRole(value)}>
                       <SelectTrigger className="h-11 sm:h-12 text-sm">
                         <SelectValue />
@@ -342,6 +406,12 @@ const Auth = () => {
                         : 'Como usuário, você poderá comprar fotos dos eventos.'}
                     </p>
                   </div>
+                  <Alert className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900">
+                    <Mail className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <AlertDescription className="text-xs text-blue-700 dark:text-blue-300">
+                      Você receberá um email de confirmação. Verifique sua caixa de entrada e pasta de spam antes de fazer login.
+                    </AlertDescription>
+                  </Alert>
                   <Button 
                     type="submit" 
                     className="w-full h-11 sm:h-12 text-sm font-medium min-h-[44px]" 
