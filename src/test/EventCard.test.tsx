@@ -41,6 +41,7 @@ describe('EventCard', () => {
     cover_image_url: 'https://example.com/image.jpg',
     created_at: '2024-01-01',
     photographer: {
+      id: 'photographer-1',
       full_name: 'João Silva',
     },
   };
@@ -54,7 +55,7 @@ describe('EventCard', () => {
 
     expect(getByText('Corrida de São Silvestre 2024')).toBeInTheDocument();
     expect(getByText('São Paulo, SP')).toBeInTheDocument();
-    expect(getByText(/Por: João Silva/)).toBeInTheDocument();
+    expect(getByText('João Silva')).toBeInTheDocument();
   });
 
   it('deve exibir a data do evento formatada', () => {

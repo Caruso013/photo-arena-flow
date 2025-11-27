@@ -36,6 +36,12 @@ interface SubEvent {
   photo_count: number;
 }
 
+interface Photographer {
+  id: string;
+  full_name: string;
+  avatar_url?: string;
+}
+
 interface Campaign {
   id: string;
   title: string;
@@ -44,9 +50,11 @@ interface Campaign {
   location: string;
   cover_image_url: string;
   created_at?: string;
-  photographer: {
-    full_name: string;
-  };
+  photographer: Photographer | null;
+  campaign_photographers?: {
+    photographer_id: string;
+    profiles: Photographer;
+  }[];
 }
 
 interface EventCardProps {
@@ -68,7 +76,6 @@ export const EventCard: React.FC<EventCardProps> = ({ campaign, index }) => {
   const fetchSubEvents = async () => {
     setLoadingSubEvents(true);
     try {
-      // Buscar sub-eventos com contagem de fotos em uma única query
       const { data, error } = await supabase
         .from('sub_events')
         .select('id, title, location, photo_count')
@@ -80,7 +87,6 @@ export const EventCard: React.FC<EventCardProps> = ({ campaign, index }) => {
       const subEventsData = data || [];
       setSubEvents(subEventsData);
       
-      // Calcular total de fotos (photo_count já vem da tabela)
       const total = subEventsData.reduce((sum, se) => sum + (se.photo_count || 0), 0);
       setTotalPhotos(total);
     } catch (error) {
@@ -92,64 +98,122 @@ export const EventCard: React.FC<EventCardProps> = ({ campaign, index }) => {
     }
   };
 
+  // Obter todos os fotógrafos do evento
+  const allPhotographers = (): Photographer[] => {
+    const photographers: Photographer[] = [];
+    
+    // Adicionar fotógrafo principal
+    if (campaign.photographer) {
+      photographers.push(campaign.photographer);
+    }
+    
+    // Adicionar fotógrafos adicionais (se houver)
+    if (campaign.campaign_photographers) {
+      campaign.campaign_photographers.forEach(cp => {
+        if (cp.profiles && !photographers.find(p => p.id === cp.profiles.id)) {
+          photographers.push(cp.profiles);
+        }
+      });
+    }
+    
+    return photographers;
+  };
+
   return (
     <div
       className="group animate-fade-in"
       style={{ animationDelay: `${index * 0.1}s` }}
     >
-      <Card className="overflow-hidden cursor-pointer border-2 transition-all duration-300 hover:border-primary/40 hover:shadow-2xl hover:-translate-y-2 active:scale-95">
+      <Card className="overflow-hidden cursor-pointer border-2 transition-all duration-300 hover:border-primary/50 hover:shadow-2xl hover:-translate-y-2 active:scale-[0.98] backdrop-blur-sm bg-card/80">
         <Link to={`/campaign/${campaign.id}`}>
-          <div className="aspect-[4/5] bg-gradient-dark relative">
+          <div className="aspect-[4/5] bg-gradient-dark relative overflow-hidden">
             {campaign.cover_image_url ? (
-              <LazyImage
-                src={campaign.cover_image_url}
-                alt={campaign.title}
-                className="w-full h-full object-cover"
-              />
+              <>
+                <LazyImage
+                  src={campaign.cover_image_url}
+                  alt={campaign.title}
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-90 group-hover:opacity-95 transition-opacity" />
+              </>
             ) : (
-              <div className="w-full h-full flex items-center justify-center bg-secondary">
+              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-secondary to-secondary/50">
                 <div className="text-center text-secondary-foreground px-4">
-                  <Camera className="h-12 md:h-16 w-12 md:w-16 mx-auto mb-2 md:mb-4 text-primary" />
-                  <h3 className="text-lg md:text-xl font-bold mb-2">{campaign.title}</h3>
+                  <Camera className="h-16 md:h-20 w-16 md:w-20 mx-auto mb-4 text-primary drop-shadow-lg" />
+                  <h3 className="text-xl md:text-2xl font-bold">{campaign.title}</h3>
                 </div>
               </div>
             )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
             
-            {/* Badge com total de fotos */}
+            {/* Badge com total de fotos - melhorado */}
             {totalPhotos > 0 && (
-              <div className="absolute top-2 right-2">
-                <Badge variant="secondary" className="bg-black/60 text-white border-0 backdrop-blur-sm">
-                  <ImageIcon className="h-3 w-3 mr-1" />
-                  {totalPhotos} fotos
+              <div className="absolute top-3 right-3">
+                <Badge variant="secondary" className="bg-black/70 text-white border-0 backdrop-blur-md px-3 py-1.5 shadow-lg">
+                  <ImageIcon className="h-3.5 w-3.5 mr-1.5" />
+                  <span className="font-semibold">{totalPhotos}</span>
                 </Badge>
               </div>
             )}
 
-            <div className="absolute bottom-2 md:bottom-4 left-2 md:left-4 right-2 md:right-4 text-white">
-              <h3 className="text-base md:text-xl font-bold mb-1 group-hover:text-primary transition-colors">
+            <div className="absolute bottom-0 left-0 right-0 p-4 md:p-5 text-white space-y-2">
+              <h3 className="text-lg md:text-2xl font-bold mb-2 line-clamp-2 group-hover:text-primary transition-colors drop-shadow-lg">
                 {campaign.title}
               </h3>
-              <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-4 text-xs md:text-sm">
-                <div className="flex items-center gap-1">
-                  <MapPin className="h-3 w-3" />
-                  <span className="truncate">{campaign.location}</span>
+              <div className="flex flex-col gap-2 text-xs md:text-sm">
+                <div className="flex items-center gap-2 bg-black/40 backdrop-blur-sm rounded-full px-3 py-1.5 w-fit">
+                  <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
+                  <span className="truncate font-medium">{campaign.location}</span>
                 </div>
-                <div className="flex items-center gap-1">
-                  <Calendar className="h-3 w-3" />
-                  <span>{new Date(campaign.event_date).toLocaleDateString('pt-BR')}</span>
+                <div className="flex items-center gap-2 bg-black/40 backdrop-blur-sm rounded-full px-3 py-1.5 w-fit">
+                  <Calendar className="h-3.5 w-3.5 flex-shrink-0" />
+                  <span className="font-medium">{new Date(campaign.event_date).toLocaleDateString('pt-BR')}</span>
                 </div>
               </div>
             </div>
           </div>
         </Link>
 
-        <CardContent className="p-3 md:p-4">
-          <div className="flex justify-between items-start gap-2">
-            <div className="flex-1 min-w-0">
-              <p className="text-xs md:text-sm text-muted-foreground truncate mb-2">
-                Por: {campaign.photographer?.full_name}
-              </p>
+        <CardContent className="p-4 md:p-5 bg-gradient-to-b from-card to-card/50">
+          <div className="flex justify-between items-start gap-3">
+            <div className="flex-1 min-w-0 space-y-3">
+              {/* Fotógrafos - Layout melhorado */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="h-px flex-1 bg-border" />
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    {allPhotographers().length === 1 ? 'Fotógrafo' : 'Fotógrafos'}
+                  </span>
+                  <div className="h-px flex-1 bg-border" />
+                </div>
+                
+                {allPhotographers().length > 0 ? (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {allPhotographers().map((photographer) => (
+                      <div 
+                        key={photographer.id} 
+                        className="group/photographer flex items-center gap-2 bg-gradient-to-r from-primary/10 to-primary/5 hover:from-primary/20 hover:to-primary/10 rounded-full px-3 py-2 transition-all duration-200 border border-primary/20 hover:border-primary/40"
+                      >
+                        {photographer.avatar_url ? (
+                          <img 
+                            src={photographer.avatar_url} 
+                            alt={photographer.full_name}
+                            className="w-6 h-6 rounded-full object-cover border-2 border-primary/30 group-hover/photographer:border-primary"
+                          />
+                        ) : (
+                          <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center border-2 border-primary/30 group-hover/photographer:border-primary">
+                            <Camera className="h-3.5 w-3.5 text-primary" />
+                          </div>
+                        )}
+                        <span className="text-sm font-semibold truncate max-w-[120px] text-foreground">
+                          {photographer.full_name}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground italic">Sem fotógrafo definido</p>
+                )}
+              </div>
               
               {/* Pastas/Sub-eventos - Mobile usa Sheet, Desktop usa HoverCard */}
               {subEvents.length > 0 && (
@@ -279,8 +343,9 @@ export const EventCard: React.FC<EventCardProps> = ({ campaign, index }) => {
             </div>
             
             <Link to={`/campaign/${campaign.id}`}>
-              <Button size="sm" className="text-xs md:text-sm flex-shrink-0">
+              <Button size="sm" className="text-xs md:text-sm flex-shrink-0 shadow-lg hover:shadow-xl transition-shadow">
                 Ver Fotos
+                <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
             </Link>
           </div>
