@@ -70,6 +70,7 @@ const AdminConfigHub = lazy(() => import("./pages/dashboard/admin/ConfigHub"));
 const AdminPlatformConfig = lazy(() => import("./pages/dashboard/admin/PlatformConfig"));
 const AdminNotificationSettings = lazy(() => import("./pages/dashboard/admin/NotificationSettings"));
 const AdminPermissionsManager = lazy(() => import("./pages/dashboard/admin/PermissionsManager"));
+const AdminProgressiveDiscountManager = lazy(() => import("./pages/dashboard/admin/ProgressiveDiscountManager"));
 const AdminCouponManagement = lazy(() => import("./pages/dashboard/admin/CouponManagement"));
 const CacheManagement = lazy(() => import("./pages/dashboard/admin/CacheManagement"));
 
@@ -144,6 +145,7 @@ const AppContent = () => {
             <Route path="admin/config/platform" element={<AdminPlatformConfig />} />
             <Route path="admin/config/notifications" element={<AdminNotificationSettings />} />
             <Route path="admin/config/permissions" element={<AdminPermissionsManager />} />
+            <Route path="admin/progressive-discounts" element={<AdminProgressiveDiscountManager />} />
             <Route path="admin/coupons" element={<AdminCouponManagement />} />
             <Route path="admin/cache-management" element={<CacheManagement />} />
             <Route path="photographer/events" element={<PhotographerEvents />} />

@@ -361,7 +361,7 @@ const Campaign = () => {
       watermarked_url: photo.watermarked_url,
       thumbnail_url: photo.thumbnail_url,
       campaign_id: campaign?.id || '',
-      progressive_discount_enabled: campaign?.progressive_discount_enabled || false,
+      progressive_discount_enabled: campaign?.progressive_discount_enabled ?? true, // Habilitado por padrão
     });
   };
 

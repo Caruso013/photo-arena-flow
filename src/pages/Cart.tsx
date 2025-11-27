@@ -26,9 +26,12 @@ const Cart = () => {
   const [appliedCoupon, setAppliedCoupon] = useState<CouponValidationResult | null>(null);
 
   // Calcular desconto progressivo
-  // Verificar se pelo menos uma foto tem desconto progressivo habilitado
-  // Nota: tratamos undefined como false para compatibilidade com itens antigos do localStorage
-  const hasDiscountEnabled = items.length > 0 && items.some(item => item.progressive_discount_enabled === true);
+  // IMPORTANTE: Se pelo menos UMA foto do carrinho tem desconto progressivo habilitado,
+  // aplicamos o desconto para TODAS as fotos do carrinho (comportamento padrão de e-commerce)
+  // Tratamos undefined e null como TRUE (habilitado por padrão) para compatibilidade
+  const hasDiscountEnabled = items.length > 0 && items.every(item => 
+    item.progressive_discount_enabled !== false // Apenas FALSE desabilita explicitamente
+  );
   
   // Calcular preço médio por foto
   const averagePrice = totalItems > 0 ? totalPrice / totalItems : 0;
