@@ -81,7 +81,7 @@ interface Photo {
 }
 
 const Campaign = () => {
-  const { id } = useParams<{ id: string }>();
+  const { id, code } = useParams<{ id?: string; code?: string }>();
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const { addToCart } = useCart();
@@ -117,12 +117,12 @@ const Campaign = () => {
   }, [subEvents, selectedSubEvent]);
 
   useEffect(() => {
-    if (id) {
+    if (id || code) {
       fetchCampaign();
       fetchCampaignPhotographers();
       fetchSubEvents();
     }
-  }, [id]);
+  }, [id, code]);
 
   // Resetar página quando trocar de álbum
   useEffect(() => {
@@ -166,15 +166,15 @@ const Campaign = () => {
 
   // Buscar fotos quando mudar de página OU mudar de álbum
   useEffect(() => {
-    if (id) {
+    if (campaign?.id) {
       setPage(1); // Reset para primeira página ao mudar de álbum
       fetchPhotos(1);
     }
-  }, [selectedSubEvent, id]);
+  }, [selectedSubEvent, campaign?.id]);
 
   // Buscar fotos quando mudar de página (sem resetar)
   useEffect(() => {
-    if (id && page > 1) {
+    if (campaign?.id && page > 1) {
       fetchPhotos(page);
     }
   }, [page]);
@@ -186,20 +186,27 @@ const Campaign = () => {
   }, []);
 
   const fetchCampaign = async () => {
-    if (!id) return;
+    if (!id && !code) return;
 
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('campaigns')
         .select(`
-          id, title, description, event_date, location, cover_image_url,
+          id, title, description, event_date, location, cover_image_url, short_code,
           is_active, photographer_id, organization_id, created_at, progressive_discount_enabled,
           photographer:profiles!campaigns_photographer_id_fkey(full_name, email, avatar_url),
           organization:organizations(name, description)
         `)
-        .eq('id', id)
-        .eq('is_active', true)
-        .single();
+        .eq('is_active', true);
+
+      // Buscar por código curto ou ID
+      if (code) {
+        query = query.eq('short_code', code.toUpperCase());
+      } else if (id) {
+        query = query.eq('id', id);
+      }
+
+      const { data, error } = await query.single();
 
       if (error) throw error;
       setCampaign(data as any);
@@ -214,7 +221,7 @@ const Campaign = () => {
   };
 
   const fetchCampaignPhotographers = async () => {
-    if (!id) return;
+    if (!campaign?.id) return;
 
     try {
       const { data, error } = await supabase
@@ -223,7 +230,7 @@ const Campaign = () => {
           photographer_id,
           profiles!campaign_photographers_photographer_id_fkey(full_name, email, avatar_url)
         `)
-        .eq('campaign_id', id)
+        .eq('campaign_id', campaign.id)
         .eq('is_active', true);
 
       if (error) throw error;
@@ -241,13 +248,13 @@ const Campaign = () => {
   };
 
   const fetchSubEvents = async () => {
-    if (!id) return;
+    if (!campaign?.id) return;
 
     try {
       const { data, error } = await supabase
         .from('sub_events')
         .select('id, title, description, location, event_time, photo_count')
-        .eq('campaign_id', id)
+        .eq('campaign_id', campaign.id)
         .eq('is_active', true)
         .gte('photo_count', 5) // APENAS álbuns com 5 ou mais fotos
         .order('event_time', { ascending: false });
@@ -263,7 +270,7 @@ const Campaign = () => {
   };
 
   const fetchPhotos = async (pageNum: number) => {
-    if (!id) return;
+    if (!campaign?.id) return;
 
     try {
       setLoadingPhotos(true);
@@ -275,7 +282,7 @@ const Campaign = () => {
       let countQuery = supabase
         .from('photos')
         .select('id', { count: 'exact', head: true })
-        .eq('campaign_id', id)
+        .eq('campaign_id', campaign.id)
         .eq('is_available', true);
 
       // Filtrar por sub_event se selecionado
@@ -291,7 +298,7 @@ const Campaign = () => {
       let query = supabase
         .from('photos')
         .select('id, title, original_url, watermarked_url, thumbnail_url, price, is_available, sub_event_id')
-        .eq('campaign_id', id)
+        .eq('campaign_id', campaign.id)
         .eq('is_available', true)
         .range(from, to)
         .order('upload_sequence', { ascending: true })
@@ -495,7 +502,7 @@ const Campaign = () => {
       <FaceRecognitionModal
         open={showFaceRecognition}
         onOpenChange={setShowFaceRecognition}
-        campaignId={id}
+        campaignId={campaign?.id}
       />
 
       <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">

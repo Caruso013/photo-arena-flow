@@ -10,7 +10,8 @@ import {
   Folder, 
   ChevronRight,
   Image as ImageIcon,
-  X
+  X,
+  Share2
 } from 'lucide-react';
 import { LazyImage } from '@/components/ui/lazy-image';
 import { supabase } from '@/integrations/supabase/client';
@@ -44,6 +45,7 @@ interface Photographer {
 
 interface Campaign {
   id: string;
+  short_code?: string;
   title: string;
   description: string;
   event_date: string;
@@ -68,6 +70,33 @@ export const EventCard: React.FC<EventCardProps> = ({ campaign, index }) => {
   const [totalPhotos, setTotalPhotos] = useState(0);
   const [sheetOpen, setSheetOpen] = useState(false);
   const isMobile = useIsMobile();
+  
+  // Link curto para a campanha
+  const campaignLink = campaign.short_code 
+    ? `/E/${campaign.short_code}` 
+    : `/campaign/${campaign.id}`;
+  
+  // Função para compartilhar
+  const handleShare = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const shareUrl = `${window.location.origin}${window.location.pathname}#${campaignLink}`;
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: campaign.title,
+          text: `Confira as fotos de ${campaign.title}`,
+          url: shareUrl,
+        });
+      } catch (error) {
+        // Usuário cancelou
+      }
+    } else {
+      await navigator.clipboard.writeText(shareUrl);
+    }
+  };
 
   useEffect(() => {
     fetchSubEvents();
@@ -125,7 +154,7 @@ export const EventCard: React.FC<EventCardProps> = ({ campaign, index }) => {
       style={{ animationDelay: `${index * 0.1}s` }}
     >
       <Card className="overflow-hidden cursor-pointer border-2 transition-all duration-300 hover:border-primary/50 hover:shadow-2xl hover:-translate-y-2 active:scale-[0.98] backdrop-blur-sm bg-card/80">
-        <Link to={`/campaign/${campaign.id}`}>
+        <Link to={campaignLink}>
           <div className="aspect-[4/5] bg-gradient-dark relative overflow-hidden">
             {campaign.cover_image_url ? (
               <>
@@ -342,12 +371,23 @@ export const EventCard: React.FC<EventCardProps> = ({ campaign, index }) => {
               )}
             </div>
             
-            <Link to={`/campaign/${campaign.id}`}>
-              <Button size="sm" className="text-xs md:text-sm flex-shrink-0 shadow-lg hover:shadow-xl transition-shadow">
-                Ver Fotos
-                <ChevronRight className="h-4 w-4 ml-1" />
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleShare}
+                className="text-xs gap-1"
+                title="Compartilhar evento"
+              >
+                <Share2 className="h-3 w-3" />
               </Button>
-            </Link>
+              <Link to={campaignLink} className="flex-1">
+                <Button size="sm" className="text-xs md:text-sm w-full shadow-lg hover:shadow-xl transition-shadow">
+                  Ver Fotos
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </Link>
+            </div>
           </div>
         </CardContent>
       </Card>

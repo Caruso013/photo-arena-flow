@@ -13,6 +13,7 @@ import { PhotographerApplicationForm } from './PhotographerApplicationForm';
 
 interface Campaign {
   id: string;
+  short_code?: string;
   title: string;
   description: string;
   event_date: string;
@@ -204,7 +205,7 @@ const UserDashboard = () => {
                     </div>
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                       <span className="text-xs sm:text-sm truncate">Por: {campaign.photographer?.full_name}</span>
-                      <Link to={`/campaign/${campaign.id}`} className="w-full sm:w-auto">
+                      <Link to={campaign.short_code ? `/E/${campaign.short_code}` : `/campaign/${campaign.id}`} className="w-full sm:w-auto">
                         <Button size="sm" className="gap-1 w-full sm:w-auto h-9 sm:h-8">
                           <Camera className="h-3 w-3" />
                           Ver Fotos

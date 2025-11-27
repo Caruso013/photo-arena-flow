@@ -22,6 +22,7 @@ import {
 
 interface Campaign {
   id: string;
+  short_code?: string;
   title: string;
   description: string;
   event_date: string;
@@ -204,7 +205,7 @@ const PhotographerEvents = () => {
               </CardHeader>
               <CardContent className="flex gap-2">
                 <Button asChild className="flex-1" variant="default">
-                  <Link to={`/campaign/${campaign.id}`}>
+                  <Link to={campaign.short_code ? `/E/${campaign.short_code}` : `/campaign/${campaign.id}`}>
                     Ver Evento
                   </Link>
                 </Button>
