@@ -138,22 +138,24 @@ const EditCampaignCoverModal: React.FC<EditCampaignCoverModalProps> = ({
   };
 
   return (
-    <ResponsiveModal open={open} onOpenChange={onClose} className="max-w-2xl">
-      <ResponsiveModalHeader>
-        <ResponsiveModalTitle className="flex items-center gap-2">
-          <ImageIcon className="h-5 w-5" />
+    <ResponsiveModal open={open} onOpenChange={onClose} className="max-w-3xl">
+      <ResponsiveModalHeader className="border-b pb-4 bg-gradient-to-r from-primary/5 to-transparent">
+        <ResponsiveModalTitle className="flex items-center gap-3 text-xl font-bold">
+          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+            <ImageIcon className="h-5 w-5 text-primary" />
+          </div>
           Editar Capa do Evento
         </ResponsiveModalTitle>
-        <ResponsiveModalDescription>
+        <ResponsiveModalDescription className="text-sm mt-2">
           Atualize a imagem de capa de: <span className="font-semibold">{campaignTitle}</span>
         </ResponsiveModalDescription>
       </ResponsiveModalHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-6 p-6">
           {previewUrl && (
-            <div className="relative">
-              <Label>Preview da Capa</Label>
-              <div className="relative aspect-video w-full rounded-lg overflow-hidden bg-muted mt-2">
+            <div className="space-y-3">
+              <Label className="font-semibold">Preview da Capa</Label>
+              <div className="relative aspect-video w-full rounded-xl overflow-hidden bg-muted border-2 border-border">
                 <img
                   src={previewUrl}
                   alt="Preview"
@@ -163,7 +165,7 @@ const EditCampaignCoverModal: React.FC<EditCampaignCoverModalProps> = ({
                   <Button
                     variant="destructive"
                     size="icon"
-                    className="absolute top-2 right-2"
+                    className="absolute top-3 right-3 rounded-full shadow-lg"
                     onClick={handleRemoveFile}
                   >
                     <X className="h-4 w-4" />
@@ -173,29 +175,29 @@ const EditCampaignCoverModal: React.FC<EditCampaignCoverModalProps> = ({
             </div>
           )}
 
-          <div className="space-y-2">
-            <Label htmlFor="cover-upload">
-              {selectedFile ? 'Trocar Imagem' : 'Nova Imagem de Capa'}
+          <div className="space-y-3">
+            <Label htmlFor="cover-upload" className="font-semibold">
+              {selectedFile ? 'Trocar Imagem' : 'Selecionar Nova Capa'}
             </Label>
-            <div className="flex items-center gap-2">
+            <label 
+              htmlFor="cover-upload"
+              className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-primary/50 rounded-xl cursor-pointer bg-gradient-to-br from-primary/5 to-primary/10 hover:from-primary/10 hover:to-primary/15 transition-all group"
+            >
+              <div className="flex flex-col items-center gap-2">
+                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                  <Upload className="h-6 w-6 text-primary" />
+                </div>
+                <p className="text-sm font-bold text-foreground">Clique para selecionar</p>
+                <p className="text-xs text-muted-foreground">JPG, PNG, WEBP • Máx 5MB</p>
+              </div>
               <Input
                 id="cover-upload"
                 type="file"
                 accept="image/*"
                 onChange={handleFileSelect}
-                className="cursor-pointer"
+                className="hidden"
               />
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => document.getElementById('cover-upload')?.click()}
-              >
-                <Upload className="h-4 w-4" />
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Formatos aceitos: JPG, PNG, WEBP (máx 5MB). Recomendado: 1920x1080px
-            </p>
+            </label>
           </div>
 
           {error && (
@@ -204,28 +206,32 @@ const EditCampaignCoverModal: React.FC<EditCampaignCoverModalProps> = ({
             </Alert>
           )}
 
-          <div className="flex justify-end gap-2 pt-4">
+          <div className="flex justify-end gap-3 pt-6 border-t">
             <Button
               variant="outline"
               onClick={onClose}
               disabled={isUploading}
+              size="lg"
+              className="px-6"
             >
               Cancelar
             </Button>
             <Button
               onClick={handleUpload}
               disabled={!selectedFile || isUploading}
+              size="lg"
+              className="px-8 bg-gradient-to-r from-primary to-primary/90 hover:from-primary/95 hover:to-primary/85 font-bold shadow-lg hover:shadow-xl"
             >
               {isUploading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                  Enviando...
-                </>
+                <div className="flex items-center gap-2">
+                  <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Enviando
+                </div>
               ) : (
-                <>
-                  <Upload className="h-4 w-4 mr-2" />
+                <div className="flex items-center gap-2">
+                  <Upload className="h-5 w-5" />
                   Atualizar Capa
-                </>
+                </div>
               )}
             </Button>
           </div>

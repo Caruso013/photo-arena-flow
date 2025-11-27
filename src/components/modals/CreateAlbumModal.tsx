@@ -94,78 +94,91 @@ const CreateAlbumModal: React.FC<CreateAlbumModalProps> = ({
   };
 
   return (
-    <ResponsiveModal open={open} onOpenChange={onClose} className="sm:max-w-md">
-      <ResponsiveModalHeader>
-        <ResponsiveModalTitle className="flex items-center gap-2">
-          <FolderPlus className="h-5 w-5" />
+    <ResponsiveModal open={open} onOpenChange={onClose} className="sm:max-w-xl">
+      <ResponsiveModalHeader className="border-b pb-4 bg-gradient-to-r from-primary/5 to-transparent">
+        <ResponsiveModalTitle className="flex items-center gap-3 text-xl font-bold">
+          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+            <FolderPlus className="h-5 w-5 text-primary" />
+          </div>
           Criar Novo Álbum
         </ResponsiveModalTitle>
-        <ResponsiveModalDescription>
-          Crie um álbum de fotos dentro de "{campaignTitle}"
+        <ResponsiveModalDescription className="text-sm mt-2">
+          Organize as fotos de "<span className="font-semibold">{campaignTitle}</span>" em um novo álbum
         </ResponsiveModalDescription>
       </ResponsiveModalHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="title">Título do Álbum *</Label>
+        <form onSubmit={handleSubmit} className="space-y-5 p-6">
+          <div className="space-y-3">
+            <Label htmlFor="title" className="font-semibold">Título do Álbum *</Label>
             <Input
               id="title"
               value={formData.title}
               onChange={(e) => handleInputChange('title', e.target.value)}
               placeholder="Ex: Final do Campeonato"
               required
+              className="h-11"
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="description">Descrição</Label>
+          <div className="space-y-3">
+            <Label htmlFor="description" className="font-semibold">Descrição</Label>
             <Textarea
               id="description"
               value={formData.description}
               onChange={(e) => handleInputChange('description', e.target.value)}
               placeholder="Descreva o momento ou a parte do evento..."
               rows={3}
+              className="resize-none"
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="location">Localização</Label>
-            <div className="relative">
-              <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="location"
-                value={formData.location}
-                onChange={(e) => handleInputChange('location', e.target.value)}
-                placeholder="Ex: Estádio Principal"
-                className="pl-10"
-              />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-3">
+              <Label htmlFor="location" className="font-semibold">Localização</Label>
+              <div className="relative">
+                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="location"
+                  value={formData.location}
+                  onChange={(e) => handleInputChange('location', e.target.value)}
+                  placeholder="Ex: Estádio Principal"
+                  className="pl-10 h-11"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <Label htmlFor="event_time" className="font-semibold">Data/Hora</Label>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="event_time"
+                  type="datetime-local"
+                  value={formData.event_time}
+                  onChange={(e) => handleInputChange('event_time', e.target.value)}
+                  className="pl-10 h-11"
+                />
+              </div>
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="event_time">Data/Hora do Sub-evento</Label>
-            <div className="relative">
-              <Calendar className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="event_time"
-                type="datetime-local"
-                value={formData.event_time}
-                onChange={(e) => handleInputChange('event_time', e.target.value)}
-                className="pl-10"
-              />
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-2">
+          <div className="flex justify-end gap-3 pt-6 border-t">
             <Button
               type="button"
               variant="outline"
               onClick={onClose}
               disabled={loading}
+              size="lg"
+              className="px-6"
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button 
+              type="submit" 
+              disabled={loading}
+              size="lg"
+              className="px-8 bg-gradient-to-r from-primary to-primary/90 hover:from-primary/95 hover:to-primary/85 font-bold shadow-lg hover:shadow-xl"
+            >
               {loading ? "Criando..." : "Criar Álbum"}
             </Button>
           </div>

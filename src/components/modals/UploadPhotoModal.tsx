@@ -4,11 +4,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+  import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
-import { Upload, X, Camera, CheckCircle2, Clock, FolderOpen, Image as ImageIcon, Info, Users } from 'lucide-react';
+import { Upload, X, Camera, CheckCircle2, FolderOpen, Image as ImageIcon, Info } from 'lucide-react';
 import { backgroundUploadService } from '@/lib/backgroundUploadService';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
@@ -21,19 +21,6 @@ interface SubEvent {
   id: string;
   title: string;
   campaign_id: string;
-}
-
-interface Collaborator {
-  id: string;
-  full_name: string;
-  email: string;
-}
-
-interface SelectedCollaborator {
-  collaborator_id: string;
-  full_name: string;
-  email: string;
-  percentage: number;
 }
 
 interface UploadPhotoModalProps {
@@ -55,14 +42,8 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
   const [newFolderName, setNewFolderName] = useState('');
   const [newFolderDescription, setNewFolderDescription] = useState('');
   
-  // Sistema de colaboradores
-  const [availableCollaborators, setAvailableCollaborators] = useState<Collaborator[]>([]);
-  const [selectedCollaborators, setSelectedCollaborators] = useState<SelectedCollaborator[]>([]);
-  const [showCollaboratorSelect, setShowCollaboratorSelect] = useState(false);
-
   useEffect(() => {
     fetchCampaigns();
-    fetchAvailableCollaborators();
   }, []);
 
   useEffect(() => {
@@ -152,54 +133,6 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
         variant: "destructive",
       });
     }
-  };
-
-  const fetchAvailableCollaborators = async () => {
-    try {
-      // Buscar todos os fotógrafos exceto o usuário atual
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, full_name, email')
-        .eq('role', 'photographer')
-        .neq('id', profile?.id)
-        .order('full_name');
-
-      if (error) throw error;
-      setAvailableCollaborators(data || []);
-    } catch (error) {
-      console.error('Error fetching collaborators:', error);
-    }
-  };
-
-  const addCollaborator = (collaborator: Collaborator) => {
-    // Verificar se já não foi adicionado
-    if (selectedCollaborators.find(c => c.collaborator_id === collaborator.id)) {
-      toast({
-        title: "Colaborador já adicionado",
-        description: `${collaborator.full_name} já está na lista de colaboradores.`,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setSelectedCollaborators([...selectedCollaborators, {
-      collaborator_id: collaborator.id,
-      full_name: collaborator.full_name,
-      email: collaborator.email,
-      percentage: 0
-    }]);
-  };
-
-  const removeCollaborator = (collaboratorId: string) => {
-    setSelectedCollaborators(selectedCollaborators.filter(c => c.collaborator_id !== collaboratorId));
-  };
-
-  const updateCollaboratorPercentage = (collaboratorId: string, percentage: number) => {
-    setSelectedCollaborators(selectedCollaborators.map(c => 
-      c.collaborator_id === collaboratorId 
-        ? { ...c, percentage: Math.max(0, Math.min(100, percentage)) }
-        : c
-    ));
   };
 
   const fetchSubEvents = async (campaignId: string) => {
@@ -357,72 +290,73 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="w-[95vw] max-w-md sm:max-w-lg max-h-[95vh] flex flex-col p-4 sm:p-6">
-        <DialogHeader className="flex-shrink-0 pb-2">
-          <DialogTitle className="flex items-center gap-2 text-lg sm:text-xl">
-            <Upload className="h-5 w-5" />
+      <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b bg-gradient-to-r from-primary/5 to-transparent">
+          <DialogTitle className="flex items-center gap-3 text-xl font-bold">
+            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+              <Upload className="h-5 w-5 text-primary" />
+            </div>
             Upload de Fotos
           </DialogTitle>
-          <DialogDescription className="text-sm">
-            Organize e envie suas fotos para o evento selecionado
+          <DialogDescription className="text-sm text-muted-foreground mt-2">
+            Envie suas fotos para o evento selecionado
           </DialogDescription>
         </DialogHeader>
 
-        <div className="overflow-y-auto flex-1 pr-1 sm:pr-2 -mr-1 sm:-mr-2 space-y-3 sm:space-y-4">
-          <form className="space-y-3 sm:space-y-4">
+        <div className="overflow-y-auto flex-1 px-6 py-4">
+          <form className="space-y-6">
           {campaigns.length === 0 ? (
-            <div className="p-4 sm:p-6 text-center border-2 border-dashed rounded-lg bg-muted/50">
-              <Camera className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mx-auto mb-3" />
-              <h3 className="text-sm sm:text-base font-semibold mb-2">Nenhum evento disponível</h3>
-              <p className="text-xs sm:text-sm text-muted-foreground mb-4">
-                Aguarde a criação de eventos pelos administradores para poder fazer upload de fotos.
+            <div className="p-8 text-center border-2 border-dashed rounded-xl bg-muted/30">
+              <div className="h-16 w-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
+                <Camera className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-bold mb-2">Nenhum evento disponível</h3>
+              <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
+                Você ainda não foi atribuído a eventos. Candidate-se na página 'Eventos Próximos'.
               </p>
-              <Button onClick={onClose} variant="outline" className="h-10 sm:h-11">
+              <Button onClick={onClose} variant="outline">
                 Fechar
               </Button>
             </div>
           ) : (
             <>
-          {/* Explicação da estrutura */}
-          <Alert className="bg-primary/10 border-primary/20 p-3 sm:p-4">
-            <Info className="h-4 w-4 text-primary flex-shrink-0" />
-            <AlertDescription className="text-xs sm:text-sm text-foreground">
-              <strong>Como funciona:</strong> Selecione um <strong>Evento</strong> e opcionalmente uma <strong>Pasta (Álbum)</strong> dentro dele para organizar suas fotos.
-            </AlertDescription>
-          </Alert>
-
-          <div className="space-y-2">
+          {/* Seleção de Evento */}
+          <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <Camera className="h-4 w-4 text-primary flex-shrink-0" />
-              <Label htmlFor="campaign" className="font-semibold text-sm sm:text-base">
-                1. Evento Principal *
+              <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <Camera className="h-4 w-4 text-primary" />
+              </div>
+              <Label htmlFor="campaign" className="font-semibold text-base">
+                Selecione o Evento
               </Label>
             </div>
             <Select value={selectedCampaign} onValueChange={setSelectedCampaign}>
-              <SelectTrigger className="h-11 sm:h-12 text-sm">
-                <SelectValue placeholder="Escolha o evento esportivo" />
+              <SelectTrigger className="h-12">
+                <SelectValue placeholder="Escolha o evento" />
               </SelectTrigger>
               <SelectContent>
                 {campaigns.map((campaign) => (
-                  <SelectItem key={campaign.id} value={campaign.id} className="text-sm">
-                    📸 {campaign.title}
+                  <SelectItem key={campaign.id} value={campaign.id}>
+                    <div className="flex items-center gap-2">
+                      <Camera className="h-4 w-4" />
+                      {campaign.title}
+                    </div>
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground flex items-center gap-1">
-              <ImageIcon className="h-3 w-3 flex-shrink-0" />
-              O evento onde as fotos serão exibidas (ex: "Campeonato 2025")
-            </p>
           </div>
 
+          {/* Seleção de Álbum (Opcional) */}
           {selectedCampaign && (
-            <div className="space-y-2 p-2 sm:p-3 bg-secondary/50 border border-border rounded-lg">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <FolderOpen className="h-4 w-4 text-secondary-foreground flex-shrink-0" />
-                  <Label className="font-semibold text-foreground text-sm sm:text-base truncate">
-                    2. Pasta/Álbum (Opcional)
+            <div className="space-y-3 p-4 bg-muted/30 border border-border/50 rounded-xl">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-background flex items-center justify-center flex-shrink-0">
+                    <FolderOpen className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <Label className="font-semibold text-base">
+                    Álbum (Opcional)
                   </Label>
                 </div>
                 <Button
@@ -430,84 +364,74 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
                   size="sm"
                   variant="outline"
                   onClick={() => setCreatingNewFolder(!creatingNewFolder)}
-                  className="gap-1 h-8 text-xs flex-shrink-0"
+                  className="gap-1 h-9"
                 >
-                  <FolderOpen className="h-3 w-3" />
-                  <span className="hidden sm:inline">{creatingNewFolder ? 'Cancelar' : 'Nova Pasta'}</span>
-                  <span className="sm:hidden">{creatingNewFolder ? 'X' : '+'}</span>
+                  <FolderOpen className="h-4 w-4" />
+                  {creatingNewFolder ? 'Cancelar' : 'Novo Álbum'}
                 </Button>
               </div>
               
               {/* Formulário de criar pasta */}
               {creatingNewFolder && (
-                <div className="space-y-2 p-3 bg-card border border-border rounded">
+                <div className="space-y-3 p-4 bg-card border border-border rounded-lg shadow-sm">
                   <Input
-                    placeholder="Nome da pasta (ex: Treino Manhã)"
+                    placeholder="Nome do álbum (ex: Final do Campeonato)"
                     value={newFolderName}
                     onChange={(e) => setNewFolderName(e.target.value)}
-                    className="h-9"
+                    className="h-11"
                   />
-                  <Input
-                    placeholder="Descrição (opcional)"
+                  <Textarea
+                    placeholder="Descrição opcional"
                     value={newFolderDescription}
                     onChange={(e) => setNewFolderDescription(e.target.value)}
-                    className="h-9"
+                    rows={2}
+                    className="resize-none"
                   />
                   <Button
                     type="button"
                     size="sm"
                     onClick={handleCreateNewFolder}
-                    className="gap-1 w-full h-9"
+                    className="gap-2 w-full"
                   >
-                    <CheckCircle2 className="h-3 w-3" />
-                    Criar Pasta
+                    <CheckCircle2 className="h-4 w-4" />
+                    Criar Álbum
                   </Button>
                 </div>
               )}
               
-              {/* Select de pastas existentes */}
+              {/* Select de álbuns existentes */}
               {subEvents.length > 0 ? (
-                <>
+                <div className="space-y-2">
                   <Select value={selectedSubEvent || "none"} onValueChange={(value) => setSelectedSubEvent(value === "none" ? "" : value)}>
                     <SelectTrigger className="h-11 bg-card">
-                      <SelectValue placeholder="📁 Escolha uma pasta ou deixe em branco" />
+                      <SelectValue placeholder="Escolha um álbum" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">
-                        <span className="flex items-center gap-2">
-                          📂 Sem pasta específica (raiz do evento)
-                        </span>
+                        📂 Sem álbum (raiz do evento)
                       </SelectItem>
                       {subEvents.map((subEvent) => (
                         <SelectItem key={subEvent.id} value={subEvent.id}>
-                          <span className="flex items-center gap-2">
-                            📁 {subEvent.title}
-                          </span>
+                          📁 {subEvent.title}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  <p className="text-xs text-amber-800 font-medium flex items-center gap-1">
-                    <Info className="h-3 w-3" />
-                    Organize suas fotos em pastas para facilitar a navegação (ex: "Jogo Final", "Treino", etc)
-                  </p>
-                </>
-              ) : (
-                <div className="p-3 bg-white rounded border border-amber-300">
-                  <p className="text-sm text-amber-900">
-                    💡 Nenhuma pasta criada. Clique em "Nova Pasta" para criar uma agora!
-                  </p>
-                  <p className="text-xs text-amber-700 mt-1">
-                    Suas fotos ficarão na pasta principal do evento se você não criar uma pasta específica.
-                  </p>
                 </div>
+              ) : (
+                !creatingNewFolder && (
+                  <p className="text-xs text-muted-foreground italic p-3 bg-muted/50 rounded-lg text-center">
+                    Nenhum álbum criado. Clique em "Novo Álbum" para organizar melhor suas fotos
+                  </p>
+                )
               )}
             </div>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Campos Título e Preço */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="title" className="text-sm">
+              <Label htmlFor="title">
                 Título (opcional)
               </Label>
               <Input
@@ -515,7 +439,7 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
                 placeholder="Ex: Final do Campeonato"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="h-10 sm:h-11 text-sm"
+                className="h-11"
               />
               <p className="text-xs text-muted-foreground">
                 Mesmo título para todas as fotos
@@ -523,7 +447,7 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="price" className="text-sm font-semibold">
+              <Label htmlFor="price" className="font-semibold">
                 Preço por foto (R$) *
               </Label>
               <Input
@@ -533,115 +457,33 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
                 min="0"
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
-                className="h-10 sm:h-11 font-medium text-sm"
+                className="h-11 font-medium"
               />
-              <p className="text-xs text-green-700 font-medium">
-                💰 Você receberá % por venda
-              </p>
             </div>
           </div>
 
-          {/* Sistema de Colaboradores */}
-          <div className="space-y-2 p-2 sm:p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-center justify-between gap-2">
-              <Label className="font-semibold text-blue-900 flex items-center gap-2 text-sm sm:text-base truncate min-w-0">
-                <Users className="h-4 w-4 flex-shrink-0" />
-                <span className="truncate">Colaboradores (Opcional)</span>
-              </Label>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => setShowCollaboratorSelect(!showCollaboratorSelect)}
-                className="gap-1 h-8 text-xs flex-shrink-0"
-              >
-                <span className="hidden sm:inline">{showCollaboratorSelect ? 'Fechar' : 'Adicionar'}</span>
-                <span className="sm:hidden">{showCollaboratorSelect ? 'X' : '+'}</span>
-              </Button>
-            </div>
-            
-            {showCollaboratorSelect && (
-              <div className="space-y-2 p-3 bg-white border border-blue-300 rounded">
-                <p className="text-xs text-blue-800 mb-2">
-                  Selecione fotógrafos que também trabalharam nestas fotos
-                </p>
-                <Select onValueChange={(value) => {
-                  const collab = availableCollaborators.find(c => c.id === value);
-                  if (collab) addCollaborator(collab);
-                }}>
-                  <SelectTrigger className="h-9 bg-white">
-                    <SelectValue placeholder="Selecione um fotógrafo..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableCollaborators
-                      .filter(c => !selectedCollaborators.find(sc => sc.collaborator_id === c.id))
-                      .map((collab) => (
-                        <SelectItem key={collab.id} value={collab.id}>
-                          {collab.full_name} ({collab.email})
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
+          {/* Seleção de Fotos */}
+          <div className="space-y-3">
+            <Label className="font-semibold flex items-center gap-2 text-base">
+              <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Upload className="h-4 w-4 text-primary" />
               </div>
-            )}
-
-            {selectedCollaborators.length > 0 && (
-              <div className="space-y-2 mt-2">
-                <p className="text-xs font-medium text-blue-900">Colaboradores adicionados:</p>
-                {selectedCollaborators.map((collab) => (
-                  <div key={collab.collaborator_id} className="flex items-center gap-2 p-2 bg-white rounded border border-blue-200">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">{collab.full_name}</p>
-                      <p className="text-xs text-muted-foreground">{collab.email}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        min="0"
-                        max="100"
-                        placeholder="%"
-                        value={collab.percentage || ''}
-                        onChange={(e) => updateCollaboratorPercentage(collab.collaborator_id, parseFloat(e.target.value) || 0)}
-                        className="w-16 h-8 text-xs"
-                      />
-                      <span className="text-xs">%</span>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => removeCollaborator(collab.collaborator_id)}
-                        className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label className="font-semibold flex items-center gap-2 text-sm sm:text-base">
-              <Upload className="h-4 w-4 flex-shrink-0" />
-              3. Selecionar fotos (sem limite de quantidade)
+              Selecionar Fotos
             </Label>
             
-            {/* Área de upload visual e clicável */}
             <label 
               htmlFor="files" 
-              className="flex flex-col items-center justify-center w-full h-28 sm:h-32 border-2 border-dashed border-primary/40 rounded-lg cursor-pointer bg-primary/5 hover:bg-primary/10 transition-colors group"
+              className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-primary/50 rounded-2xl cursor-pointer bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5 hover:from-primary/10 hover:via-primary/15 hover:to-primary/10 transition-all duration-300 group shadow-sm hover:shadow-md"
             >
               <div className="flex flex-col items-center justify-center p-4 text-center">
-                <Upload className="w-8 h-8 sm:w-10 sm:h-10 mb-2 sm:mb-3 text-primary group-hover:scale-110 transition-transform" />
-                <p className="mb-1 sm:mb-2 text-xs sm:text-sm font-semibold text-foreground">
-                  <span className="text-primary">Clique aqui</span> para selecionar
+                <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-3 group-hover:bg-primary/20 group-hover:scale-110 transition-all duration-300">
+                  <Upload className="h-8 w-8 text-primary" />
+                </div>
+                <p className="mb-1 text-sm font-bold text-foreground">
+                  Clique ou arraste suas fotos
                 </p>
-                <p className="text-xs text-muted-foreground hidden sm:block">
-                  Ou arraste e solte as imagens aqui
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  📸 Sem limite • Máx 2.5MB/foto
+                <p className="text-xs text-muted-foreground">
+                  Sem limite de quantidade • Máx 2.5MB por foto
                 </p>
               </div>
               <input
@@ -655,72 +497,71 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
             </label>
             
             {files && (
-              <div className="space-y-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-                <p className="text-sm font-semibold text-green-900 flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4" />
-                  {files.length} foto(s) pronta(s) para envio
-                </p>
-                <div className="max-h-32 overflow-y-auto space-y-1">
-                  {Array.from(files).slice(0, 10).map((file, index) => (
-                    <p key={index} className="text-xs text-green-800 flex items-center gap-2">
-                      <ImageIcon className="h-3 w-3" />
-                      {file.name} - {(file.size / 1024 / 1024).toFixed(2)}MB
+              <div className="space-y-3 p-4 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 border-2 border-green-200 dark:border-green-800 rounded-xl">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
+                    <CheckCircle2 className="h-5 w-5 text-white" />
+                  </div>
+                  <p className="text-sm font-bold text-foreground">
+                    {files.length} foto(s) pronta(s)
+                  </p>
+                </div>
+                <div className="max-h-20 overflow-y-auto space-y-1 bg-white/50 dark:bg-black/20 rounded-lg p-2">
+                  {Array.from(files).slice(0, 5).map((file, index) => (
+                    <p key={index} className="text-xs text-muted-foreground flex items-center gap-2">
+                      <ImageIcon className="h-3 w-3 text-primary" />
+                      {file.name}
                     </p>
                   ))}
-                  {files.length > 10 && (
-                    <p className="text-xs text-green-700 font-medium">
-                      + {files.length - 10} fotos a mais...
+                  {files.length > 5 && (
+                    <p className="text-xs font-semibold text-primary">
+                      + {files.length - 5} fotos
                     </p>
                   )}
                 </div>
-                <div className="pt-2 border-t border-green-300">
-                  <p className="text-xs text-green-800">
-                    📊 Total: {(Array.from(files).reduce((sum, f) => sum + f.size, 0) / 1024 / 1024).toFixed(2)}MB
-                  </p>
-                </div>
               </div>
             )}
-            <div className="flex items-start gap-2 p-2 bg-blue-50 rounded">
-              <Info className="h-4 w-4 text-blue-600 mt-0.5" />
-              <div className="text-xs text-blue-900">
-                <p className="font-medium">✨ Upload em Background:</p>
-                <p>• <strong>Sem limite</strong> de quantidade de fotos</p>
-                <p>• Tamanho: <strong>2.5MB</strong> por foto</p>
-                <p className="text-blue-700 mt-1">💡 O upload continuará mesmo se você fechar esta janela!</p>
-              </div>
-            </div>
+
+            <Alert className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+              <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <AlertDescription className="text-xs text-blue-900 dark:text-blue-100">
+                <strong>Upload em Background:</strong> O envio continuará mesmo se você fechar este modal!
+              </AlertDescription>
+            </Alert>
           </div>
             </>
           )}
           </form>
         </div>
 
-        {/* Botões fixos no final */}
+        {/* Footer com Botões */}
         {campaigns.length > 0 && (
-          <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4 border-t mt-2">
+          <div className="flex justify-end gap-3 px-6 py-5 border-t bg-muted/20 backdrop-blur-sm">
             <Button 
               variant="outline" 
               onClick={onClose} 
-              disabled={uploading} 
-              className="h-12 sm:h-10 order-2 sm:order-1"
+              disabled={uploading}
+              size="lg"
+              className="px-8 font-semibold"
             >
               Cancelar
             </Button>
             <Button 
               onClick={handleUpload} 
               disabled={uploading || !files || !selectedCampaign}
-              className="h-12 sm:h-10 min-w-full sm:min-w-[240px] order-1 sm:order-2 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 font-semibold text-base shadow-lg"
+              size="lg"
+              className="px-10 bg-gradient-to-r from-primary via-primary/95 to-primary/90 hover:from-primary/95 hover:via-primary/90 hover:to-primary/85 font-bold shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-300"
             >
               {uploading ? (
-                <>
-                  <Clock className="h-5 w-5 mr-2 animate-spin" />
-                  Preparando...
-                </>
+                <div className="flex items-center gap-2">
+                  <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Preparando
+                </div>
               ) : (
-                <>
-                  <Upload className="h-5 w-5 mr-2" />
-                  Enviar {files?.length || 0} foto(s)
-                </>
+                <div className="flex items-center gap-2">
+                  <Upload className="h-5 w-5" />
+                  Enviar {files?.length || 0} Foto(s)
+                </div>
               )}
             </Button>
           </div>
