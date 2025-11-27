@@ -442,77 +442,80 @@ const PhotographerDashboard = () => {
           </div>
         </div>
 
-        {/* Stats Cards - métricas do fotógrafo */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 border-2 hover:border-primary/20 animate-fade-in">
-            <CardContent className="p-0">
-              <div className="flex items-center p-4 sm:p-6">
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs sm:text-sm font-medium text-muted-foreground mb-1">Vendas Totais</p>
-                  <p className="text-2xl sm:text-3xl font-bold text-primary">
-                    {stats.totalSales}
-                  </p>
+        {/* Ações Principais - Cards Grandes */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Criar Álbum */}
+          <Card 
+            className="cursor-pointer hover:shadow-xl hover:scale-105 transition-all duration-300 border-2 border-border hover:border-primary/50 bg-card group overflow-hidden"
+            onClick={() => {
+              const campaignsTab = document.querySelector('[value="campaigns"]') as HTMLButtonElement;
+              campaignsTab?.click();
+            }}
+          >
+            <CardContent className="p-6 flex flex-col items-center justify-center text-center h-[160px] relative">
+              <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/10 to-orange-500/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="relative z-10 space-y-3">
+                <div className="h-16 w-16 mx-auto rounded-full bg-yellow-500/20 flex items-center justify-center group-hover:bg-yellow-500/30 transition-colors">
+                  <Camera className="h-8 w-8 text-yellow-600 dark:text-yellow-400" />
                 </div>
-                <div className="flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-primary/10 flex-shrink-0">
-                  <BarChart3 className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 border-2 hover:border-accent/20 animate-fade-in" style={{ animationDelay: '0.1s' }}>
-            <CardContent className="p-0">
-              <div className="flex items-center p-4 sm:p-6">
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs sm:text-sm font-medium text-muted-foreground mb-1">Vendas no Mês</p>
-                  <p className="text-2xl sm:text-3xl font-bold text-accent-foreground">
-                    {stats.monthlySales}
-                  </p>
-                </div>
-                <div className="flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-accent flex-shrink-0">
-                  <Camera className="h-5 w-5 sm:h-6 sm:w-6 text-accent-foreground" />
+                <div>
+                  <h3 className="font-bold text-lg text-foreground">Criar Álbum</h3>
+                  <p className="text-sm text-muted-foreground mt-1">criar botão</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 border-2 border-muted bg-muted/30 animate-fade-in" style={{ animationDelay: '0.2s' }}>
-            <CardContent className="p-0">
-              <div className="flex items-center p-4 sm:p-6">
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs sm:text-sm font-medium text-muted-foreground mb-1">
-                    🔒 A Receber
-                  </p>
-                  <p className="text-2xl sm:text-3xl font-bold text-foreground">
+          {/* Upload de Fotos */}
+          <Card 
+            className="cursor-pointer hover:shadow-xl hover:scale-105 transition-all duration-300 border-2 border-border hover:border-primary/50 bg-card group overflow-hidden"
+            onClick={() => setShowUploadModal(true)}
+          >
+            <CardContent className="p-6 flex flex-col items-center justify-center text-center h-[160px] relative">
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-400/10 to-cyan-500/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="relative z-10 space-y-3">
+                <div className="h-16 w-16 mx-auto rounded-full bg-blue-500/20 flex items-center justify-center group-hover:bg-blue-500/30 transition-colors">
+                  <Upload className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg text-foreground">Upload de Fotos</h3>
+                  <p className="text-sm text-muted-foreground mt-1">criar botão</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* A Receber */}
+          <Card className="hover:shadow-xl transition-all duration-300 border-2 border-muted bg-muted/30 group overflow-hidden">
+            <CardContent className="p-6 flex flex-col items-center justify-center text-center h-[160px] relative">
+              <div className="absolute inset-0 bg-gradient-to-br from-slate-400/5 to-slate-500/5" />
+              <div className="relative z-10 space-y-2">
+                <div className="h-12 w-12 mx-auto rounded-full bg-muted flex items-center justify-center">
+                  <CreditCard className="h-6 w-6 text-muted-foreground" />
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-1">🔒 A Receber</p>
+                  <p className="text-3xl font-bold text-foreground">
                     {formatCurrency(stats.pendingAmount)}
                   </p>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground mt-1 font-medium">
-                    ⏳ Vendas &lt; 12h atrás
-                  </p>
-                </div>
-                <div className="flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-muted flex-shrink-0">
-                  <CreditCard className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 border-2 border-primary/40 bg-primary/5 animate-fade-in" style={{ animationDelay: '0.3s' }}>
-            <CardContent className="p-0">
-              <div className="flex items-center p-4 sm:p-6">
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs sm:text-sm font-medium text-muted-foreground mb-1">
-                    ✅ Disponível pra Repasse
-                  </p>
-                  <p className="text-2xl sm:text-3xl font-bold text-primary">
+          {/* Disponível pra Repasse */}
+          <Card className="hover:shadow-xl transition-all duration-300 border-2 border-primary/40 bg-primary/5 group overflow-hidden">
+            <CardContent className="p-6 flex flex-col items-center justify-center text-center h-[160px] relative">
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-primary/5" />
+              <div className="relative z-10 space-y-2">
+                <div className="h-12 w-12 mx-auto rounded-full bg-primary/20 flex items-center justify-center">
+                  <DollarSign className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-1">✅ Disponível pra Repasse</p>
+                  <p className="text-3xl font-bold text-primary">
                     {formatCurrency(stats.availableAmount)}
                   </p>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground mt-1 font-medium">
-                    💰 Vendas após 12h
-                  </p>
-                </div>
-                <div className="flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-primary/10 flex-shrink-0">
-                  <DollarSign className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
                 </div>
               </div>
             </CardContent>
@@ -521,40 +524,86 @@ const PhotographerDashboard = () => {
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="analytics" className="space-y-6">
-          <TabsList className="grid w-full max-w-4xl grid-cols-2 sm:grid-cols-5 h-auto sm:h-10 p-1">
-            <TabsTrigger value="analytics" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-2 py-2 sm:py-0 h-14 sm:h-9">
+          <TabsList className="grid w-full max-w-3xl grid-cols-2 sm:grid-cols-4 h-auto sm:h-11 p-1 bg-muted/50">
+            <TabsTrigger value="analytics" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 sm:py-0 h-14 sm:h-9 data-[state=active]:bg-background data-[state=active]:shadow-md">
               <BarChart3 className="h-4 w-4 flex-shrink-0" />
-              <span className="text-xs sm:text-sm">Analytics</span>
+              <span className="text-xs sm:text-sm font-medium">Analytics</span>
             </TabsTrigger>
-            <TabsTrigger value="campaigns" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-2 py-2 sm:py-0 h-14 sm:h-9">
+            <TabsTrigger value="campaigns" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 sm:py-0 h-14 sm:h-9 data-[state=active]:bg-background data-[state=active]:shadow-md">
               <Camera className="h-4 w-4 flex-shrink-0" />
-              <span className="text-xs sm:text-sm">Eventos</span>
+              <span className="text-xs sm:text-sm font-medium">Eventos</span>
             </TabsTrigger>
-            <TabsTrigger value="photos" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-2 py-2 sm:py-0 h-14 sm:h-9">
-              <Eye className="h-4 w-4 flex-shrink-0" />
-              <span className="text-xs sm:text-sm">Fotos</span>
-            </TabsTrigger>
-            <TabsTrigger value="payouts" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-2 py-2 sm:py-0 h-14 sm:h-9">
+            <TabsTrigger value="payouts" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 sm:py-0 h-14 sm:h-9 data-[state=active]:bg-background data-[state=active]:shadow-md">
               <CreditCard className="h-4 w-4 flex-shrink-0" />
-              <span className="text-xs sm:text-sm">Repasses</span>
+              <span className="text-xs sm:text-sm font-medium">Repasses</span>
             </TabsTrigger>
-            <TabsTrigger value="profile" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-2 py-2 sm:py-0 h-14 sm:h-9">
+            <TabsTrigger value="profile" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 sm:py-0 h-14 sm:h-9 data-[state=active]:bg-background data-[state=active]:shadow-md">
               <Edit className="h-4 w-4" />
-              Perfil
+              <span className="text-xs sm:text-sm font-medium">Meu perfil</span>
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="analytics">
+          <TabsContent value="analytics" className="space-y-6">
+            {/* Cards de Estatísticas */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <Card className="hover:shadow-lg transition-shadow">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <DollarSign className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-muted-foreground">💰 Receita Total</p>
+                      <p className="text-2xl font-bold text-foreground truncate">
+                        {formatCurrency(stats.pendingAmount + stats.availableAmount)}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="hover:shadow-lg transition-shadow">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0">
+                      <BarChart3 className="h-5 w-5 text-accent-foreground" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-muted-foreground">📊 Total de vendas</p>
+                      <p className="text-2xl font-bold text-foreground">{stats.totalSales}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="hover:shadow-lg transition-shadow">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+                      <Camera className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-muted-foreground">🎯 Ticket Médio</p>
+                      <p className="text-2xl font-bold text-foreground truncate">
+                        {formatCurrency(stats.totalSales > 0 ? (stats.pendingAmount + stats.availableAmount) / stats.totalSales : 0)}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Gráfico e Metas */}
             <div className="grid gap-6 lg:grid-cols-2">
               <div>
                 {loadingSales ? (
                   <div className="space-y-4">
-                    <Skeleton className="h-[300px] w-full" />
+                    <Skeleton className="h-[350px] w-full" />
                   </div>
                 ) : (
                   <SalesChart 
                     data={salesData} 
-                    title="Minhas Vendas - Últimos 30 Dias"
+                    title="📈 Minhas Vendas - Últimos 30 Dias"
                     description="Acompanhe a evolução das suas vendas e receita"
                     type="area"
                   />
