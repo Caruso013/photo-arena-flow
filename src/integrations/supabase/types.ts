@@ -142,6 +142,7 @@ export type Database = {
           photographer_percentage: number
           platform_percentage: number
           progressive_discount_enabled: boolean | null
+          short_code: string | null
           title: string
           updated_at: string
         }
@@ -159,6 +160,7 @@ export type Database = {
           photographer_percentage?: number
           platform_percentage?: number
           progressive_discount_enabled?: boolean | null
+          short_code?: string | null
           title: string
           updated_at?: string
         }
@@ -176,6 +178,7 @@ export type Database = {
           photographer_percentage?: number
           platform_percentage?: number
           progressive_discount_enabled?: boolean | null
+          short_code?: string | null
           title?: string
           updated_at?: string
         }
@@ -1493,6 +1496,7 @@ export type Database = {
         Args: { days_to_keep?: number }
         Returns: number
       }
+      generate_short_code: { Args: never; Returns: string }
       get_cache_statistics: {
         Args: never
         Returns: {

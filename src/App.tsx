@@ -154,6 +154,7 @@ const AppContent = () => {
           <Route path="/cart" element={<Cart />} />
           <Route path="/eventos-proximos" element={<EventosProximos />} />
           <Route path="/campaign/:id" element={<Campaign />} />
+          <Route path="/E/:code" element={<Campaign />} />
           <Route path="/contato" element={<Contato />} />
           <Route path="/admin" element={<AdminLogin />} />
           <Route path="/fotografos" element={<Fotografos />} />

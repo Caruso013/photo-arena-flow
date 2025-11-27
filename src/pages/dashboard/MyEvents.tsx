@@ -21,6 +21,7 @@ import {
 
 interface Campaign {
   id: string;
+  short_code?: string;
   title: string;
   description: string;
   event_date: string;
@@ -150,7 +151,7 @@ const MyEvents = () => {
                     <span>{new Date(campaign.event_date).toLocaleDateString('pt-BR')}</span>
                   </div>
                   <div className="flex gap-2">
-                    <Link to={`/campaign/${campaign.id}`} className="flex-1">
+                    <Link to={campaign.short_code ? `/E/${campaign.short_code}` : `/campaign/${campaign.id}`} className="flex-1">
                       <Button className="w-full" variant="outline">
                         <Image className="h-4 w-4 mr-2" />
                         Gerenciar Fotos
