@@ -10,10 +10,10 @@ interface LazyImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
 export const LazyImage = ({ src, alt, className, fallback, ...props }: LazyImageProps) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isInView, setIsInView] = useState(false);
-  const imgRef = useRef<HTMLImageElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!imgRef.current) return;
+    if (!containerRef.current) return;
 
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -25,19 +25,18 @@ export const LazyImage = ({ src, alt, className, fallback, ...props }: LazyImage
       { rootMargin: '50px' }
     );
 
-    observer.observe(imgRef.current);
+    observer.observe(containerRef.current);
 
     return () => observer.disconnect();
   }, []);
 
   return (
-    <div className="relative w-full h-full">
+    <div className="relative w-full h-full" ref={containerRef}>
       {!isLoaded && (
         <div className="absolute inset-0 bg-muted animate-pulse" />
       )}
       {isInView && (
         <img
-          ref={imgRef}
           src={src}
           alt={alt}
           loading="lazy"
