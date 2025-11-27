@@ -17,3 +17,6 @@ verify_jwt = true
 
 [functions.send-application-notification]
 verify_jwt = true
+
+[functions.generate-campaign-short-codes]
+verify_jwt = true

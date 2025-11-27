@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from '@/components/ui/use-toast';
-import { Settings, AlertCircle, Save, Lock, Unlock } from 'lucide-react';
+import { Settings, AlertCircle, Save, Lock, Unlock, Link as LinkIcon } from 'lucide-react';
 
 const SystemConfig = () => {
   const [fixedPercentage, setFixedPercentage] = useState(7); // Taxa fixa sempre 7%
@@ -15,6 +15,7 @@ const SystemConfig = () => {
   const [variableEnabled, setVariableEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [generatingCodes, setGeneratingCodes] = useState(false);
 
   useEffect(() => {
     fetchConfig();
@@ -116,6 +117,29 @@ const SystemConfig = () => {
       });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const generateShortCodes = async () => {
+    setGeneratingCodes(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-campaign-short-codes');
+
+      if (error) throw error;
+
+      toast({
+        title: "Códigos gerados!",
+        description: data.message || "Códigos curtos gerados com sucesso",
+      });
+    } catch (error) {
+      console.error('Error generating codes:', error);
+      toast({
+        title: "Erro ao gerar códigos",
+        description: "Não foi possível gerar os códigos curtos.",
+        variant: "destructive",
+      });
+    } finally {
+      setGeneratingCodes(false);
     }
   };
 
@@ -292,6 +316,48 @@ const SystemConfig = () => {
               <>
                 <Save className="h-4 w-4" />
                 Salvar Configuração
+              </>
+            )}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Card de Links Curtos */}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <LinkIcon className="h-5 w-5" />
+            Links Curtos para Eventos
+          </CardTitle>
+          <CardDescription>
+            Gere códigos curtos (formato: sta.com/E/ABC123) para eventos existentes que ainda não possuem
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Esta ação gerará códigos curtos únicos de 6 caracteres para todas as campanhas que ainda não possuem. 
+              Os códigos facilitam o compartilhamento dos eventos com os clientes.
+            </AlertDescription>
+          </Alert>
+
+          <Button 
+            onClick={generateShortCodes}
+            disabled={generatingCodes}
+            className="w-full"
+            variant="outline"
+            size="lg"
+          >
+            {generatingCodes ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                Gerando códigos...
+              </>
+            ) : (
+              <>
+                <LinkIcon className="h-4 w-4 mr-2" />
+                Gerar Códigos Curtos para Eventos Existentes
               </>
             )}
           </Button>
