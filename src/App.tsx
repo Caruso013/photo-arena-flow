@@ -66,7 +66,10 @@ const AdminUsers = lazy(() => import("./pages/dashboard/admin/Users"));
 const AdminOrganizations = lazy(() => import("./pages/dashboard/admin/Organizations"));
 const AdminFinancial = lazy(() => import("./pages/dashboard/admin/Financial"));
 const AdminReports = lazy(() => import("./pages/dashboard/admin/Reports"));
-const AdminSystemConfig = lazy(() => import("./pages/dashboard/admin/SystemConfig"));
+const AdminConfigHub = lazy(() => import("./pages/dashboard/admin/ConfigHub"));
+const AdminPlatformConfig = lazy(() => import("./pages/dashboard/admin/PlatformConfig"));
+const AdminNotificationSettings = lazy(() => import("./pages/dashboard/admin/NotificationSettings"));
+const AdminPermissionsManager = lazy(() => import("./pages/dashboard/admin/PermissionsManager"));
 const AdminCouponManagement = lazy(() => import("./pages/dashboard/admin/CouponManagement"));
 const CacheManagement = lazy(() => import("./pages/dashboard/admin/CacheManagement"));
 
@@ -137,7 +140,10 @@ const AppContent = () => {
             <Route path="admin/organizations" element={<AdminOrganizations />} />
             <Route path="admin/financial" element={<AdminFinancial />} />
             <Route path="admin/reports" element={<AdminReports />} />
-            <Route path="admin/config" element={<AdminSystemConfig />} />
+            <Route path="admin/config" element={<AdminConfigHub />} />
+            <Route path="admin/config/platform" element={<AdminPlatformConfig />} />
+            <Route path="admin/config/notifications" element={<AdminNotificationSettings />} />
+            <Route path="admin/config/permissions" element={<AdminPermissionsManager />} />
             <Route path="admin/coupons" element={<AdminCouponManagement />} />
             <Route path="admin/cache-management" element={<CacheManagement />} />
             <Route path="photographer/events" element={<PhotographerEvents />} />
