@@ -11,6 +11,12 @@ import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { PullToRefreshIndicator } from '@/components/ui/PullToRefreshIndicator';
 import { useHapticFeedback } from '@/hooks/useHapticFeedback';
 
+interface Photographer {
+  id: string;
+  full_name: string;
+  avatar_url?: string;
+}
+
 interface Campaign {
   id: string;
   title: string;
@@ -20,9 +26,11 @@ interface Campaign {
   cover_image_url: string;
   created_at?: string;
   photographer_id?: string;
-  photographer: {
-    full_name: string;
-  };
+  photographer: Photographer | null;
+  campaign_photographers?: {
+    photographer_id: string;
+    profiles: Photographer;
+  }[];
 }
 
 const Events = () => {
@@ -64,19 +72,39 @@ const Events = () => {
     // Filtro de busca
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(
-        (campaign) =>
-          campaign.title.toLowerCase().includes(term) ||
-          campaign.location.toLowerCase().includes(term) ||
-          campaign.photographer?.full_name.toLowerCase().includes(term)
-      );
+      filtered = filtered.filter((campaign) => {
+        // Buscar no título e localização
+        if (campaign.title.toLowerCase().includes(term)) return true;
+        if (campaign.location.toLowerCase().includes(term)) return true;
+        
+        // Buscar no fotógrafo principal
+        if (campaign.photographer?.full_name.toLowerCase().includes(term)) return true;
+        
+        // Buscar em fotógrafos adicionais
+        if (campaign.campaign_photographers) {
+          return campaign.campaign_photographers.some(
+            cp => cp.profiles?.full_name.toLowerCase().includes(term)
+          );
+        }
+        
+        return false;
+      });
     }
     
-    // Filtro por fotógrafo
+    // Filtro por fotógrafo (incluindo múltiplos fotógrafos)
     if (filters.photographer.trim()) {
-      filtered = filtered.filter(
-        (campaign) => campaign.photographer_id === filters.photographer
-      );
+      filtered = filtered.filter((campaign) => {
+        // Verificar fotógrafo principal
+        if (campaign.photographer_id === filters.photographer) return true;
+        
+        // Verificar fotógrafos adicionais
+        if (campaign.campaign_photographers) {
+          return campaign.campaign_photographers.some(
+            cp => cp.photographer_id === filters.photographer
+          );
+        }
+        return false;
+      });
     }
     
     // Filtro de localização
@@ -125,7 +153,11 @@ const Events = () => {
         .from('campaigns')
         .select(`
           *,
-          photographer:profiles(full_name)
+          photographer:profiles!photographer_id(id, full_name, avatar_url),
+          campaign_photographers(
+            photographer_id,
+            profiles:profiles!photographer_id(id, full_name, avatar_url)
+          )
         `)
         .eq('is_active', true)
         .order('created_at', { ascending: false });
@@ -147,14 +179,37 @@ const Events = () => {
         progress={pullToRefresh.progress}
       />
       <section className="container mx-auto px-4 py-6 md:py-8">
-        <div className="mb-6 md:mb-8">
-          <h1 className="text-2xl md:text-3xl font-bold mb-2">Todos os Eventos</h1>
-          <p className="text-sm md:text-base text-muted-foreground">
-            Encontre fotos dos seus eventos esportivos favoritos
-          </p>
-        </div>
+        <div className="mb-6 md:mb-8 space-y-4">
+          <div>
+            <h1 className="text-3xl md:text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+              Todos os Eventos
+            </h1>
+            <p className="text-sm md:text-base text-muted-foreground">
+              Encontre fotos dos seus eventos esportivos favoritos
+            </p>
+          </div>
 
-        <EventFilters onFilterChange={setFilters} />
+          {/* Barra de informações e filtros */}
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex items-center gap-2">
+              {!loading && (
+                <>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground bg-secondary/50 px-4 py-2 rounded-full">
+                    <Camera className="h-4 w-4" />
+                    <span className="font-medium">{filteredCampaigns.length}</span>
+                    <span>evento(s)</span>
+                  </div>
+                  {searchTerm && (
+                    <div className="text-xs text-muted-foreground bg-primary/10 px-3 py-1.5 rounded-full">
+                      Busca: <span className="font-semibold">"{searchTerm}"</span>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+            <EventFilters onFilterChange={setFilters} />
+          </div>
+        </div>
 
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
@@ -163,32 +218,27 @@ const Events = () => {
             ))}
           </div>
         ) : filteredCampaigns.length === 0 ? (
-          <div className="text-center py-12 md:py-16 px-4">
-            <Camera className="h-12 md:h-16 w-12 md:w-16 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg md:text-xl font-medium mb-2">Nenhum evento encontrado</h3>
-            <p className="text-sm md:text-base text-muted-foreground">
-              {searchTerm ? `Nenhum resultado para "${searchTerm}"` : 'Ainda não há eventos disponíveis'}
+          <div className="text-center py-16 md:py-20 px-4">
+            <div className="w-20 h-20 md:w-24 md:h-24 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Camera className="h-10 md:h-12 w-10 md:w-12 text-primary" />
+            </div>
+            <h3 className="text-xl md:text-2xl font-bold mb-3">Nenhum evento encontrado</h3>
+            <p className="text-sm md:text-base text-muted-foreground max-w-md mx-auto">
+              {searchTerm 
+                ? `Não encontramos resultados para "${searchTerm}". Tente outra busca.` 
+                : 'Ainda não há eventos disponíveis. Volte em breve!'}
             </p>
           </div>
         ) : (
-          <>
-            <div className="mb-4 md:mb-6">
-              <p className="text-xs md:text-sm text-muted-foreground">
-                {filteredCampaigns.length} evento(s) encontrado(s)
-                {searchTerm && ` para "${searchTerm}"`}
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-              {filteredCampaigns.map((campaign, index) => (
-                <EventCard 
-                  key={campaign.id}
-                  campaign={campaign}
-                  index={index}
-                />
-              ))}
-            </div>
-          </>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+            {filteredCampaigns.map((campaign, index) => (
+              <EventCard 
+                key={campaign.id}
+                campaign={campaign}
+                index={index}
+              />
+            ))}
+          </div>
         )}
       </section>
     </MainLayout>
