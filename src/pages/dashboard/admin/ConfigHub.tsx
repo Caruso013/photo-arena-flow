@@ -1,11 +1,30 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Settings, Bell, Users } from 'lucide-react';
+import { Settings, Bell, Users, Link as LinkIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const ConfigHub = () => {
   const navigate = useNavigate();
+  const [generatingCodes, setGeneratingCodes] = useState(false);
+
+  const generateShortCodes = async () => {
+    setGeneratingCodes(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-campaign-short-codes');
+      
+      if (error) throw error;
+      
+      toast.success(data.message || 'Códigos curtos gerados com sucesso!');
+    } catch (error) {
+      console.error('Erro ao gerar códigos:', error);
+      toast.error('Erro ao gerar códigos curtos');
+    } finally {
+      setGeneratingCodes(false);
+    }
+  };
 
   const configSections = [
     {
@@ -51,6 +70,29 @@ const ConfigHub = () => {
       </div>
 
       <div className="space-y-6">
+        {/* Card de Ação Rápida - Links Curtos */}
+        <Card className="border-primary/20 bg-primary/5">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <LinkIcon className="h-5 w-5" />
+              Links Curtos para Eventos
+            </CardTitle>
+            <CardDescription>
+              Garanta que todos os eventos tenham códigos curtos para compartilhamento fácil (formato: <code className="bg-muted px-1 rounded">sta.com/E/ABC123</code>)
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button 
+              onClick={generateShortCodes}
+              disabled={generatingCodes}
+              className="w-full"
+            >
+              <LinkIcon className="h-4 w-4 mr-2" />
+              {generatingCodes ? 'Gerando códigos...' : 'Gerar Códigos para Eventos Sem Link'}
+            </Button>
+          </CardContent>
+        </Card>
+
         {configSections.map((section) => (
           <Card key={section.title}>
             <CardHeader>
