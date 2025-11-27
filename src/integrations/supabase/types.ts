@@ -1394,7 +1394,6 @@ export type Database = {
           organization_amount: number | null
           photo_id: string | null
           photographer_amount: number | null
-          photographer_email: string | null
           photographer_name: string | null
           platform_amount: number | null
           purchase_created_at: string | null
