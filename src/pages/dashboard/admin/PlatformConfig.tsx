@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,9 +8,10 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from '@/components/ui/use-toast';
-import { Settings, AlertCircle, Save, Lock, Unlock, Link as LinkIcon } from 'lucide-react';
+import { Settings, AlertCircle, Save, Lock, Unlock, Link as LinkIcon, ArrowLeft } from 'lucide-react';
 
-const SystemConfig = () => {
+const PlatformConfig = () => {
+  const navigate = useNavigate();
   const [fixedPercentage, setFixedPercentage] = useState(7); // Taxa fixa sempre 7%
   const [variablePercentage, setVariablePercentage] = useState(0);
   const [variableEnabled, setVariableEnabled] = useState(false);
@@ -160,13 +162,22 @@ const SystemConfig = () => {
 
   return (
     <div className="container max-w-4xl py-8">
+      <Button
+        variant="ghost"
+        className="mb-6"
+        onClick={() => navigate('/dashboard/admin/config')}
+      >
+        <ArrowLeft className="h-4 w-4 mr-2" />
+        Voltar
+      </Button>
+
       <div className="mb-6">
         <h1 className="text-3xl font-bold flex items-center gap-2">
           <Settings className="h-8 w-8" />
-          Configurações do Sistema
+          Configurações da Plataforma
         </h1>
         <p className="text-muted-foreground mt-2">
-          Gerencie configurações globais da plataforma
+          Gerencie taxas, porcentagens e links curtos do sistema
         </p>
       </div>
 
@@ -367,4 +378,4 @@ const SystemConfig = () => {
   );
 };
 
-export default SystemConfig;
+export default PlatformConfig;
