@@ -26,7 +26,7 @@ export default function CreateEventDialog({ isOpen, onClose, onEventCreated }: C
     description: '',
     location: '',
     event_date: '',
-    progressive_discount_enabled: false,
+    progressive_discount_enabled: true, // Habilitado por padrão
   });
   const [albums, setAlbums] = useState<Array<{ title: string; description: string }>>([{ title: '', description: '' }]);
   const { toast } = useToast();

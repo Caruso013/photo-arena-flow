@@ -17,6 +17,7 @@ import {
   X,
   Heart,
   Database,
+  Gift,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -67,6 +68,7 @@ const DashboardSidebar = ({ isOpen, onToggle }: DashboardSidebarProps) => {
     { title: 'Fotógrafos', url: '/dashboard/admin/photographers', icon: Camera },
     { title: 'Usuários', url: '/dashboard/admin/users', icon: Users },
     { title: 'Eventos', url: '/dashboard/admin/events', icon: Calendar },
+    { title: 'Descontos Progressivos', url: '/dashboard/admin/progressive-discounts', icon: Gift },
     { title: 'Organizações', url: '/dashboard/admin/organizations', icon: Building2 },
     { title: 'Financeiro', url: '/dashboard/admin/financial', icon: DollarSign },
     { title: 'Relatórios', url: '/dashboard/admin/reports', icon: FileText },
