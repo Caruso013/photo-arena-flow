@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { MaskedInput, masks } from '@/components/ui/masked-input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Upload, Camera, DollarSign, BarChart3, Plus, Eye, Edit, CreditCard, AlertCircle, CalendarPlus } from 'lucide-react';
+import { Upload, Camera, DollarSign, BarChart3, Plus, Edit, CreditCard, AlertCircle, CalendarPlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import AntiScreenshotProtection from '@/components/security/AntiScreenshotProtection';
@@ -73,7 +73,6 @@ const PhotographerDashboard = () => {
   const { data: salesData, loading: loadingSales } = useSalesData(30, user?.id);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [photos, setPhotos] = useState<Photo[]>([]);
-  const [allPhotos, setAllPhotos] = useState<Photo[]>([]); // Todas as fotos para a aba
   const [payoutRequests, setPayoutRequests] = useState<PayoutRequest[]>([]);
   const [stats, setStats] = useState<Stats>({
     totalSales: 0,
@@ -122,7 +121,6 @@ const PhotographerDashboard = () => {
     await Promise.all([
       fetchCampaigns(),
       fetchPhotos(),
-      fetchAllPhotos(), // Buscar todas as fotos
       fetchPayoutRequests(),
       fetchStats()
     ]);
@@ -183,35 +181,10 @@ const PhotographerDashboard = () => {
         throw error;
       }
       
-      console.log('✅ Fotos encontradas (overview):', data?.length, data);
+      console.log('✅ Fotos encontradas:', data?.length, data);
       setPhotos(data || []);
     } catch (error) {
       console.error('Error fetching photos:', error);
-    }
-  };
-
-  const fetchAllPhotos = async () => {
-    try {
-      console.log('🔍 Buscando TODAS as fotos do fotógrafo:', profile?.id);
-      
-      const { data, error } = await supabase
-        .from('photos')
-        .select(`
-          *,
-          campaign:campaigns(title)
-        `)
-        .eq('photographer_id', profile?.id)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('❌ Erro ao buscar todas as fotos:', error);
-        throw error;
-      }
-      
-      console.log('✅ Total de fotos encontradas:', data?.length, data);
-      setAllPhotos(data || []);
-    } catch (error) {
-      console.error('Error fetching all photos:', error);
     }
   };
 
@@ -384,83 +357,56 @@ const PhotographerDashboard = () => {
     <AntiScreenshotProtection>
       <div className="space-y-8">
         {/* Welcome Section with Profile */}
-        <div className="relative overflow-hidden rounded-xl p-8 bg-gradient-primary text-white shadow-elegant">
-          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS1vcGFjaXR5PSIwLjA1IiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-30"></div>
-          <div className="relative z-10 flex items-start gap-6">
+        <div className="relative overflow-hidden rounded-2xl p-6 sm:p-8 bg-gradient-to-br from-primary via-primary/95 to-primary/80 text-white shadow-2xl">
+          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS1vcGFjaXR5PSIwLjA1IiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-20"></div>
+          <div className="relative z-10 flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6">
             {/* Profile Avatar */}
-            <Avatar className="h-24 w-24 border-4 border-white/30 shadow-lg animate-scale-in">
+            <Avatar className="h-20 w-20 sm:h-24 sm:w-24 border-4 border-white/30 shadow-xl animate-scale-in ring-4 ring-white/10">
               <AvatarImage 
                 src={profile?.avatar_url || ''} 
                 alt={profile?.full_name || 'Fotógrafo'}
                 className="object-cover"
               />
               <AvatarFallback className="text-3xl bg-white/20 backdrop-blur-sm">
-                <Camera className="h-12 w-12 text-white" />
+                <Camera className="h-10 w-10 sm:h-12 sm:w-12 text-white" />
               </AvatarFallback>
             </Avatar>
 
             {/* Welcome Text */}
-            <div className="flex-1">
-              <h1 className="text-4xl font-bold mb-2 animate-fade-in drop-shadow-lg">
+            <div className="flex-1 text-center sm:text-left">
+              <h1 className="text-3xl sm:text-4xl font-bold mb-2 animate-fade-in drop-shadow-lg">
                 Painel do Fotógrafo 📸
               </h1>
-              <p className="text-lg opacity-95 mb-4 drop-shadow-md">
+              <p className="text-base sm:text-lg opacity-95 drop-shadow-md">
                 Olá, <span className="font-semibold">{profile?.full_name || 'Fotógrafo'}</span>! Gerencie seus eventos e fotos aqui.
               </p>
-              <div className="flex flex-wrap gap-3">
-                <Button 
-                  variant="secondary" 
-                  className="gap-2 bg-white/95 text-primary hover:bg-white font-semibold shadow-md hover-scale"
-                  onClick={() => setShowUploadModal(true)}
-                >
-                  <Upload className="h-4 w-4" />
-                  Upload de Fotos
-                </Button>
-                <Button 
-                  variant="secondary" 
-                  className="gap-2 bg-white/95 text-primary hover:bg-white font-semibold shadow-md hover-scale"
-                  onClick={() => {
-                    // Switch to profile tab
-                    const profileTab = document.querySelector('[value="profile"]') as HTMLButtonElement;
-                    profileTab?.click();
-                  }}
-                >
-                  <Edit className="h-4 w-4" />
-                  Editar Perfil
-                </Button>
-                <Link to="/eventos-proximos">
-                  <Button 
-                    variant="outline" 
-                    className="gap-2 bg-white/20 border-white/30 text-white hover:bg-white/30 hover:text-white backdrop-blur-sm font-medium"
-                  >
-                    <CalendarPlus className="h-4 w-4" />
-                    Eventos Próximos
-                  </Button>
-                </Link>
-              </div>
             </div>
           </div>
         </div>
 
         {/* Ações Principais - Cards Grandes */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           {/* Criar Álbum */}
           <Card 
-            className="cursor-pointer hover:shadow-xl hover:scale-105 transition-all duration-300 border-2 border-border hover:border-primary/50 bg-card group overflow-hidden"
+            className="cursor-pointer hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 border-2 border-transparent hover:border-yellow-500/30 bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-950/20 dark:to-orange-950/20 group overflow-hidden"
             onClick={() => {
-              const campaignsTab = document.querySelector('[value="campaigns"]') as HTMLButtonElement;
-              campaignsTab?.click();
+              if (campaigns.length === 0) {
+                const campaignsTab = document.querySelector('[value="campaigns"]') as HTMLButtonElement;
+                campaignsTab?.click();
+              } else {
+                setSelectedCampaignForAlbum({ id: campaigns[0].id, title: campaigns[0].title });
+                setShowCreateAlbumModal(true);
+              }
             }}
           >
-            <CardContent className="p-6 flex flex-col items-center justify-center text-center h-[160px] relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/10 to-orange-500/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-              <div className="relative z-10 space-y-3">
-                <div className="h-16 w-16 mx-auto rounded-full bg-yellow-500/20 flex items-center justify-center group-hover:bg-yellow-500/30 transition-colors">
-                  <Camera className="h-8 w-8 text-yellow-600 dark:text-yellow-400" />
+            <CardContent className="p-6 sm:p-8 flex flex-col items-center justify-center text-center h-[180px] sm:h-[200px] relative">
+              <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/5 to-orange-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <div className="relative z-10 space-y-3 sm:space-y-4">
+                <div className="h-16 w-16 sm:h-20 sm:w-20 mx-auto rounded-2xl bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center shadow-lg group-hover:shadow-xl group-hover:scale-110 transition-all duration-300">
+                  <Camera className="h-8 w-8 sm:h-10 sm:w-10 text-white" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-lg text-foreground">Criar Álbum</h3>
-                  <p className="text-sm text-muted-foreground mt-1">criar botão</p>
+                  <h3 className="font-bold text-lg sm:text-xl text-foreground">Criar Álbum</h3>
                 </div>
               </div>
             </CardContent>
@@ -468,34 +414,33 @@ const PhotographerDashboard = () => {
 
           {/* Upload de Fotos */}
           <Card 
-            className="cursor-pointer hover:shadow-xl hover:scale-105 transition-all duration-300 border-2 border-border hover:border-primary/50 bg-card group overflow-hidden"
+            className="cursor-pointer hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 border-2 border-transparent hover:border-blue-500/30 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20 group overflow-hidden"
             onClick={() => setShowUploadModal(true)}
           >
-            <CardContent className="p-6 flex flex-col items-center justify-center text-center h-[160px] relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-400/10 to-cyan-500/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-              <div className="relative z-10 space-y-3">
-                <div className="h-16 w-16 mx-auto rounded-full bg-blue-500/20 flex items-center justify-center group-hover:bg-blue-500/30 transition-colors">
-                  <Upload className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+            <CardContent className="p-6 sm:p-8 flex flex-col items-center justify-center text-center h-[180px] sm:h-[200px] relative">
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-400/5 to-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <div className="relative z-10 space-y-3 sm:space-y-4">
+                <div className="h-16 w-16 sm:h-20 sm:w-20 mx-auto rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-lg group-hover:shadow-xl group-hover:scale-110 transition-all duration-300">
+                  <Upload className="h-8 w-8 sm:h-10 sm:w-10 text-white" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-lg text-foreground">Upload de Fotos</h3>
-                  <p className="text-sm text-muted-foreground mt-1">criar botão</p>
+                  <h3 className="font-bold text-lg sm:text-xl text-foreground">Upload de Fotos</h3>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           {/* A Receber */}
-          <Card className="hover:shadow-xl transition-all duration-300 border-2 border-muted bg-muted/30 group overflow-hidden">
-            <CardContent className="p-6 flex flex-col items-center justify-center text-center h-[160px] relative">
+          <Card className="hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 border-2 border-muted/50 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900/30 dark:to-slate-800/30 group overflow-hidden">
+            <CardContent className="p-6 sm:p-8 flex flex-col items-center justify-center text-center h-[180px] sm:h-[200px] relative">
               <div className="absolute inset-0 bg-gradient-to-br from-slate-400/5 to-slate-500/5" />
-              <div className="relative z-10 space-y-2">
-                <div className="h-12 w-12 mx-auto rounded-full bg-muted flex items-center justify-center">
-                  <CreditCard className="h-6 w-6 text-muted-foreground" />
+              <div className="relative z-10 space-y-3">
+                <div className="h-14 w-14 sm:h-16 sm:w-16 mx-auto rounded-2xl bg-muted/80 flex items-center justify-center shadow-md">
+                  <CreditCard className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground" />
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-1">🔒 A Receber</p>
-                  <p className="text-3xl font-bold text-foreground">
+                  <p className="text-xs font-semibold text-muted-foreground mb-2">🔒 A Receber</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-foreground">
                     {formatCurrency(stats.pendingAmount)}
                   </p>
                 </div>
@@ -504,16 +449,16 @@ const PhotographerDashboard = () => {
           </Card>
 
           {/* Disponível pra Repasse */}
-          <Card className="hover:shadow-xl transition-all duration-300 border-2 border-primary/40 bg-primary/5 group overflow-hidden">
-            <CardContent className="p-6 flex flex-col items-center justify-center text-center h-[160px] relative">
+          <Card className="hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-primary/10 dark:from-primary/10 dark:to-primary/5 group overflow-hidden">
+            <CardContent className="p-6 sm:p-8 flex flex-col items-center justify-center text-center h-[180px] sm:h-[200px] relative">
               <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-primary/5" />
-              <div className="relative z-10 space-y-2">
-                <div className="h-12 w-12 mx-auto rounded-full bg-primary/20 flex items-center justify-center">
-                  <DollarSign className="h-6 w-6 text-primary" />
+              <div className="relative z-10 space-y-3">
+                <div className="h-14 w-14 sm:h-16 sm:w-16 mx-auto rounded-2xl bg-primary/20 flex items-center justify-center shadow-lg">
+                  <DollarSign className="h-7 w-7 sm:h-8 sm:w-8 text-primary" />
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-1">✅ Disponível pra Repasse</p>
-                  <p className="text-3xl font-bold text-primary">
+                  <p className="text-xs font-semibold text-muted-foreground mb-2">✅ Disponível pra Repasse</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-primary">
                     {formatCurrency(stats.availableAmount)}
                   </p>
                 </div>
@@ -545,48 +490,57 @@ const PhotographerDashboard = () => {
 
           <TabsContent value="analytics" className="space-y-6">
             {/* Cards de Estatísticas */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <Card className="hover:shadow-lg transition-shadow">
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <DollarSign className="h-5 w-5 text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-muted-foreground">💰 Receita Total</p>
-                      <p className="text-2xl font-bold text-foreground truncate">
-                        {formatCurrency(stats.pendingAmount + stats.availableAmount)}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="hover:shadow-lg transition-shadow">
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0">
-                      <BarChart3 className="h-5 w-5 text-accent-foreground" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-muted-foreground">📊 Total de vendas</p>
-                      <p className="text-2xl font-bold text-foreground">{stats.totalSales}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+              <Card className="hover:shadow-xl transition-all duration-300 border-2 border-transparent hover:border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10 dark:from-primary/10 dark:to-primary/5 overflow-hidden group">
+                <CardContent className="p-6 relative">
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="relative z-10">
+                    <div className="flex items-center gap-4">
+                      <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg flex-shrink-0">
+                        <DollarSign className="h-6 w-6 text-white" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Receita Total</p>
+                        <p className="text-2xl sm:text-3xl font-bold text-foreground truncate mt-1">
+                          {formatCurrency(stats.pendingAmount + stats.availableAmount)}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="hover:shadow-lg transition-shadow">
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-blue-500/10 flex items-center justify-center flex-shrink-0">
-                      <Camera className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <Card className="hover:shadow-xl transition-all duration-300 border-2 border-transparent hover:border-accent/20 bg-gradient-to-br from-accent/5 to-accent/10 overflow-hidden group">
+                <CardContent className="p-6 relative">
+                  <div className="absolute inset-0 bg-gradient-to-br from-accent/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="relative z-10">
+                    <div className="flex items-center gap-4">
+                      <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-accent to-accent/80 flex items-center justify-center shadow-lg flex-shrink-0">
+                        <BarChart3 className="h-6 w-6 text-accent-foreground" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total de vendas</p>
+                        <p className="text-2xl sm:text-3xl font-bold text-foreground mt-1">{stats.totalSales}</p>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-muted-foreground">🎯 Ticket Médio</p>
-                      <p className="text-2xl font-bold text-foreground truncate">
-                        {formatCurrency(stats.totalSales > 0 ? (stats.pendingAmount + stats.availableAmount) / stats.totalSales : 0)}
-                      </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="hover:shadow-xl transition-all duration-300 border-2 border-transparent hover:border-blue-500/20 bg-gradient-to-br from-blue-500/5 to-cyan-500/10 dark:from-blue-500/10 dark:to-cyan-500/5 overflow-hidden group">
+                <CardContent className="p-6 relative">
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="relative z-10">
+                    <div className="flex items-center gap-4">
+                      <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-lg flex-shrink-0">
+                        <Camera className="h-6 w-6 text-white" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Ticket Médio</p>
+                        <p className="text-2xl sm:text-3xl font-bold text-foreground truncate mt-1">
+                          {formatCurrency(stats.totalSales > 0 ? (stats.pendingAmount + stats.availableAmount) / stats.totalSales : 0)}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
@@ -616,56 +570,64 @@ const PhotographerDashboard = () => {
 
           <TabsContent value="campaigns" className="space-y-4">
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold">Eventos com Fotos</h2>
-              <div className="flex gap-2">
-                <CreateCampaignModal onCampaignCreated={fetchData} />
-                <Button onClick={() => setShowUploadModal(true)} className="gap-2">
-                  <Upload className="h-4 w-4" />
-                  Upload de Fotos
-                </Button>
+              <div>
+                <h2 className="text-2xl font-bold text-foreground">Eventos com Fotos</h2>
+                <p className="text-sm text-muted-foreground mt-1">Gerencie seus eventos e crie álbuns</p>
               </div>
+              <CreateCampaignModal onCampaignCreated={fetchData} />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {campaigns.map((campaign) => (
-                <Card key={campaign.id} className="overflow-hidden">
-                  <div className="aspect-[4/5] bg-gradient-subtle relative">
+                <Card key={campaign.id} className="overflow-hidden hover:shadow-2xl transition-all duration-300 group border-2 border-transparent hover:border-primary/20">
+                  <div className="aspect-[4/3] bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 relative overflow-hidden">
                     {campaign.cover_image_url ? (
                       <img
                         src={campaign.cover_image_url}
                         alt={campaign.title}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
-                        <Camera className="h-12 w-12 text-muted-foreground" />
+                        <Camera className="h-16 w-16 text-muted-foreground opacity-30" />
                       </div>
                     )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                     <Badge 
                       variant={campaign.is_active ? "default" : "secondary"} 
-                      className="absolute top-2 right-2"
+                      className="absolute top-3 right-3 shadow-lg"
                     >
-                      {campaign.is_active ? "Ativo" : "Inativo"}
+                      {campaign.is_active ? "✓ Ativo" : "○ Inativo"}
                     </Badge>
                   </div>
-                  <CardContent className="p-4">
-                    <CardTitle className="text-lg mb-2">{campaign.title}</CardTitle>
-                    <CardDescription className="text-sm mb-2">
-                      {campaign.description}
-                    </CardDescription>
-                    <div className="flex justify-between items-center text-sm text-muted-foreground mb-3">
-                      <span>{campaign.location}</span>
-                      <span>{new Date(campaign.event_date).toLocaleDateString()}</span>
+                  <CardContent className="p-4 sm:p-5">
+                    <CardTitle className="text-lg sm:text-xl mb-2 line-clamp-1">{campaign.title}</CardTitle>
+                    {campaign.description && (
+                      <CardDescription className="text-sm mb-3 line-clamp-2">
+                        {campaign.description}
+                      </CardDescription>
+                    )}
+                    <div className="flex flex-wrap gap-2 text-xs sm:text-sm text-muted-foreground mb-4">
+                      {campaign.location && (
+                        <span className="flex items-center gap-1">
+                          📍 {campaign.location}
+                        </span>
+                      )}
+                      {campaign.event_date && (
+                        <span className="flex items-center gap-1">
+                          📅 {new Date(campaign.event_date).toLocaleDateString('pt-BR')}
+                        </span>
+                      )}
                     </div>
-                    <div className="flex justify-between items-center gap-2">
-                      <span className="text-sm">
-                        {campaign.photos?.[0]?.count || 0} fotos
+                    <div className="flex justify-between items-center gap-2 pt-3 border-t border-border">
+                      <span className="text-sm font-medium text-muted-foreground">
+                        🖼️ {campaign.photos?.[0]?.count || 0} fotos
                       </span>
-                      <div className="flex gap-1">
+                      <div className="flex gap-2">
                         <Button 
                           size="sm" 
                           variant="outline" 
-                          className="gap-1"
+                          className="gap-1 h-8"
                           onClick={() => {
                             setSelectedCampaignForCover({ 
                               id: campaign.id, 
@@ -676,19 +638,19 @@ const PhotographerDashboard = () => {
                           }}
                         >
                           <Edit className="h-3 w-3" />
-                          Capa
+                          <span className="hidden sm:inline">Capa</span>
                         </Button>
                         <Button 
                           size="sm" 
-                          variant="outline" 
-                          className="gap-1"
+                          variant="default" 
+                          className="gap-1 h-8"
                           onClick={() => {
                             setSelectedCampaignForAlbum({ id: campaign.id, title: campaign.title });
                             setShowCreateAlbumModal(true);
                           }}
                         >
                           <Plus className="h-3 w-3" />
-                          Álbum
+                          <span className="hidden sm:inline">Álbum</span>
                         </Button>
                       </div>
                     </div>
@@ -698,84 +660,30 @@ const PhotographerDashboard = () => {
             </div>
 
             {campaigns.length === 0 && (
-              <Card className="p-12 text-center">
-                <Camera className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium mb-2">Nenhum evento com fotos ainda</h3>
-                <p className="text-muted-foreground mb-4">
-                  Faça upload de fotos para eventos criados pelos administradores
-                </p>
-                <div className="flex gap-3 justify-center">
-                  <Button onClick={() => setShowUploadModal(true)} className="gap-2">
-                    <Upload className="h-4 w-4" />
-                    Fazer Upload de Fotos
-                  </Button>
-                  <Link to="/eventos-proximos">
-                    <Button variant="outline" className="gap-2">
-                      <CalendarPlus className="h-4 w-4" />
-                      Ver Eventos Disponíveis
-                    </Button>
-                  </Link>
-                </div>
-              </Card>
-            )}
-          </TabsContent>
-
-          <TabsContent value="photos" className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold">Fotos Carregadas</h2>
-              <Button onClick={() => setShowUploadModal(true)} className="gap-2">
-                <Upload className="h-4 w-4" />
-                Upload de Fotos
-              </Button>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {allPhotos.map((photo) => (
-                <Card key={photo.id} className="overflow-hidden">
-                  <div className="aspect-square bg-gradient-subtle relative">
-                    <img
-                      src={photo.thumbnail_url || photo.watermarked_url}
-                      alt={photo.title || 'Foto'}
-                      className="w-full h-full object-cover"
-                    />
-                    <Badge 
-                      variant={photo.is_available ? "default" : "secondary"} 
-                      className="absolute top-2 right-2"
-                    >
-                      {photo.is_available ? "Disponível" : "Indisponível"}
-                    </Badge>
+              <Card className="p-8 sm:p-12 text-center border-2 border-dashed">
+                <div className="max-w-md mx-auto space-y-4">
+                  <div className="h-20 w-20 mx-auto rounded-full bg-muted/50 flex items-center justify-center">
+                    <Camera className="h-10 w-10 text-muted-foreground" />
                   </div>
-                  <CardContent className="p-3">
-                    <p className="font-medium text-sm mb-1">
-                      {photo.title || 'Foto sem título'}
+                  <div>
+                    <h3 className="text-xl font-bold mb-2">Nenhum evento com fotos</h3>
+                    <p className="text-muted-foreground">
+                      Comece fazendo upload de fotos ou aplique para eventos disponíveis
                     </p>
-                    <p className="text-xs text-muted-foreground mb-2">
-                      {photo.campaign?.title}
-                    </p>
-                    <div className="flex justify-between items-center">
-                      <Badge variant="outline">
-                        {formatCurrency(photo.price)}
-                      </Badge>
-                      <Button size="sm" variant="ghost" className="h-6 px-2">
-                        <Edit className="h-3 w-3" />
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
+                    <Button onClick={() => setShowUploadModal(true)} className="gap-2" size="lg">
+                      <Upload className="h-5 w-5" />
+                      Fazer Upload de Fotos
+                    </Button>
+                    <Link to="/eventos-proximos">
+                      <Button variant="outline" className="gap-2 w-full sm:w-auto" size="lg">
+                        <CalendarPlus className="h-5 w-5" />
+                        Ver Eventos Disponíveis
                       </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            {allPhotos.length === 0 && (
-              <Card className="p-12 text-center">
-                <Upload className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium mb-2">Nenhuma foto carregada ainda</h3>
-                <p className="text-muted-foreground mb-4">
-                  Faça o upload das suas fotos para começar a vender
-                </p>
-                <Button onClick={() => setShowUploadModal(true)} className="gap-2">
-                  <Upload className="h-4 w-4" />
-                  Fazer Upload
-                </Button>
+                    </Link>
+                  </div>
+                </div>
               </Card>
             )}
           </TabsContent>
