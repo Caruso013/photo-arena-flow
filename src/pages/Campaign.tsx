@@ -856,7 +856,7 @@ const Campaign = () => {
               <AntiScreenshotProtection>
                 <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
                   {photos.map((photo, index) => (
-                    <Card key={photo.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                    <Card key={photo.id} className="overflow-hidden hover:shadow-lg transition-shadow group">
                       <div className="aspect-square bg-gradient-subtle relative">
                         <WatermarkedPhoto
                           src={photo.thumbnail_url || photo.watermarked_url}
@@ -872,7 +872,7 @@ const Campaign = () => {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="absolute top-2 left-2 bg-background/80 backdrop-blur-sm hover:bg-background w-9 h-9 sm:w-10 sm:h-10 active:scale-95 transition-transform"
+                            className="absolute top-2 left-2 bg-background/90 backdrop-blur-sm hover:bg-background w-9 h-9 sm:w-10 sm:h-10 active:scale-95 transition-transform z-20 shadow-lg"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleToggleFeatured(photo.id, photo.is_featured || false);
@@ -893,7 +893,7 @@ const Campaign = () => {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm hover:bg-background w-9 h-9 sm:w-10 sm:h-10 active:scale-95 transition-transform"
+                          className="absolute top-2 right-2 bg-background/90 backdrop-blur-sm hover:bg-background w-9 h-9 sm:w-10 sm:h-10 active:scale-95 transition-transform z-20 shadow-lg"
                           onClick={(e) => {
                             e.stopPropagation();
                             if (!user) {
@@ -917,32 +917,38 @@ const Campaign = () => {
                           />
                         </Button>
 
-                        <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button size="sm" variant="secondary" className="gap-1 h-8 sm:h-9 text-xs sm:text-sm">
-                                <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
-                                Ver
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent className="max-w-[95vw] sm:max-w-4xl w-[90vw]">
-                              <DialogHeader>
-                                <DialogTitle className="text-sm sm:text-base truncate">{photo.title || 'Foto'}</DialogTitle>
-                              </DialogHeader>
-                              <div className="relative">
-                                <AntiScreenshotProtection>
-                                  <WatermarkedPhoto
-                                    src={photo.watermarked_url}
-                                    alt={photo.title || 'Foto'}
-                                    position="full"
-                                    opacity={0.85}
-                                    imgClassName="w-full max-h-[60vh] sm:max-h-[70vh] object-contain rounded-lg"
-                                  />
-                                </AntiScreenshotProtection>
-                              </div>
-                            </DialogContent>
-                          </Dialog>
-                        </div>
+                        {/* Botão Ver Foto Maior - Sempre visível no mobile, hover no desktop */}
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button 
+                              size="sm" 
+                              variant="secondary" 
+                              className="absolute bottom-2 left-1/2 -translate-x-1/2 gap-1 h-8 sm:h-9 text-xs sm:text-sm z-20 shadow-lg sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+                            >
+                              <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
+                              Ver
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-[95vw] sm:max-w-4xl w-[90vw]">
+                            <DialogHeader>
+                              <DialogTitle className="text-sm sm:text-base truncate">{photo.title || 'Foto'}</DialogTitle>
+                            </DialogHeader>
+                            <div className="relative">
+                              <AntiScreenshotProtection>
+                                <WatermarkedPhoto
+                                  src={photo.watermarked_url}
+                                  alt={photo.title || 'Foto'}
+                                  position="full"
+                                  opacity={0.85}
+                                  imgClassName="w-full max-h-[60vh] sm:max-h-[70vh] object-contain rounded-lg"
+                                />
+                              </AntiScreenshotProtection>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                        
+                        {/* Overlay de hover sutil */}
+                        <div className="absolute inset-0 bg-black/0 sm:group-hover:bg-black/10 transition-colors pointer-events-none" />
                       </div>
                       <CardContent className="p-2 sm:p-3">
                         <div className="space-y-1 sm:space-y-2">
