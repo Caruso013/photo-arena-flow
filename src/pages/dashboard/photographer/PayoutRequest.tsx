@@ -168,14 +168,22 @@ const PayoutRequest = () => {
     }
 
     if (!validatePixKey(pixKey, pixKeyType)) {
-      toast.error('Chave PIX inválida');
+      toast.error('Chave PIX inválida para o tipo selecionado');
       return;
     }
 
     try {
       setSubmitting(true);
 
-      const { error } = await supabase
+      console.log('📤 Criando solicitação de repasse...', {
+        photographer_id: user.id,
+        amount: availableAmount,
+        pix_key_length: pixKey.length,
+        recipient_name: recipientName,
+      });
+
+      // Inserir direto - a trigger validate_payout_pix_data vai validar
+      const { data: insertedData, error: insertError } = await supabase
         .from('payout_requests')
         .insert({
           photographer_id: user.id,
@@ -184,23 +192,49 @@ const PayoutRequest = () => {
           recipient_name: recipientName,
           institution: institution || null,
           status: 'pending'
-        });
+        })
+        .select('id, amount, status')
+        .single();
 
-      if (error) throw error;
+      if (insertError) {
+        console.error('❌ Erro ao inserir payout_request:', insertError);
+        throw insertError;
+      }
 
-      toast.success('Solicitação de saque enviada com sucesso!');
+      console.log('✅ Solicitação criada com sucesso:', insertedData);
+
+      toast.success('Solicitação de saque enviada com sucesso!', {
+        description: `${formatCurrency(availableAmount)} será processado em até 2 dias úteis`
+      });
       
       // Limpar formulário
       setPixKey('');
       setRecipientName('');
       setInstitution('');
+      setPixKeyType('cpf');
       
       // Recarregar dados
-      fetchData();
+      await fetchData();
 
     } catch (error: any) {
-      console.error('Error requesting payout:', error);
-      toast.error(error.message || 'Erro ao solicitar saque');
+      console.error('❌ Erro ao solicitar repasse:', error);
+      
+      // Mensagens de erro mais específicas
+      let errorMessage = 'Erro ao solicitar saque. Tente novamente.';
+      
+      if (error.message?.includes('recipient_name')) {
+        errorMessage = 'Nome do beneficiário é obrigatório';
+      } else if (error.message?.includes('pix_key')) {
+        errorMessage = 'Chave PIX inválida';
+      } else if (error.message?.includes('amount')) {
+        errorMessage = 'Valor inválido';
+      } else if (error.code === '23505') {
+        errorMessage = 'Você já possui uma solicitação pendente';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setSubmitting(false);
     }
