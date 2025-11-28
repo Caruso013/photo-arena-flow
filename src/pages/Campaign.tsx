@@ -420,6 +420,37 @@ const Campaign = () => {
       return;
     }
 
+    // Se está tentando marcar como destaque, verificar limite
+    if (!currentValue) {
+      // Contar quantas fotos já estão em destaque
+      const { count, error: countError } = await supabase
+        .from('photos')
+        .select('id', { count: 'exact', head: true })
+        .eq('photographer_id', user.id)
+        .eq('is_featured', true)
+        .eq('is_available', true);
+
+      if (countError) {
+        console.error('Error counting featured photos:', countError);
+        toast({
+          title: "Erro",
+          description: "Não foi possível verificar o limite de fotos em destaque",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const MAX_FEATURED = 15;
+      if ((count || 0) >= MAX_FEATURED) {
+        toast({
+          title: "Limite atingido",
+          description: `Você já tem ${MAX_FEATURED} fotos em destaque. Remova algumas para adicionar novas.`,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     try {
       setTogglingFeatured(photoId);
       
