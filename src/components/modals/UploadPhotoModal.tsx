@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
-import { Upload, X, Camera, CheckCircle2, FolderOpen, Image as ImageIcon, Info } from 'lucide-react';
+import { Upload, X, Camera, CheckCircle2, FolderOpen, Image as ImageIcon, Info, RefreshCw } from 'lucide-react';
 import { backgroundUploadService } from '@/lib/backgroundUploadService';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
@@ -41,6 +41,7 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
   const [creatingNewFolder, setCreatingNewFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [newFolderDescription, setNewFolderDescription] = useState('');
+  const [refreshingSubEvents, setRefreshingSubEvents] = useState(false);
   
   useEffect(() => {
     fetchCampaigns();
@@ -135,8 +136,9 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
     }
   };
 
-  const fetchSubEvents = async (campaignId: string) => {
+  const fetchSubEvents = async (campaignId: string, showToast = false) => {
     try {
+      setRefreshingSubEvents(true);
       const { data, error } = await supabase
         .from('sub_events')
         .select('id, title, campaign_id')
@@ -146,6 +148,13 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
 
       if (error) throw error;
       setSubEvents(data || []);
+      
+      if (showToast) {
+        toast({
+          title: "✅ Lista atualizada",
+          description: `${data?.length || 0} álbun(s) encontrado(s)`,
+        });
+      }
     } catch (error) {
       console.error('Error fetching sub events:', error);
       toast({
@@ -153,6 +162,14 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
         description: "Não foi possível carregar os álbuns deste evento.",
         variant: "destructive",
       });
+    } finally {
+      setRefreshingSubEvents(false);
+    }
+  };
+
+  const handleRefreshSubEvents = () => {
+    if (selectedCampaign) {
+      fetchSubEvents(selectedCampaign, true);
     }
   };
 
@@ -351,24 +368,44 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
           {selectedCampaign && (
             <div className="space-y-3 p-4 bg-muted/30 border border-border/50 rounded-xl">
               <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-1">
                   <div className="h-8 w-8 rounded-lg bg-background flex items-center justify-center flex-shrink-0">
                     <FolderOpen className="h-4 w-4 text-muted-foreground" />
                   </div>
-                  <Label className="font-semibold text-base">
-                    Álbum (Opcional)
-                  </Label>
+                  <div className="flex items-center gap-2">
+                    <Label className="font-semibold text-base">
+                      Álbum (Opcional)
+                    </Label>
+                    {subEvents.length > 0 && (
+                      <span className="text-xs text-muted-foreground">
+                        ({subEvents.length})
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setCreatingNewFolder(!creatingNewFolder)}
-                  className="gap-1 h-9"
-                >
-                  <FolderOpen className="h-4 w-4" />
-                  {creatingNewFolder ? 'Cancelar' : 'Novo Álbum'}
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleRefreshSubEvents}
+                    disabled={refreshingSubEvents}
+                    className="gap-1 h-8 px-2"
+                    title="Atualizar lista de álbuns"
+                  >
+                    <RefreshCw className={`h-3.5 w-3.5 ${refreshingSubEvents ? 'animate-spin' : ''}`} />
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setCreatingNewFolder(!creatingNewFolder)}
+                    className="gap-1 h-9"
+                  >
+                    <FolderOpen className="h-4 w-4" />
+                    {creatingNewFolder ? 'Cancelar' : 'Novo Álbum'}
+                  </Button>
+                </div>
               </div>
               
               {/* Formulário de criar pasta */}
