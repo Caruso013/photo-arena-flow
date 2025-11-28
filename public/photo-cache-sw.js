@@ -1,10 +1,12 @@
 /**
- * Service Worker para Cache de Fotos
- * Estratégia: Cache-first para thumbnails, Network-first para fotos grandes
+ * Service Worker para Cache de Fotos - OTIMIZADO
+ * Estratégia agressiva para reduzir Cached Egress do Supabase
+ * Cache-first para thumbnails e medium, Network-first apenas para large
  */
 
-const CACHE_NAME = 'sta-fotos-v1';
-const IMAGE_CACHE_NAME = 'sta-images-v1';
+const CACHE_NAME = 'sta-fotos-v3';
+const IMAGE_CACHE_NAME = 'sta-images-v3';
+const MAX_CACHE_SIZE = 200; // Máximo de imagens no cache
 
 // URLs que devem sempre ser cached
 const STATIC_ASSETS = [
@@ -47,16 +49,19 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Estratégia baseada no tamanho da imagem (via query params)
+  // Estratégia AGRESSIVA baseada no tamanho da imagem
   const params = new URLSearchParams(url.search);
   const width = parseInt(params.get('width') || '0');
-  const isThumbnail = width <= 400;
+  const isThumbnail = width <= 300; // Thumbnails até 300px
+  const isMedium = width > 300 && width <= 600; // Medium até 600px
+  const isLarge = width > 600; // Large acima de 600px
 
-  if (isThumbnail) {
-    // Cache-first para thumbnails (pequenos)
+  // Cache-first para thumbnails e medium (economiza MUITO Cached Egress)
+  if (isThumbnail || isMedium) {
     event.respondWith(
       caches.match(request).then((cachedResponse) => {
         if (cachedResponse) {
+          // Retornar do cache IMEDIATAMENTE
           return cachedResponse;
         }
 
@@ -72,22 +77,33 @@ self.addEventListener('fetch', (event) => {
         });
       })
     );
-  } else {
-    // Network-first para imagens grandes
+  } else if (isLarge) {
+    // Cache-first também para large (mudança para economizar Cached Egress)
+    // Usuário já viu o thumbnail/medium, então pode esperar um pouco
     event.respondWith(
-      fetch(request)
-        .then((response) => {
-          // Salvar no cache para acesso offline
+      caches.match(request).then((cachedResponse) => {
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+
+        return fetch(request).then((response) => {
+          // Salvar no cache
           const responseToCache = response.clone();
-          caches.open(IMAGE_CACHE_NAME).then((cache) => {
+          caches.open(IMAGE_CACHE_NAME).then(async (cache) => {
+            // Verificar tamanho do cache
+            const keys = await cache.keys();
+            if (keys.length > MAX_CACHE_SIZE) {
+              // Remover primeira entrada (mais antiga)
+              await cache.delete(keys[0]);
+            }
             cache.put(request, responseToCache);
           });
           return response;
-        })
-        .catch(() => {
+        }).catch(() => {
           // Fallback para cache se offline
           return caches.match(request);
-        })
+        });
+      })
     );
   }
 });

@@ -11,12 +11,13 @@ export interface ImageSizeConfig {
   quality: number;
 }
 
-// Configurações de tamanho otimizadas para diferentes usos
+// Configurações de tamanho otimizadas para reduzir Cached Egress
+// Qualidades mais baixas para economizar bandwidth
 export const IMAGE_SIZE_CONFIG: Record<ImageSize, ImageSizeConfig | null> = {
-  blur: { width: 50, height: 50, quality: 20 },      // 5-10KB - blur inicial
-  thumbnail: { width: 400, height: 300, quality: 75 }, // 30-50KB - preview
-  medium: { width: 800, height: 600, quality: 85 },    // 100-200KB - visualização
-  large: { width: 1200, height: 900, quality: 90 },    // 300-500KB - compra
+  blur: { width: 40, height: 40, quality: 15 },      // 3-5KB - blur inicial (reduzido)
+  thumbnail: { width: 300, height: 225, quality: 65 }, // 20-35KB - preview (reduzido)
+  medium: { width: 600, height: 450, quality: 75 },    // 60-100KB - visualização (reduzido)
+  large: { width: 1000, height: 750, quality: 80 },    // 150-250KB - compra (reduzido)
   original: null // Sem transformação
 };
 
@@ -35,7 +36,7 @@ export function getOptimizedImageUrl(
   if (!config) return url;
 
   try {
-    // Adicionar parâmetros de transformação na URL
+    // Adicionar parâmetros de transformação na URL + Cache headers
     const urlObj = new URL(url);
     const params = new URLSearchParams({
       width: config.width.toString(),
@@ -46,7 +47,19 @@ export function getOptimizedImageUrl(
     });
 
     urlObj.search = params.toString();
-    return urlObj.toString();
+    
+    // URL com parâmetros otimizados
+    const optimizedUrl = urlObj.toString();
+    
+    // Cache no localStorage para evitar requisições duplicadas
+    const cacheKey = `img_${size}_${url}`;
+    try {
+      localStorage.setItem(cacheKey, optimizedUrl);
+    } catch (e) {
+      // Ignorar erro de localStorage cheio
+    }
+    
+    return optimizedUrl;
   } catch (error) {
     console.error('Error generating optimized URL:', error);
     return url;

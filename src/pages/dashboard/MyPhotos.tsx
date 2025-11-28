@@ -50,7 +50,7 @@ const MyPhotos = () => {
         .eq('photographer_id', user.id)
         .order('upload_sequence', { ascending: true })
         .order('created_at', { ascending: true })
-        .limit(50);
+        .limit(20); // Reduzido de 50 para 20 para economizar Cached Egress
 
       if (error) throw error;
       

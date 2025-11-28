@@ -109,7 +109,8 @@ const Campaign = () => {
   // Paginação
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const PHOTOS_PER_PAGE = 24;
+  // Reduzido de 24 para 12 para economizar Cached Egress
+  const PHOTOS_PER_PAGE = 12;
 
   // Memoizar contagem total de fotos
   const totalPhotos = useMemo(() => {

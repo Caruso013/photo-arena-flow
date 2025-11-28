@@ -240,6 +240,19 @@ const PhotographerDashboard = () => {
         return;
       }
 
+      // Verificar se já existe solicitação pendente ou aprovada
+      const { data: existingRequests } = await supabase
+        .from('payout_requests')
+        .select('id, status')
+        .eq('photographer_id', user.id)
+        .in('status', ['pending', 'approved']);
+
+      if (existingRequests && existingRequests.length > 0) {
+        const status = existingRequests[0].status === 'pending' ? 'pendente' : 'aprovada';
+        setPayoutError(`Você já possui uma solicitação ${status}. Aguarde o processamento antes de solicitar novo repasse.`);
+        return;
+      }
+
       const { error } = await supabase
         .from('payout_requests')
         .insert({
@@ -253,6 +266,9 @@ const PhotographerDashboard = () => {
       if (error) throw error;
 
       setPayoutAmount('');
+      setPixKey('');
+      setRecipientName('');
+      setInstitution('');
       await fetchPayoutRequests();
     } catch (error) {
       console.error('Error requesting payout:', error);
