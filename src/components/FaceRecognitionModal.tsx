@@ -156,24 +156,38 @@ export const FaceRecognitionModal: React.FC<FaceRecognitionModalProps> = ({
           {/* Instruções */}
           <div className="bg-muted rounded-lg p-3 sm:p-4 space-y-2">
             <h4 className="font-semibold text-sm flex items-center gap-2">
-              📸 Como usar:
+              📸 Como obter melhores resultados:
             </h4>
             <ul className="text-xs sm:text-sm text-muted-foreground space-y-1">
-              <li>✓ Posicione seu rosto dentro do círculo</li>
-              <li>✓ Certifique-se de estar bem iluminado</li>
-              <li>✓ Mantenha o rosto centralizado e visível</li>
-              <li>✓ Clique em "Buscar Minhas Fotos" para iniciar</li>
+              <li>✓ Posicione seu rosto centralizado no círculo</li>
+              <li>✓ Use boa iluminação (evite contraluz)</li>
+              <li>✓ Remova óculos escuros, chapéus ou máscaras</li>
+              <li>✓ Mantenha o rosto visível e sem obstruções</li>
+              <li>✓ Fique a aproximadamente 50cm da câmera</li>
             </ul>
             
             {/* Status da IA */}
-            <div className="mt-3 p-2 sm:p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md">
-              <p className="text-xs font-medium text-green-900 dark:text-green-100 flex items-center gap-1">
-                <span className="text-base">🤖</span> {modelsReady ? 'IA Pronta!' : 'Carregando IA...'}
+            <div className={`mt-3 p-2 sm:p-3 border rounded-md ${
+              modelsReady 
+                ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+                : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
+            }`}>
+              <p className={`text-xs font-medium flex items-center gap-1 ${
+                modelsReady 
+                  ? 'text-green-900 dark:text-green-100'
+                  : 'text-yellow-900 dark:text-yellow-100'
+              }`}>
+                <span className="text-base">{modelsReady ? '✅' : '⏳'}</span> 
+                {modelsReady ? 'IA Pronta para Buscar!' : 'Carregando IA...'}
               </p>
-              <p className="text-xs text-green-800 dark:text-green-200 mt-1">
+              <p className={`text-xs mt-1 ${
+                modelsReady 
+                  ? 'text-green-800 dark:text-green-200'
+                  : 'text-yellow-800 dark:text-yellow-200'
+              }`}>
                 {modelsReady 
-                  ? 'Reconhecimento facial com inteligência artificial ativado. Seus rostos serão identificados com precisão.'
-                  : 'Aguarde enquanto carregamos os modelos de reconhecimento facial...'}
+                  ? 'Tecnologia de reconhecimento facial com detecção adaptativa e múltiplos níveis de confiança.'
+                  : 'Carregando modelos neurais de detecção facial... Aguarde alguns segundos.'}
               </p>
             </div>
             

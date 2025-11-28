@@ -59,14 +59,15 @@ export async function detectFaces(
       const { canvas, wasResized } = resizeImageForMobile(imageSource);
       processImage = canvas;
       if (wasResized) {
-        console.log('📐 Imagem redimensionada para otimizar performance mobile');
+        console.log('📐 Imagem redimensionada para otimizar performance');
       }
     }
 
+    const config = getOptimizedConfig();
     const detections = await faceapi
       .detectAllFaces(processImage, new faceapi.TinyFaceDetectorOptions({
-        inputSize: 224, // Otimizado para mobile
-        scoreThreshold: 0.5,
+        inputSize: config.inputSize,
+        scoreThreshold: config.scoreThreshold,
       }))
       .withFaceLandmarks()
       .withFaceDescriptors();
@@ -76,7 +77,7 @@ export async function detectFaces(
       return [];
     }
 
-    console.log(`✅ Detectados ${detections.length} rostos`);
+    console.log(`✅ Detectados ${detections.length} rosto(s)`);
 
     return detections.map(detection => ({
       descriptor: detection.descriptor,
@@ -162,14 +163,19 @@ export function hasWebGPUSupport(): boolean {
 export function getOptimizedConfig() {
   const isMobile = isMobileDevice();
   const hasWebGPU = hasWebGPUSupport();
+  
+  // Detectar performance do dispositivo
+  const isLowEnd = isMobile && navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4;
 
   return {
     isMobile,
     hasWebGPU,
+    isLowEnd,
     maxImageWidth: isMobile ? 480 : 640,
     maxImageHeight: isMobile ? 640 : 480,
-    batchSize: isMobile ? 3 : 5,
-    maxPhotosToProcess: isMobile ? 50 : 100,
-    inputSize: isMobile ? 224 : 320,
+    batchSize: isLowEnd ? 2 : isMobile ? 3 : 5, // Processar menos fotos por vez em dispositivos fracos
+    maxPhotosToProcess: isLowEnd ? 30 : isMobile ? 50 : 150, // Limitar fotos em dispositivos fracos
+    inputSize: isLowEnd ? 160 : isMobile ? 224 : 320, // Tamanho de entrada menor em dispositivos fracos
+    scoreThreshold: 0.45, // Threshold mais baixo para detectar mais rostos
   };
 }
