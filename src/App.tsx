@@ -14,7 +14,7 @@ import { useWebVitals } from "@/hooks/useWebVitals";
 import { lazy, Suspense } from "react";
 
 // Páginas principais (carregamento imediato)
-import Index from "./pages/Index";
+import Events from "./pages/Events";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -23,7 +23,7 @@ const OrganizationAuth = lazy(() => import("./pages/OrganizationAuth"));
 
 // Lazy loading para páginas secundárias
 const Dashboard = lazy(() => import("./pages/Dashboard"));
-const Events = lazy(() => import("./pages/Events"));
+const PhotoHighlights = lazy(() => import("./pages/PhotoHighlights"));
 const Cart = lazy(() => import("./pages/Cart"));
 const Contato = lazy(() => import("./pages/Contato"));
 const AdminLogin = lazy(() => import("./pages/AdminLogin"));
@@ -121,7 +121,7 @@ const AppContent = () => {
     >
       <Suspense fallback={<PageLoader />}>
         <Routes>
-          <Route path="/" element={<Index />} />
+          <Route path="/" element={<Events />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/auth/organization" element={<OrganizationAuth />} />
           <Route path="/dashboard" element={<Dashboard />}>
@@ -158,7 +158,7 @@ const AppContent = () => {
             <Route path="photographer/settings" element={<PhotographerSettings />} />
             <Route path="organization/revenue" element={<OrganizationRevenue />} />
           </Route>
-          <Route path="/events" element={<Events />} />
+          <Route path="/highlights" element={<PhotoHighlights />} />
           <Route path="/cart" element={<Cart />} />
           <Route path="/eventos-proximos" element={<EventosProximos />} />
           <Route path="/campaign/:id" element={<Campaign />} />
