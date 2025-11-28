@@ -79,27 +79,77 @@ export const PayoutRequestsManager = () => {
   const handleProcess = async (requestId: string, newStatus: 'approved' | 'rejected') => {
     setProcessingId(requestId);
     try {
-      const { error } = await supabase
+      const request = requests.find(r => r.id === requestId);
+      if (!request) {
+        throw new Error('Solicitação não encontrada');
+      }
+
+      console.log('🔄 Processando repasse:', {
+        requestId,
+        newStatus,
+        amount: request.amount,
+        photographer: request.photographer?.full_name
+      });
+
+      // Buscar user_id atual (admin que está aprovando)
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      
+      const { error: updateError } = await supabase
         .from('payout_requests')
         .update({
           status: newStatus,
           processed_at: new Date().toISOString(),
+          processed_by: currentUser?.id || null,
           notes: notes[requestId] || null
         })
         .eq('id', requestId);
 
-      if (error) throw error;
+      if (updateError) {
+        console.error('❌ Erro ao atualizar status:', updateError);
+        throw updateError;
+      }
+
+      console.log('✅ Status atualizado com sucesso');
+
+      // Se aprovado, enviar email de notificação
+      if (newStatus === 'approved') {
+        console.log('📧 Enviando email de aprovação...');
+        
+        try {
+          const { error: emailError } = await supabase.functions.invoke('send-payout-approved-email', {
+            body: {
+              photographerEmail: request.photographer?.email,
+              photographerName: request.photographer?.full_name || 'Fotógrafo',
+              amount: request.amount,
+              requestedAt: request.requested_at,
+              approvedAt: new Date().toISOString(),
+              paymentMethod: 'PIX',
+              estimatedDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString() // +2 dias
+            }
+          });
+
+          if (emailError) {
+            console.warn('⚠️ Erro ao enviar email (não crítico):', emailError);
+          } else {
+            console.log('✅ Email enviado com sucesso');
+          }
+        } catch (emailError) {
+          console.warn('⚠️ Erro ao enviar email:', emailError);
+          // Não bloquear a aprovação por erro no email
+        }
+      }
 
       toast.success(
         newStatus === 'approved' 
-          ? 'Repasse aprovado com sucesso!' 
+          ? `Repasse de ${formatCurrency(request.amount)} aprovado!` 
           : 'Repasse rejeitado'
       );
       
-      fetchPayoutRequests();
-    } catch (error) {
-      console.error('Erro ao processar repasse:', error);
-      toast.error('Erro ao processar solicitação');
+      await fetchPayoutRequests();
+      
+    } catch (error: any) {
+      console.error('❌ Erro ao processar repasse:', error);
+      toast.error(error.message || 'Erro ao processar solicitação');
     } finally {
       setProcessingId(null);
     }
