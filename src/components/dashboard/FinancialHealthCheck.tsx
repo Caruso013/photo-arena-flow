@@ -111,16 +111,16 @@ export const FinancialHealthCheck = () => {
       
       if (Math.abs(totalRevenue - totalRevenueShares) > 1) {
         newErrors.push(
-          `Discrepância de ${formatCurrency(Math.abs(totalRevenue - totalRevenueShares))} entre purchases e revenue_shares`
+          `💰 Discrepância de ${formatCurrency(Math.abs(totalRevenue - totalRevenueShares))} entre vendas confirmadas e comissões distribuídas`
         );
       }
 
       if (orphanedShares > 0) {
-        newErrors.push(`${orphanedShares} revenue_shares órfãs (sem purchase correspondente)`);
+        newErrors.push(`🔗 ${orphanedShares} registro(s) de comissão sem venda correspondente (dados órfãos)`);
       }
 
       if (missingShares > 0) {
-        newErrors.push(`${missingShares} purchases sem revenue_share correspondente`);
+        newErrors.push(`⚠️ ${missingShares} venda(s) confirmada(s) sem comissão distribuída`);
       }
 
       setMetrics({
@@ -223,18 +223,18 @@ export const FinancialHealthCheck = () => {
               </div>
               <div className="text-2xl font-bold">{formatCurrency(metrics.totalRevenue)}</div>
               <div className="text-xs text-muted-foreground mt-1">
-                {metrics.totalPurchases} vendas
+                {metrics.totalPurchases} vendas confirmadas
               </div>
             </div>
 
             <div className="p-4 rounded-lg border bg-card">
               <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
                 <TrendingUp className="h-4 w-4" />
-                Revenue Shares
+                Divisões de Receita
               </div>
               <div className="text-2xl font-bold">{metrics.totalRevenueShares}</div>
               <div className="text-xs text-muted-foreground mt-1">
-                registros criados
+                registros de comissão
               </div>
             </div>
 
@@ -262,7 +262,7 @@ export const FinancialHealthCheck = () => {
             </div>
 
             <div className="p-4 rounded-lg border bg-card">
-              <div className="text-muted-foreground text-sm mb-1">Integridade</div>
+              <div className="text-muted-foreground text-sm mb-1">Integridade dos Dados</div>
               <div className="text-2xl font-bold">
                 {metrics.orphanedRevenueShares === 0 && metrics.missingRevenueShares === 0 ? '100%' : '⚠️'}
               </div>

@@ -48,6 +48,7 @@ const PayoutRequest = () => {
 
     try {
       setLoading(true);
+      console.log('🔄 Carregando dados financeiros do fotógrafo:', user.id);
 
       // Buscar saldo disponível e pendente
       const { data: earnings, error: earningsError } = await supabase
@@ -55,7 +56,12 @@ const PayoutRequest = () => {
         .select('photographer_amount, purchase:purchases!inner(status, created_at)')
         .eq('photographer_id', user.id);
 
-      if (earningsError) throw earningsError;
+      if (earningsError) {
+        console.error('❌ Erro ao buscar earnings:', earningsError);
+        throw earningsError;
+      }
+
+      console.log('✅ Revenue shares encontrados:', earnings?.length || 0);
 
       const now = new Date();
       const securityPeriod = 12 * 60 * 60 * 1000; // 12 horas
@@ -76,6 +82,11 @@ const PayoutRequest = () => {
         }
       });
 
+      console.log('💰 Saldos calculados:', {
+        available: formatCurrency(available),
+        pending: formatCurrency(pending)
+      });
+
       // Buscar solicitações pendentes ou aprovadas
       const { data: payoutRequests, error: payoutError } = await supabase
         .from('payout_requests')
@@ -83,9 +94,14 @@ const PayoutRequest = () => {
         .eq('photographer_id', user.id)
         .in('status', ['pending', 'approved']);
 
-      if (payoutError) throw payoutError;
+      if (payoutError) {
+        console.error('❌ Erro ao buscar payout requests:', payoutError);
+        throw payoutError;
+      }
 
       const requestedAmount = payoutRequests?.reduce((sum, req) => sum + req.amount, 0) || 0;
+      console.log('📤 Valor já solicitado:', formatCurrency(requestedAmount));
+      
       available -= requestedAmount;
 
       setAvailableAmount(Math.max(0, available));
@@ -94,6 +110,12 @@ const PayoutRequest = () => {
       // Verificar se há solicitação pendente
       const hasPending = payoutRequests && payoutRequests.length > 0;
       setHasPendingRequest(hasPending);
+
+      console.log('✅ Status final:', {
+        availableAmount: formatCurrency(Math.max(0, available)),
+        pendingAmount: formatCurrency(pending),
+        hasPendingRequest: hasPending
+      });
 
       // Buscar histórico de solicitações
       const { data: history, error: historyError } = await supabase
@@ -107,7 +129,7 @@ const PayoutRequest = () => {
       setRequests(history || []);
 
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error('❌ Error fetching data:', error);
       toast.error('Erro ao carregar dados');
     } finally {
       setLoading(false);

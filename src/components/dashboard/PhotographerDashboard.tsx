@@ -386,27 +386,19 @@ const PhotographerDashboard = () => {
 
         {/* Ações Principais - Cards Grandes */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-          {/* Criar Álbum */}
+          {/* Criar Evento */}
           <Card 
-            className="cursor-pointer hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 border-2 border-transparent hover:border-yellow-500/30 bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-950/20 dark:to-orange-950/20 group overflow-hidden"
-            onClick={() => {
-              if (campaigns.length === 0) {
-                const campaignsTab = document.querySelector('[value="campaigns"]') as HTMLButtonElement;
-                campaignsTab?.click();
-              } else {
-                setSelectedCampaignForAlbum({ id: campaigns[0].id, title: campaigns[0].title });
-                setShowCreateAlbumModal(true);
-              }
-            }}
+            className="hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 border-2 border-transparent hover:border-yellow-500/30 bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-950/20 dark:to-orange-950/20 group overflow-hidden"
           >
             <CardContent className="p-6 sm:p-8 flex flex-col items-center justify-center text-center h-[180px] sm:h-[200px] relative">
               <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/5 to-orange-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
               <div className="relative z-10 space-y-3 sm:space-y-4">
                 <div className="h-16 w-16 sm:h-20 sm:w-20 mx-auto rounded-2xl bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center shadow-lg group-hover:shadow-xl group-hover:scale-110 transition-all duration-300">
-                  <Camera className="h-8 w-8 sm:h-10 sm:w-10 text-white" />
+                  <CalendarPlus className="h-8 w-8 sm:h-10 sm:w-10 text-white" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-lg sm:text-xl text-foreground">Criar Álbum</h3>
+                  <CreateCampaignModal onCampaignCreated={fetchData} />
+                  <p className="text-xs text-muted-foreground mt-1">Clique para criar</p>
                 </div>
               </div>
             </CardContent>
@@ -449,22 +441,27 @@ const PhotographerDashboard = () => {
           </Card>
 
           {/* Disponível pra Repasse */}
-          <Card className="hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-primary/10 dark:from-primary/10 dark:to-primary/5 group overflow-hidden">
-            <CardContent className="p-6 sm:p-8 flex flex-col items-center justify-center text-center h-[180px] sm:h-[200px] relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-primary/5" />
-              <div className="relative z-10 space-y-3">
-                <div className="h-14 w-14 sm:h-16 sm:w-16 mx-auto rounded-2xl bg-primary/20 flex items-center justify-center shadow-lg">
-                  <DollarSign className="h-7 w-7 sm:h-8 sm:w-8 text-primary" />
+          <Link to="/dashboard/photographer/payout-request" className="block">
+            <Card className="cursor-pointer hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 border-2 border-green-200 dark:border-green-900 hover:border-green-300 dark:hover:border-green-700 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 group overflow-hidden">
+              <CardContent className="p-6 sm:p-8 flex flex-col items-center justify-center text-center h-[180px] sm:h-[200px] relative">
+                <div className="absolute inset-0 bg-gradient-to-br from-green-400/5 to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <div className="relative z-10 space-y-3">
+                  <div className="h-14 w-14 sm:h-16 sm:w-16 mx-auto rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg group-hover:shadow-xl group-hover:scale-110 transition-all duration-300">
+                    <DollarSign className="h-7 w-7 sm:h-8 sm:w-8 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground mb-2">✅ Disponível p/ Repasse</p>
+                    <p className="text-2xl sm:text-3xl font-bold text-green-600 dark:text-green-400 group-hover:scale-105 transition-transform">
+                      {formatCurrency(stats.availableAmount)}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1 group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors font-medium">
+                      Clique para solicitar →
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs font-semibold text-muted-foreground mb-2">✅ Disponível pra Repasse</p>
-                  <p className="text-2xl sm:text-3xl font-bold text-primary">
-                    {formatCurrency(stats.availableAmount)}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
 
         {/* Main Content Tabs */}
