@@ -6,7 +6,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ResponsiveModal, ResponsiveModalHeader, ResponsiveModalTitle, ResponsiveModalDescription } from '@/components/ui/responsive-modal';
 import { toast } from '@/hooks/use-toast';
-import { FolderPlus, Calendar, MapPin } from 'lucide-react';
+import { FolderPlus, Calendar, MapPin, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface CreateAlbumModalProps {
   campaignId: string;
@@ -23,7 +25,9 @@ const CreateAlbumModal: React.FC<CreateAlbumModalProps> = ({
   onClose, 
   onAlbumCreated 
 }) => {
+  const { profile } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -40,8 +44,10 @@ const CreateAlbumModal: React.FC<CreateAlbumModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     
     if (!formData.title.trim()) {
+      setError("Título do álbum é obrigatório");
       toast({
         title: "Erro",
         description: "Título do álbum é obrigatório",
@@ -50,24 +56,56 @@ const CreateAlbumModal: React.FC<CreateAlbumModalProps> = ({
       return;
     }
 
+    if (!profile?.id) {
+      setError("Você precisa estar logado para criar um álbum");
+      toast({
+        title: "Erro",
+        description: "Você precisa estar logado para criar um álbum",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setLoading(true);
-      
-      const { error } = await supabase
+      console.log('Creating album:', { campaignId, userId: profile.id, title: formData.title });
+
+      // Verificar se o fotógrafo está atribuído à campanha
+      const { data: assignment, error: assignmentError } = await supabase
+        .from('campaign_photographers')
+        .select('is_active')
+        .eq('campaign_id', campaignId)
+        .eq('photographer_id', profile.id)
+        .single();
+
+      if (assignmentError || !assignment?.is_active) {
+        console.error('Assignment check failed:', assignmentError);
+        throw new Error('Você não tem permissão para criar álbuns neste evento. Verifique se você está atribuído a esta campanha.');
+      }
+
+      // Criar o álbum
+      const { data, error: insertError } = await supabase
         .from('sub_events')
         .insert({
           campaign_id: campaignId,
-          title: formData.title,
-          description: formData.description || null,
-          location: formData.location || null,
+          title: formData.title.trim(),
+          description: formData.description?.trim() || null,
+          location: formData.location?.trim() || null,
           event_time: formData.event_time || null,
           is_active: true,
-        });
+        })
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (insertError) {
+        console.error('Insert error:', insertError);
+        throw insertError;
+      }
+
+      console.log('Album created successfully:', data);
 
       toast({
-        title: "Sucesso",
+        title: "✅ Sucesso!",
         description: "Álbum criado com sucesso!",
       });
 
@@ -81,11 +119,25 @@ const CreateAlbumModal: React.FC<CreateAlbumModalProps> = ({
       
       onAlbumCreated();
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating album:', error);
+      
+      let errorMessage = "Falha ao criar álbum";
+      
+      if (error.message?.includes('permissão')) {
+        errorMessage = error.message;
+      } else if (error.code === '42501') {
+        errorMessage = "Você não tem permissão para criar álbuns neste evento";
+      } else if (error.code === '23503') {
+        errorMessage = "Campanha inválida ou não encontrada";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      setError(errorMessage);
       toast({
-        title: "Erro",
-        description: "Falha ao criar álbum",
+        title: "Erro ao criar álbum",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -108,6 +160,12 @@ const CreateAlbumModal: React.FC<CreateAlbumModalProps> = ({
       </ResponsiveModalHeader>
 
         <form onSubmit={handleSubmit} className="space-y-5 p-6">
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
           <div className="space-y-3">
             <Label htmlFor="title" className="font-semibold">Título do Álbum *</Label>
             <Input
