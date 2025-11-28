@@ -31,7 +31,8 @@ import {
   Image as ImageIcon,
   Heart,
   ScanFace,
-  Edit
+  Edit,
+  Star
 } from 'lucide-react';
 import { useFavorites } from '@/hooks/useFavorites';
 import { FaceRecognitionModal } from '@/components/FaceRecognitionModal';
@@ -78,6 +79,7 @@ interface Photo {
   thumbnail_url: string | null;
   price: number;
   is_available: boolean;
+  is_featured?: boolean;
 }
 
 const Campaign = () => {
@@ -86,6 +88,7 @@ const Campaign = () => {
   const { user, profile } = useAuth();
   const { addToCart } = useCart();
   const { toggleFavorite, isFavorited } = useFavorites();
+  const [togglingFeatured, setTogglingFeatured] = useState<string | null>(null);
   
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [campaignPhotographers, setCampaignPhotographers] = useState<Array<{
@@ -297,7 +300,7 @@ const Campaign = () => {
       // Depois buscar as fotos
       let query = supabase
         .from('photos')
-        .select('id, title, original_url, watermarked_url, thumbnail_url, price, is_available, sub_event_id')
+        .select('id, title, original_url, watermarked_url, thumbnail_url, price, is_available, is_featured, sub_event_id')
         .eq('campaign_id', campaign.id)
         .eq('is_available', true)
         .range(from, to)
@@ -402,6 +405,60 @@ const Campaign = () => {
       setPurchasing(false);
     }
   };
+
+  const handleToggleFeatured = async (photoId: string, currentValue: boolean) => {
+    if (!user || !campaign) return;
+    
+    // Verificar se o usuário é o fotógrafo ou admin
+    const isPhotographer = campaign.photographer_id === user.id || profile?.role === 'admin';
+    if (!isPhotographer) {
+      toast({
+        title: "Sem permissão",
+        description: "Apenas o fotógrafo pode marcar fotos como destaque",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setTogglingFeatured(photoId);
+      
+      const { error } = await supabase
+        .from('photos')
+        .update({ is_featured: !currentValue })
+        .eq('id', photoId);
+
+      if (error) throw error;
+
+      // Atualizar localmente
+      setPhotos(prevPhotos => 
+        prevPhotos.map(p => 
+          p.id === photoId ? { ...p, is_featured: !currentValue } : p
+        )
+      );
+
+      toast({
+        title: !currentValue ? "Foto marcada como destaque! ⭐" : "Foto removida dos destaques",
+        description: !currentValue 
+          ? "Esta foto aparecerá na página de destaques" 
+          : "Esta foto não aparecerá mais nos destaques",
+      });
+    } catch (error) {
+      console.error('Error toggling featured:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar o status da foto",
+        variant: "destructive",
+      });
+    } finally {
+      setTogglingFeatured(null);
+    }
+  };
+
+  // Verificar se o usuário é o fotógrafo ou admin
+  const isPhotographerOrAdmin = campaign && (
+    campaign.photographer_id === user?.id || profile?.role === 'admin'
+  );
 
   if (loading) {
     return (
@@ -775,9 +832,31 @@ const Campaign = () => {
                           alt={photo.title || 'Foto'}
                           position="full"
                           opacity={0.85}
-                          imgClassName="w-full h-full object-cover"
+                           imgClassName="w-full h-full object-cover"
                           loading={index < 8 ? "eager" : "lazy"}
                         />
+                        
+                        {/* Botão Destaque (apenas para fotógrafos) */}
+                        {isPhotographerOrAdmin && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="absolute top-2 left-2 bg-background/80 backdrop-blur-sm hover:bg-background w-9 h-9 sm:w-10 sm:h-10 active:scale-95 transition-transform"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleToggleFeatured(photo.id, photo.is_featured || false);
+                            }}
+                            disabled={togglingFeatured === photo.id}
+                          >
+                            <Star 
+                              className={`h-4 w-4 sm:h-5 sm:w-5 transition-all ${
+                                photo.is_featured 
+                                  ? 'fill-yellow-500 text-yellow-500 animate-in zoom-in-50 duration-200' 
+                                  : 'text-foreground'
+                              }`}
+                            />
+                          </Button>
+                        )}
                         
                         {/* Botão Favorito */}
                         <Button

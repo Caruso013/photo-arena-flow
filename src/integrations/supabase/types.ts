@@ -881,6 +881,7 @@ export type Database = {
           created_at: string
           id: string
           is_available: boolean
+          is_featured: boolean
           original_url: string
           photographer_id: string
           price: number
@@ -896,6 +897,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_available?: boolean
+          is_featured?: boolean
           original_url: string
           photographer_id: string
           price?: number
@@ -911,6 +913,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_available?: boolean
+          is_featured?: boolean
           original_url?: string
           photographer_id?: string
           price?: number

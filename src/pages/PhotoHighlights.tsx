@@ -42,8 +42,7 @@ const PhotoHighlights = () => {
 
   const fetchHighlightPhotos = async () => {
     try {
-      // Buscar fotos mais recentes com favoritadas
-      // Priorizar fotos com mais favoritos
+      // Buscar fotos marcadas como destaque pelos fotógrafos
       const { data, error } = await supabase
         .from('photos')
         .select(`
@@ -65,9 +64,10 @@ const PhotoHighlights = () => {
           )
         `)
         .eq('is_available', true)
+        .eq('is_featured', true)
         .eq('campaigns.is_active', true)
         .order('created_at', { ascending: false })
-        .limit(24);
+        .limit(48);
 
       if (error) throw error;
 
@@ -86,15 +86,7 @@ const PhotoHighlights = () => {
         })
       );
 
-      // Ordenar por favoritos (mais favoritos primeiro) e depois por data
-      const sortedPhotos = photosWithFavorites.sort((a, b) => {
-        if (b.favorites_count !== a.favorites_count) {
-          return b.favorites_count - a.favorites_count;
-        }
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      });
-
-      setPhotos(sortedPhotos);
+      setPhotos(photosWithFavorites);
     } catch (error) {
       logger.error('Error fetching highlight photos:', error);
       handleError(error, {
