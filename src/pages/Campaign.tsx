@@ -569,17 +569,23 @@ const Campaign = () => {
           </Button>
           
           <div className="flex items-center gap-2">
+            {/* Botão Busca Facial com IA */}
             <Button
               variant="default"
               size="sm"
               onClick={() => setShowFaceRecognition(true)}
-              className="gap-1 sm:gap-2 h-9 text-xs sm:text-sm bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-md"
-              title="Buscar minhas fotos por reconhecimento facial com IA"
+              className="gap-1 sm:gap-2 h-9 px-3 sm:px-4 text-xs sm:text-sm bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all relative group"
+              title="Encontre suas fotos automaticamente usando reconhecimento facial com inteligência artificial"
             >
-              <ScanFace className="h-4 w-4" />
-              <span className="hidden sm:inline">Buscar com IA</span>
-              <span className="sm:hidden">IA</span>
+              <ScanFace className="h-4 w-4 animate-pulse" />
+              <span className="hidden sm:inline font-semibold">Buscar com IA</span>
+              <span className="sm:hidden font-semibold">IA</span>
+              <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-yellow-500"></span>
+              </span>
             </Button>
+            
             <CartDrawer />
             <Camera className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
             <span className="font-semibold text-sm sm:text-base">STA Fotos</span>
@@ -595,33 +601,6 @@ const Campaign = () => {
       />
 
       <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
-        {/* Banner de Reconhecimento Facial */}
-        <Card className="mb-4 sm:mb-6 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20 border-blue-200 dark:border-blue-800">
-          <CardContent className="p-3 sm:p-4">
-            <div className="flex items-start gap-3">
-              <div className="p-2 bg-blue-600 rounded-lg flex-shrink-0">
-                <ScanFace className="h-5 w-5 text-white" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-sm sm:text-base mb-1 text-blue-900 dark:text-blue-100">
-                  🤖 Encontre suas fotos com IA
-                </h3>
-                <p className="text-xs sm:text-sm text-muted-foreground mb-2">
-                  Use reconhecimento facial avançado para encontrar todas as fotos onde você aparece automaticamente.
-                </p>
-                <Button
-                  size="sm"
-                  onClick={() => setShowFaceRecognition(true)}
-                  className="gap-2 h-8 text-xs bg-blue-600 hover:bg-blue-700"
-                >
-                  <ScanFace className="h-3 w-3" />
-                  Iniciar Busca Facial
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Campaign Header */}
         <div className="mb-6 sm:mb-8">
           <div className="relative rounded-xl overflow-hidden mb-4 sm:mb-6">
