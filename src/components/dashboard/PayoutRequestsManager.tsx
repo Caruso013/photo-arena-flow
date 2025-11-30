@@ -15,6 +15,7 @@ interface PayoutRequest {
   status: string;
   requested_at: string;
   processed_at?: string;
+  completed_at?: string;
   notes?: string;
   photographer: {
     full_name: string;
@@ -76,7 +77,7 @@ export const PayoutRequestsManager = () => {
     }
   };
 
-  const handleProcess = async (requestId: string, newStatus: 'approved' | 'rejected') => {
+  const handleProcess = async (requestId: string, newStatus: 'approved' | 'rejected' | 'completed') => {
     setProcessingId(requestId);
     try {
       const request = requests.find(r => r.id === requestId);
@@ -91,17 +92,29 @@ export const PayoutRequestsManager = () => {
         photographer: request.photographer?.full_name
       });
 
-      // Buscar user_id atual (admin que está aprovando)
+      // Buscar user_id atual (admin que está processando)
       const { data: { user: currentUser } } = await supabase.auth.getUser();
+      
+      const updateData: any = {
+        status: newStatus,
+        notes: notes[requestId] || null
+      };
+
+      // Se for aprovação, setar processed_at e processed_by
+      if (newStatus === 'approved' || newStatus === 'rejected') {
+        updateData.processed_at = new Date().toISOString();
+        updateData.processed_by = currentUser?.id || null;
+      }
+
+      // Se for conclusão (pagamento efetivado), setar completed_at e completed_by
+      if (newStatus === 'completed') {
+        updateData.completed_at = new Date().toISOString();
+        updateData.completed_by = currentUser?.id || null;
+      }
       
       const { error: updateError } = await supabase
         .from('payout_requests')
-        .update({
-          status: newStatus,
-          processed_at: new Date().toISOString(),
-          processed_by: currentUser?.id || null,
-          notes: notes[requestId] || null
-        })
+        .update(updateData)
         .eq('id', requestId);
 
       if (updateError) {
@@ -139,11 +152,13 @@ export const PayoutRequestsManager = () => {
         }
       }
 
-      toast.success(
-        newStatus === 'approved' 
-          ? `Repasse de ${formatCurrency(request.amount)} aprovado!` 
-          : 'Repasse rejeitado'
-      );
+      const messages = {
+        approved: `Repasse de ${formatCurrency(request.amount)} aprovado!`,
+        rejected: 'Repasse rejeitado',
+        completed: `Repasse de ${formatCurrency(request.amount)} marcado como pago!`
+      };
+      
+      toast.success(messages[newStatus] || 'Status atualizado');
       
       await fetchPayoutRequests();
       
@@ -160,7 +175,9 @@ export const PayoutRequestsManager = () => {
       case 'pending':
         return <Badge variant="outline" className="gap-1"><Clock className="h-3 w-3" />Pendente</Badge>;
       case 'approved':
-        return <Badge className="bg-green-600 gap-1"><CheckCircle2 className="h-3 w-3" />Aprovado</Badge>;
+        return <Badge className="bg-blue-600 gap-1"><Clock className="h-3 w-3" />Aprovado</Badge>;
+      case 'completed':
+        return <Badge className="bg-green-600 gap-1"><CheckCircle2 className="h-3 w-3" />Pago</Badge>;
       case 'rejected':
         return <Badge variant="destructive" className="gap-1"><XCircle className="h-3 w-3" />Rejeitado</Badge>;
       default:
@@ -169,7 +186,8 @@ export const PayoutRequestsManager = () => {
   };
 
   const pendingRequests = requests.filter(r => r.status === 'pending');
-  const processedRequests = requests.filter(r => r.status !== 'pending');
+  const approvedRequests = requests.filter(r => r.status === 'approved');
+  const processedRequests = requests.filter(r => r.status === 'completed' || r.status === 'rejected');
 
   if (loading) {
     return (
@@ -190,15 +208,15 @@ export const PayoutRequestsManager = () => {
 
   return (
     <div className="space-y-6">
-      {/* Solicitações Pendentes */}
+      {/* Solicitações Pendentes de Aprovação */}
       <Card>
         <CardHeader className="bg-gradient-to-r from-yellow-50 to-transparent dark:from-yellow-950/20">
           <CardTitle className="flex items-center gap-2">
             <Clock className="h-5 w-5 text-yellow-600" />
-            Solicitações Pendentes ({pendingRequests.length})
+            Aguardando Aprovação ({pendingRequests.length})
           </CardTitle>
           <CardDescription>
-            Solicitações aguardando aprovação
+            Solicitações que precisam ser aprovadas ou rejeitadas
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -285,18 +303,99 @@ export const PayoutRequestsManager = () => {
         </CardContent>
       </Card>
 
-      {/* Histórico */}
+      {/* Repasses Aprovados - Aguardando Pagamento */}
+      <Card>
+        <CardHeader className="bg-gradient-to-r from-blue-50 to-transparent dark:from-blue-950/20">
+          <CardTitle className="flex items-center gap-2">
+            <DollarSign className="h-5 w-5 text-blue-600" />
+            Aprovados - Aguardando Pagamento ({approvedRequests.length})
+          </CardTitle>
+          <CardDescription>
+            Repasses aprovados que precisam ser pagos ao fotógrafo
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {approvedRequests.length === 0 ? (
+            <p className="text-muted-foreground text-center py-8">
+              Nenhum repasse aprovado aguardando pagamento
+            </p>
+          ) : (
+            <div className="space-y-4">
+              {approvedRequests.map((request) => (
+                <div
+                  key={request.id}
+                  className="border rounded-lg p-4 space-y-4 bg-card hover:shadow-md transition-shadow border-blue-200 dark:border-blue-900"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-1">
+                      <div className="font-semibold text-lg">
+                        {request.photographer?.full_name || 'Fotógrafo'}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {request.photographer?.email}
+                      </div>
+                      {request.recipient_name && (
+                        <div className="text-sm text-muted-foreground">
+                          Beneficiário: {request.recipient_name}
+                        </div>
+                      )}
+                      {request.pix_key && (
+                        <div className="text-sm font-mono text-muted-foreground bg-muted px-2 py-1 rounded">
+                          PIX: {request.pix_key}
+                        </div>
+                      )}
+                      {request.institution && (
+                        <div className="text-sm text-muted-foreground">
+                          Instituição: {request.institution}
+                        </div>
+                      )}
+                      <div className="text-xs text-muted-foreground">
+                        Aprovado em: {request.processed_at ? new Date(request.processed_at).toLocaleString('pt-BR') : '-'}
+                      </div>
+                      {request.notes && (
+                        <div className="text-xs text-muted-foreground italic mt-2 p-2 bg-muted rounded">
+                          "{request.notes}"
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-blue-600 flex items-center gap-1">
+                        <DollarSign className="h-5 w-5" />
+                        {formatCurrency(request.amount)}
+                      </div>
+                      {getStatusBadge(request.status)}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => handleProcess(request.id, 'completed')}
+                      disabled={processingId === request.id}
+                      className="flex-1 gap-2 bg-green-600 hover:bg-green-700"
+                    >
+                      <CheckCircle2 className="h-4 w-4" />
+                      Marcar como Pago
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Histórico - Pagos e Rejeitados */}
       <Card>
         <CardHeader>
-          <CardTitle>Histórico de Repasses</CardTitle>
+          <CardTitle>Histórico Completo</CardTitle>
           <CardDescription>
-            Repasses processados anteriormente
+            Repasses pagos e rejeitados
           </CardDescription>
         </CardHeader>
         <CardContent>
           {processedRequests.length === 0 ? (
             <p className="text-muted-foreground text-center py-8">
-              Nenhum repasse processado ainda
+              Nenhum repasse no histórico ainda
             </p>
           ) : (
             <div className="space-y-3">
@@ -311,10 +410,23 @@ export const PayoutRequestsManager = () => {
                         {request.photographer?.full_name || 'Fotógrafo'}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        Processado em: {request.processed_at ? new Date(request.processed_at).toLocaleString('pt-BR') : '-'}
+                        {request.status === 'completed' ? (
+                          <>
+                            Pago em: {request.completed_at ? new Date(request.completed_at).toLocaleString('pt-BR') : '-'}
+                          </>
+                        ) : (
+                          <>
+                            Processado em: {request.processed_at ? new Date(request.processed_at).toLocaleString('pt-BR') : '-'}
+                          </>
+                        )}
                       </div>
+                      {request.pix_key && request.status === 'completed' && (
+                        <div className="text-xs font-mono text-muted-foreground">
+                          PIX: {request.pix_key}
+                        </div>
+                      )}
                       {request.notes && (
-                        <div className="text-xs text-muted-foreground italic">
+                        <div className="text-xs text-muted-foreground italic mt-1">
                           "{request.notes}"
                         </div>
                       )}

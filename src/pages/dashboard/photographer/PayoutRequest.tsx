@@ -87,37 +87,45 @@ const PayoutRequest = () => {
         pending: formatCurrency(pending)
       });
 
-      // Buscar apenas solicitações pendentes (não pagas ainda)
+      // Buscar solicitações não concluídas (pending, approved)
+      // completed = já foi pago e deve ser descontado do available
       const { data: payoutRequests, error: payoutError } = await supabase
         .from('payout_requests')
         .select('amount, status')
         .eq('photographer_id', user.id)
-        .in('status', ['pending', 'approved']);
+        .in('status', ['pending', 'approved', 'completed']);
 
       if (payoutError) {
         console.error('❌ Erro ao buscar payout requests:', payoutError);
         throw payoutError;
       }
 
-      // Somar apenas valores de pedidos não pagos
-      const requestedAmount = payoutRequests?.reduce((sum, req) => sum + req.amount, 0) || 0;
-      console.log('📤 Valor em processo de pagamento:', formatCurrency(requestedAmount));
+      // Separar valores por status
+      const completedAmount = payoutRequests?.filter(r => r.status === 'completed').reduce((sum, req) => sum + req.amount, 0) || 0;
+      const inProcessAmount = payoutRequests?.filter(r => r.status === 'pending' || r.status === 'approved').reduce((sum, req) => sum + req.amount, 0) || 0;
       
-      // Descontar do saldo disponível
-      available -= requestedAmount;
+      console.log('💰 Valores:', {
+        completedAmount: formatCurrency(completedAmount),
+        inProcessAmount: formatCurrency(inProcessAmount),
+        availableBeforeDiscount: formatCurrency(available)
+      });
+      
+      // Descontar valores já pagos e em processo
+      available -= (completedAmount + inProcessAmount);
 
       setAvailableAmount(Math.max(0, available));
       setPendingAmount(pending);
 
       // Verificar se há solicitação pendente (apenas para info)
-      const hasPending = payoutRequests?.some(req => req.status === 'pending') || false;
+      const hasPending = payoutRequests?.some(req => req.status === 'pending' || req.status === 'approved') || false;
       setHasPendingRequest(hasPending);
 
       console.log('✅ Status final:', {
         availableAmount: formatCurrency(Math.max(0, available)),
         pendingAmount: formatCurrency(pending),
         hasPendingRequest: hasPending,
-        requestedAmount: formatCurrency(requestedAmount)
+        completedAmount: formatCurrency(completedAmount),
+        inProcessAmount: formatCurrency(inProcessAmount)
       });
 
       // Buscar histórico de solicitações
@@ -265,7 +273,9 @@ const PayoutRequest = () => {
       case 'pending':
         return <Badge variant="outline" className="gap-1"><Clock className="h-3 w-3" />Pendente</Badge>;
       case 'approved':
-        return <Badge variant="default" className="gap-1 bg-green-500"><CheckCircle className="h-3 w-3" />Aprovado</Badge>;
+        return <Badge variant="default" className="gap-1 bg-blue-500"><AlertCircle className="h-3 w-3" />Aprovado</Badge>;
+      case 'completed':
+        return <Badge variant="default" className="gap-1 bg-green-500"><CheckCircle className="h-3 w-3" />Pago</Badge>;
       case 'rejected':
         return <Badge variant="destructive" className="gap-1"><XCircle className="h-3 w-3" />Recusado</Badge>;
       default:
