@@ -604,6 +604,8 @@ export type Database = {
       payout_requests: {
         Row: {
           amount: number
+          completed_at: string | null
+          completed_by: string | null
           created_at: string
           id: string
           institution: string | null
@@ -619,6 +621,8 @@ export type Database = {
         }
         Insert: {
           amount: number
+          completed_at?: string | null
+          completed_by?: string | null
           created_at?: string
           id?: string
           institution?: string | null
@@ -634,6 +638,8 @@ export type Database = {
         }
         Update: {
           amount?: number
+          completed_at?: string | null
+          completed_by?: string | null
           created_at?: string
           id?: string
           institution?: string | null
