@@ -160,7 +160,7 @@ export const PayoutRequestsManager = () => {
       case 'pending':
         return <Badge variant="outline" className="gap-1"><Clock className="h-3 w-3" />Pendente</Badge>;
       case 'approved':
-        return <Badge className="bg-green-600 gap-1"><CheckCircle2 className="h-3 w-3" />Concluído</Badge>;
+        return <Badge className="bg-green-600 gap-1"><CheckCircle2 className="h-3 w-3" />Aprovado</Badge>;
       case 'rejected':
         return <Badge variant="destructive" className="gap-1"><XCircle className="h-3 w-3" />Rejeitado</Badge>;
       default:

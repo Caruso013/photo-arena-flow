@@ -87,10 +87,10 @@ const PayoutRequest = () => {
         pending: formatCurrency(pending)
       });
 
-      // Buscar solicitações pendentes ou aprovadas
+      // Buscar apenas solicitações pendentes (não pagas ainda)
       const { data: payoutRequests, error: payoutError } = await supabase
         .from('payout_requests')
-        .select('amount')
+        .select('amount, status')
         .eq('photographer_id', user.id)
         .in('status', ['pending', 'approved']);
 
@@ -99,22 +99,25 @@ const PayoutRequest = () => {
         throw payoutError;
       }
 
+      // Somar apenas valores de pedidos não pagos
       const requestedAmount = payoutRequests?.reduce((sum, req) => sum + req.amount, 0) || 0;
-      console.log('📤 Valor já solicitado:', formatCurrency(requestedAmount));
+      console.log('📤 Valor em processo de pagamento:', formatCurrency(requestedAmount));
       
+      // Descontar do saldo disponível
       available -= requestedAmount;
 
       setAvailableAmount(Math.max(0, available));
       setPendingAmount(pending);
 
-      // Verificar se há solicitação pendente
-      const hasPending = payoutRequests && payoutRequests.length > 0;
+      // Verificar se há solicitação pendente (apenas para info)
+      const hasPending = payoutRequests?.some(req => req.status === 'pending') || false;
       setHasPendingRequest(hasPending);
 
       console.log('✅ Status final:', {
         availableAmount: formatCurrency(Math.max(0, available)),
         pendingAmount: formatCurrency(pending),
-        hasPendingRequest: hasPending
+        hasPendingRequest: hasPending,
+        requestedAmount: formatCurrency(requestedAmount)
       });
 
       // Buscar histórico de solicitações
@@ -174,13 +177,8 @@ const PayoutRequest = () => {
       return;
     }
 
-    if (hasPendingRequest) {
-      toast.error('Você já possui uma solicitação em andamento');
-      return;
-    }
-
     if (availableAmount < 50) {
-      toast.error('Valor mínimo para saque é R$ 50,00');
+      toast.error('Valor mínimo para saque é R$ 50,00. Você tem apenas ' + formatCurrency(availableAmount) + ' disponível.');
       return;
     }
 
@@ -476,7 +474,7 @@ const PayoutRequest = () => {
                 {hasPendingRequest && (
                   <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-lg">
                     <p className="text-sm text-blue-800 dark:text-blue-200">
-                      ℹ️ Você já possui uma solicitação em andamento
+                      ℹ️ Você tem solicitações em processamento. Assim que forem aprovadas, poderá fazer novos pedidos com o saldo atualizado.
                     </p>
                   </div>
                 )}
@@ -484,7 +482,7 @@ const PayoutRequest = () => {
                 <Button
                   type="submit"
                   size="lg"
-                  disabled={submitting || hasPendingRequest || availableAmount < 50}
+                  disabled={submitting || availableAmount < 50}
                   className="w-full h-12 sm:h-14 text-base sm:text-lg"
                 >
                   {submitting ? 'Enviando...' : `Solicitar Saque de ${formatCurrency(availableAmount)}`}
