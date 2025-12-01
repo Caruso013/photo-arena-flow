@@ -482,10 +482,10 @@ const PayoutRequest = () => {
                   </div>
                 )}
 
-                {hasPendingRequest && (
+                {hasPendingRequest && availableAmount >= 50 && (
                   <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-lg">
                     <p className="text-sm text-blue-800 dark:text-blue-200">
-                      ℹ️ Você tem solicitações em processamento. Assim que forem aprovadas, poderá fazer novos pedidos com o saldo atualizado.
+                      ℹ️ Você tem solicitações em processamento. Este novo saque será adicionado à fila e processado após a aprovação das anteriores.
                     </p>
                   </div>
                 )}
