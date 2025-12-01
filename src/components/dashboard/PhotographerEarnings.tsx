@@ -325,15 +325,15 @@ export const PhotographerEarnings = () => {
               {formatCurrency(totalAvailable)}
             </div>
             <Dialog open={showPixForm} onOpenChange={setShowPixForm}>
-              <DialogTrigger asChild>
-                <Button
-                  disabled={totalAvailable <= 0 || requestingPayout || !!pendingRequest}
-                  className="w-full mt-4 gap-2"
-                >
-                  <DollarSign className="h-4 w-4" />
-                  Solicitar Repasse
-                </Button>
-              </DialogTrigger>
+            <DialogTrigger asChild>
+              <Button
+                disabled={totalAvailable <= 0 || requestingPayout}
+                className="w-full mt-4 gap-2"
+              >
+                <DollarSign className="h-4 w-4" />
+                Solicitar Repasse
+              </Button>
+            </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Dados para Repasse via PIX</DialogTitle>
