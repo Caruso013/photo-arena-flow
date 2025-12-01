@@ -163,6 +163,7 @@ const AppContent = () => {
           <Route path="/highlights" element={<PhotoHighlights />} />
           <Route path="/cart" element={<Cart />} />
           <Route path="/eventos-proximos" element={<EventosProximos />} />
+          <Route path="/evento/:id" element={<Campaign />} />
           <Route path="/campaign/:id" element={<Campaign />} />
           <Route path="/E/:code" element={<Campaign />} />
           <Route path="/contato" element={<Contato />} />
