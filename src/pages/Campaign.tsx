@@ -758,12 +758,17 @@ const Campaign = () => {
         {/* Albums/Sub-Events Section */}
         {subEvents.length > 0 && (
           <div className="mb-6 sm:mb-8">
-            <h2 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4 flex items-center gap-2">
-              <Folder className="h-5 w-5 sm:h-6 sm:w-6" />
-              Todas as Pastas
-            </h2>
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+                <Folder className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+                Álbuns do Evento
+              </h2>
+              <Badge variant="secondary" className="text-xs sm:text-sm">
+                {subEvents.length} {subEvents.length === 1 ? 'álbum' : 'álbuns'}
+              </Badge>
+            </div>
             <p className="text-muted-foreground mb-4 sm:mb-6 text-sm sm:text-base">
-              Navegue pelos álbuns deste evento para encontrar suas fotos
+              📂 Clique em um álbum para ver apenas as fotos daquela pasta
             </p>
             
             <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">

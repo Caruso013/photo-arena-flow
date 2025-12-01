@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
-import { Upload, X, Camera, CheckCircle2, FolderOpen, Image as ImageIcon, Info, RefreshCw } from 'lucide-react';
+import { Upload, X, Camera, CheckCircle2, FolderOpen, Image as ImageIcon, Info, RefreshCw, DollarSign } from 'lucide-react';
 import { backgroundUploadService } from '@/lib/backgroundUploadService';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
@@ -465,38 +465,30 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
             </div>
           )}
 
-          {/* Campos Título e Preço */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="title">
-                Título (opcional)
-              </Label>
-              <Input
-                id="title"
-                placeholder="Ex: Final do Campeonato"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="h-11"
-              />
-              <p className="text-xs text-muted-foreground">
-                Mesmo título para todas as fotos
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="price" className="font-semibold">
+          {/* Campo Preço */}
+          <div className="space-y-3 p-4 bg-muted/30 border border-border/50 rounded-xl">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-background flex items-center justify-center flex-shrink-0">
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <Label htmlFor="price" className="font-semibold text-base">
                 Preço por foto (R$) *
               </Label>
-              <Input
-                id="price"
-                type="number"
-                step="0.01"
-                min="0"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                className="h-11 font-medium"
-              />
             </div>
+            <Input
+              id="price"
+              type="number"
+              step="0.01"
+              min="1"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              className="h-12 text-lg font-bold text-center"
+              placeholder="10.00"
+              required
+            />
+            <p className="text-xs text-muted-foreground text-center">
+              💡 Todas as fotos terão o mesmo preço
+            </p>
           </div>
 
           {/* Seleção de Fotos */}
