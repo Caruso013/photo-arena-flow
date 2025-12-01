@@ -154,7 +154,8 @@ const PayoutRequest = () => {
       case 'phone':
         return /^\d{10,11}$/.test(key.replace(/\D/g, ''));
       case 'email':
-        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(key);
+        // Validação mais permissiva para emails - aceita números, letras, pontos, hífens, etc.
+        return /^[a-zA-Z0-9._+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(key.trim());
       case 'random':
         return key.length >= 32;
       default:

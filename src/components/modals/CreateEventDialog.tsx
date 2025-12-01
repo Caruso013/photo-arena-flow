@@ -136,17 +136,20 @@ export default function CreateEventDialog({ isOpen, onClose, onEventCreated }: C
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="title" className="text-foreground">
+            <Label htmlFor="title" className="text-foreground text-base font-semibold">
               Título do Evento <span className="text-destructive">*</span>
             </Label>
             <Input
               id="title"
               value={formData.title}
               onChange={(e) => handleInputChange('title', e.target.value)}
-              placeholder="Ex: Casamento João e Maria"
+              placeholder="Ex: Casamento João e Maria, Aniversário de 15 Anos, Formatura 2025"
               required
-              className="bg-background text-foreground border-input"
+              className="bg-background text-foreground border-input h-12 text-base"
             />
+            <p className="text-xs text-muted-foreground">
+              💡 Use um título claro e descritivo para facilitar a identificação do evento
+            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
