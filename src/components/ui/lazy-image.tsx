@@ -1,16 +1,22 @@
 import { useState, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
+import { getOptimizedImageUrlWithCdn } from '@/lib/vercelImageCdn';
+import { ImageSize } from '@/lib/imageOptimization';
 
 interface LazyImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   src: string;
   alt: string;
   fallback?: React.ReactNode;
+  size?: ImageSize; // Tamanho da imagem para otimização
 }
 
-export const LazyImage = ({ src, alt, className, fallback, ...props }: LazyImageProps) => {
+export const LazyImage = ({ src, alt, className, fallback, size = 'thumbnail', ...props }: LazyImageProps) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isInView, setIsInView] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  
+  // Otimizar URL via Vercel CDN
+  const optimizedSrc = getOptimizedImageUrlWithCdn(src, size);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -37,7 +43,7 @@ export const LazyImage = ({ src, alt, className, fallback, ...props }: LazyImage
       )}
       {isInView && (
         <img
-          src={src}
+          src={optimizedSrc}
           alt={alt}
           loading="lazy"
           className={cn(

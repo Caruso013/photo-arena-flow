@@ -6,11 +6,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  getOptimizedImageUrl,
   createLazyLoadObserver,
   shouldEagerLoad,
   ImageSize
 } from '@/lib/imageOptimization';
+import { getOptimizedImageUrlWithCdn } from '@/lib/vercelImageCdn';
 
 interface OptimizedImageProps {
   src: string;
@@ -37,10 +37,10 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
   const imgRef = useRef<HTMLImageElement>(null);
   const [shouldLoad, setShouldLoad] = useState(shouldEagerLoad(index));
 
-  // URLs em cascata: blur → thumbnail → imagem solicitada
-  const blurUrl = getOptimizedImageUrl(src, 'blur');
-  const thumbnailUrl = getOptimizedImageUrl(src, 'thumbnail');
-  const targetUrl = getOptimizedImageUrl(src, size);
+  // URLs em cascata via Vercel CDN: blur → thumbnail → imagem solicitada
+  const blurUrl = getOptimizedImageUrlWithCdn(src, 'blur');
+  const thumbnailUrl = getOptimizedImageUrlWithCdn(src, 'thumbnail');
+  const targetUrl = getOptimizedImageUrlWithCdn(src, size);
 
   // Configurar lazy loading com Intersection Observer
   useEffect(() => {
