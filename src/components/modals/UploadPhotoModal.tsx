@@ -67,7 +67,15 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
         return;
       }
 
-      // Buscar APENAS eventos onde o fotógrafo está atribuído via campaign_photographers
+      // Buscar eventos criados pelo fotógrafo OU onde está atribuído via campaign_photographers
+      const { data: ownCampaigns, error: ownError } = await supabase
+        .from('campaigns')
+        .select('id, title, event_date, is_active')
+        .eq('photographer_id', profile.id)
+        .eq('is_active', true);
+
+      if (ownError) throw ownError;
+
       const { data: assignments, error: assignError } = await supabase
         .from('campaign_photographers')
         .select(`
@@ -84,10 +92,14 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
 
       if (assignError) throw assignError;
 
-      if (!assignments || assignments.length === 0) {
+      // Combinar eventos próprios + assignments
+      const assignedCampaigns = assignments?.map(a => a.campaigns).filter(Boolean) || [];
+      const allCampaigns = [...(ownCampaigns || []), ...assignedCampaigns];
+
+      if (allCampaigns.length === 0) {
         toast({
-          title: "Nenhum evento atribuído",
-          description: "Você ainda não foi atribuído a nenhum evento. Candidate-se na página 'Eventos Próximos'.",
+          title: "Nenhum evento disponível",
+          description: "Crie um evento ou candidate-se na página 'Eventos Próximos'.",
           variant: "destructive",
         });
         setCampaigns([]);
@@ -99,8 +111,7 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
       const currentMonth = currentDate.getMonth();
       const currentYear = currentDate.getFullYear();
 
-      const validCampaigns = assignments
-        .map(a => a.campaigns)
+      const validCampaigns = allCampaigns
         .filter(c => {
           if (!c || !c.is_active) return false;
           

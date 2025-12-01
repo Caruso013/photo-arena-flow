@@ -78,6 +78,12 @@ export const PayoutRequestsManager = () => {
   };
 
   const handleProcess = async (requestId: string, newStatus: 'approved' | 'rejected' | 'completed') => {
+    // Prevenir múltiplos cliques
+    if (processingId) {
+      console.warn('⚠️ Já processando outra solicitação');
+      return;
+    }
+
     setProcessingId(requestId);
     try {
       const request = requests.find(r => r.id === requestId);
@@ -280,20 +286,20 @@ export const PayoutRequestsManager = () => {
                   <div className="flex gap-2">
                     <Button
                       onClick={() => handleProcess(request.id, 'approved')}
-                      disabled={processingId === request.id}
+                      disabled={!!processingId}
                       className="flex-1 gap-2"
                     >
                       <CheckCircle2 className="h-4 w-4" />
-                      Aprovar Repasse
+                      {processingId === request.id ? 'Processando...' : 'Aprovar Repasse'}
                     </Button>
                     <Button
                       onClick={() => handleProcess(request.id, 'rejected')}
-                      disabled={processingId === request.id}
+                      disabled={!!processingId}
                       variant="destructive"
                       className="flex-1 gap-2"
                     >
                       <XCircle className="h-4 w-4" />
-                      Rejeitar
+                      {processingId === request.id ? 'Processando...' : 'Rejeitar'}
                     </Button>
                   </div>
                 </div>
@@ -370,11 +376,11 @@ export const PayoutRequestsManager = () => {
                   <div className="flex gap-2">
                     <Button
                       onClick={() => handleProcess(request.id, 'completed')}
-                      disabled={processingId === request.id}
+                      disabled={!!processingId}
                       className="flex-1 gap-2 bg-green-600 hover:bg-green-700"
                     >
                       <CheckCircle2 className="h-4 w-4" />
-                      Marcar como Pago
+                      {processingId === request.id ? 'Processando...' : 'Marcar como Pago'}
                     </Button>
                   </div>
                 </div>
