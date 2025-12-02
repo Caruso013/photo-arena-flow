@@ -35,7 +35,17 @@ export const FeaturedEventsManager = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from('campaigns')
-        .select('*')
+        .select(`
+          id,
+          title,
+          location,
+          event_date,
+          is_featured,
+          is_active,
+          created_at,
+          cover_image_url,
+          photographer_id
+        `)
         .eq('is_active', true)
         .order('is_featured', { ascending: false })
         .order('created_at', { ascending: false });

@@ -65,15 +65,7 @@ const Home = () => {
       // Buscar campanhas em destaque (apenas eventos marcados como featured)
       const { data: campaignsData, error } = await supabase
         .from('campaigns')
-        .select(`
-          id,
-          title,
-          description,
-          event_date,
-          location,
-          cover_image_url,
-          photographer_id
-        `)
+        .select('id, title, description, event_date, location, cover_image_url, photographer_id')
         .eq('is_active', true)
         .eq('is_featured', true)
         .order('created_at', { ascending: false })
