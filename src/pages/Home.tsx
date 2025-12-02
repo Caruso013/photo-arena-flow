@@ -156,7 +156,7 @@ const Home = () => {
                 Relembre a sua história
               </span>
             </h1>
-            <p className="text-xl md:text-2xl text-muted-foreground mb-10 leading-relaxed max-w-3xl mx-auto">
+            <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 mb-10 leading-relaxed max-w-3xl mx-auto">
               Encontre suas melhores fotos de eventos esportivos em segundos com nossa tecnologia de reconhecimento facial inteligente
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
@@ -189,22 +189,22 @@ const Home = () => {
             <Card className="text-center border-primary/20 hover:border-primary/40 transition-all">
               <CardContent className="pt-8 pb-6">
                 <Trophy className="h-12 w-12 text-primary mx-auto mb-4" />
-                <div className="text-4xl font-bold mb-2">{stats.events}+</div>
-                <div className="text-muted-foreground">Eventos Realizados</div>
+                <div className="text-4xl font-bold mb-2 text-foreground">{stats.events}+</div>
+                <div className="text-gray-600 dark:text-gray-300 font-medium">Eventos Realizados</div>
               </CardContent>
             </Card>
             <Card className="text-center border-primary/20 hover:border-primary/40 transition-all">
               <CardContent className="pt-8 pb-6">
                 <Camera className="h-12 w-12 text-primary mx-auto mb-4" />
-                <div className="text-4xl font-bold mb-2">{stats.photos.toLocaleString()}+</div>
-                <div className="text-muted-foreground">Fotos Disponíveis</div>
+                <div className="text-4xl font-bold mb-2 text-foreground">{stats.photos.toLocaleString()}+</div>
+                <div className="text-gray-600 dark:text-gray-300 font-medium">Fotos Disponíveis</div>
               </CardContent>
             </Card>
             <Card className="text-center border-primary/20 hover:border-primary/40 transition-all">
               <CardContent className="pt-8 pb-6">
                 <Users className="h-12 w-12 text-primary mx-auto mb-4" />
-                <div className="text-4xl font-bold mb-2">{stats.photographers}+</div>
-                <div className="text-muted-foreground">Fotógrafos</div>
+                <div className="text-4xl font-bold mb-2 text-foreground">{stats.photographers}+</div>
+                <div className="text-gray-600 dark:text-gray-300 font-medium">Fotógrafos</div>
               </CardContent>
             </Card>
           </div>
@@ -215,8 +215,8 @@ const Home = () => {
       <section className="py-20">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12 scroll-animate">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Eventos em Destaque</h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-foreground">Eventos em Destaque</h2>
+            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
               Confira os últimos eventos e encontre suas fotos
             </p>
           </div>
@@ -275,28 +275,28 @@ const Home = () => {
                     </div>
                   </div>
                   <CardContent className="p-6">
-                    <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors line-clamp-1">
+                    <h3 className="text-xl font-bold mb-2 text-foreground group-hover:text-primary transition-colors line-clamp-1">
                       {campaign.title}
                     </h3>
                     {campaign.description && (
-                      <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+                      <p className="text-sm text-gray-600 dark:text-gray-300 mb-4 line-clamp-2">
                         {campaign.description}
                       </p>
                     )}
                     <div className="space-y-2 text-sm">
                       {campaign.event_date && (
-                        <div className="flex items-center gap-2 text-muted-foreground">
+                        <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
                           <Calendar className="h-4 w-4" />
                           {new Date(campaign.event_date).toLocaleDateString('pt-BR')}
                         </div>
                       )}
                       {campaign.location && (
-                        <div className="flex items-center gap-2 text-muted-foreground">
+                        <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
                           <MapPin className="h-4 w-4" />
                           {campaign.location}
                         </div>
                       )}
-                      <div className="flex items-center gap-2 text-muted-foreground">
+                      <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
                         <Camera className="h-4 w-4" />
                         {campaign.photographer_name}
                       </div>
@@ -325,8 +325,8 @@ const Home = () => {
       <section className="py-20 bg-muted/30">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Por que escolher a STA?</h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-foreground">Por que escolher a STA?</h2>
+            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
               Tecnologia de ponta para eternizar seus momentos
             </p>
           </div>
@@ -336,8 +336,8 @@ const Home = () => {
               <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Zap className="h-8 w-8 text-primary" />
               </div>
-              <h3 className="text-xl font-bold mb-3">Reconhecimento Facial IA</h3>
-              <p className="text-muted-foreground">
+              <h3 className="text-xl font-bold mb-3 text-foreground">Reconhecimento Facial IA</h3>
+              <p className="text-gray-600 dark:text-gray-300">
                 Encontre suas fotos automaticamente com nossa tecnologia de reconhecimento facial avançada
               </p>
             </Card>
@@ -346,8 +346,8 @@ const Home = () => {
               <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Shield className="h-8 w-8 text-primary" />
               </div>
-              <h3 className="text-xl font-bold mb-3">Pagamento Seguro</h3>
-              <p className="text-muted-foreground">
+              <h3 className="text-xl font-bold mb-3 text-foreground">Pagamento Seguro</h3>
+              <p className="text-gray-600 dark:text-gray-300">
                 Transações protegidas e processamento rápido para sua tranquilidade
               </p>
             </Card>
@@ -356,8 +356,8 @@ const Home = () => {
               <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
                 <TrendingUp className="h-8 w-8 text-primary" />
               </div>
-              <h3 className="text-xl font-bold mb-3">Alta Qualidade</h3>
-              <p className="text-muted-foreground">
+              <h3 className="text-xl font-bold mb-3 text-foreground">Alta Qualidade</h3>
+              <p className="text-gray-600 dark:text-gray-300">
                 Fotos profissionais em alta resolução para guardar para sempre
               </p>
             </Card>
