@@ -120,6 +120,12 @@ const Campaign = () => {
     return subEvents.reduce((sum, se) => sum + (se.photo_count || 0), 0);
   }, [subEvents, selectedSubEvent]);
 
+  // Helper para gerar nome da foto
+  const getPhotoName = (photo: Photo, index: number) => {
+    const photoNumber = index + 1 + ((page - 1) * PHOTOS_PER_PAGE);
+    return `Foto ${String(photoNumber).padStart(3, '0')}`;
+  };
+
   useEffect(() => {
     if (id || code) {
       fetchCampaign();
@@ -358,9 +364,12 @@ const Campaign = () => {
       return;
     }
 
+    const photoIndex = photos.findIndex(p => p.id === photo.id);
+    const photoName = getPhotoName(photo, photoIndex);
+    
     addToCart({
       id: photo.id,
-      title: photo.title,
+      title: photoName,
       price: photo.price,
       watermarked_url: photo.watermarked_url,
       thumbnail_url: photo.thumbnail_url,
@@ -873,7 +882,7 @@ const Campaign = () => {
                       <div className="aspect-square bg-gradient-subtle relative">
                         <WatermarkedPhoto
                           src={photo.thumbnail_url || photo.watermarked_url}
-                          alt={photo.title || 'Foto'}
+                          alt={getPhotoName(photo, index)}
                           position="full"
                           opacity={0.85}
                            imgClassName="w-full h-full object-cover"
@@ -944,13 +953,15 @@ const Campaign = () => {
                           </DialogTrigger>
                           <DialogContent className="max-w-[95vw] sm:max-w-4xl w-[90vw]">
                             <DialogHeader>
-                              <DialogTitle className="text-sm sm:text-base truncate">{photo.title || 'Foto'}</DialogTitle>
+                              <DialogTitle className="text-sm sm:text-base truncate">
+                                {getPhotoName(photo, index)}
+                              </DialogTitle>
                             </DialogHeader>
                             <div className="relative">
                               <AntiScreenshotProtection>
                                 <WatermarkedPhoto
                                   src={photo.watermarked_url}
-                                  alt={photo.title || 'Foto'}
+                                  alt={getPhotoName(photo, index)}
                                   position="full"
                                   opacity={0.85}
                                   imgClassName="w-full max-h-[60vh] sm:max-h-[70vh] object-contain rounded-lg"
@@ -965,32 +976,33 @@ const Campaign = () => {
                       </div>
                       <CardContent className="p-2 sm:p-3">
                         <div className="space-y-1 sm:space-y-2">
-                          <p className="text-xs sm:text-sm font-medium truncate">
-                            {photo.title || 'Foto'}
+                          {/* Nome da foto */}
+                          <p className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 truncate">
+                            {getPhotoName(photo, index)}
                           </p>
                           <div className="flex justify-between items-center gap-2">
                             <span className="text-base sm:text-lg font-bold text-green-600 flex-shrink-0">
                               {formatCurrency(photo.price)}
                             </span>
                             <div className="flex gap-1 sm:gap-2">
-                              <Button 
-                                size="sm" 
-                                variant="outline"
-                                onClick={() => handleAddToCart(photo)}
-                                className="gap-1 h-8 sm:h-9 w-8 sm:w-auto px-2 sm:px-3"
-                              >
-                                <ShoppingCart className="h-3 w-3 sm:h-4 sm:w-4" />
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                onClick={() => handleBuyPhoto(photo)}
-                                className="gap-1 h-8 sm:h-9 text-xs sm:text-sm px-2 sm:px-3"
-                              >
-                                <span className="hidden sm:inline">Comprar</span>
-                                <span className="sm:hidden">R$</span>
-                              </Button>
-                            </div>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleAddToCart(photo)}
+                              className="gap-1 h-8 sm:h-9 w-8 sm:w-auto px-2 sm:px-3"
+                            >
+                              <ShoppingCart className="h-3 w-3 sm:h-4 sm:w-4" />
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              onClick={() => handleBuyPhoto(photo)}
+                              className="gap-1 h-8 sm:h-9 text-xs sm:text-sm px-2 sm:px-3"
+                            >
+                              <span className="hidden sm:inline">Comprar</span>
+                              <span className="sm:hidden">R$</span>
+                            </Button>
                           </div>
+                        </div>
                         </div>
                       </CardContent>
                     </Card>
@@ -1063,7 +1075,7 @@ const Campaign = () => {
             }}
             photo={{
               id: selectedPhoto.id,
-              title: selectedPhoto.title || 'Foto',
+              title: getPhotoName(selectedPhoto, photos.findIndex(p => p.id === selectedPhoto.id)),
               price: selectedPhoto.price,
               image_url: selectedPhoto.thumbnail_url || selectedPhoto.watermarked_url
             }}

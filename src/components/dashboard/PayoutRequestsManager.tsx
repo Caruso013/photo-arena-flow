@@ -109,13 +109,16 @@ export const PayoutRequestsManager = () => {
       
       // Construir updateData de forma mais segura
       const now = new Date().toISOString();
-      const updateData: Record<string, any> = {
+      
+      // Preparar dados básicos
+      const updateData: Record<string, string> = {
         status: newStatus
       };
 
       // Adicionar notes se existir
-      if (notes[requestId]) {
-        updateData.notes = notes[requestId];
+      const noteText = notes[requestId]?.trim();
+      if (noteText) {
+        updateData.notes = noteText;
       }
 
       // Se for aprovação ou rejeição, setar processed_at e processed_by
@@ -136,14 +139,18 @@ export const PayoutRequestsManager = () => {
       
       console.log('📤 Enviando update:', { 
         requestId, 
+        status: newStatus,
         updateData,
-        keys: Object.keys(updateData)
+        hasNotes: !!noteText
       });
       
-      const { error: updateError } = await supabase
+      const { data, error: updateError } = await supabase
         .from('payout_requests')
         .update(updateData)
-        .eq('id', requestId);
+        .eq('id', requestId)
+        .select();
+
+      console.log('📥 Resposta completa:', { data, error: updateError });
 
       if (updateError) {
         console.error('❌ Erro ao atualizar status:', {
@@ -151,7 +158,8 @@ export const PayoutRequestsManager = () => {
           message: updateError.message,
           details: updateError.details,
           hint: updateError.hint,
-          code: updateError.code
+          code: updateError.code,
+          statusCode: (updateError as any).status
         });
         throw new Error(updateError.message || 'Erro ao processar repasse');
       }
@@ -161,6 +169,9 @@ export const PayoutRequestsManager = () => {
       // Se aprovado, enviar email de notificação
       if (newStatus === 'approved') {
         console.log('📧 Enviando email de aprovação...');
+        
+        // Toast visual de envio de email
+        toast.info('📤 Enviando email de notificação...', { duration: 2000 });
         
         try {
           const { error: emailError } = await supabase.functions.invoke('send-payout-approved-email', {
@@ -177,19 +188,27 @@ export const PayoutRequestsManager = () => {
 
           if (emailError) {
             console.warn('⚠️ Erro ao enviar email (não crítico):', emailError);
+            toast.warning('Email não enviado, mas repasse aprovado!');
           } else {
             console.log('✅ Email enviado com sucesso');
+            toast.success('✅ Email de notificação enviado!');
           }
         } catch (emailError) {
           console.warn('⚠️ Erro ao enviar email:', emailError);
+          toast.warning('Email não enviado, mas repasse aprovado!');
           // Não bloquear a aprovação por erro no email
         }
       }
 
+      // Toast visual de sucesso
+      if (newStatus === 'completed') {
+        toast.success('💰 Pagamento confirmado e registrado!', { duration: 3000 });
+      }
+
       const messages = {
-        approved: `Repasse de ${formatCurrency(request.amount)} aprovado com sucesso!`,
+        approved: `Repasse de ${formatCurrency(request.amount)} aprovado com sucesso! 💰`,
         rejected: 'Repasse rejeitado',
-        completed: `Repasse de ${formatCurrency(request.amount)} marcado como pago!`
+        completed: `Repasse de ${formatCurrency(request.amount)} marcado como pago! ✅`
       };
       
       toast.success(messages[newStatus] || 'Status atualizado com sucesso');
