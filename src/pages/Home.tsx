@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -29,6 +29,23 @@ const Home = () => {
 
   useEffect(() => {
     fetchData();
+    
+    // Intersection Observer para animações
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('animate-fade-in-up');
+          }
+        });
+      },
+      { threshold: 0.1 }
+    );
+
+    const elements = document.querySelectorAll('.scroll-animate');
+    elements.forEach((el) => observer.observe(el));
+
+    return () => observer.disconnect();
   }, []);
 
   const fetchData = async () => {
@@ -82,18 +99,20 @@ const Home = () => {
               .eq('id', campaign.photographer_id)
               .single();
 
-            // Fallback para capa se não tiver
+            // Fallback para capa se não tiver - usar watermarked_url
             let coverUrl = campaign.cover_image_url;
             if (!coverUrl) {
               const { data: firstPhoto } = await supabase
                 .from('photos')
-                .select('thumbnail_url')
+                .select('watermarked_url')
                 .eq('campaign_id', campaign.id)
                 .eq('is_available', true)
+                .not('watermarked_url', 'is', null)
+                .order('upload_sequence', { ascending: true })
                 .limit(1)
-                .single();
+                .maybeSingle();
               
-              coverUrl = firstPhoto?.thumbnail_url || '';
+              coverUrl = firstPhoto?.watermarked_url || '';
             }
 
             return {
@@ -120,11 +139,7 @@ const Home = () => {
       <section className="relative overflow-hidden bg-gradient-to-br from-primary/10 via-background to-primary/5 py-20 md:py-32">
         <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
         <div className="container mx-auto px-4 relative z-10">
-          <div className="max-w-4xl mx-auto text-center">
-            <Badge className="mb-6 text-sm px-4 py-2" variant="outline">
-              <Zap className="h-4 w-4 mr-2" />
-              Plataforma #1 de Fotografia Esportiva
-            </Badge>
+          <div className="max-w-4xl mx-auto text-center scroll-animate">
             <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-primary via-primary/80 to-primary/60 bg-clip-text text-transparent">
               Relembre a sua história
             </h1>
@@ -157,7 +172,7 @@ const Home = () => {
       {/* Stats Section */}
       <section className="py-16 bg-muted/30">
         <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto scroll-animate">
             <Card className="text-center border-primary/20 hover:border-primary/40 transition-all">
               <CardContent className="pt-8 pb-6">
                 <Trophy className="h-12 w-12 text-primary mx-auto mb-4" />
@@ -186,7 +201,7 @@ const Home = () => {
       {/* Featured Events */}
       <section className="py-20">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
+          <div className="text-center mb-12 scroll-animate">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">Eventos em Destaque</h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
               Confira os últimos eventos e encontre suas fotos

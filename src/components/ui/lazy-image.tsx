@@ -36,12 +36,19 @@ export const LazyImage = ({ src, alt, className, fallback, size = 'thumbnail', .
     return () => observer.disconnect();
   }, []);
 
+  const handleError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    console.error('Erro ao carregar imagem:', src);
+    e.currentTarget.style.display = 'none';
+  };
+
   return (
     <div className="relative w-full h-full" ref={containerRef}>
       {!isLoaded && (
-        <div className="absolute inset-0 bg-muted animate-pulse" />
+        <div className="absolute inset-0 bg-muted animate-pulse flex items-center justify-center">
+          <div className="text-muted-foreground text-sm">Carregando...</div>
+        </div>
       )}
-      {isInView && (
+      {isInView && src && (
         <img
           src={optimizedSrc}
           alt={alt}
@@ -52,6 +59,7 @@ export const LazyImage = ({ src, alt, className, fallback, size = 'thumbnail', .
             className
           )}
           onLoad={() => setIsLoaded(true)}
+          onError={handleError}
           {...props}
         />
       )}

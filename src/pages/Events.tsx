@@ -179,21 +179,21 @@ const Events = () => {
             .eq('campaign_id', campaign.id)
             .eq('is_available', true);
 
-          // Se não tem capa, usar primeira foto do evento
+          // Buscar capa ou primeira foto watermarked disponível
           let coverImageUrl = campaign.cover_image_url;
-          if (!coverImageUrl || coverImageUrl === '') {
+          
+          if (!coverImageUrl) {
             const { data: firstPhoto } = await supabase
               .from('photos')
               .select('watermarked_url')
               .eq('campaign_id', campaign.id)
               .eq('is_available', true)
+              .not('watermarked_url', 'is', null)
               .order('upload_sequence', { ascending: true })
               .limit(1)
-              .single();
+              .maybeSingle();
             
-            if (firstPhoto) {
-              coverImageUrl = firstPhoto.watermarked_url;
-            }
+            coverImageUrl = firstPhoto?.watermarked_url || '';
           }
 
           return {
