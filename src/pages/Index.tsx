@@ -32,31 +32,56 @@ const Index = () => {
 
   const fetchFeaturedCampaigns = async () => {
     try {
-      // Buscar apenas campanhas com 5+ fotos (elegíveis para home)
-      const { data, error } = await supabase
+      // Buscar campanhas com contagem de fotos disponíveis
+      const { data: campaignsData, error: campaignsError } = await supabase
         .from('campaigns')
-        .select(`
-          *,
-          photographer:profiles(full_name),
-          photos:photos(count)
-        `)
+        .select('id, title, description, event_date, location, cover_image_url, created_at')
         .eq('is_active', true)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      
-      // Filtrar apenas campanhas com 5+ fotos
-      const eligibleCampaigns = (data || []).filter(campaign => {
-        const photoCount = campaign.photos?.[0]?.count || 0;
-        return photoCount >= 5;
-      }).slice(0, 6); // Limitar a 6 eventos
-      
+      if (campaignsError) throw campaignsError;
+
+      if (!campaignsData || campaignsData.length === 0) {
+        setCampaigns([]);
+        return;
+      }
+
+      // Para cada campanha, buscar contagem de fotos e dados do fotógrafo
+      const campaignsWithDetails = await Promise.all(
+        campaignsData.map(async (campaign) => {
+          // Contar fotos disponíveis
+          const { count: photoCount } = await supabase
+            .from('photos')
+            .select('id', { count: 'exact', head: true })
+            .eq('campaign_id', campaign.id)
+            .eq('is_available', true);
+
+          // Buscar dados do fotógrafo
+          const { data: campaignDetails } = await supabase
+            .from('campaigns')
+            .select('photographer:profiles(full_name)')
+            .eq('id', campaign.id)
+            .single();
+
+          return {
+            ...campaign,
+            photographer: campaignDetails?.photographer,
+            photo_count: photoCount || 0
+          };
+        })
+      );
+
+      // Filtrar apenas campanhas com 5+ fotos e limitar a 6
+      const eligibleCampaigns = campaignsWithDetails
+        .filter(campaign => campaign.photo_count >= 5)
+        .slice(0, 6);
+
       setCampaigns(eligibleCampaigns);
     } catch (error) {
       logger.error('Error fetching campaigns:', error);
       handleError(error, { 
         context: 'fetch',
-        showToast: false // Não mostrar toast na home, apenas logar
+        showToast: false
       });
     } finally {
       setLoading(false);
@@ -78,7 +103,12 @@ const Index = () => {
             <>
               <div className="text-center mb-6 sm:mb-8">
                 <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">Eventos em Destaque</h2>
-                <p className="text-muted-foreground text-sm sm:text-base">Navegue pelos principais campeonatos esportivos</p>
+                <p className="text-muted-foreground text-sm sm:text-base">
+                  Navegue pelos principais campeonatos esportivos
+                </p>
+                <p className="text-xs text-muted-foreground/70 mt-1">
+                  ✨ Exibindo apenas eventos com 5 ou mais fotos disponíveis
+                </p>
               </div>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
