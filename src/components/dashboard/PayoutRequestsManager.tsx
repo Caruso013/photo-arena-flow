@@ -85,6 +85,7 @@ export const PayoutRequestsManager = () => {
     }
 
     setProcessingId(requestId);
+    
     try {
       const request = requests.find(r => r.id === requestId);
       if (!request) {
@@ -99,14 +100,19 @@ export const PayoutRequestsManager = () => {
       });
 
       // Buscar user_id atual (admin que está processando)
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError) {
+        console.error('❌ Erro ao buscar usuário:', userError);
+        throw new Error('Erro ao verificar autenticação');
+      }
       
       const updateData: any = {
         status: newStatus,
         notes: notes[requestId] || null
       };
 
-      // Se for aprovação, setar processed_at e processed_by
+      // Se for aprovação ou rejeição, setar processed_at e processed_by
       if (newStatus === 'approved' || newStatus === 'rejected') {
         updateData.processed_at = new Date().toISOString();
         updateData.processed_by = currentUser?.id || null;
@@ -118,17 +124,28 @@ export const PayoutRequestsManager = () => {
         updateData.completed_by = currentUser?.id || null;
       }
       
-      const { error: updateError } = await supabase
+      console.log('📤 Enviando update:', { requestId, updateData });
+      
+      const { data: updateResult, error: updateError } = await supabase
         .from('payout_requests')
         .update(updateData)
-        .eq('id', requestId);
+        .eq('id', requestId)
+        .select()
+        .single();
 
       if (updateError) {
-        console.error('❌ Erro ao atualizar status:', updateError);
-        throw updateError;
+        console.error('❌ Erro ao atualizar status:', {
+          error: updateError,
+          message: updateError.message,
+          details: updateError.details,
+          hint: updateError.hint
+        });
+        throw new Error(updateError.message || 'Erro ao processar repasse');
       }
 
-      console.log('✅ Status atualizado com sucesso');
+      console.log('✅ Update realizado com sucesso:', updateResult);
+
+      console.log('✅ Update realizado com sucesso:', updateResult);
 
       // Se aprovado, enviar email de notificação
       if (newStatus === 'approved') {
@@ -159,18 +176,26 @@ export const PayoutRequestsManager = () => {
       }
 
       const messages = {
-        approved: `Repasse de ${formatCurrency(request.amount)} aprovado!`,
+        approved: `Repasse de ${formatCurrency(request.amount)} aprovado com sucesso!`,
         rejected: 'Repasse rejeitado',
         completed: `Repasse de ${formatCurrency(request.amount)} marcado como pago!`
       };
       
-      toast.success(messages[newStatus] || 'Status atualizado');
+      toast.success(messages[newStatus] || 'Status atualizado com sucesso');
       
+      // Recarregar dados
       await fetchPayoutRequests();
       
     } catch (error: any) {
       console.error('❌ Erro ao processar repasse:', error);
-      toast.error(error.message || 'Erro ao processar solicitação');
+      
+      // Mensagem de erro mais amigável
+      let errorMessage = 'Erro ao processar solicitação';
+      if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setProcessingId(null);
     }
@@ -214,6 +239,23 @@ export const PayoutRequestsManager = () => {
 
   return (
     <div className="space-y-6">
+      {/* Informação sobre o Sistema */}
+      <Card className="border-2 border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10">
+        <CardContent className="pt-6">
+          <div className="flex items-start gap-3">
+            <div className="rounded-full bg-primary/10 p-2">
+              <DollarSign className="h-5 w-5 text-primary" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-lg mb-1">Sistema de Repasse Profissional</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Sistema completo de gerenciamento de repasses via PIX. Fotógrafos podem solicitar múltiplos repasses com saldo disponível mínimo de R$ 50,00. Processo em 3 etapas: <strong>Pendente</strong> → <strong>Aprovado</strong> → <strong>Pago</strong>.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Solicitações Pendentes de Aprovação */}
       <Card>
         <CardHeader className="bg-gradient-to-r from-yellow-50 to-transparent dark:from-yellow-950/20">
@@ -235,59 +277,85 @@ export const PayoutRequestsManager = () => {
               {pendingRequests.map((request) => (
                 <div
                   key={request.id}
-                  className="border rounded-lg p-4 space-y-4 bg-card hover:shadow-md transition-shadow"
+                  className="border-2 border-yellow-200 dark:border-yellow-900/50 rounded-xl p-5 space-y-4 bg-gradient-to-br from-yellow-50/50 to-orange-50/30 dark:from-yellow-950/20 dark:to-orange-950/10 hover:shadow-xl transition-all duration-300"
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-1">
-                      <div className="font-semibold text-lg">
-                        {request.photographer?.full_name || 'Fotógrafo'}
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="space-y-2 flex-1">
+                      <div className="flex items-center gap-2">
+                        <div className="font-semibold text-lg text-foreground">
+                          {request.photographer?.full_name || 'Fotógrafo'}
+                        </div>
+                        {getStatusBadge(request.status)}
                       </div>
-                      <div className="text-sm text-muted-foreground">
-                        {request.photographer?.email}
-                      </div>
+                      
+                      <div className="space-y-1 text-sm">
+                        <div className="text-muted-foreground flex items-center gap-1">
+                          <span className="font-medium">Email:</span>
+                          {request.photographer?.email}
+                        </div>
                         {request.recipient_name && (
-                          <div className="text-sm text-muted-foreground">
-                            Beneficiário: {request.recipient_name}
+                          <div className="text-muted-foreground flex items-center gap-1">
+                            <span className="font-medium">Beneficiário:</span>
+                            {request.recipient_name}
                           </div>
                         )}
                         {request.pix_key && (
-                          <div className="text-sm text-muted-foreground">
-                            PIX: {request.pix_key}
+                          <div className="text-muted-foreground flex items-center gap-1 font-mono bg-muted/50 px-2 py-1 rounded">
+                            <span className="font-medium font-sans">PIX:</span>
+                            {request.pix_key}
                           </div>
                         )}
                         {request.institution && (
-                          <div className="text-sm text-muted-foreground">
-                            Instituição: {request.institution}
+                          <div className="text-muted-foreground flex items-center gap-1">
+                            <span className="font-medium">Instituição:</span>
+                            {request.institution}
                           </div>
                         )}
-                      <div className="text-xs text-muted-foreground">
-                        Solicitado em: {new Date(request.requested_at).toLocaleString('pt-BR')}
+                        <div className="text-xs text-muted-foreground pt-1">
+                          Solicitado em: {new Date(request.requested_at).toLocaleString('pt-BR', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold text-primary flex items-center gap-1">
-                        <DollarSign className="h-5 w-5" />
+                    
+                    <div className="text-right space-y-1">
+                      <div className="text-3xl font-bold text-yellow-700 dark:text-yellow-400 flex items-center gap-1 justify-end">
+                        <DollarSign className="h-6 w-6" />
                         {formatCurrency(request.amount)}
                       </div>
-                      {getStatusBadge(request.status)}
+                      <div className="text-xs text-muted-foreground">
+                        Valor solicitado
+                      </div>
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Observações (opcional)</label>
+                    <label className="text-sm font-medium text-foreground">
+                      Observações Administrativas (opcional)
+                    </label>
                     <Textarea
-                      placeholder="Adicione observações sobre este repasse..."
+                      placeholder="Ex: Transferência será feita via PIX no dia XX/XX..."
                       value={notes[request.id] || ''}
                       onChange={(e) => setNotes({ ...notes, [request.id]: e.target.value })}
-                      rows={2}
+                      rows={3}
+                      className="resize-none"
                     />
+                    <p className="text-xs text-muted-foreground">
+                      Esta nota será visível para o fotógrafo e ficará registrada no histórico
+                    </p>
                   </div>
 
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 pt-2">
                     <Button
                       onClick={() => handleProcess(request.id, 'approved')}
                       disabled={!!processingId}
-                      className="flex-1 gap-2"
+                      className="flex-1 gap-2 bg-green-600 hover:bg-green-700 text-white"
+                      size="lg"
                     >
                       <CheckCircle2 className="h-4 w-4" />
                       {processingId === request.id ? 'Processando...' : 'Aprovar Repasse'}
@@ -297,6 +365,7 @@ export const PayoutRequestsManager = () => {
                       disabled={!!processingId}
                       variant="destructive"
                       className="flex-1 gap-2"
+                      size="lg"
                     >
                       <XCircle className="h-4 w-4" />
                       {processingId === request.id ? 'Processando...' : 'Rejeitar'}
@@ -330,57 +399,78 @@ export const PayoutRequestsManager = () => {
               {approvedRequests.map((request) => (
                 <div
                   key={request.id}
-                  className="border rounded-lg p-4 space-y-4 bg-card hover:shadow-md transition-shadow border-blue-200 dark:border-blue-900"
+                  className="border-2 border-blue-200 dark:border-blue-900/50 rounded-xl p-5 space-y-4 bg-gradient-to-br from-blue-50/50 to-cyan-50/30 dark:from-blue-950/20 dark:to-cyan-950/10 hover:shadow-xl transition-all duration-300"
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-1">
-                      <div className="font-semibold text-lg">
-                        {request.photographer?.full_name || 'Fotógrafo'}
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="space-y-2 flex-1">
+                      <div className="flex items-center gap-2">
+                        <div className="font-semibold text-lg text-foreground">
+                          {request.photographer?.full_name || 'Fotógrafo'}
+                        </div>
+                        {getStatusBadge(request.status)}
                       </div>
-                      <div className="text-sm text-muted-foreground">
-                        {request.photographer?.email}
+                      
+                      <div className="space-y-1 text-sm">
+                        <div className="text-muted-foreground flex items-center gap-1">
+                          <span className="font-medium">Email:</span>
+                          {request.photographer?.email}
+                        </div>
+                        {request.recipient_name && (
+                          <div className="text-muted-foreground flex items-center gap-1">
+                            <span className="font-medium">Beneficiário:</span>
+                            {request.recipient_name}
+                          </div>
+                        )}
+                        {request.pix_key && (
+                          <div className="text-muted-foreground flex items-center gap-1 font-mono bg-blue-100 dark:bg-blue-950/50 px-3 py-1.5 rounded-md border border-blue-200 dark:border-blue-900">
+                            <span className="font-medium font-sans text-blue-900 dark:text-blue-100">PIX:</span>
+                            <span className="text-blue-900 dark:text-blue-100 select-all">{request.pix_key}</span>
+                          </div>
+                        )}
+                        {request.institution && (
+                          <div className="text-muted-foreground flex items-center gap-1">
+                            <span className="font-medium">Instituição:</span>
+                            {request.institution}
+                          </div>
+                        )}
+                        <div className="text-xs text-muted-foreground pt-1 flex items-center gap-1">
+                          <CheckCircle2 className="h-3 w-3 text-green-600" />
+                          Aprovado em: {request.processed_at ? new Date(request.processed_at).toLocaleString('pt-BR', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          }) : '-'}
+                        </div>
+                        {request.notes && (
+                          <div className="text-xs text-muted-foreground italic mt-2 p-2 bg-blue-100/50 dark:bg-blue-950/30 rounded border border-blue-200 dark:border-blue-900">
+                            <span className="font-medium not-italic">Observação:</span> "{request.notes}"
+                          </div>
+                        )}
                       </div>
-                      {request.recipient_name && (
-                        <div className="text-sm text-muted-foreground">
-                          Beneficiário: {request.recipient_name}
-                        </div>
-                      )}
-                      {request.pix_key && (
-                        <div className="text-sm font-mono text-muted-foreground bg-muted px-2 py-1 rounded">
-                          PIX: {request.pix_key}
-                        </div>
-                      )}
-                      {request.institution && (
-                        <div className="text-sm text-muted-foreground">
-                          Instituição: {request.institution}
-                        </div>
-                      )}
-                      <div className="text-xs text-muted-foreground">
-                        Aprovado em: {request.processed_at ? new Date(request.processed_at).toLocaleString('pt-BR') : '-'}
-                      </div>
-                      {request.notes && (
-                        <div className="text-xs text-muted-foreground italic mt-2 p-2 bg-muted rounded">
-                          "{request.notes}"
-                        </div>
-                      )}
                     </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold text-blue-600 flex items-center gap-1">
-                        <DollarSign className="h-5 w-5" />
+                    
+                    <div className="text-right space-y-1">
+                      <div className="text-3xl font-bold text-blue-700 dark:text-blue-400 flex items-center gap-1 justify-end">
+                        <DollarSign className="h-6 w-6" />
                         {formatCurrency(request.amount)}
                       </div>
-                      {getStatusBadge(request.status)}
+                      <div className="text-xs text-muted-foreground">
+                        A ser transferido
+                      </div>
                     </div>
                   </div>
 
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 pt-2">
                     <Button
                       onClick={() => handleProcess(request.id, 'completed')}
                       disabled={!!processingId}
-                      className="flex-1 gap-2 bg-green-600 hover:bg-green-700"
+                      className="flex-1 gap-2 bg-green-600 hover:bg-green-700 text-white shadow-md hover:shadow-lg transition-all"
+                      size="lg"
                     >
-                      <CheckCircle2 className="h-4 w-4" />
-                      {processingId === request.id ? 'Processando...' : 'Marcar como Pago'}
+                      <CheckCircle2 className="h-5 w-5" />
+                      {processingId === request.id ? 'Processando...' : 'Confirmar Pagamento Realizado'}
                     </Button>
                   </div>
                 </div>

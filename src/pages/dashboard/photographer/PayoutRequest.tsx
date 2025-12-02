@@ -316,6 +316,39 @@ const PayoutRequest = () => {
         </p>
       </div>
 
+      {/* Informação sobre Múltiplas Solicitações */}
+      <Card className="border-2 border-blue-200 bg-gradient-to-r from-blue-50/80 to-cyan-50/50 dark:border-blue-900 dark:from-blue-950/30 dark:to-cyan-950/20">
+        <CardContent className="pt-5 pb-5">
+          <div className="flex items-start gap-3">
+            <div className="rounded-full bg-blue-500/10 p-2 mt-0.5">
+              <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div className="flex-1 space-y-2">
+              <h3 className="font-semibold text-base">💰 Agora você pode fazer múltiplas solicitações!</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Não precisa mais esperar! Você pode solicitar novos saques sempre que tiver <strong>saldo disponível maior que R$ 50,00</strong>, mesmo com outras solicitações em andamento.
+              </p>
+              <div className="flex flex-wrap gap-2 text-xs pt-1">
+                <span className="inline-flex items-center gap-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 px-2 py-1 rounded-full">
+                  <Clock className="h-3 w-3" />
+                  Pendente
+                </span>
+                <span className="text-muted-foreground">→</span>
+                <span className="inline-flex items-center gap-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 px-2 py-1 rounded-full">
+                  <CheckCircle className="h-3 w-3" />
+                  Aprovado
+                </span>
+                <span className="text-muted-foreground">→</span>
+                <span className="inline-flex items-center gap-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 px-2 py-1 rounded-full">
+                  <DollarSign className="h-3 w-3" />
+                  Pago
+                </span>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Cards de Resumo */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         <Card className="border-2 border-green-200 bg-green-50/50 dark:border-green-900 dark:bg-green-950/20">
