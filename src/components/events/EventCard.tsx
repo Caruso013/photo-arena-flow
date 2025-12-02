@@ -158,10 +158,14 @@ export const EventCard: React.FC<EventCardProps> = ({ campaign, index }) => {
           <div className="aspect-[4/5] bg-gradient-dark relative overflow-hidden">
             {campaign.cover_image_url ? (
               <>
-                <LazyImage
+                <img
                   src={campaign.cover_image_url}
                   alt={campaign.title}
                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                  loading="lazy"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-90 group-hover:opacity-95 transition-opacity" />
               </>

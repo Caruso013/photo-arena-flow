@@ -5,9 +5,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Camera, Search, MapPin, Calendar, ArrowRight, Zap, Shield, Users, Trophy, Star, TrendingUp } from 'lucide-react';
+import { Camera, Search, MapPin, Calendar, ArrowRight, Zap, Shield, Users, Trophy, Star, TrendingUp, Sparkles } from 'lucide-react';
 import MainLayout from '@/components/layout/MainLayout';
-import { OptimizedImage } from '@/components/ui/OptimizedImage';
 
 interface FeaturedCampaign {
   id: string;
@@ -136,29 +135,43 @@ const Home = () => {
   return (
     <MainLayout>
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-primary/10 via-background to-primary/5 py-20 md:py-32">
+      <section className="relative overflow-hidden py-20 md:py-32">
+        {/* Background com gradiente animado */}
+        <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/10 via-background to-yellow-600/5"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-yellow-500/20 via-transparent to-transparent"></div>
+        
+        {/* Grid pattern */}
         <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
+        
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-4xl mx-auto text-center scroll-animate">
-            <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-primary via-primary/80 to-primary/60 bg-clip-text text-transparent">
-              Relembre a sua história
+            <div className="inline-block mb-6 px-5 py-2.5 bg-yellow-500/10 border border-yellow-500/30 rounded-full backdrop-blur-sm">
+              <span className="text-yellow-600 dark:text-yellow-400 font-semibold text-sm flex items-center gap-2">
+                <Sparkles className="h-4 w-4" />
+                Tecnologia de Reconhecimento Facial IA
+              </span>
+            </div>
+            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold mb-8 leading-tight">
+              <span className="bg-gradient-to-r from-yellow-500 via-yellow-600 to-amber-600 bg-clip-text text-transparent">
+                Relembre a sua história
+              </span>
             </h1>
-            <p className="text-xl md:text-2xl text-muted-foreground mb-8 leading-relaxed">
-              Encontre suas melhores fotos de eventos esportivos com reconhecimento facial inteligente
+            <p className="text-xl md:text-2xl text-muted-foreground mb-10 leading-relaxed max-w-3xl mx-auto">
+              Encontre suas melhores fotos de eventos esportivos em segundos com nossa tecnologia de reconhecimento facial inteligente
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Button 
                 size="lg" 
-                className="gap-2 text-lg px-8 py-6 shadow-lg hover:shadow-xl transition-all"
+                className="gap-2 text-lg px-10 py-7 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 shadow-lg shadow-yellow-500/30 hover:shadow-xl hover:shadow-yellow-500/50 transition-all duration-300 hover:scale-105"
                 onClick={() => navigate('/events')}
               >
-                <Search className="h-5 w-5" />
+                <Search className="h-6 w-6" />
                 Encontrar Minhas Fotos
               </Button>
               <Button 
                 size="lg" 
                 variant="outline"
-                className="gap-2 text-lg px-8 py-6"
+                className="gap-2 text-lg px-10 py-7 border-2 border-yellow-500/30 hover:border-yellow-500 hover:bg-yellow-500/10 transition-all duration-300"
                 onClick={() => navigate('/sobre')}
               >
                 Sobre Nós
@@ -236,10 +249,18 @@ const Home = () => {
                 >
                   <div className="aspect-video relative overflow-hidden bg-muted">
                     {campaign.cover_image_url ? (
-                      <OptimizedImage
+                      <img
                         src={campaign.cover_image_url}
                         alt={campaign.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        loading="lazy"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          const parent = e.currentTarget.parentElement;
+                          if (parent) {
+                            parent.innerHTML = '<div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5"><svg class="h-16 w-16 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg></div>';
+                          }
+                        }}
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
