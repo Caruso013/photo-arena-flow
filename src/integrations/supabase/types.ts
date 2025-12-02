@@ -112,6 +112,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "campaign_photographers_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns_for_home"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "campaign_photographers_photographer_id_fkey"
             columns: ["photographer_id"]
             isOneToOne: false
@@ -953,6 +960,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "photos_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns_for_home"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "photos_photographer_id_fkey"
             columns: ["photographer_id"]
             isOneToOne: false
@@ -1200,6 +1214,13 @@ export type Database = {
             referencedRelation: "campaigns"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "sub_events_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns_for_home"
+            referencedColumns: ["id"]
+          },
         ]
       }
       system_config: {
@@ -1331,6 +1352,51 @@ export type Database = {
           platform_percentage: number | null
           title: string | null
           validation_status: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaigns_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_photographer_id_fkey"
+            columns: ["photographer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_photographer_id_fkey"
+            columns: ["photographer_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaigns_for_home: {
+        Row: {
+          album_count: number | null
+          cover_image_url: string | null
+          created_at: string | null
+          description: string | null
+          event_date: string | null
+          id: string | null
+          is_active: boolean | null
+          location: string | null
+          organization_id: string | null
+          organization_percentage: number | null
+          photo_count: number | null
+          photographer_id: string | null
+          photographer_percentage: number | null
+          platform_percentage: number | null
+          progressive_discount_enabled: boolean | null
+          short_code: string | null
+          title: string | null
+          updated_at: string | null
         }
         Relationships: [
           {

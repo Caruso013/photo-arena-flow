@@ -373,6 +373,16 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
                 ))}
               </SelectContent>
             </Select>
+            
+            {/* Info sobre Visibilidade */}
+            {selectedCampaign && (
+              <div className="flex items-start gap-2 p-3 bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-lg">
+                <div className="text-lg mt-0.5">✨</div>
+                <p className="text-xs text-blue-800 dark:text-blue-200 leading-relaxed">
+                  <strong>Lembre-se:</strong> Seu evento aparecerá na página inicial após ter 5+ fotos disponíveis
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Seleção de Álbum (Opcional) */}

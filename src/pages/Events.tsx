@@ -149,7 +149,8 @@ const Events = () => {
 
   const fetchCampaigns = async () => {
     try {
-      const { data, error } = await supabase
+      // Buscar campanhas ativas
+      const { data: campaignsData, error: campaignsError } = await supabase
         .from('campaigns')
         .select(`
           *,
@@ -162,8 +163,35 @@ const Events = () => {
         .eq('is_active', true)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setCampaigns(data || []);
+      if (campaignsError) throw campaignsError;
+
+      if (!campaignsData || campaignsData.length === 0) {
+        setCampaigns([]);
+        return;
+      }
+
+      // Para cada campanha, contar fotos disponíveis
+      const campaignsWithPhotoCount = await Promise.all(
+        campaignsData.map(async (campaign) => {
+          const { count: photoCount } = await supabase
+            .from('photos')
+            .select('id', { count: 'exact', head: true })
+            .eq('campaign_id', campaign.id)
+            .eq('is_available', true);
+
+          return {
+            ...campaign,
+            photo_count: photoCount || 0
+          };
+        })
+      );
+
+      // Filtrar apenas campanhas com 5+ fotos
+      const eligibleCampaigns = campaignsWithPhotoCount.filter(
+        campaign => campaign.photo_count >= 5
+      );
+
+      setCampaigns(eligibleCampaigns);
     } catch (error) {
       console.error('Error fetching campaigns:', error);
     } finally {
@@ -186,6 +214,9 @@ const Events = () => {
             </h1>
             <p className="text-sm md:text-base text-muted-foreground">
               Encontre fotos dos seus eventos esportivos favoritos
+            </p>
+            <p className="text-xs text-muted-foreground/70 mt-1">
+              ✨ Exibindo apenas eventos com 5 ou mais fotos disponíveis
             </p>
           </div>
 
