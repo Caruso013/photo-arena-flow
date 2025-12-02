@@ -32,6 +32,10 @@
     {
       "source": "/api/image/:path*",
       "destination": "/_vercel/image/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
