@@ -42,6 +42,7 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
   const [newFolderName, setNewFolderName] = useState('');
   const [newFolderDescription, setNewFolderDescription] = useState('');
   const [refreshingSubEvents, setRefreshingSubEvents] = useState(false);
+  const [progressiveDiscountEnabled, setProgressiveDiscountEnabled] = useState(true);
   
   useEffect(() => {
     fetchCampaigns();
@@ -291,6 +292,16 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
       return;
     }
 
+    // Atualizar configuração de desconto progressivo na campanha
+    try {
+      await supabase
+        .from('campaigns')
+        .update({ progressive_discount_enabled: progressiveDiscountEnabled })
+        .eq('id', selectedCampaign);
+    } catch (error) {
+      console.error('Error updating progressive discount:', error);
+    }
+
     // Criar lote de upload em background
     const batchId = backgroundUploadService.createUploadBatch(
       files,
@@ -304,7 +315,7 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
     // Informar sucesso e permitir que o modal seja fechado
     toast({
       title: "✅ Upload iniciado!",
-      description: `${files.length} foto(s) adicionadas à fila. O upload continuará em background. Acompanhe o progresso no canto inferior direito da tela.`,
+      description: `${files.length} foto(s) adicionadas à fila. ${progressiveDiscountEnabled ? '🎁 Desconto progressivo ativado!' : ''} O upload continuará em background.`,
     });
 
     // Callback para atualizar a interface
@@ -571,6 +582,57 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
                 </div>
               </div>
             )}
+
+            {/* Seção de Desconto Progressivo */}
+            <div className="space-y-4 p-5 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 border-2 border-purple-200 dark:border-purple-800 rounded-xl">
+              <div className="flex items-start gap-3">
+                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0">
+                  <DollarSign className="h-5 w-5 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-bold text-foreground mb-2 flex items-center gap-2">
+                    🎁 Desconto Progressivo para Seus Clientes
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Ative descontos automáticos para incentivar seus clientes a comprarem mais fotos:
+                  </p>
+                  <div className="space-y-2 text-xs bg-white/60 dark:bg-black/20 rounded-lg p-3 border border-purple-200/50">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-green-600 dark:text-green-400">✓ 5-10 fotos:</span>
+                      <span className="text-muted-foreground">5% de desconto</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-green-600 dark:text-green-400">✓ 11-20 fotos:</span>
+                      <span className="text-muted-foreground">10% de desconto</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-green-600 dark:text-green-400">✓ 21+ fotos:</span>
+                      <span className="text-muted-foreground">15% de desconto</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 mt-4">
+                    <input
+                      type="checkbox"
+                      id="progressiveDiscount"
+                      checked={progressiveDiscountEnabled}
+                      onChange={(e) => setProgressiveDiscountEnabled(e.target.checked)}
+                      className="h-5 w-5 rounded border-2 border-purple-500 text-purple-600 focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 cursor-pointer"
+                    />
+                    <label htmlFor="progressiveDiscount" className="text-sm font-medium cursor-pointer text-foreground">
+                      {progressiveDiscountEnabled ? '✅ Ativado' : '⚪ Desativado'} - Descontos aplicados automaticamente no carrinho
+                    </label>
+                  </div>
+                  {!progressiveDiscountEnabled && (
+                    <Alert className="mt-3 bg-yellow-50 dark:bg-yellow-950/20 border-yellow-300 dark:border-yellow-800">
+                      <Info className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+                      <AlertDescription className="text-xs text-yellow-900 dark:text-yellow-100">
+                        ⚠️ Sem descontos progressivos, seus clientes podem comprar menos fotos.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+              </div>
+            </div>
 
             <Alert className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
               <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />

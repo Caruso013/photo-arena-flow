@@ -164,8 +164,18 @@ export const PhotographerEarnings = () => {
         campaignEarnings.photos.push(photoEarning);
       });
 
+      // Descontar solicitações de repasse pendentes/aprovadas/completed do saldo disponível
+      const { data: payoutRequests } = await supabase
+        .from('payout_requests')
+        .select('amount, status')
+        .eq('photographer_id', user?.id)
+        .in('status', ['pending', 'approved', 'completed']);
+
+      const blockedAmount = payoutRequests?.reduce((sum, req) => sum + Number(req.amount || 0), 0) || 0;
+      const finalAvailable = Math.max(availableSum - blockedAmount, 0);
+
       setEarnings(Array.from(campaignMap.values()));
-      setTotalAvailable(availableSum);
+      setTotalAvailable(finalAvailable);
       setTotalPending(pendingSum);
       setTotalPhotosSold(photoCount);
     } catch (error) {
