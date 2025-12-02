@@ -91,12 +91,16 @@ const Home = () => {
               .eq('campaign_id', campaign.id)
               .eq('is_available', true);
 
-            // Buscar nome do fotógrafo
-            const { data: photographerData } = await supabase
-              .from('profiles')
-              .select('full_name')
-              .eq('id', campaign.photographer_id)
-              .single();
+            // Buscar nome do fotógrafo (somente se photographer_id existir)
+            let photographerData = null;
+            if (campaign.photographer_id) {
+              const { data } = await supabase
+                .from('profiles')
+                .select('full_name')
+                .eq('id', campaign.photographer_id)
+                .maybeSingle();
+              photographerData = data;
+            }
 
             // Fallback para capa se não tiver - usar watermarked_url
             let coverUrl = campaign.cover_image_url;
@@ -151,10 +155,8 @@ const Home = () => {
                 Tecnologia de Reconhecimento Facial IA
               </span>
             </div>
-            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold mb-8 leading-tight">
-              <span className="bg-gradient-to-r from-yellow-500 via-yellow-600 to-amber-600 bg-clip-text text-transparent">
-                Relembre a sua história
-              </span>
+            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold mb-8 leading-tight text-foreground">
+              Relembre a sua <span className="text-yellow-500">história</span>
             </h1>
             <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 mb-10 leading-relaxed max-w-3xl mx-auto">
               Encontre suas melhores fotos de eventos esportivos em segundos com nossa tecnologia de reconhecimento facial inteligente
