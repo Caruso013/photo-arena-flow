@@ -126,12 +126,10 @@ export const PayoutRequestsManager = () => {
       
       console.log('📤 Enviando update:', { requestId, updateData });
       
-      const { data: updateResult, error: updateError } = await supabase
+      const { error: updateError } = await supabase
         .from('payout_requests')
         .update(updateData)
-        .eq('id', requestId)
-        .select()
-        .single();
+        .eq('id', requestId);
 
       if (updateError) {
         console.error('❌ Erro ao atualizar status:', {
@@ -143,9 +141,7 @@ export const PayoutRequestsManager = () => {
         throw new Error(updateError.message || 'Erro ao processar repasse');
       }
 
-      console.log('✅ Update realizado com sucesso:', updateResult);
-
-      console.log('✅ Update realizado com sucesso:', updateResult);
+      console.log('✅ Update realizado com sucesso');
 
       // Se aprovado, enviar email de notificação
       if (newStatus === 'approved') {

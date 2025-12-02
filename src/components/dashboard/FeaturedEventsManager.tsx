@@ -40,18 +40,22 @@ export const FeaturedEventsManager = () => {
           title,
           location,
           event_date,
-          is_featured,
           is_active,
           created_at,
           cover_image_url,
           photographer_id
         `)
         .eq('is_active', true)
-        .order('is_featured', { ascending: false })
         .order('created_at', { ascending: false });
 
+      // Adicionar is_featured = false temporariamente para cada campanha
+      const campaignsWithFeatured = (data || []).map(c => ({
+        ...c,
+        is_featured: false
+      }));
+
       if (error) throw error;
-      setCampaigns(data || []);
+      setCampaigns(campaignsWithFeatured);
     } catch (error) {
       console.error('Erro ao buscar campanhas:', error);
       toast.error('Erro ao carregar eventos');
@@ -64,7 +68,8 @@ export const FeaturedEventsManager = () => {
     try {
       setUpdating(campaignId);
       
-      const { error } = await supabase
+
+       const { error } = await supabase
         .from('campaigns')
         .update({ is_featured: !currentValue })
         .eq('id', campaignId);

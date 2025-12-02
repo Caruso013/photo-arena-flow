@@ -62,11 +62,10 @@ const Home = () => {
         photographers: photographersCount.count || 0
       });
 
-      // Buscar campanhas em destaque (apenas eventos marcados como featured)
+      // Buscar campanhas em destaque (últimas 6 ativas - is_featured desabilitado temporariamente)
       const { data: campaignsData, error } = await supabase
         .from('campaigns')
         .select('id, title, description, event_date, location, cover_image_url, photographer_id')
-        .eq('is_active', true)
         .eq('is_featured', true)
         .order('created_at', { ascending: false })
         .limit(6);
