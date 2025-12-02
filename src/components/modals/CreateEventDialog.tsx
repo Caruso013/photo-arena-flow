@@ -134,6 +134,23 @@ export default function CreateEventDialog({ isOpen, onClose, onEventCreated }: C
           </DialogDescription>
         </DialogHeader>
         
+        {/* Alerta sobre Regra de 5+ Fotos */}
+        <Alert className="border-2 border-blue-200 bg-gradient-to-r from-blue-50/80 to-cyan-50/50 dark:border-blue-900 dark:from-blue-950/30 dark:to-cyan-950/20">
+          <AlertDescription className="flex items-start gap-2 text-sm">
+            <div className="rounded-full bg-blue-500/10 p-1.5 mt-0.5">
+              ✨
+            </div>
+            <div className="space-y-1">
+              <p className="font-semibold text-blue-900 dark:text-blue-100">
+                Regra de Visibilidade
+              </p>
+              <p className="text-blue-800 dark:text-blue-200 text-xs leading-relaxed">
+                Seu evento aparecerá na página inicial somente após ter <strong>5 ou mais fotos</strong> disponíveis. Enquanto isso, ficará visível apenas na página "Todos os Eventos".
+              </p>
+            </div>
+          </AlertDescription>
+        </Alert>
+        
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="title" className="text-foreground text-base font-semibold">
