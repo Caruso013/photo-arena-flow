@@ -106,17 +106,30 @@ const Index = () => {
     }
   };
 
+  // Animação de scroll
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('animate-fade-in-up');
+          }
+        });
+      },
+      { threshold: 0.1 }
+    );
+
+    document.querySelectorAll('.scroll-animate').forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, [loading]);
+
   return (
     <MainLayout>
       {/* Hero Section */}
       <section className="relative py-12 sm:py-20 px-4 bg-gradient-to-br from-background via-primary/5 to-background overflow-hidden">
         <div className="absolute inset-0 bg-grid-white/[0.02] pointer-events-none" />
         <div className="container mx-auto relative z-10">
-          <div className="max-w-4xl mx-auto text-center space-y-6">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-4">
-              <Camera className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium text-primary">Plataforma #1 para Fotos de Eventos</span>
-            </div>
+          <div className="max-w-4xl mx-auto text-center space-y-6 animate-fade-in-up">
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight">
               <span className="bg-gradient-to-r from-foreground via-primary to-foreground bg-clip-text text-transparent">
                 Encontre suas melhores
@@ -150,7 +163,7 @@ const Index = () => {
       {/* Stats Section */}
       <section className="py-8 sm:py-12 bg-muted/30">
         <div className="container mx-auto px-4">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 scroll-animate">
             <div className="text-center space-y-2">
               <div className="text-3xl sm:text-4xl font-bold text-primary">1000+</div>
               <div className="text-sm text-muted-foreground">Eventos Realizados</div>
@@ -182,7 +195,7 @@ const Index = () => {
             </div>
           ) : campaigns.length > 0 ? (
             <>
-              <div className="text-center mb-8 sm:mb-12">
+              <div className="text-center mb-8 sm:mb-12 scroll-animate">
                 <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">Eventos em Destaque</h2>
                 <p className="text-muted-foreground text-base sm:text-lg max-w-2xl mx-auto">
                   Navegue pelos principais eventos e encontre suas fotos com reconhecimento facial
@@ -194,16 +207,21 @@ const Index = () => {
                   <Link 
                     to={`/campaign/${campaign.id}`} 
                     key={campaign.id} 
-                    className="group animate-fade-in"
-                    style={{ animationDelay: `${index * 0.1}s` }}
+                    className="group scroll-animate"
+                    style={{ animationDelay: `${index * 100}ms` }}
                   >
                     <Card className="overflow-hidden cursor-pointer border-2 transition-all duration-300 hover:border-primary/40 hover:shadow-2xl hover:-translate-y-2 active:scale-95">
-                      <div className="aspect-[4/5] bg-gradient-dark relative">
+                      <div className="aspect-[4/5] bg-gradient-dark relative overflow-hidden">
                         {campaign.cover_image_url ? (
                           <img
                             src={campaign.cover_image_url}
                             alt={campaign.title}
-                            className="w-full h-full object-cover"
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                            loading="lazy"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                            }}
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center bg-secondary">
@@ -268,13 +286,13 @@ const Index = () => {
       {/* Features Section */}
       <section className="py-12 sm:py-16 px-4 bg-muted/30">
         <div className="container mx-auto">
-          <div className="text-center mb-12">
+          <div className="text-center mb-12 scroll-animate">
             <h2 className="text-3xl sm:text-4xl font-bold mb-3">Por que escolher a STA Fotos?</h2>
             <p className="text-muted-foreground text-base sm:text-lg">
               A maneira mais fácil e rápida de encontrar e comprar suas fotos
             </p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 scroll-animate">
             <Card className="border-2 hover:border-primary/50 transition-all hover:shadow-lg">
               <CardContent className="p-6 text-center space-y-4">
                 <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
@@ -319,7 +337,7 @@ const Index = () => {
       {/* CTA Section */}
       {!user && (
         <section className="py-16 sm:py-20 px-4">
-          <div className="container mx-auto">
+          <div className="container mx-auto scroll-animate">
             <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-background">
               <CardContent className="p-8 sm:p-12 text-center space-y-6">
                 <h2 className="text-3xl sm:text-4xl font-bold">

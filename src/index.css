@@ -173,6 +173,18 @@ All colors MUST be HSL.
     }
   }
 
+  /* Scroll animate - elementos começam invisíveis */
+  .scroll-animate {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+  }
+
+  .scroll-animate.animate-fade-in-up {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
   /* Background pattern para hero section */
   .bg-grid-pattern {
     background-image: 
