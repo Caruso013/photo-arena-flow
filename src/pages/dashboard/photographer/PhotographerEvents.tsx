@@ -83,39 +83,73 @@ const PhotographerEvents = () => {
     try {
       setDeleting(campaignId);
       
-      // Primeiro, deletar fotos associadas
+      // Verificar se há compras/vendas associadas
+      const { data: purchases, error: purchaseError } = await supabase
+        .from('purchases')
+        .select('id')
+        .eq('campaign_id', campaignId)
+        .limit(1);
+
+      if (purchaseError) {
+        console.error('Error checking purchases:', purchaseError);
+        throw new Error('Erro ao verificar vendas do evento');
+      }
+
+      if (purchases && purchases.length > 0) {
+        toast({
+          title: "Não é possível excluir",
+          description: "Este evento já possui vendas registradas e não pode ser excluído por questões de histórico financeiro.",
+          variant: "destructive",
+        });
+        setDeleting(null);
+        return;
+      }
+
+      // Deletar álbuns (sub_events) - CASCADE vai cuidar das fotos
+      const { error: albumsError } = await supabase
+        .from('sub_events')
+        .delete()
+        .eq('campaign_id', campaignId);
+
+      if (albumsError) {
+        console.error('Error deleting albums:', albumsError);
+        // Continuar mesmo com erro, pois podem não existir álbuns
+      }
+
+      // Deletar fotos diretamente (caso não estejam em álbuns)
       const { error: photosError } = await supabase
         .from('photos')
         .delete()
-        .eq('campaign_id', campaignId)
-        .eq('photographer_id', user?.id);
+        .eq('campaign_id', campaignId);
 
       if (photosError) {
         console.error('Error deleting photos:', photosError);
-        // Continuar mesmo com erro nas fotos, pois elas podem não existir
+        // Continuar mesmo com erro
       }
 
-      // Por último, deletar a campanha
+      // Deletar a campanha
       const { error } = await supabase
         .from('campaigns')
         .delete()
-        .eq('id', campaignId)
-        .eq('photographer_id', user?.id);
+        .eq('id', campaignId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error deleting campaign:', error);
+        throw new Error(error.message || 'Falha ao excluir evento');
+      }
 
       toast({
-        title: "Evento excluído",
+        title: "✅ Evento excluído",
         description: "O evento foi excluído com sucesso.",
       });
 
       // Atualizar lista
       setCampaigns(campaigns.filter(c => c.id !== campaignId));
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting campaign:', error);
       toast({
         title: "Erro ao excluir",
-        description: "Não foi possível excluir o evento. Tente novamente.",
+        description: error.message || "Não foi possível excluir o evento. Tente novamente.",
         variant: "destructive",
       });
     } finally {
