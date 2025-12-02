@@ -107,24 +107,38 @@ export const PayoutRequestsManager = () => {
         throw new Error('Erro ao verificar autenticação');
       }
       
-      const updateData: any = {
-        status: newStatus,
-        notes: notes[requestId] || null
+      // Construir updateData de forma mais segura
+      const now = new Date().toISOString();
+      const updateData: Record<string, any> = {
+        status: newStatus
       };
+
+      // Adicionar notes se existir
+      if (notes[requestId]) {
+        updateData.notes = notes[requestId];
+      }
 
       // Se for aprovação ou rejeição, setar processed_at e processed_by
       if (newStatus === 'approved' || newStatus === 'rejected') {
-        updateData.processed_at = new Date().toISOString();
-        updateData.processed_by = currentUser?.id || null;
+        updateData.processed_at = now;
+        if (currentUser?.id) {
+          updateData.processed_by = currentUser.id;
+        }
       }
 
       // Se for conclusão (pagamento efetivado), setar completed_at e completed_by
       if (newStatus === 'completed') {
-        updateData.completed_at = new Date().toISOString();
-        updateData.completed_by = currentUser?.id || null;
+        updateData.completed_at = now;
+        if (currentUser?.id) {
+          updateData.completed_by = currentUser.id;
+        }
       }
       
-      console.log('📤 Enviando update:', { requestId, updateData });
+      console.log('📤 Enviando update:', { 
+        requestId, 
+        updateData,
+        keys: Object.keys(updateData)
+      });
       
       const { error: updateError } = await supabase
         .from('payout_requests')
@@ -136,7 +150,8 @@ export const PayoutRequestsManager = () => {
           error: updateError,
           message: updateError.message,
           details: updateError.details,
-          hint: updateError.hint
+          hint: updateError.hint,
+          code: updateError.code
         });
         throw new Error(updateError.message || 'Erro ao processar repasse');
       }
