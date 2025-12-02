@@ -1,14 +1,49 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Camera, Target, Sparkles } from 'lucide-react';
 
 const Sobre = () => {
+  const sectionRefs = useRef<(HTMLElement | null)[]>([]);
+
+  useEffect(() => {
+    const observers: IntersectionObserver[] = [];
+
+    sectionRefs.current.forEach((section) => {
+      if (!section) return;
+
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('animate-fade-in-up');
+              entry.target.classList.remove('opacity-0', 'translate-y-10');
+            }
+          });
+        },
+        { threshold: 0.1, rootMargin: '0px 0px -100px 0px' }
+      );
+
+      observer.observe(section);
+      observers.push(observer);
+    });
+
+    return () => {
+      observers.forEach((observer) => observer.disconnect());
+    };
+  }, []);
+
+  const addToRefs = (el: HTMLElement | null) => {
+    if (el && !sectionRefs.current.includes(el)) {
+      sectionRefs.current.push(el);
+    }
+  };
+
   return (
     <MainLayout>
       <div className="container mx-auto px-4 py-12 max-w-5xl">
         {/* Hero Section */}
-        <div className="text-center mb-16">
+        <div className="text-center mb-16 opacity-0 translate-y-10 transition-all duration-700" ref={addToRefs}>
           <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
             Sobre Nós
           </h1>
@@ -18,11 +53,11 @@ const Sobre = () => {
         </div>
 
         {/* Main Content Card */}
-        <Card className="mb-12">
+        <Card className="mb-12 opacity-0 translate-y-10 transition-all duration-700" ref={addToRefs}>
           <CardContent className="p-8 md:p-12">
             <div className="space-y-8">
               {/* Nossa História */}
-              <section>
+              <section className="opacity-0 translate-y-10 transition-all duration-700 delay-100" ref={addToRefs}>
                 <div className="flex items-center gap-3 mb-4">
                   <Camera className="h-6 w-6 text-primary" />
                   <h2 className="text-2xl font-bold">Nossa História</h2>
@@ -33,7 +68,7 @@ const Sobre = () => {
               </section>
 
               {/* Nossa Missão */}
-              <section>
+              <section className="opacity-0 translate-y-10 transition-all duration-700 delay-200" ref={addToRefs}>
                 <div className="flex items-center gap-3 mb-4">
                   <Target className="h-6 w-6 text-primary" />
                   <h2 className="text-2xl font-bold">Nossa Missão</h2>
@@ -44,7 +79,7 @@ const Sobre = () => {
               </section>
 
               {/* O que nos torna únicos */}
-              <section>
+              <section className="opacity-0 translate-y-10 transition-all duration-700 delay-300" ref={addToRefs}>
                 <div className="flex items-center gap-3 mb-4">
                   <Sparkles className="h-6 w-6 text-primary" />
                   <h2 className="text-2xl font-bold">O que nos torna únicos?</h2>
@@ -61,7 +96,7 @@ const Sobre = () => {
         </Card>
 
         {/* Call to Action */}
-        <div className="text-center py-12 px-6 rounded-xl bg-gradient-primary text-white shadow-elegant">
+        <div className="text-center py-12 px-6 rounded-xl bg-gradient-primary text-white shadow-elegant opacity-0 translate-y-10 transition-all duration-700" ref={addToRefs}>
           <div className="relative z-10">
             <h2 className="text-3xl md:text-4xl font-bold mb-4 drop-shadow-lg">
               STA: Relembre a sua história.

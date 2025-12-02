@@ -14,6 +14,7 @@ import { useWebVitals } from "@/hooks/useWebVitals";
 import { lazy, Suspense } from "react";
 
 // Páginas principais (carregamento imediato)
+import Home from "./pages/Home";
 import Events from "./pages/Events";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -122,7 +123,8 @@ const AppContent = () => {
     >
       <Suspense fallback={<PageLoader />}>
         <Routes>
-          <Route path="/" element={<Events />} />
+          <Route path="/" element={<Home />} />
+          <Route path="/events" element={<Events />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/auth/organization" element={<OrganizationAuth />} />
           <Route path="/dashboard" element={<Dashboard />}>

@@ -1,0 +1,361 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Camera, Search, MapPin, Calendar, ArrowRight, Zap, Shield, Users, Trophy, Star, TrendingUp } from 'lucide-react';
+import MainLayout from '@/components/layout/MainLayout';
+import { OptimizedImage } from '@/components/ui/OptimizedImage';
+
+interface FeaturedCampaign {
+  id: string;
+  title: string;
+  description: string;
+  event_date: string;
+  location: string;
+  cover_image_url: string;
+  photo_count: number;
+  photographer_name: string;
+}
+
+const Home = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [featuredCampaigns, setFeaturedCampaigns] = useState<FeaturedCampaign[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({ events: 0, photos: 0, photographers: 0 });
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      // Buscar estatísticas
+      const [eventsCount, photosCount, photographersCount] = await Promise.all([
+        supabase.from('campaigns').select('id', { count: 'exact', head: true }),
+        supabase.from('photos').select('id', { count: 'exact', head: true }),
+        supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'photographer')
+      ]);
+
+      setStats({
+        events: eventsCount.count || 0,
+        photos: photosCount.count || 0,
+        photographers: photographersCount.count || 0
+      });
+
+      // Buscar campanhas em destaque (últimas 6)
+      const { data: campaignsData, error } = await supabase
+        .from('campaigns')
+        .select(`
+          id,
+          title,
+          description,
+          event_date,
+          location,
+          cover_image_url,
+          photographer_id
+        `)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(6);
+
+      if (error) throw error;
+
+      if (campaignsData && campaignsData.length > 0) {
+        // Buscar dados adicionais para cada campanha
+        const campaignsWithDetails = await Promise.all(
+          campaignsData.map(async (campaign) => {
+            // Buscar contagem de fotos
+            const { count: photoCount } = await supabase
+              .from('photos')
+              .select('id', { count: 'exact', head: true })
+              .eq('campaign_id', campaign.id)
+              .eq('is_available', true);
+
+            // Buscar nome do fotógrafo
+            const { data: photographerData } = await supabase
+              .from('profiles')
+              .select('full_name')
+              .eq('id', campaign.photographer_id)
+              .single();
+
+            // Fallback para capa se não tiver
+            let coverUrl = campaign.cover_image_url;
+            if (!coverUrl) {
+              const { data: firstPhoto } = await supabase
+                .from('photos')
+                .select('thumbnail_url')
+                .eq('campaign_id', campaign.id)
+                .eq('is_available', true)
+                .limit(1)
+                .single();
+              
+              coverUrl = firstPhoto?.thumbnail_url || '';
+            }
+
+            return {
+              ...campaign,
+              cover_image_url: coverUrl,
+              photo_count: photoCount || 0,
+              photographer_name: photographerData?.full_name || 'STA Fotos'
+            };
+          })
+        );
+
+        setFeaturedCampaigns(campaignsWithDetails);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar dados:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <MainLayout>
+      {/* Hero Section */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-primary/10 via-background to-primary/5 py-20 md:py-32">
+        <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="max-w-4xl mx-auto text-center">
+            <Badge className="mb-6 text-sm px-4 py-2" variant="outline">
+              <Zap className="h-4 w-4 mr-2" />
+              Plataforma #1 de Fotografia Esportiva
+            </Badge>
+            <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-primary via-primary/80 to-primary/60 bg-clip-text text-transparent">
+              Relembre a sua história
+            </h1>
+            <p className="text-xl md:text-2xl text-muted-foreground mb-8 leading-relaxed">
+              Encontre suas melhores fotos de eventos esportivos com reconhecimento facial inteligente
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Button 
+                size="lg" 
+                className="gap-2 text-lg px-8 py-6 shadow-lg hover:shadow-xl transition-all"
+                onClick={() => navigate('/events')}
+              >
+                <Search className="h-5 w-5" />
+                Encontrar Minhas Fotos
+              </Button>
+              <Button 
+                size="lg" 
+                variant="outline"
+                className="gap-2 text-lg px-8 py-6"
+                onClick={() => navigate('/sobre')}
+              >
+                Sobre Nós
+                <ArrowRight className="h-5 w-5" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Stats Section */}
+      <section className="py-16 bg-muted/30">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+            <Card className="text-center border-primary/20 hover:border-primary/40 transition-all">
+              <CardContent className="pt-8 pb-6">
+                <Trophy className="h-12 w-12 text-primary mx-auto mb-4" />
+                <div className="text-4xl font-bold mb-2">{stats.events}+</div>
+                <div className="text-muted-foreground">Eventos Realizados</div>
+              </CardContent>
+            </Card>
+            <Card className="text-center border-primary/20 hover:border-primary/40 transition-all">
+              <CardContent className="pt-8 pb-6">
+                <Camera className="h-12 w-12 text-primary mx-auto mb-4" />
+                <div className="text-4xl font-bold mb-2">{stats.photos.toLocaleString()}+</div>
+                <div className="text-muted-foreground">Fotos Disponíveis</div>
+              </CardContent>
+            </Card>
+            <Card className="text-center border-primary/20 hover:border-primary/40 transition-all">
+              <CardContent className="pt-8 pb-6">
+                <Users className="h-12 w-12 text-primary mx-auto mb-4" />
+                <div className="text-4xl font-bold mb-2">{stats.photographers}+</div>
+                <div className="text-muted-foreground">Fotógrafos</div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* Featured Events */}
+      <section className="py-20">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">Eventos em Destaque</h2>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Confira os últimos eventos e encontre suas fotos
+            </p>
+          </div>
+
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[...Array(6)].map((_, i) => (
+                <Card key={i} className="overflow-hidden">
+                  <div className="aspect-video bg-muted animate-pulse"></div>
+                  <CardContent className="p-6 space-y-3">
+                    <div className="h-6 bg-muted rounded animate-pulse"></div>
+                    <div className="h-4 bg-muted rounded w-2/3 animate-pulse"></div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : featuredCampaigns.length === 0 ? (
+            <Card className="p-12 text-center">
+              <Camera className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-xl font-semibold mb-2">Nenhum evento disponível</h3>
+              <p className="text-muted-foreground">Novos eventos serão adicionados em breve!</p>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {featuredCampaigns.map((campaign) => (
+                <Card 
+                  key={campaign.id} 
+                  className="overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer group"
+                  onClick={() => navigate(`/campaign/${campaign.id}`)}
+                >
+                  <div className="aspect-video relative overflow-hidden bg-muted">
+                    {campaign.cover_image_url ? (
+                      <OptimizedImage
+                        src={campaign.cover_image_url}
+                        alt={campaign.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
+                        <Camera className="h-16 w-16 text-muted-foreground" />
+                      </div>
+                    )}
+                    <div className="absolute top-3 right-3">
+                      <Badge className="bg-background/90 backdrop-blur-sm">
+                        <Camera className="h-3 w-3 mr-1" />
+                        {campaign.photo_count}
+                      </Badge>
+                    </div>
+                  </div>
+                  <CardContent className="p-6">
+                    <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors line-clamp-1">
+                      {campaign.title}
+                    </h3>
+                    {campaign.description && (
+                      <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+                        {campaign.description}
+                      </p>
+                    )}
+                    <div className="space-y-2 text-sm">
+                      {campaign.event_date && (
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <Calendar className="h-4 w-4" />
+                          {new Date(campaign.event_date).toLocaleDateString('pt-BR')}
+                        </div>
+                      )}
+                      {campaign.location && (
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <MapPin className="h-4 w-4" />
+                          {campaign.location}
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Camera className="h-4 w-4" />
+                        {campaign.photographer_name}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          <div className="text-center mt-12">
+            <Button 
+              size="lg" 
+              variant="outline"
+              onClick={() => navigate('/events')}
+              className="gap-2"
+            >
+              Ver Todos os Eventos
+              <ArrowRight className="h-5 w-5" />
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section className="py-20 bg-muted/30">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">Por que escolher a STA?</h2>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Tecnologia de ponta para eternizar seus momentos
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+            <Card className="text-center p-8 hover:shadow-lg transition-all">
+              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Zap className="h-8 w-8 text-primary" />
+              </div>
+              <h3 className="text-xl font-bold mb-3">Reconhecimento Facial IA</h3>
+              <p className="text-muted-foreground">
+                Encontre suas fotos automaticamente com nossa tecnologia de reconhecimento facial avançada
+              </p>
+            </Card>
+
+            <Card className="text-center p-8 hover:shadow-lg transition-all">
+              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Shield className="h-8 w-8 text-primary" />
+              </div>
+              <h3 className="text-xl font-bold mb-3">Pagamento Seguro</h3>
+              <p className="text-muted-foreground">
+                Transações protegidas e processamento rápido para sua tranquilidade
+              </p>
+            </Card>
+
+            <Card className="text-center p-8 hover:shadow-lg transition-all">
+              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <TrendingUp className="h-8 w-8 text-primary" />
+              </div>
+              <h3 className="text-xl font-bold mb-3">Alta Qualidade</h3>
+              <p className="text-muted-foreground">
+                Fotos profissionais em alta resolução para guardar para sempre
+              </p>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-20">
+        <div className="container mx-auto px-4">
+          <Card className="overflow-hidden bg-gradient-to-br from-primary via-primary/90 to-primary/80 text-white border-0">
+            <CardContent className="p-12 md:p-16 text-center">
+              <Star className="h-16 w-16 mx-auto mb-6 opacity-90" />
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">
+                Pronto para encontrar suas fotos?
+              </h2>
+              <p className="text-xl mb-8 opacity-95 max-w-2xl mx-auto">
+                Acesse agora e reviva os melhores momentos dos seus eventos esportivos
+              </p>
+              <Button 
+                size="lg" 
+                variant="secondary"
+                className="gap-2 text-lg px-8 py-6 shadow-xl hover:shadow-2xl transition-all"
+                onClick={() => navigate('/events')}
+              >
+                <Search className="h-5 w-5" />
+                Começar Agora
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+    </MainLayout>
+  );
+};
+
+export default Home;

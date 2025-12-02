@@ -39,14 +39,15 @@ const Header = () => {
 
   const handleSearch = (value: string) => {
     setSearchTerm(value);
-    // A home agora é a página de eventos
-    if (location.pathname !== '/') {
-      navigate('/');
+    // Redirecionar para página de eventos ao pesquisar
+    if (location.pathname !== '/events') {
+      navigate('/events');
     }
   };
 
   const navItems = [
-    { to: '/', label: 'EVENTOS', icon: Calendar },
+    { to: '/', label: 'HOME', icon: Home },
+    { to: '/events', label: 'EVENTOS', icon: Calendar },
     { to: '/highlights', label: 'DESTAQUES', icon: Camera },
     { to: '/fotografos', label: 'FOTÓGRAFOS', icon: User },
     { to: '/tutorial', label: 'COMO FUNCIONA', icon: BookOpen },
