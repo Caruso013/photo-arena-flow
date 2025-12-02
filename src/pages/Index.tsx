@@ -32,18 +32,26 @@ const Index = () => {
 
   const fetchFeaturedCampaigns = async () => {
     try {
+      // Buscar apenas campanhas com 5+ fotos (elegíveis para home)
       const { data, error } = await supabase
         .from('campaigns')
         .select(`
           *,
-          photographer:profiles(full_name)
+          photographer:profiles(full_name),
+          photos:photos(count)
         `)
         .eq('is_active', true)
-        .order('created_at', { ascending: false })
-        .limit(6);
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setCampaigns(data || []);
+      
+      // Filtrar apenas campanhas com 5+ fotos
+      const eligibleCampaigns = (data || []).filter(campaign => {
+        const photoCount = campaign.photos?.[0]?.count || 0;
+        return photoCount >= 5;
+      }).slice(0, 6); // Limitar a 6 eventos
+      
+      setCampaigns(eligibleCampaigns);
     } catch (error) {
       logger.error('Error fetching campaigns:', error);
       handleError(error, { 
