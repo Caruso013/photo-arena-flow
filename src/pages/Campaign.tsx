@@ -32,7 +32,10 @@ import {
   Heart,
   ScanFace,
   Edit,
-  Star
+  Star,
+  ChevronLeft,
+  ChevronRight,
+  X
 } from 'lucide-react';
 import { useFavorites } from '@/hooks/useFavorites';
 import { FaceRecognitionModal } from '@/components/FaceRecognitionModal';
@@ -109,8 +112,11 @@ const Campaign = () => {
   // Paginação
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  // Reduzido de 24 para 12 para economizar Cached Egress
-  const PHOTOS_PER_PAGE = 12;
+  // Aumentado para 50 fotos por página conforme solicitado
+  const PHOTOS_PER_PAGE = 50;
+  
+  // Estado para foto selecionada no modal com navegação
+  const [viewingPhotoIndex, setViewingPhotoIndex] = useState<number | null>(null);
 
   // Memoizar contagem total de fotos
   const totalPhotos = useMemo(() => {
@@ -940,36 +946,16 @@ const Campaign = () => {
                         </Button>
 
                         {/* Botão Ver Foto Maior - Sempre visível no mobile, hover no desktop */}
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button 
-                              size="sm" 
-                              variant="secondary" 
-                              className="absolute bottom-2 left-1/2 -translate-x-1/2 gap-1 h-8 sm:h-9 text-xs sm:text-sm z-20 shadow-lg sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
-                            >
-                              <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
-                              Ver
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent className="max-w-[95vw] sm:max-w-4xl w-[90vw]">
-                            <DialogHeader>
-                              <DialogTitle className="text-sm sm:text-base truncate">
-                                {getPhotoName(photo, index)}
-                              </DialogTitle>
-                            </DialogHeader>
-                            <div className="relative">
-                              <AntiScreenshotProtection>
-                                <WatermarkedPhoto
-                                  src={photo.watermarked_url}
-                                  alt={getPhotoName(photo, index)}
-                                  position="full"
-                                  opacity={0.85}
-                                  imgClassName="w-full max-h-[60vh] sm:max-h-[70vh] object-contain rounded-lg"
-                                />
-                              </AntiScreenshotProtection>
-                            </div>
-                          </DialogContent>
-                        </Dialog>
+                        <Button 
+                          size="sm" 
+                          variant="secondary" 
+                          className="absolute bottom-2 left-1/2 -translate-x-1/2 gap-1 h-8 sm:h-9 text-xs sm:text-sm z-20 shadow-lg sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+                          onClick={() => setViewingPhotoIndex(index)}
+                        >
+                          <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
+                          Ver
+                        </Button>
+                        
                         
                         {/* Overlay de hover sutil */}
                         <div className="absolute inset-0 bg-black/0 sm:group-hover:bg-black/10 transition-colors pointer-events-none" />
@@ -1064,6 +1050,91 @@ const Campaign = () => {
             </>
           )}
         </div>
+
+        {/* Modal de Visualização de Foto com Navegação */}
+        <Dialog open={viewingPhotoIndex !== null} onOpenChange={(open) => !open && setViewingPhotoIndex(null)}>
+          <DialogContent className="max-w-[95vw] sm:max-w-5xl w-[95vw] p-0 sm:p-6 gap-0">
+            <DialogHeader className="p-4 sm:p-0 sm:pb-4">
+              <DialogTitle className="text-sm sm:text-base truncate pr-8">
+                {viewingPhotoIndex !== null && photos[viewingPhotoIndex] 
+                  ? getPhotoName(photos[viewingPhotoIndex], viewingPhotoIndex)
+                  : 'Foto'
+                }
+              </DialogTitle>
+            </DialogHeader>
+            
+            <div className="relative flex items-center justify-center">
+              {/* Botão Anterior */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute left-1 sm:left-2 top-1/2 -translate-y-1/2 z-30 h-10 w-10 sm:h-12 sm:w-12 bg-background/80 backdrop-blur-sm hover:bg-background shadow-lg rounded-full"
+                onClick={() => setViewingPhotoIndex((prev) => prev !== null && prev > 0 ? prev - 1 : prev)}
+                disabled={viewingPhotoIndex === 0}
+              >
+                <ChevronLeft className="h-6 w-6 sm:h-8 sm:w-8" />
+              </Button>
+
+              {/* Imagem */}
+              {viewingPhotoIndex !== null && photos[viewingPhotoIndex] && (
+                <AntiScreenshotProtection>
+                  <WatermarkedPhoto
+                    src={photos[viewingPhotoIndex].watermarked_url}
+                    alt={getPhotoName(photos[viewingPhotoIndex], viewingPhotoIndex)}
+                    position="full"
+                    opacity={0.85}
+                    imgClassName="w-full max-h-[60vh] sm:max-h-[75vh] object-contain rounded-lg px-12 sm:px-16"
+                  />
+                </AntiScreenshotProtection>
+              )}
+
+              {/* Botão Próximo */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-1 sm:right-2 top-1/2 -translate-y-1/2 z-30 h-10 w-10 sm:h-12 sm:w-12 bg-background/80 backdrop-blur-sm hover:bg-background shadow-lg rounded-full"
+                onClick={() => setViewingPhotoIndex((prev) => prev !== null && prev < photos.length - 1 ? prev + 1 : prev)}
+                disabled={viewingPhotoIndex === photos.length - 1}
+              >
+                <ChevronRight className="h-6 w-6 sm:h-8 sm:w-8" />
+              </Button>
+            </div>
+
+            {/* Contador e botões de ação */}
+            <div className="p-4 sm:pt-4 flex items-center justify-between gap-4 border-t">
+              <span className="text-sm text-muted-foreground">
+                {viewingPhotoIndex !== null ? viewingPhotoIndex + 1 : 0} de {photos.length}
+              </span>
+              
+              {viewingPhotoIndex !== null && photos[viewingPhotoIndex] && (
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      handleAddToCart(photos[viewingPhotoIndex!]);
+                      setViewingPhotoIndex(null);
+                    }}
+                    className="gap-1"
+                  >
+                    <ShoppingCart className="h-4 w-4" />
+                    Carrinho
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      handleBuyPhoto(photos[viewingPhotoIndex!]);
+                      setViewingPhotoIndex(null);
+                    }}
+                    className="gap-1"
+                  >
+                    Comprar {formatCurrency(photos[viewingPhotoIndex!].price)}
+                  </Button>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Payment Modal */}
         {showPaymentModal && selectedPhoto && (

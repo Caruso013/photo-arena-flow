@@ -83,19 +83,24 @@ const PhotographerEvents = () => {
     try {
       setDeleting(campaignId);
       
-      // Verificar se há compras/vendas associadas
-      const { data: purchases, error: purchaseError } = await supabase
-        .from('purchases')
-        .select('id')
+      // Verificar se há compras/vendas associadas através das fotos
+      const { data: photosWithPurchases, error: purchaseError } = await supabase
+        .from('photos')
+        .select('id, purchases(id)')
         .eq('campaign_id', campaignId)
-        .limit(1);
+        .limit(100);
 
       if (purchaseError) {
         console.error('Error checking purchases:', purchaseError);
         throw new Error('Erro ao verificar vendas do evento');
       }
 
-      if (purchases && purchases.length > 0) {
+      // Verificar se alguma foto tem compras
+      const hasPurchases = photosWithPurchases?.some(
+        (photo: any) => photo.purchases && photo.purchases.length > 0
+      );
+
+      if (hasPurchases) {
         toast({
           title: "Não é possível excluir",
           description: "Este evento já possui vendas registradas e não pode ser excluído por questões de histórico financeiro.",
