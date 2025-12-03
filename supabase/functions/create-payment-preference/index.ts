@@ -7,6 +7,18 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Função para calcular o desconto progressivo (deve ser igual ao frontend)
+function calculateProgressiveDiscount(quantity: number): number {
+  if (quantity >= 10) {
+    return 20; // 20% para 10+ fotos
+  } else if (quantity >= 5) {
+    return 10; // 10% para 5-9 fotos
+  } else if (quantity >= 2) {
+    return 5; // 5% para 2-4 fotos
+  }
+  return 0;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -17,7 +29,7 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { photos, buyerInfo, campaignId } = await req.json();
+    const { photos, buyerInfo, campaignId, progressiveDiscount } = await req.json();
 
     // Validação básica - aceita múltiplas fotos
     if (!photos || !Array.isArray(photos) || photos.length === 0) {
@@ -65,37 +77,66 @@ serve(async (req) => {
       });
     }
 
-    // VALIDAÇÃO CRÍTICA: Calcular preço total do BANCO (não confiar no cliente)
-    const realTotalAmount = photosData.reduce((sum, p) => sum + Number(p.price), 0);
-    const clientTotalAmount = photos.reduce((sum, p) => sum + Number(p.price), 0);
+    // CALCULAR PREÇO TOTAL DO BANCO (subtotal sem desconto)
+    const realSubtotal = photosData.reduce((sum, p) => sum + Number(p.price), 0);
+    const quantity = photosData.length;
     
-    // Verificar se cliente não manipulou os preços
-    if (Math.abs(realTotalAmount - clientTotalAmount) > 0.01) {
-      console.error('⚠️ TENTATIVA DE FRAUDE: Preços não conferem!', {
-        real: realTotalAmount,
-        client: clientTotalAmount,
-        buyer: buyerInfo.email
-      });
-      return new Response(JSON.stringify({ 
-        success: false, 
-        error: 'Preços não conferem. Recarregue a página e tente novamente.' 
-      }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    // Calcular desconto progressivo esperado (verificar no servidor)
+    const expectedDiscountPercentage = calculateProgressiveDiscount(quantity);
+    const expectedDiscountAmount = realSubtotal * (expectedDiscountPercentage / 100);
+    const expectedTotal = realSubtotal - expectedDiscountAmount;
+
+    // Se o cliente enviou desconto progressivo, validar
+    let finalTotal = realSubtotal;
+    let appliedDiscountPercentage = 0;
+    let appliedDiscountAmount = 0;
+    
+    if (progressiveDiscount && progressiveDiscount.enabled) {
+      // Verificar se o desconto está correto
+      if (Math.abs(progressiveDiscount.percentage - expectedDiscountPercentage) > 0.01) {
+        console.error('⚠️ Desconto progressivo inválido:', {
+          clientPercentage: progressiveDiscount.percentage,
+          expectedPercentage: expectedDiscountPercentage
+        });
+        return new Response(JSON.stringify({ 
+          success: false, 
+          error: 'Desconto inválido. Recarregue a página e tente novamente.' 
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
+      appliedDiscountPercentage = expectedDiscountPercentage;
+      appliedDiscountAmount = expectedDiscountAmount;
+      finalTotal = expectedTotal;
+      
+      console.log('✅ Desconto progressivo aplicado:', {
+        quantity,
+        subtotal: realSubtotal,
+        discountPercentage: appliedDiscountPercentage,
+        discountAmount: appliedDiscountAmount,
+        finalTotal
       });
     }
 
-    const totalAmount = realTotalAmount;
-
-    // Criar purchases no banco ATOMICAMENTE (todas de uma vez)
+    // Criar purchases no banco com informações do desconto
     const purchasesToInsert = photosData.map(photoData => {
-      const photoPrice = photoData.price; // Usar preço do banco, não do cliente
+      const photoPrice = photoData.price;
+      // Calcular preço proporcional após desconto para cada foto
+      const proportionalDiscount = appliedDiscountAmount > 0 
+        ? (photoPrice / realSubtotal) * appliedDiscountAmount 
+        : 0;
+      const finalPhotoPrice = photoPrice - proportionalDiscount;
+      
       return {
         photo_id: photoData.id,
         buyer_id: buyer.id,
         photographer_id: photoData.photographer_id,
-        amount: photoPrice,
+        amount: Number(finalPhotoPrice.toFixed(2)), // Preço final com desconto proporcional
         status: 'pending',
+        progressive_discount_percentage: appliedDiscountPercentage,
+        progressive_discount_amount: Number(proportionalDiscount.toFixed(2)),
       };
     });
 
@@ -124,14 +165,28 @@ serve(async (req) => {
       });
     }
 
-    // Preparar itens para Mercado Pago
-    const items = photos.map((photo) => ({
-      id: photo.id,
-      title: photo.title || 'Foto',
-      quantity: 1,
-      unit_price: Number(photo.price),
-      currency_id: 'BRL',
-    }));
+    // Preparar itens para Mercado Pago com preço já com desconto aplicado
+    let items;
+    
+    if (appliedDiscountPercentage > 0) {
+      // Se há desconto, criar um único item com o total
+      items = [{
+        id: 'fotos-com-desconto',
+        title: `${quantity} Fotos (${appliedDiscountPercentage}% de desconto)`,
+        quantity: 1,
+        unit_price: Number(finalTotal.toFixed(2)),
+        currency_id: 'BRL',
+      }];
+    } else {
+      // Sem desconto, manter items individuais
+      items = photosData.map((photoData, index) => ({
+        id: photoData.id,
+        title: photos[index]?.title || 'Foto',
+        quantity: 1,
+        unit_price: Number(photoData.price),
+        currency_id: 'BRL',
+      }));
+    }
 
     // Usar IDs de todas as purchases separados por vírgula
     const purchaseIds = purchases.map(p => p.id).join(',');
@@ -197,6 +252,12 @@ serve(async (req) => {
       init_point: data.init_point,
       sandbox_init_point: data.sandbox_init_point,
       purchase_ids: purchaseIds,
+      applied_discount: appliedDiscountPercentage > 0 ? {
+        percentage: appliedDiscountPercentage,
+        amount: appliedDiscountAmount,
+        subtotal: realSubtotal,
+        total: finalTotal
+      } : null
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
