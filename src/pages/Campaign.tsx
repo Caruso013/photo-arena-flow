@@ -135,10 +135,17 @@ const Campaign = () => {
   useEffect(() => {
     if (id || code) {
       fetchCampaign();
-      fetchCampaignPhotographers();
-      fetchSubEvents();
     }
   }, [id, code]);
+
+  // Buscar sub_events e fotógrafos APÓS campaign ser carregada
+  useEffect(() => {
+    if (campaign?.id) {
+      console.log('📂 Campaign loaded, fetching sub_events for:', campaign.id);
+      fetchSubEvents();
+      fetchCampaignPhotographers();
+    }
+  }, [campaign?.id]);
 
   // Resetar página quando trocar de álbum
   useEffect(() => {
@@ -264,20 +271,37 @@ const Campaign = () => {
   };
 
   const fetchSubEvents = async () => {
-    if (!campaign?.id) return;
+    if (!campaign?.id) {
+      console.log('📂 fetchSubEvents: campaign.id não disponível ainda');
+      return;
+    }
 
     try {
+      console.log('📂 Buscando sub_events para campaign:', campaign.id);
+      
+      // Primeiro buscar TODOS os álbuns para debug
+      const { data: allAlbums, error: allError } = await supabase
+        .from('sub_events')
+        .select('id, title, description, location, event_time, photo_count, is_active')
+        .eq('campaign_id', campaign.id);
+      
+      console.log('📂 TODOS os álbuns encontrados:', allAlbums);
+      
+      // Agora buscar apenas os ativos com 5+ fotos
       const { data, error } = await supabase
         .from('sub_events')
         .select('id, title, description, location, event_time, photo_count')
         .eq('campaign_id', campaign.id)
         .eq('is_active', true)
-        .gte('photo_count', 5) // APENAS álbuns com 5 ou mais fotos
+        .gte('photo_count', 5)
         .order('event_time', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Erro ao buscar sub_events:', error);
+        throw error;
+      }
       
-      console.log(`📂 Encontrados ${data?.length || 0} álbuns com 5+ fotos`);
+      console.log(`✅ Encontrados ${data?.length || 0} álbuns ativos com 5+ fotos:`, data);
       setSubEvents(data || []);
     } catch (error) {
       console.error('Error fetching sub-events:', error);
