@@ -8,9 +8,10 @@ import { MaskedInput, masks, validateCPF } from '@/components/ui/masked-input';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { CreditCard, Loader2, ShoppingCart, ArrowLeft, AlertCircle } from 'lucide-react';
+import { CreditCard, Loader2, ShoppingCart, ArrowLeft, AlertCircle, Percent, Tag } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { emailService } from '@/lib/emailService';
+import { useProgressiveDiscount, getNextDiscountThreshold } from '@/hooks/useProgressiveDiscount';
 
 declare global {
   interface Window {
@@ -25,6 +26,7 @@ interface Photo {
   image_url?: string;
   watermarked_url?: string;
   thumbnail_url?: string;
+  progressive_discount_enabled?: boolean;
 }
 
 interface PaymentModalProps {
@@ -60,8 +62,27 @@ export default function PaymentModal({
 
   // Support both single photo and multiple photos (cart)
   const itemsToProcess = photos && photos.length > 0 ? photos : (photo ? [photo] : []);
-  const totalPrice = itemsToProcess.reduce((sum, item) => sum + (item.price || 0), 0);
+  const subtotal = itemsToProcess.reduce((sum, item) => sum + (item.price || 0), 0);
   const totalItems = itemsToProcess.length;
+  
+  // Verificar se desconto progressivo está habilitado
+  const progressiveDiscountEnabled = itemsToProcess.some(item => item.progressive_discount_enabled !== false);
+  
+  // Calcular preço médio por foto
+  const averagePrice = totalItems > 0 ? subtotal / totalItems : 0;
+  
+  // Usar hook de desconto progressivo
+  const progressiveDiscount = useProgressiveDiscount(
+    totalItems,
+    averagePrice,
+    progressiveDiscountEnabled
+  );
+  
+  // Preço final com desconto aplicado
+  const totalPrice = progressiveDiscount.total;
+  
+  // Próximo threshold de desconto
+  const nextThreshold = getNextDiscountThreshold(totalItems);
 
   const handleInputChange = (field: string, value: string) => {
     // Remove formatação para validação
@@ -130,6 +151,14 @@ export default function PaymentModal({
           })),
           buyerInfo,
           campaignId: 'cart-purchase',
+          // Enviar informações do desconto progressivo
+          progressiveDiscount: progressiveDiscountEnabled && progressiveDiscount.discountPercentage > 0 ? {
+            enabled: true,
+            percentage: progressiveDiscount.discountPercentage,
+            amount: progressiveDiscount.discountAmount,
+            subtotal: subtotal,
+            total: totalPrice
+          } : null
         },
       });
 
@@ -234,11 +263,49 @@ export default function PaymentModal({
                     </div>
                   ))}
                 </div>
-                <div className="flex justify-between items-center pt-2 border-t border-border">
-                  <span className="font-bold">Total:</span>
-                  <span className="text-2xl font-bold text-primary">
-                    {formatCurrency(totalPrice)}
-                  </span>
+                
+                {/* Resumo de preços com desconto progressivo */}
+                <div className="pt-3 border-t border-border space-y-2">
+                  {/* Subtotal */}
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground">Subtotal ({totalItems} fotos):</span>
+                    <span>{formatCurrency(subtotal)}</span>
+                  </div>
+                  
+                  {/* Desconto Progressivo */}
+                  {progressiveDiscountEnabled && progressiveDiscount.discountPercentage > 0 && (
+                    <div className="flex justify-between items-center text-sm text-green-600">
+                      <span className="flex items-center gap-1">
+                        <Percent className="h-3 w-3" />
+                        Desconto ({progressiveDiscount.discountPercentage}%):
+                      </span>
+                      <span>-{formatCurrency(progressiveDiscount.discountAmount)}</span>
+                    </div>
+                  )}
+                  
+                  {/* Incentivo para próximo desconto */}
+                  {progressiveDiscountEnabled && nextThreshold && progressiveDiscount.discountPercentage === 0 && (
+                    <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-2 text-xs text-blue-700 dark:text-blue-400 flex items-center gap-1">
+                      <Tag className="h-3 w-3" />
+                      Adicione mais {nextThreshold.threshold - totalItems} foto(s) para ganhar {nextThreshold.percentage}% de desconto!
+                    </div>
+                  )}
+                  
+                  {/* Mensagem de desconto aplicado */}
+                  {progressiveDiscountEnabled && progressiveDiscount.discountPercentage > 0 && (
+                    <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-2 text-xs text-green-700 dark:text-green-400 flex items-center gap-1">
+                      <Percent className="h-3 w-3" />
+                      🎉 Desconto de {progressiveDiscount.discountPercentage}% aplicado!
+                    </div>
+                  )}
+                  
+                  {/* Total Final */}
+                  <div className="flex justify-between items-center pt-2 border-t border-border">
+                    <span className="font-bold">Total:</span>
+                    <span className="text-2xl font-bold text-primary">
+                      {formatCurrency(totalPrice)}
+                    </span>
+                  </div>
                 </div>
               </div>
             )}
@@ -373,6 +440,12 @@ export default function PaymentModal({
                 <h4 className="font-medium text-sm">
                   {totalItems === 1 ? itemsToProcess[0].title || 'Foto' : `${totalItems} fotos`}
                 </h4>
+                {progressiveDiscountEnabled && progressiveDiscount.discountPercentage > 0 && (
+                  <p className="text-xs text-green-600 flex items-center gap-1">
+                    <Percent className="h-3 w-3" />
+                    {progressiveDiscount.discountPercentage}% de desconto aplicado
+                  </p>
+                )}
                 <p className="text-xl font-bold text-primary">
                   {formatCurrency(totalPrice)}
                 </p>
