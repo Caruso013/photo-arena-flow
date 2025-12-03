@@ -142,7 +142,7 @@ export type Database = {
           event_date: string | null
           id: string
           is_active: boolean
-          is_featured: boolean
+          is_featured: boolean | null
           location: string | null
           organization_id: string | null
           organization_percentage: number
@@ -161,7 +161,7 @@ export type Database = {
           event_date?: string | null
           id?: string
           is_active?: boolean
-          is_featured?: boolean
+          is_featured?: boolean | null
           location?: string | null
           organization_id?: string | null
           organization_percentage?: number
@@ -180,7 +180,7 @@ export type Database = {
           event_date?: string | null
           id?: string
           is_active?: boolean
-          is_featured?: boolean
+          is_featured?: boolean | null
           location?: string | null
           organization_id?: string | null
           organization_percentage?: number
