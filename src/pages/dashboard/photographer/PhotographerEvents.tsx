@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, MapPin, Image, Trash2, Plus } from 'lucide-react';
+import { Calendar, MapPin, Image, Trash2, Plus, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { SkeletonCard } from '@/components/ui/skeleton-card';
@@ -242,13 +242,15 @@ const PhotographerEvents = () => {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="flex gap-2">
-                <Button asChild className="flex-1" variant="default">
-                  <Link to={campaign.short_code ? `/E/${campaign.short_code}` : `/campaign/${campaign.id}`}>
-                    Ver Evento
-                  </Link>
-                </Button>
-                <AlertDialog>
+              <CardContent className="flex flex-col gap-3">
+                <div className="flex gap-2">
+                  <Button asChild className="flex-1" variant="default">
+                    <Link to={`/dashboard/photographer/manage-event/${campaign.id}`}>
+                      <Settings className="h-4 w-4 mr-2" />
+                      Gerenciar Evento
+                    </Link>
+                  </Button>
+                  <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button 
                       variant="outline" 
@@ -278,6 +280,10 @@ const PhotographerEvents = () => {
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
+                </div>
+                <div className="text-xs text-muted-foreground text-center">
+                  💡 Gerencie fotos, álbuns e configurações do evento
+                </div>
               </CardContent>
             </Card>
           ))}

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -334,75 +335,15 @@ export const PhotographerEarnings = () => {
             <div className="text-2xl font-bold text-green-600">
               {formatCurrency(totalAvailable)}
             </div>
-            <Dialog open={showPixForm} onOpenChange={setShowPixForm}>
-            <DialogTrigger asChild>
+            <Link to="/dashboard/photographer/payout">
               <Button
-                disabled={totalAvailable <= 0 || requestingPayout}
+                disabled={totalAvailable <= 0}
                 className="w-full mt-4 gap-2"
               >
                 <DollarSign className="h-4 w-4" />
-                Solicitar Repasse
+                Solicitar Saque
               </Button>
-            </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Dados para Repasse via PIX</DialogTitle>
-                  <DialogDescription>
-                    Informe seus dados para receber o pagamento de {formatCurrency(totalAvailable)}
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="recipient_name">
-                      Nome do Beneficiário <span className="text-destructive">*</span>
-                    </Label>
-                    <Input
-                      id="recipient_name"
-                      placeholder="Nome completo"
-                      value={pixData.recipient_name}
-                      onChange={(e) => setPixData({ ...pixData, recipient_name: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="pix_key">
-                      Chave PIX <span className="text-destructive">*</span>
-                    </Label>
-                    <Input
-                      id="pix_key"
-                      placeholder="CPF, e-mail, telefone ou chave aleatória"
-                      value={pixData.pix_key}
-                      onChange={(e) => setPixData({ ...pixData, pix_key: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="institution">Instituição Bancária (Opcional)</Label>
-                    <Input
-                      id="institution"
-                      placeholder="Ex: Banco do Brasil, Nubank..."
-                      value={pixData.institution}
-                      onChange={(e) => setPixData({ ...pixData, institution: e.target.value })}
-                    />
-                  </div>
-                </div>
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setShowPixForm(false)}>
-                    Cancelar
-                  </Button>
-                  <Button onClick={requestPayout} disabled={requestingPayout}>
-                    {requestingPayout ? (
-                      <>
-                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-2" />
-                        Processando...
-                      </>
-                    ) : (
-                      'Solicitar Repasse'
-                    )}
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+            </Link>
           </CardContent>
         </Card>
 

@@ -9,6 +9,17 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { toast } from '@/components/ui/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
@@ -36,7 +47,8 @@ import {
   Star,
   ChevronLeft,
   ChevronRight,
-  X
+  X,
+  Trash2
 } from 'lucide-react';
 import { useFavorites } from '@/hooks/useFavorites';
 import { FaceRecognitionModal } from '@/components/FaceRecognitionModal';
@@ -111,6 +123,7 @@ const Campaign = () => {
   const [purchasing, setPurchasing] = useState(false);
   const [albumPreviews, setAlbumPreviews] = useState<Record<string, string>>({});
   const [showFaceRecognition, setShowFaceRecognition] = useState(false);
+  const [deletingAlbum, setDeletingAlbum] = useState<string | null>(null);
   
   // Paginação
   const [page, setPage] = useState(1);
@@ -346,6 +359,67 @@ const Campaign = () => {
     } catch (error) {
       console.error('Error fetching sub-events:', error);
       setSubEvents([]);
+    }
+  };
+
+  const handleDeleteAlbum = async (albumId: string, albumTitle: string) => {
+    try {
+      setDeletingAlbum(albumId);
+
+      // Verificar se há fotos no álbum
+      const { data: photos, error: photosError } = await supabase
+        .from('photos')
+        .select('id')
+        .eq('sub_event_id', albumId)
+        .limit(1);
+
+      if (photosError) {
+        console.error('Error checking photos:', photosError);
+        throw new Error('Erro ao verificar fotos do álbum');
+      }
+
+      if (photos && photos.length > 0) {
+        toast({
+          title: "⚠️ Álbum contém fotos",
+          description: "Remova todas as fotos do álbum antes de excluí-lo.",
+          variant: "destructive",
+        });
+        setDeletingAlbum(null);
+        return;
+      }
+
+      // Deletar o álbum
+      const { error } = await supabase
+        .from('sub_events')
+        .delete()
+        .eq('id', albumId);
+
+      if (error) {
+        console.error('Error deleting album:', error);
+        throw new Error(error.message || 'Falha ao excluir álbum');
+      }
+
+      toast({
+        title: "✅ Álbum excluído",
+        description: `"${albumTitle}" foi excluído com sucesso.`,
+      });
+
+      // Atualizar lista de álbuns
+      setSubEvents(subEvents.filter(a => a.id !== albumId));
+      
+      // Se estava visualizando o álbum excluído, resetar para todas as fotos
+      if (selectedSubEvent === albumId) {
+        setSelectedSubEvent(null);
+      }
+    } catch (error: any) {
+      console.error('Error deleting album:', error);
+      toast({
+        title: "Erro ao excluir",
+        description: error.message || "Não foi possível excluir o álbum. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingAlbum(null);
     }
   };
 
@@ -879,11 +953,57 @@ const Campaign = () => {
               {subEvents.map((subEvent) => (
                 <Card 
                   key={subEvent.id}
-                  className={`cursor-pointer transition-all hover:shadow-lg overflow-hidden ${
+                  className={`cursor-pointer transition-all hover:shadow-lg overflow-hidden relative ${
                     selectedSubEvent === subEvent.id ? 'ring-2 ring-primary' : ''
                   }`}
                   onClick={() => setSelectedSubEvent(subEvent.id)}
                 >
+                  {/* Botão de excluir - apenas para fotógrafo dono */}
+                  {user?.id === campaign?.photographer_id && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          className="absolute top-2 right-2 z-10 h-8 w-8 opacity-90 hover:opacity-100"
+                          onClick={(e) => e.stopPropagation()}
+                          disabled={deletingAlbum === subEvent.id}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Excluir álbum?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Tem certeza que deseja excluir o álbum "{subEvent.title}"?
+                            {subEvent.photo_count > 0 && (
+                              <span className="block mt-2 text-destructive font-medium">
+                                ⚠️ Este álbum contém {subEvent.photo_count} {subEvent.photo_count === 1 ? 'foto' : 'fotos'}. 
+                                Remova todas as fotos antes de excluir o álbum.
+                              </span>
+                            )}
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel onClick={(e) => e.stopPropagation()}>
+                            Cancelar
+                          </AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteAlbum(subEvent.id, subEvent.title);
+                            }}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            disabled={deletingAlbum === subEvent.id || subEvent.photo_count > 0}
+                          >
+                            {deletingAlbum === subEvent.id ? 'Excluindo...' : 'Excluir'}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+
                   {/* Preview da capa ou foto */}
                   {(subEvent.cover_image_url || albumPreviews[subEvent.id]) && (
                     <div className="aspect-[4/5] relative">

@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { MaskedInput, masks } from '@/components/ui/masked-input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Upload, Camera, DollarSign, BarChart3, Plus, Edit, CreditCard, AlertCircle, CalendarPlus } from 'lucide-react';
+import { Upload, Camera, DollarSign, BarChart3, Plus, Edit, CreditCard, AlertCircle, CalendarPlus, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import AntiScreenshotProtection from '@/components/security/AntiScreenshotProtection';
@@ -686,175 +686,61 @@ const PhotographerDashboard = () => {
           </TabsContent>
 
           <TabsContent value="payouts" className="space-y-4">
-            <div className="grid gap-6 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <CreditCard className="h-5 w-5" />
-                    Solicitar Repasse
-                  </CardTitle>
-                  <CardDescription>
-                    Solicite o pagamento da sua receita disponível
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-muted-foreground">Saldo Disponível</span>
-                      <DollarSign className="h-4 w-4 text-primary" />
-                    </div>
-                    <p className="text-2xl font-bold text-primary">{formatCurrency(stats.availableAmount)}</p>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      ℹ️ Apenas vendas com mais de 12h podem ser solicitadas
+            <Card className="p-8 text-center">
+              <div className="max-w-2xl mx-auto space-y-6">
+                <div className="h-20 w-20 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
+                  <CreditCard className="h-10 w-10 text-primary" />
+                </div>
+                
+                <div>
+                  <h3 className="text-2xl font-bold mb-2">Solicitação de Saque</h3>
+                  <p className="text-muted-foreground">
+                    Acesse a página dedicada para solicitar seus repasses e acompanhar o histórico de pagamentos
+                  </p>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2 text-left bg-muted/30 p-6 rounded-lg">
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold text-muted-foreground">Saldo Disponível</p>
+                    <p className="text-3xl font-bold text-green-600 dark:text-green-400">
+                      {formatCurrency(stats.availableAmount)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Pronto para saque
                     </p>
                   </div>
                   
-                  <div>
-                    <Label htmlFor="payout-amount">Valor do Repasse (R$)</Label>
-                    <Input
-                      id="payout-amount"
-                      type="number"
-                      step="0.01"
-                      max={stats.availableAmount}
-                      placeholder="0.00"
-                      value={payoutAmount}
-                      onChange={(e) => setPayoutAmount(e.target.value)}
-                      className="mt-2"
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Máximo: {formatCurrency(stats.availableAmount)}
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold text-muted-foreground">Solicitações Pendentes</p>
+                    <p className="text-3xl font-bold text-amber-600 dark:text-amber-400">
+                      {payoutRequests.filter(r => r.status === 'pending' || r.status === 'approved').length}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Em processamento
                     </p>
                   </div>
-      
-                  <div>
-                    <Label htmlFor="pix-key">Chave PIX</Label>
-                    {pixKeyType === 'cpf' ? (
-                      <MaskedInput
-                        id="pix-key"
-                        mask={masks.cpf}
-                        placeholder="000.000.000-00"
-                        value={pixKey}
-                        onChange={(e) => handlePixKeyChange(e.target.value)}
-                        className="mt-2"
-                      />
-                    ) : pixKeyType === 'cnpj' ? (
-                      <MaskedInput
-                        id="pix-key"
-                        mask={masks.cnpj}
-                        placeholder="00.000.000/0000-00"
-                        value={pixKey}
-                        onChange={(e) => handlePixKeyChange(e.target.value)}
-                        className="mt-2"
-                      />
-                    ) : pixKeyType === 'phone' ? (
-                      <MaskedInput
-                        id="pix-key"
-                        mask={masks.phone}
-                        placeholder="(11) 99999-9999"
-                        value={pixKey}
-                        onChange={(e) => handlePixKeyChange(e.target.value)}
-                        className="mt-2"
-                      />
-                    ) : (
-                      <Input
-                        id="pix-key"
-                        type="text"
-                        placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória"
-                        value={pixKey}
-                        onChange={(e) => handlePixKeyChange(e.target.value)}
-                        className="mt-2"
-                      />
-                    )}
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {pixKeyType === 'cpf' && 'Formato: CPF'}
-                      {pixKeyType === 'cnpj' && 'Formato: CNPJ'}
-                      {pixKeyType === 'phone' && 'Formato: Telefone'}
-                      {pixKeyType === 'email' && 'Formato: E-mail'}
-                      {pixKeyType === 'random' && 'Formato: Chave aleatória'}
-                      {!pixKeyType && 'Digite para detectar o tipo automaticamente'}
-                    </p>
-                  </div>
+                </div>
 
-                  <div>
-                    <Label htmlFor="recipient-name">Nome Completo</Label>
-                    <Input
-                      id="recipient-name"
-                      type="text"
-                      placeholder="Nome completo do beneficiário"
-                      value={recipientName}
-                      onChange={(e) => setRecipientName(e.target.value)}
-                      className="mt-2"
-                    />
-                  </div>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
+                  <Link to="/dashboard/photographer/payout" className="flex-1 sm:flex-initial">
+                    <Button size="lg" className="w-full gap-2">
+                      <DollarSign className="h-5 w-5" />
+                      Solicitar Saque
+                    </Button>
+                  </Link>
+                  <Link to="/dashboard/photographer/payout" className="flex-1 sm:flex-initial">
+                    <Button size="lg" variant="outline" className="w-full gap-2">
+                      <Clock className="h-5 w-5" />
+                      Ver Histórico
+                    </Button>
+                  </Link>
+                </div>
 
-                  <div>
-                    <Label htmlFor="institution">Instituição / Banco</Label>
-                    <Input
-                      id="institution"
-                      type="text"
-                      placeholder="Instituição (ex: Banco do Brasil, Nubank)"
-                      value={institution}
-                      onChange={(e) => setInstitution(e.target.value)}
-                      className="mt-2"
-                    />
-                  </div>
-                  
-                  {payoutError && (
-                    <Alert variant="destructive">
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertDescription>{payoutError}</AlertDescription>
-                    </Alert>
-                  )}
-
-                  <Button 
-                    onClick={requestPayout}
-                    disabled={isRequestingPayout || !payoutAmount || stats.availableAmount <= 0}
-                    className="w-full"
-                  >
-                    {isRequestingPayout ? 'Solicitando...' : 'Solicitar Repasse'}
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Minhas Solicitações</CardTitle>
-                  <CardDescription>
-                    Acompanhe o status das suas solicitações de repasse
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {payoutRequests.length === 0 ? (
-                      <p className="text-sm text-muted-foreground text-center py-4">
-                        Nenhuma solicitação de repasse ainda
-                      </p>
-                    ) : (
-                      payoutRequests.slice(0, 5).map((request) => (
-                        <div key={request.id} className="flex items-center justify-between p-3 border rounded-lg">
-                              <div className="flex-1">
-                                <p className="font-medium">{formatCurrency(Number(request.amount))}</p>
-                                <p className="text-sm text-muted-foreground">
-                                  {new Date(request.requested_at).toLocaleDateString()}
-                                </p>
-                                {request.status === 'rejected' && request.notes && (
-                                  <p className="text-xs text-destructive italic mt-1">Motivo: {request.notes}</p>
-                                )}
-                              </div>
-                              <Badge variant={
-                                request.status === 'approved' ? 'default' :
-                                request.status === 'pending' ? 'secondary' : 'destructive'
-                              }>
-                                {request.status === 'approved' ? 'Aprovado' :
-                                 request.status === 'pending' ? 'Pendente' : 'Rejeitado'}
-                              </Badge>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+                <p className="text-xs text-muted-foreground">
+                  💡 Valor mínimo para saque: R$ 50,00 | Processamento: até 2 dias úteis
+                </p>
+              </div>
+            </Card>
           </TabsContent>
 
           <TabsContent value="profile" className="space-y-6">

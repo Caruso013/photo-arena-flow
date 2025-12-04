@@ -52,6 +52,7 @@ const PhotographerApplication = lazy(() => import("./pages/dashboard/Photographe
 
 // Photographer routes (lazy)
 const PhotographerEvents = lazy(() => import("./pages/dashboard/photographer/PhotographerEvents"));
+const ManageEvent = lazy(() => import("./pages/dashboard/photographer/ManageEvent"));
 const PhotographerEarnings = lazy(() => import("./pages/dashboard/photographer/PhotographerEarnings"));
 const PhotographerReports = lazy(() => import("./pages/dashboard/photographer/PhotographerReports"));
 const AlbumReports = lazy(() => import("./pages/dashboard/photographer/AlbumReports"));
@@ -154,6 +155,7 @@ const AppContent = () => {
             <Route path="admin/cache-management" element={<CacheManagement />} />
             <Route path="admin/featured-events" element={<AdminFeaturedEvents />} />
             <Route path="photographer/events" element={<PhotographerEvents />} />
+            <Route path="photographer/manage-event/:id" element={<ManageEvent />} />
             <Route path="photographer/photos" element={<MyPhotos />} />
             <Route path="photographer/featured" element={<FeaturedPhotos />} />
             <Route path="photographer/payout" element={<PayoutRequest />} />
