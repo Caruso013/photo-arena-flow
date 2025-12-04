@@ -164,13 +164,12 @@ const MyFavorites = () => {
                   <Dialog>
                     <DialogTrigger asChild>
                       <button className="w-full h-full relative group/preview active:scale-95 transition-transform">
-                        <img
-                          src={photo.thumbnail_url || photo.watermarked_url}
+                        <WatermarkedPhoto
+                          src={photo.watermarked_url}
                           alt={photo.title || 'Foto'}
-                          className="w-full h-full object-cover transition-transform duration-300 group-hover/preview:scale-110"
-                          loading="lazy"
+                          imgClassName="w-full h-full object-cover transition-transform duration-300 group-hover/preview:scale-110"
                         />
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/preview:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/preview:opacity-100 transition-opacity duration-300 flex items-center justify-center pointer-events-none">
                           <Eye className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
                         </div>
                       </button>

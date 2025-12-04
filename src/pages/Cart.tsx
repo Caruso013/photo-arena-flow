@@ -114,12 +114,12 @@ const Cart = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <div className="container mx-auto px-4 py-12">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 pb-32 lg:pb-0">
+      <div className="container mx-auto px-4 py-6 sm:py-12">
         <Button 
           variant="ghost" 
           onClick={() => navigate(-1)}
-          className="mb-6 min-h-[44px]"
+          className="mb-4 sm:mb-6 min-h-[44px]"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
           Voltar
@@ -199,8 +199,8 @@ const Cart = () => {
             </div>
           </div>
 
-          {/* Coluna direita - Resumo e checkout */}
-          <div className="space-y-4">
+          {/* Coluna direita - Resumo e checkout (desktop) */}
+          <div className="hidden lg:block space-y-4">
             <Card className="sticky top-4">
               <CardHeader>
                 <CardTitle>Resumo do Pedido</CardTitle>
@@ -304,6 +304,39 @@ const Cart = () => {
               </CardContent>
             </Card>
           </div>
+        </div>
+      </div>
+
+      {/* Barra fixa no mobile para finalizar compra */}
+      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 lg:hidden z-50 shadow-lg">
+        <div className="container mx-auto">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-sm text-muted-foreground">{totalItems} {totalItems === 1 ? 'foto' : 'fotos'}</p>
+              {progressiveDiscountPercent > 0 && (
+                <p className="text-xs text-green-600 dark:text-green-400">
+                  {progressiveDiscountPercent}% de desconto aplicado
+                </p>
+              )}
+            </div>
+            <div className="text-right">
+              <p className="text-xl font-bold text-primary">{formatCurrency(finalTotal)}</p>
+              {progressiveDiscountAmount > 0 && (
+                <p className="text-xs text-muted-foreground line-through">{formatCurrency(totalPrice)}</p>
+              )}
+            </div>
+          </div>
+          <Button 
+            onClick={() => {
+              haptic.medium();
+              handleCheckout();
+            }}
+            className="w-full min-h-[48px]" 
+            size="lg"
+          >
+            <ShoppingBag className="h-5 w-5 mr-2" />
+            Finalizar Compra
+          </Button>
         </div>
       </div>
 
