@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useSwipeable } from 'react-swipeable';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -40,6 +41,7 @@ import {
 import { useFavorites } from '@/hooks/useFavorites';
 import { FaceRecognitionModal } from '@/components/FaceRecognitionModal';
 import EditEventModal from '@/components/modals/EditEventModal';
+import { useHapticFeedback } from '@/hooks/useHapticFeedback';
 
 interface Campaign {
   id: string;
@@ -91,6 +93,7 @@ const Campaign = () => {
   const { user, profile } = useAuth();
   const { addToCart } = useCart();
   const { toggleFavorite, isFavorited } = useFavorites();
+  const haptic = useHapticFeedback();
   const [togglingFeatured, setTogglingFeatured] = useState<string | null>(null);
   
   const [campaign, setCampaign] = useState<Campaign | null>(null);
@@ -117,6 +120,43 @@ const Campaign = () => {
   
   // Estado para foto selecionada no modal com navegação
   const [viewingPhotoIndex, setViewingPhotoIndex] = useState<number | null>(null);
+
+  // Handlers para navegação de fotos com swipe
+  const handlePrevPhoto = useCallback(() => {
+    if (viewingPhotoIndex !== null && viewingPhotoIndex > 0) {
+      haptic.light();
+      setViewingPhotoIndex(viewingPhotoIndex - 1);
+    }
+  }, [viewingPhotoIndex, haptic]);
+
+  const handleNextPhoto = useCallback(() => {
+    if (viewingPhotoIndex !== null && viewingPhotoIndex < photos.length - 1) {
+      haptic.light();
+      setViewingPhotoIndex(viewingPhotoIndex + 1);
+    }
+  }, [viewingPhotoIndex, photos.length, haptic]);
+
+  // Swipe handlers para navegação mobile
+  const swipeHandlers = useSwipeable({
+    onSwipedLeft: handleNextPhoto,
+    onSwipedRight: handlePrevPhoto,
+    preventScrollOnSwipe: true,
+    trackMouse: false,
+    trackTouch: true,
+    delta: 50,
+  });
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (viewingPhotoIndex === null) return;
+      if (e.key === 'ArrowLeft') handlePrevPhoto();
+      if (e.key === 'ArrowRight') handleNextPhoto();
+      if (e.key === 'Escape') setViewingPhotoIndex(null);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [viewingPhotoIndex, handlePrevPhoto, handleNextPhoto]);
 
   // Memoizar contagem total de fotos
   const totalPhotos = useMemo(() => {
@@ -1075,40 +1115,55 @@ const Campaign = () => {
           )}
         </div>
 
-        {/* Modal de Visualização de Foto com Navegação */}
+        {/* Modal de Visualização de Foto com Navegação e Swipe */}
         <Dialog open={viewingPhotoIndex !== null} onOpenChange={(open) => !open && setViewingPhotoIndex(null)}>
-          <DialogContent className="max-w-[95vw] sm:max-w-5xl w-[95vw] p-0 sm:p-6 gap-0">
-            <DialogHeader className="p-4 sm:p-0 sm:pb-4">
-              <DialogTitle className="text-sm sm:text-base truncate pr-8">
+          <DialogContent className="max-w-[98vw] sm:max-w-5xl w-[98vw] p-0 gap-0 bg-black/95 border-0">
+            {/* Header */}
+            <div className="flex items-center justify-between p-3 sm:p-4 bg-black/50 text-white">
+              <DialogTitle className="text-sm sm:text-base truncate flex-1 text-white">
                 {viewingPhotoIndex !== null && photos[viewingPhotoIndex] 
                   ? getPhotoName(photos[viewingPhotoIndex], viewingPhotoIndex)
                   : 'Foto'
-                }
+                } ({viewingPhotoIndex !== null ? viewingPhotoIndex + 1 : 0}/{photos.length})
               </DialogTitle>
-            </DialogHeader>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-white hover:bg-white/20 h-9 w-9"
+                onClick={() => setViewingPhotoIndex(null)}
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
             
-            <div className="relative flex items-center justify-center">
+            {/* Área da foto com swipe */}
+            <div 
+              {...swipeHandlers}
+              className="relative flex items-center justify-center min-h-[50vh] sm:min-h-[60vh] touch-pan-y"
+            >
               {/* Botão Anterior */}
               <Button
                 variant="ghost"
                 size="icon"
-                className="absolute left-1 sm:left-2 top-1/2 -translate-y-1/2 z-30 h-10 w-10 sm:h-12 sm:w-12 bg-background/80 backdrop-blur-sm hover:bg-background shadow-lg rounded-full"
-                onClick={() => setViewingPhotoIndex((prev) => prev !== null && prev > 0 ? prev - 1 : prev)}
+                className="absolute left-1 sm:left-2 top-1/2 -translate-y-1/2 z-30 h-12 w-12 sm:h-14 sm:w-14 bg-black/50 hover:bg-black/70 text-white shadow-lg rounded-full"
+                onClick={handlePrevPhoto}
                 disabled={viewingPhotoIndex === 0}
               >
-                <ChevronLeft className="h-6 w-6 sm:h-8 sm:w-8" />
+                <ChevronLeft className="h-8 w-8" />
               </Button>
 
               {/* Imagem */}
               {viewingPhotoIndex !== null && photos[viewingPhotoIndex] && (
                 <AntiScreenshotProtection>
-                  <WatermarkedPhoto
-                    src={photos[viewingPhotoIndex].watermarked_url}
-                    alt={getPhotoName(photos[viewingPhotoIndex], viewingPhotoIndex)}
-                    position="full"
-                    opacity={0.85}
-                    imgClassName="w-full max-h-[60vh] sm:max-h-[75vh] object-contain rounded-lg px-12 sm:px-16"
-                  />
+                  <div className="px-14 sm:px-20 py-4">
+                    <WatermarkedPhoto
+                      src={photos[viewingPhotoIndex].watermarked_url}
+                      alt={getPhotoName(photos[viewingPhotoIndex], viewingPhotoIndex)}
+                      position="full"
+                      opacity={0.85}
+                      imgClassName="w-full max-h-[55vh] sm:max-h-[70vh] object-contain rounded-lg"
+                    />
+                  </div>
                 </AntiScreenshotProtection>
               )}
 
@@ -1116,45 +1171,54 @@ const Campaign = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="absolute right-1 sm:right-2 top-1/2 -translate-y-1/2 z-30 h-10 w-10 sm:h-12 sm:w-12 bg-background/80 backdrop-blur-sm hover:bg-background shadow-lg rounded-full"
-                onClick={() => setViewingPhotoIndex((prev) => prev !== null && prev < photos.length - 1 ? prev + 1 : prev)}
+                className="absolute right-1 sm:right-2 top-1/2 -translate-y-1/2 z-30 h-12 w-12 sm:h-14 sm:w-14 bg-black/50 hover:bg-black/70 text-white shadow-lg rounded-full"
+                onClick={handleNextPhoto}
                 disabled={viewingPhotoIndex === photos.length - 1}
               >
-                <ChevronRight className="h-6 w-6 sm:h-8 sm:w-8" />
+                <ChevronRight className="h-8 w-8" />
               </Button>
+              
+              {/* Indicador de swipe no mobile */}
+              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 sm:hidden text-white/60 text-xs flex items-center gap-1">
+                <ChevronLeft className="h-3 w-3" />
+                Deslize para navegar
+                <ChevronRight className="h-3 w-3" />
+              </div>
             </div>
 
-            {/* Contador e botões de ação */}
-            <div className="p-4 sm:pt-4 flex items-center justify-between gap-4 border-t">
-              <span className="text-sm text-muted-foreground">
-                {viewingPhotoIndex !== null ? viewingPhotoIndex + 1 : 0} de {photos.length}
-              </span>
-              
+            {/* Footer com ações */}
+            <div className="p-3 sm:p-4 bg-black/50 flex items-center justify-between gap-3">
               {viewingPhotoIndex !== null && photos[viewingPhotoIndex] && (
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      handleAddToCart(photos[viewingPhotoIndex!]);
-                      setViewingPhotoIndex(null);
-                    }}
-                    className="gap-1"
-                  >
-                    <ShoppingCart className="h-4 w-4" />
-                    Carrinho
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      handleBuyPhoto(photos[viewingPhotoIndex!]);
-                      setViewingPhotoIndex(null);
-                    }}
-                    className="gap-1"
-                  >
-                    Comprar {formatCurrency(photos[viewingPhotoIndex!].price)}
-                  </Button>
-                </div>
+                <>
+                  <span className="text-lg sm:text-xl font-bold text-white">
+                    {formatCurrency(photos[viewingPhotoIndex].price)}
+                  </span>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-10 sm:h-11 px-3 sm:px-4 gap-2 bg-white/10 border-white/20 text-white hover:bg-white/20"
+                      onClick={() => {
+                        haptic.medium();
+                        handleAddToCart(photos[viewingPhotoIndex!]);
+                      }}
+                    >
+                      <ShoppingCart className="h-4 w-4" />
+                      <span className="hidden sm:inline">Carrinho</span>
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="h-10 sm:h-11 px-4 sm:px-6 gap-2"
+                      onClick={() => {
+                        haptic.medium();
+                        handleBuyPhoto(photos[viewingPhotoIndex!]);
+                        setViewingPhotoIndex(null);
+                      }}
+                    >
+                      Comprar
+                    </Button>
+                  </div>
+                </>
               )}
             </div>
           </DialogContent>
