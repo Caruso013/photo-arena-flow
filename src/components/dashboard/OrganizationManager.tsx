@@ -46,9 +46,14 @@ export const OrganizationManager: React.FC<OrganizationManagerProps> = ({ organi
       .replace(/[\u0300-\u036f]/g, '')
       .replace(/[^a-z0-9]/g, '');
     
+    // Gerar senha forte com maiúsculas, minúsculas e números
+    const randomNum = Math.floor(1000 + Math.random() * 9000); // 4 dígitos
+    const orgNameClean = orgName.replace(/[^a-zA-Z0-9]/g, '');
+    const password = `${orgNameClean.charAt(0).toUpperCase()}${orgNameClean.slice(1).toLowerCase()}@Sta${randomNum}`;
+    
     return {
       email: `${login}@sta.local`,
-      password: `${orgName}@sta`
+      password
     };
   };
 
@@ -256,26 +261,25 @@ export const OrganizationManager: React.FC<OrganizationManagerProps> = ({ organi
       }
 
       // 4. Mostrar credenciais em toast com instruções
-        toast({
-          title: "✅ Organização criada com sucesso!",
-          description: (
-            <div className="space-y-2 mt-2">
-              <p className="font-semibold">Credenciais de acesso:</p>
-              <div className="bg-muted p-3 rounded text-sm space-y-1">
-                <p><strong>Email:</strong> {email}</p>
-                <p><strong>Senha:</strong> {password}</p>
-                <p className="text-muted-foreground mt-2">
-                  Acesse em: /auth/organization
-                </p>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Copie e envie estas credenciais para a organização.
+      toast({
+        title: "✅ Organização criada com sucesso!",
+        description: (
+          <div className="space-y-2 mt-2">
+            <p className="font-semibold">Credenciais de acesso:</p>
+            <div className="bg-muted p-3 rounded text-sm space-y-1">
+              <p><strong>Email:</strong> {email}</p>
+              <p><strong>Senha:</strong> {password}</p>
+              <p className="text-muted-foreground mt-2">
+                Acesse em: /auth/organization
               </p>
             </div>
-          ),
-          duration: 15000,
-        });
-      }
+            <p className="text-xs text-muted-foreground">
+              Copie e envie estas credenciais para a organização.
+            </p>
+          </div>
+        ),
+        duration: 15000,
+      });
 
       setCreateDialogOpen(false);
       setFormData({ name: '', description: '', admin_percentage: 30 });
