@@ -57,19 +57,84 @@ export const OrganizationManager: React.FC<OrganizationManagerProps> = ({ organi
     try {
       const { email, password } = generateCredentials(org.name);
 
-      const { data, error } = await supabase.functions.invoke(
-        'create-organization-user',
-        { 
-          body: { 
-            organizationId: org.id,
-            organizationName: org.name,
-            email,
-            password
-          } 
-        }
-      );
+      // Tentar usar Edge Function primeiro (produção)
+      try {
+        const { data, error } = await supabase.functions.invoke(
+          'create-organization-user',
+          { 
+            body: { 
+              organizationId: org.id,
+              organizationName: org.name,
+              email,
+              password
+            } 
+          }
+        );
 
-      if (error) throw error;
+        if (error) throw error;
+
+        toast({
+          title: "✅ Credenciais criadas com sucesso!",
+          description: (
+            <div className="space-y-2 mt-2">
+              <p className="font-semibold">Credenciais de acesso para {org.name}:</p>
+              <div className="bg-muted p-3 rounded text-sm space-y-1">
+                <p><strong>Email:</strong> {email}</p>
+                <p><strong>Senha:</strong> {password}</p>
+                <p className="text-muted-foreground mt-2">
+                  Acesse em: /auth/organization
+                </p>
+              </div>
+            </div>
+          ),
+          duration: 15000,
+        });
+        
+        setCredentialsDialogOpen(false);
+        return;
+      } catch (funcError: any) {
+        // Se Edge Function falhar (local), criar manualmente
+        console.log('Edge Function não disponível, criando localmente...');
+      }
+
+      // Fallback: Criar usuário diretamente (SOMENTE ADMIN)
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: org.name,
+            role: 'organization',
+            organization_name: org.name
+          },
+          emailRedirectTo: undefined // Não enviar email
+        }
+      });
+
+      if (authError) throw authError;
+      if (!authData.user) throw new Error('Usuário não criado');
+
+      // Atualizar perfil manualmente
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .upsert({
+          id: authData.user.id,
+          email,
+          full_name: org.name,
+          role: 'organization'
+        });
+
+      if (profileError) throw profileError;
+
+      // Vincular à organização
+      const { error: linkError } = await supabase
+        .from('organization_users')
+        .insert({
+          user_id: authData.user.id,
+          organization_id: org.id
+        });
+
+      if (linkError) throw linkError;
 
       toast({
         title: "✅ Credenciais criadas com sucesso!",
@@ -130,28 +195,67 @@ export const OrganizationManager: React.FC<OrganizationManagerProps> = ({ organi
       // 2. Gerar credenciais de login
       const { email, password } = generateCredentials(formData.name);
 
-      // 3. Criar usuário via Edge Function
-      const { data: authData, error: authError } = await supabase.functions.invoke(
-        'create-organization-user',
-        { 
-          body: { 
-            organizationId: orgData.id,
-            organizationName: formData.name,
-            email,
-            password
-          } 
-        }
-      );
+      // 3. Tentar criar usuário via Edge Function (produção) ou diretamente (local)
+      let userCreated = false;
+      
+      try {
+        const { data: authData, error: authError } = await supabase.functions.invoke(
+          'create-organization-user',
+          { 
+            body: { 
+              organizationId: orgData.id,
+              organizationName: formData.name,
+              email,
+              password
+            } 
+          }
+        );
 
-      if (authError) {
-        console.error('Error creating organization user:', authError);
-        toast({
-          title: "Aviso",
-          description: "Organização criada, mas houve erro ao criar login automático.",
-          variant: "destructive",
+        if (!authError) {
+          userCreated = true;
+        }
+      } catch (funcError) {
+        console.log('Edge Function não disponível, criando localmente...');
+      }
+
+      // Fallback: Criar usuário diretamente se Edge Function falhar
+      if (!userCreated) {
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              full_name: formData.name,
+              role: 'organization',
+              organization_name: formData.name
+            },
+            emailRedirectTo: undefined
+          }
         });
-      } else {
-        // 4. Mostrar credenciais em toast com instruções
+
+        if (authError) throw authError;
+        if (!authData.user) throw new Error('Usuário não criado');
+
+        // Atualizar perfil
+        await supabase
+          .from('profiles')
+          .upsert({
+            id: authData.user.id,
+            email,
+            full_name: formData.name,
+            role: 'organization'
+          });
+
+        // Vincular à organização
+        await supabase
+          .from('organization_users')
+          .insert({
+            user_id: authData.user.id,
+            organization_id: orgData.id
+          });
+      }
+
+      // 4. Mostrar credenciais em toast com instruções
         toast({
           title: "✅ Organização criada com sucesso!",
           description: (

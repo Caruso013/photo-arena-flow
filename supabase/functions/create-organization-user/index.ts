@@ -23,10 +23,14 @@ serve(async (req) => {
       }
     );
 
-    const { organizationId, organizationName, email, password } = await req.json();
+    const body = await req.json();
+    const { organizationId, organizationName, email, password } = body;
+
+    console.log('Received request body:', body);
 
     if (!organizationId || !organizationName || !email || !password) {
-      throw new Error('Missing required fields');
+      console.error('Missing fields:', { organizationId: !!organizationId, organizationName: !!organizationName, email: !!email, password: !!password });
+      throw new Error(`Missing required fields. Received: ${JSON.stringify(Object.keys(body))}`);
     }
 
     console.log('Creating organization user:', { organizationId, organizationName, email });
