@@ -81,14 +81,14 @@ const OrganizationAuth = () => {
               <Input
                 id="email"
                 type="email"
-                placeholder="organizacao@sta.local"
+                placeholder="organizacao@sta.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={loading}
                 autoComplete="email"
               />
               <p className="text-xs text-muted-foreground">
-                Formato: nomedaorganizacao@sta.local
+                Use o email cadastrado pelo administrador
               </p>
             </div>
 
@@ -97,15 +97,19 @@ const OrganizationAuth = () => {
               <Input
                 id="password"
                 type="password"
-                placeholder="NomeDaOrganização@sta"
+                placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={loading}
                 autoComplete="current-password"
               />
               <p className="text-xs text-muted-foreground">
-                Formato: NomeDaOrganização@sta
+                Senha fornecida pelo administrador
               </p>
+            </div>
+            
+            <div className="text-xs text-muted-foreground bg-muted p-3 rounded-lg">
+              <strong>Nota:</strong> As credenciais são criadas pelo administrador ao cadastrar a organização. Se você não possui acesso, entre em contato com o suporte.
             </div>
 
             <Button

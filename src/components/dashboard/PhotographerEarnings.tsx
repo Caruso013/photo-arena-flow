@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { formatCurrency } from '@/lib/utils';
-import { DollarSign, Camera, Calendar, Lock, Unlock, TrendingUp, AlertCircle } from 'lucide-react';
+import { Camera, Calendar, TrendingUp, AlertCircle, User, ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -17,19 +16,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 
-interface PhotoEarning {
-  photo_id: string;
-  photo_title: string;
-  campaign_title: string;
-  campaign_id: string;
-  sale_date: string;
-  photo_price: number;
-  photographer_amount: number;
-  can_withdraw: boolean;
-  hours_until_withdraw: number;
+interface BuyerPurchase {
+  buyer_id: string;
+  buyer_name: string;
+  buyer_email: string;
+  photos_count: number;
+  total_amount: number;
+  purchase_date: string;
 }
 
 interface CampaignEarnings {
@@ -37,61 +31,34 @@ interface CampaignEarnings {
   campaign_title: string;
   total_photos_sold: number;
   total_earned: number;
-  photos: PhotoEarning[];
+  buyers: BuyerPurchase[];
 }
 
 export const PhotographerEarnings = () => {
   const { user } = useAuth();
   const [earnings, setEarnings] = useState<CampaignEarnings[]>([]);
   const [loading, setLoading] = useState(true);
-  const [totalAvailable, setTotalAvailable] = useState(0);
-  const [totalPending, setTotalPending] = useState(0);
+  const [totalEarned, setTotalEarned] = useState(0);
   const [totalPhotosSold, setTotalPhotosSold] = useState(0);
-  const [requestingPayout, setRequestingPayout] = useState(false);
-  const [pendingRequest, setPendingRequest] = useState<any>(null);
-  const [showPixForm, setShowPixForm] = useState(false);
-  const [pixData, setPixData] = useState({
-    pix_key: '',
-    recipient_name: '',
-    institution: '',
-  });
 
   useEffect(() => {
     if (user) {
       fetchEarnings();
-      checkPendingRequest();
     }
   }, [user]);
-
-  const checkPendingRequest = async () => {
-    if (!user) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from('payout_requests')
-        .select('*')
-        .eq('photographer_id', user.id)
-        .in('status', ['pending', 'approved'])
-        .maybeSingle();
-      
-      if (error) throw error;
-      setPendingRequest(data);
-    } catch (error) {
-      console.error('Erro ao verificar solicitação pendente:', error);
-    }
-  };
 
   const fetchEarnings = async () => {
     try {
       setLoading(true);
 
-      // Buscar revenue_shares com informações de foto e campanha
+      // Buscar revenue_shares com informações de foto, campanha e comprador
       const { data: revenueData, error } = await supabase
         .from('revenue_shares')
         .select(`
           *,
           purchases!revenue_shares_purchase_id_fkey(
             created_at,
+            buyer_id,
             photos!purchases_photo_id_fkey(
               id,
               title,
@@ -110,141 +77,102 @@ export const PhotographerEarnings = () => {
         throw error;
       }
 
-      // Processar dados por campanha
+      // Buscar nomes dos compradores
+      const buyerIds = [...new Set(revenueData?.map((r: any) => r.purchases?.buyer_id).filter(Boolean))];
+      
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, full_name, email')
+        .in('id', buyerIds);
+
+      const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+
+      // Processar dados por campanha e comprador
       const campaignMap = new Map<string, CampaignEarnings>();
-      let availableSum = 0;
-      let pendingSum = 0;
+      let totalSum = 0;
       let photoCount = 0;
 
-      revenueData?.forEach((revenue) => {
+      // Agrupar por campanha e comprador
+      const campaignBuyerMap = new Map<string, Map<string, BuyerPurchase>>();
+
+      revenueData?.forEach((revenue: any) => {
         photoCount++;
-        const purchase = (revenue as any).purchases;
+        const purchase = revenue.purchases;
         const photo = purchase?.photos;
         const campaign = photo?.campaigns;
         
         if (!campaign) return;
 
-        const saleDate = new Date(purchase.created_at);
-        const hoursSinceSale = (Date.now() - saleDate.getTime()) / (1000 * 60 * 60);
-        const canWithdraw = hoursSinceSale >= 12;
-        const hoursUntilWithdraw = canWithdraw ? 0 : Math.ceil(12 - hoursSinceSale);
-
         const photographerAmount = Number(revenue.photographer_amount || 0);
+        totalSum += photographerAmount;
 
-        if (canWithdraw) {
-          availableSum += photographerAmount;
-        } else {
-          pendingSum += photographerAmount;
+        const buyerId = purchase.buyer_id;
+        const buyerProfile = profileMap.get(buyerId);
+        const buyerName = buyerProfile?.full_name || 'Cliente';
+        const buyerEmail = buyerProfile?.email || '';
+
+        // Inicializar mapa da campanha se não existir
+        if (!campaignBuyerMap.has(campaign.id)) {
+          campaignBuyerMap.set(campaign.id, new Map());
         }
 
-        const photoEarning: PhotoEarning = {
-          photo_id: photo.id,
-          photo_title: photo.title || 'Sem título',
-          campaign_title: campaign.title,
-          campaign_id: campaign.id,
-          sale_date: purchase.created_at,
-          photo_price: Number(photo.price || 0),
-          photographer_amount: photographerAmount,
-          can_withdraw: canWithdraw,
-          hours_until_withdraw: hoursUntilWithdraw,
-        };
+        const buyersMap = campaignBuyerMap.get(campaign.id)!;
 
+        // Agrupar por comprador dentro da campanha
+        if (!buyersMap.has(buyerId)) {
+          buyersMap.set(buyerId, {
+            buyer_id: buyerId,
+            buyer_name: buyerName,
+            buyer_email: buyerEmail,
+            photos_count: 0,
+            total_amount: 0,
+            purchase_date: purchase.created_at,
+          });
+        }
+
+        const buyerData = buyersMap.get(buyerId)!;
+        buyerData.photos_count += 1;
+        buyerData.total_amount += photographerAmount;
+
+        // Atualizar data se for mais recente
+        if (new Date(purchase.created_at) > new Date(buyerData.purchase_date)) {
+          buyerData.purchase_date = purchase.created_at;
+        }
+
+        // Atualizar mapa da campanha
         if (!campaignMap.has(campaign.id)) {
           campaignMap.set(campaign.id, {
             campaign_id: campaign.id,
             campaign_title: campaign.title,
             total_photos_sold: 0,
             total_earned: 0,
-            photos: [],
+            buyers: [],
           });
         }
 
         const campaignEarnings = campaignMap.get(campaign.id)!;
         campaignEarnings.total_photos_sold += 1;
         campaignEarnings.total_earned += photographerAmount;
-        campaignEarnings.photos.push(photoEarning);
       });
 
-      // Descontar solicitações de repasse pendentes/aprovadas/completed do saldo disponível
-      const { data: payoutRequests } = await supabase
-        .from('payout_requests')
-        .select('amount, status')
-        .eq('photographer_id', user?.id)
-        .in('status', ['pending', 'approved', 'completed']);
+      // Converter buyers map para array em cada campanha
+      campaignMap.forEach((campaign, campaignId) => {
+        const buyersMap = campaignBuyerMap.get(campaignId);
+        if (buyersMap) {
+          campaign.buyers = Array.from(buyersMap.values()).sort(
+            (a, b) => new Date(b.purchase_date).getTime() - new Date(a.purchase_date).getTime()
+          );
+        }
+      });
 
-      const blockedAmount = payoutRequests?.reduce((sum, req) => sum + Number(req.amount || 0), 0) || 0;
-      const finalAvailable = Math.max(availableSum - blockedAmount, 0);
-
-      setEarnings(Array.from(campaignMap.values()));
-      setTotalAvailable(finalAvailable);
-      setTotalPending(pendingSum);
+      setEarnings(Array.from(campaignMap.values()).sort((a, b) => b.total_earned - a.total_earned));
+      setTotalEarned(totalSum);
       setTotalPhotosSold(photoCount);
     } catch (error) {
       console.error('Erro ao buscar ganhos:', error);
       toast.error('Erro ao carregar ganhos');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const requestPayout = async () => {
-    // Validar dados PIX
-    if (!pixData.pix_key.trim() || !pixData.recipient_name.trim()) {
-      toast.error('Preencha todos os campos obrigatórios do PIX');
-      return;
-    }
-
-    // 1. Verificar se já existe solicitação pendente/aprovada
-    if (pendingRequest) {
-      toast.error(
-        `Você já possui uma solicitação ${pendingRequest.status === 'pending' ? 'pendente' : 'aprovada'} no valor de ${formatCurrency(pendingRequest.amount)}. Aguarde o processamento.`
-      );
-      return;
-    }
-
-    // 2. Verificar saldo disponível
-    if (totalAvailable <= 0) {
-      toast.error('Não há valor disponível para saque');
-      return;
-    }
-
-    // 3. Criar solicitação com loading
-    setRequestingPayout(true);
-    try {
-      const { error } = await supabase
-        .from('payout_requests')
-        .insert({
-          photographer_id: user?.id,
-          amount: totalAvailable,
-          status: 'pending',
-          pix_key: pixData.pix_key.trim(),
-          recipient_name: pixData.recipient_name.trim(),
-          institution: pixData.institution.trim() || null,
-        });
-
-      if (error) {
-        if (error.code === '23505') {
-          toast.error('Você já possui uma solicitação pendente. Aguarde o processamento.');
-        } else {
-          throw error;
-        }
-        return;
-      }
-
-      // 4. Atualizar estado local
-      setTotalAvailable(0);
-      setShowPixForm(false);
-      setPixData({ pix_key: '', recipient_name: '', institution: '' });
-      toast.success('Solicitação de repasse enviada com sucesso!');
-      
-      // 5. Recarregar dados
-      await fetchEarnings();
-      await checkPendingRequest();
-    } catch (error) {
-      console.error('Erro ao solicitar repasse:', error);
-      toast.error('Erro ao solicitar repasse. Tente novamente.');
-    } finally {
-      setRequestingPayout(false);
     }
   };
 
@@ -267,130 +195,61 @@ export const PhotographerEarnings = () => {
 
   return (
     <div className="space-y-6">
-      {/* Alerta de Solicitação em Andamento */}
-      {pendingRequest && (
-        <Alert className="border-orange-500 bg-orange-50 dark:bg-orange-950/20">
-          <AlertCircle className="h-4 w-4 text-orange-600" />
-          <AlertTitle>Solicitação em Andamento</AlertTitle>
-          <AlertDescription>
-            Você possui uma solicitação de repasse {pendingRequest.status === 'pending' ? 'pendente' : 'aprovada'} 
-            {' '}no valor de <strong>{formatCurrency(pendingRequest.amount)}</strong>.
-            {pendingRequest.status === 'pending' 
-              ? ' Aguardando análise do administrador.' 
-              : ' Seu pagamento será processado em breve.'}
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Alerta Informativo sobre 12 horas */}
+      {/* Alerta Informativo */}
       <Alert className="border-2 border-primary/30 bg-primary/5">
         <AlertCircle className="h-5 w-5 text-primary" />
-        <AlertTitle className="text-base font-semibold">⏰ Período de Segurança de 12 Horas</AlertTitle>
-        <AlertDescription className="text-sm space-y-2">
-          <p>
-            <strong>Por segurança</strong>, o valor de cada venda fica disponível para saque apenas <strong>12 horas após a compra</strong>.
-          </p>
-          <ul className="list-disc list-inside space-y-1 ml-2">
-            <li>✅ Protege contra fraudes e chargebacks</li>
-            <li>✅ Garante que o pagamento foi confirmado</li>
-            <li>✅ Tempo para processar eventuais estornos</li>
-          </ul>
+        <AlertTitle className="text-base font-semibold">📊 Métricas por Álbum</AlertTitle>
+        <AlertDescription className="text-sm">
+          Acompanhe suas vendas organizadas por evento/álbum. Veja quem comprou e quantas fotos cada cliente adquiriu.
         </AlertDescription>
       </Alert>
 
-      {/* Alerta de Saldo Pendente */}
-      {totalPending > 0 && (
-        <Card className="border-2 border-amber-500/50 bg-amber-50 dark:bg-amber-950/20">
-          <CardContent className="pt-6">
-            <div className="flex items-start gap-3">
-              <div className="p-3 rounded-full bg-amber-500/20">
-                <Lock className="h-6 w-6 text-amber-600 dark:text-amber-400" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-lg mb-1 text-amber-900 dark:text-amber-100">
-                  🔒 Vendas Aguardando Liberação
-                </h3>
-                <p className="text-sm mb-2 text-amber-800 dark:text-amber-200">
-                  Você tem <strong>{formatCurrency(totalPending)}</strong> em vendas recentes (menos de 12h)
-                </p>
-                <p className="text-xs text-amber-700 dark:text-amber-300">
-                  ⏳ Esses valores ficarão disponíveis automaticamente após completar 12 horas de cada venda
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Cards de Resumo */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="border-2 border-green-500/30">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Unlock className="h-4 w-4 text-green-600" />
-              Disponível para Saque
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {formatCurrency(totalAvailable)}
-            </div>
-            <Link to="/dashboard/photographer/payout">
-              <Button
-                disabled={totalAvailable <= 0}
-                className="w-full mt-4 gap-2"
-              >
-                <DollarSign className="h-4 w-4" />
-                Solicitar Saque
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-
-        <Card className="border-2 border-amber-500/40 bg-amber-50/50 dark:bg-amber-950/20">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Lock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-              🔒 Pendente (menos de 12h)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">
-              {formatCurrency(totalPending)}
-            </div>
-            <p className="text-xs text-amber-700 dark:text-amber-300 mt-2 font-medium">
-              ⏳ Aguardando período de segurança
-            </p>
-          </CardContent>
-        </Card>
-
+      {/* Cards de Resumo - Apenas métricas gerais */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card className="border-2 border-primary/30">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-primary" />
-              Total Acumulado
+              Total Vendido
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-primary">
-              {formatCurrency(totalAvailable + totalPending)}
+              {formatCurrency(totalEarned)}
             </div>
             <p className="text-xs text-muted-foreground mt-2">
-              Todas as vendas
+              Sua receita total de todas as vendas
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-2 border-blue-500/30">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <ImageIcon className="h-4 w-4 text-blue-600" />
+              Fotos Vendidas
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">
+              {totalPhotosSold}
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Total de fotos vendidas em todos os eventos
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Ganhos por Campanha */}
+      {/* Ganhos por Campanha/Álbum */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Camera className="h-5 w-5" />
-            Ganhos por Evento
+            Vendas por Evento/Álbum
           </CardTitle>
           <CardDescription>
-            Detalhamento de vendas e comissões por campanha
+            Detalhamento de vendas por evento com informações dos compradores
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -406,18 +265,18 @@ export const PhotographerEarnings = () => {
                     <div>
                       <h3 className="font-semibold text-lg">{campaign.campaign_title}</h3>
                       <p className="text-sm text-muted-foreground">
-                        {campaign.total_photos_sold} foto(s) vendida(s)
+                        {campaign.total_photos_sold} foto(s) vendida(s) • {campaign.buyers.length} comprador(es)
                       </p>
                     </div>
                     <div className="text-right">
                       <div className="text-xl font-bold text-primary">
                         {formatCurrency(campaign.total_earned)}
                       </div>
-                      <p className="text-xs text-muted-foreground">Total recebido</p>
+                      <p className="text-xs text-muted-foreground">Sua receita</p>
                     </div>
                   </div>
 
-                  {/* Detalhes das Fotos */}
+                  {/* Detalhes por Comprador */}
                   <Dialog>
                     <DialogTrigger asChild>
                       <Button variant="outline" size="sm" className="w-full">
@@ -428,41 +287,39 @@ export const PhotographerEarnings = () => {
                       <DialogHeader>
                         <DialogTitle>{campaign.campaign_title}</DialogTitle>
                         <DialogDescription>
-                          Detalhamento de todas as vendas deste evento
+                          {campaign.total_photos_sold} fotos vendidas • {campaign.buyers.length} compradores
                         </DialogDescription>
                       </DialogHeader>
                       <div className="space-y-3 mt-4">
-                        {campaign.photos.map((photo) => (
+                        {campaign.buyers.map((buyer) => (
                           <div
-                            key={`${photo.photo_id}-${photo.sale_date}`}
-                            className="border rounded p-3 space-y-2"
+                            key={buyer.buyer_id}
+                            className="border rounded-lg p-4 space-y-2 bg-muted/30"
                           >
                             <div className="flex items-start justify-between">
                               <div className="space-y-1">
-                                <div className="font-medium">{photo.photo_title}</div>
+                                <div className="flex items-center gap-2">
+                                  <User className="h-4 w-4 text-primary" />
+                                  <span className="font-medium">{buyer.buyer_name}</span>
+                                </div>
+                                {buyer.buyer_email && (
+                                  <div className="text-xs text-muted-foreground">
+                                    {buyer.buyer_email}
+                                  </div>
+                                )}
                                 <div className="text-xs text-muted-foreground flex items-center gap-1">
                                   <Calendar className="h-3 w-3" />
-                                  {new Date(photo.sale_date).toLocaleString('pt-BR')}
-                                </div>
-                                <div className="text-xs text-muted-foreground">
-                                  Preço da foto: {formatCurrency(photo.photo_price)}
+                                  {new Date(buyer.purchase_date).toLocaleString('pt-BR')}
                                 </div>
                               </div>
                               <div className="text-right space-y-1">
                                 <div className="font-semibold text-green-600">
-                                  {formatCurrency(photo.photographer_amount)}
+                                  {formatCurrency(buyer.total_amount)}
                                 </div>
-                                {photo.can_withdraw ? (
-                                  <Badge className="bg-green-600">
-                                    <Unlock className="h-3 w-3 mr-1" />
-                                    Disponível
-                                  </Badge>
-                                ) : (
-                                  <Badge variant="outline" className="text-yellow-600 border-yellow-600">
-                                    <Lock className="h-3 w-3 mr-1" />
-                                    {photo.hours_until_withdraw}h restantes
-                                  </Badge>
-                                )}
+                                <Badge variant="secondary" className="gap-1">
+                                  <ImageIcon className="h-3 w-3" />
+                                  {buyer.photos_count} foto{buyer.photos_count > 1 ? 's' : ''}
+                                </Badge>
                               </div>
                             </div>
                           </div>
