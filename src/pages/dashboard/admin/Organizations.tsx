@@ -6,7 +6,9 @@ import { toast } from '@/components/ui/use-toast';
 import AdminLayout from '@/components/dashboard/AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { DollarSign, Calendar } from 'lucide-react';
+import { DollarSign, Calendar, History, ChevronDown, ChevronUp } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface Organization {
   id: string;
@@ -21,10 +23,22 @@ interface Organization {
   payment_date?: Date;
 }
 
+interface MonthlyRevenue {
+  organization_id: string;
+  organization_name: string;
+  month_label: string;
+  cycle_start: Date;
+  cycle_end: Date;
+  payment_date: Date;
+  revenue: number;
+}
+
 const AdminOrganizations = () => {
   const { profile } = useAuth();
   const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [historicalRevenue, setHistoricalRevenue] = useState<MonthlyRevenue[]>([]);
   const [loading, setLoading] = useState(true);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   useEffect(() => {
     fetchOrganizations();
@@ -51,12 +65,10 @@ const AdminOrganizations = () => {
       let paymentDate: Date;
       
       if (currentDay < 5) {
-        // Se antes do dia 5, o ciclo é do mês retrasado (5) até mês passado (4)
         cycleStart = new Date(now.getFullYear(), now.getMonth() - 2, 5, 0, 0, 0);
         cycleEnd = new Date(now.getFullYear(), now.getMonth() - 1, 4, 23, 59, 59);
         paymentDate = new Date(now.getFullYear(), now.getMonth() - 1, 5);
       } else {
-        // Se depois do dia 5, o ciclo é do mês passado (5) até mês atual (4)
         cycleStart = new Date(now.getFullYear(), now.getMonth() - 1, 5, 0, 0, 0);
         cycleEnd = new Date(now.getFullYear(), now.getMonth(), 4, 23, 59, 59);
         paymentDate = new Date(now.getFullYear(), now.getMonth(), 5);
@@ -64,6 +76,55 @@ const AdminOrganizations = () => {
       
       const cycleStartISO = cycleStart.toISOString();
       const cycleEndISO = cycleEnd.toISOString();
+
+      // Calcular últimos 2 meses de histórico (incluindo o atual)
+      const historicalData: MonthlyRevenue[] = [];
+      
+      for (let monthOffset = 0; monthOffset < 2; monthOffset++) {
+        let histCycleStart: Date;
+        let histCycleEnd: Date;
+        let histPaymentDate: Date;
+        
+        if (currentDay < 5) {
+          histCycleStart = new Date(now.getFullYear(), now.getMonth() - 2 - monthOffset, 5, 0, 0, 0);
+          histCycleEnd = new Date(now.getFullYear(), now.getMonth() - 1 - monthOffset, 4, 23, 59, 59);
+          histPaymentDate = new Date(now.getFullYear(), now.getMonth() - 1 - monthOffset, 5);
+        } else {
+          histCycleStart = new Date(now.getFullYear(), now.getMonth() - 1 - monthOffset, 5, 0, 0, 0);
+          histCycleEnd = new Date(now.getFullYear(), now.getMonth() - monthOffset, 4, 23, 59, 59);
+          histPaymentDate = new Date(now.getFullYear(), now.getMonth() - monthOffset, 5);
+        }
+
+        const monthLabel = histPaymentDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+
+        for (const org of orgsData || []) {
+          const { data: revenueData } = await supabase
+            .from('revenue_shares')
+            .select('organization_amount')
+            .eq('organization_id', org.id)
+            .gte('created_at', histCycleStart.toISOString())
+            .lte('created_at', histCycleEnd.toISOString());
+
+          const revenue = (revenueData || []).reduce(
+            (sum, rev) => sum + Number(rev.organization_amount), 
+            0
+          );
+
+          if (monthOffset > 0) { // Apenas adiciona ao histórico os meses anteriores
+            historicalData.push({
+              organization_id: org.id,
+              organization_name: org.name,
+              month_label: monthLabel,
+              cycle_start: histCycleStart,
+              cycle_end: histCycleEnd,
+              payment_date: histPaymentDate,
+              revenue
+            });
+          }
+        }
+      }
+
+      setHistoricalRevenue(historicalData);
 
       const orgsWithRevenue = await Promise.all(
         (orgsData || []).map(async (org) => {
@@ -127,7 +188,7 @@ const AdminOrganizations = () => {
           <p className="text-muted-foreground">Gerencie organizações e suas configurações</p>
         </div>
 
-        {/* Receita do Ciclo de 30 dias (pagamento dia 5) */}
+        {/* Receita do Ciclo Atual */}
         <div>
           <h2 className="text-xl font-semibold mb-4">Ciclo de Pagamento Atual</h2>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -174,6 +235,59 @@ const AdminOrganizations = () => {
             })}
           </div>
         </div>
+
+        {/* Histórico de 2 Meses */}
+        {historicalRevenue.length > 0 && (
+          <Collapsible open={historyOpen} onOpenChange={setHistoryOpen}>
+            <Card>
+              <CardHeader className="pb-3">
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" className="w-full flex items-center justify-between p-0 h-auto">
+                    <div className="flex items-center gap-2">
+                      <History className="h-5 w-5" />
+                      <CardTitle className="text-lg">Histórico de Receitas (Últimos 2 Meses)</CardTitle>
+                    </div>
+                    {historyOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </Button>
+                </CollapsibleTrigger>
+                <CardDescription>
+                  Dados guardados para discussão e análise
+                </CardDescription>
+              </CardHeader>
+              <CollapsibleContent>
+                <CardContent>
+                  <div className="space-y-4">
+                    {/* Agrupar por mês */}
+                    {Array.from(new Set(historicalRevenue.map(h => h.month_label))).map(monthLabel => (
+                      <div key={monthLabel}>
+                        <h4 className="font-medium text-sm text-muted-foreground mb-2 capitalize">{monthLabel}</h4>
+                        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                          {historicalRevenue
+                            .filter(h => h.month_label === monthLabel)
+                            .map((item, idx) => (
+                              <Card key={`${item.organization_id}-${idx}`} className="border-l-4 border-l-blue-500">
+                                <CardContent className="p-4">
+                                  <div className="flex justify-between items-center">
+                                    <span className="font-medium">{item.organization_name}</span>
+                                    <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                                      R$ {item.revenue.toFixed(2)}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    {item.cycle_start.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} - {item.cycle_end.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                  </p>
+                                </CardContent>
+                              </Card>
+                            ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
+        )}
 
         <OrganizationManager organizations={organizations} onRefresh={fetchOrganizations} />
       </div>

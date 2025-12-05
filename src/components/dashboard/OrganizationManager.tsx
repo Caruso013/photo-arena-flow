@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from '@/components/ui/use-toast';
-import { Building2, Edit, Trash2, Plus, Power, PowerOff } from 'lucide-react';
+import { Building2, Edit, Trash2, Plus, Key, Copy, Check } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 interface Organization {
@@ -29,12 +29,92 @@ export const OrganizationManager: React.FC<OrganizationManagerProps> = ({ organi
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [credentialsDialogOpen, setCredentialsDialogOpen] = useState(false);
   const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
+  const [creatingCredentials, setCreatingCredentials] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     admin_percentage: 30
   });
+
+  const generateCredentials = (orgName: string) => {
+    const login = orgName
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]/g, '');
+    
+    return {
+      email: `${login}@sta.local`,
+      password: `${orgName}@sta`
+    };
+  };
+
+  const handleCreateCredentials = async (org: Organization) => {
+    setCreatingCredentials(true);
+    try {
+      const { email, password } = generateCredentials(org.name);
+
+      const { data, error } = await supabase.functions.invoke(
+        'create-organization-user',
+        { 
+          body: { 
+            organizationId: org.id,
+            organizationName: org.name,
+            email,
+            password
+          } 
+        }
+      );
+
+      if (error) throw error;
+
+      toast({
+        title: "✅ Credenciais criadas com sucesso!",
+        description: (
+          <div className="space-y-2 mt-2">
+            <p className="font-semibold">Credenciais de acesso para {org.name}:</p>
+            <div className="bg-muted p-3 rounded text-sm space-y-1">
+              <p><strong>Email:</strong> {email}</p>
+              <p><strong>Senha:</strong> {password}</p>
+              <p className="text-muted-foreground mt-2">
+                Acesse em: /auth/organization
+              </p>
+            </div>
+          </div>
+        ),
+        duration: 15000,
+      });
+      
+      setCredentialsDialogOpen(false);
+    } catch (error: any) {
+      console.error('Error creating credentials:', error);
+      toast({
+        title: "Erro ao criar credenciais",
+        description: error.message || "Não foi possível criar as credenciais. O usuário pode já existir.",
+        variant: "destructive",
+      });
+    } finally {
+      setCreatingCredentials(false);
+    }
+  };
+
+  const copyToClipboard = async (text: string, field: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  const openCredentialsDialog = (org: Organization) => {
+    setSelectedOrg(org);
+    setCredentialsDialogOpen(true);
+  };
 
   const handleCreate = async () => {
     try {
@@ -48,14 +128,7 @@ export const OrganizationManager: React.FC<OrganizationManagerProps> = ({ organi
       if (orgError) throw orgError;
 
       // 2. Gerar credenciais de login
-      const login = formData.name
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-z0-9]/g, '');
-      
-      const email = `${login}@sta.local`;
-      const password = `${formData.name}@sta`;
+      const { email, password } = generateCredentials(formData.name);
 
       // 3. Criar usuário via Edge Function
       const { data: authData, error: authError } = await supabase.functions.invoke(
@@ -286,6 +359,15 @@ export const OrganizationManager: React.FC<OrganizationManagerProps> = ({ organi
                       </div>
                       <Button
                         size="sm"
+                        variant="secondary"
+                        onClick={() => openCredentialsDialog(org)}
+                        className="gap-1"
+                      >
+                        <Key className="h-4 w-4" />
+                        Criar Acesso
+                      </Button>
+                      <Button
+                        size="sm"
                         variant="outline"
                         onClick={() => openEditDialog(org)}
                         className="gap-1"
@@ -310,6 +392,70 @@ export const OrganizationManager: React.FC<OrganizationManagerProps> = ({ organi
           </div>
         )}
       </CardContent>
+
+      {/* Create Credentials Dialog */}
+      <Dialog open={credentialsDialogOpen} onOpenChange={setCredentialsDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Key className="h-5 w-5" />
+              Criar Credenciais de Acesso
+            </DialogTitle>
+            <DialogDescription>
+              Crie credenciais de login para a organização {selectedOrg?.name}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedOrg && (
+            <div className="space-y-4">
+              <div className="bg-muted p-4 rounded-lg space-y-3">
+                <p className="text-sm font-medium">Credenciais que serão criadas:</p>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Email</Label>
+                      <p className="font-mono text-sm">{generateCredentials(selectedOrg.name).email}</p>
+                    </div>
+                    <Button 
+                      size="sm" 
+                      variant="ghost"
+                      onClick={() => copyToClipboard(generateCredentials(selectedOrg.name).email, 'email')}
+                    >
+                      {copiedField === 'email' ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Senha</Label>
+                      <p className="font-mono text-sm">{generateCredentials(selectedOrg.name).password}</p>
+                    </div>
+                    <Button 
+                      size="sm" 
+                      variant="ghost"
+                      onClick={() => copyToClipboard(generateCredentials(selectedOrg.name).password, 'password')}
+                    >
+                      {copiedField === 'password' ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-3 rounded-lg">
+                <p className="text-xs text-amber-800 dark:text-amber-200">
+                  ⚠️ Se o usuário já existir, as credenciais serão atualizadas. Anote e envie as credenciais para a organização.
+                </p>
+              </div>
+
+              <Button 
+                onClick={() => handleCreateCredentials(selectedOrg)} 
+                className="w-full"
+                disabled={creatingCredentials}
+              >
+                {creatingCredentials ? 'Criando...' : 'Criar Credenciais'}
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
