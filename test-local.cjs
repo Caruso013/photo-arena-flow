@@ -9,8 +9,10 @@ const https = require('https');
 const http = require('http');
 
 // Configurações
-const SUPABASE_URL = 'https://gtpqppvyjrnnuhlsbpqd.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd0cHFwcHZ5anJubnVobHNicHFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwOTgxODksImV4cCI6MjA3MjY3NDE4OX0.1pstB5tT2nz0VSwukbr7nTzkMNcenURm-maPu3sqKLY';
+// ⚠️ ATENÇÃO: Configure estas variáveis com seus valores ANTES de usar este arquivo
+// NUNCA commite este arquivo com valores reais no Git
+const SUPABASE_URL = 'YOUR_SUPABASE_URL_HERE';
+const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY_HERE';
 const APP_URL = 'http://localhost:8080';
 
 // Cores para output
