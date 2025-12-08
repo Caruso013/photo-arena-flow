@@ -101,7 +101,7 @@ export default function PaymentModal({
 
   useEffect(() => {
     if (showCheckout && preferenceId && checkoutContainerRef.current && window.MercadoPago) {
-      const mp = new window.MercadoPago('APP_USR-896f557a-1803-4ffc-84e2-1325b14a96b4', {
+      const mp = new window.MercadoPago('APP_USR-d5f88e87-7622-412c-b0af-da8b7aee664b', {
         locale: 'pt-BR'
       });
 
