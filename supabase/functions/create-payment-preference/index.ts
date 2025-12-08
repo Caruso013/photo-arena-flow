@@ -27,7 +27,25 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    
+    // Cliente com service role para operações admin
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+    
+    // Obter usuário autenticado do token JWT
+    const authHeader = req.headers.get('Authorization');
+    let buyerId: string | null = null;
+    
+    if (authHeader) {
+      const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+        global: { headers: { Authorization: authHeader } }
+      });
+      const { data: { user } } = await supabaseClient.auth.getUser();
+      if (user) {
+        buyerId = user.id;
+        console.log('✅ Usuário autenticado encontrado:', user.id, user.email);
+      }
+    }
 
     const { photos, buyerInfo, campaignId, progressiveDiscount } = await req.json();
 
@@ -52,20 +70,30 @@ serve(async (req) => {
       });
     }
 
-    // Obter user_id do comprador pelo email
-    const { data: userData } = await supabase.auth.admin.listUsers();
-    const buyer = userData.users.find(u => u.email === buyerInfo.email);
-    
-    if (!buyer) {
-      return new Response(JSON.stringify({ success: false, error: 'Usuário não encontrado' }), {
-        status: 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    // Se não conseguiu obter do token, buscar pelo email (fallback)
+    if (!buyerId) {
+      console.log('⚠️ Token não fornecido, buscando por email:', buyerInfo.email);
+      const { data: userData } = await supabaseAdmin.auth.admin.listUsers();
+      const buyer = userData?.users?.find(u => u.email?.toLowerCase() === buyerInfo.email?.toLowerCase());
+      
+      if (!buyer) {
+        console.error('❌ Usuário não encontrado pelo email:', buyerInfo.email);
+        return new Response(JSON.stringify({ 
+          success: false, 
+          error: 'Usuário não encontrado. Certifique-se de estar logado com o mesmo email.' 
+        }), {
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      buyerId = buyer.id;
     }
+    
+    const buyer = { id: buyerId };
 
     // Buscar informações de todas as fotos COM PREÇOS REAIS do banco
     const photoIds = photos.map(p => p.id);
-    const { data: photosData, error: photosError } = await supabase
+    const { data: photosData, error: photosError } = await supabaseAdmin
       .from('photos')
       .select('id, photographer_id, campaign_id, price')
       .in('id', photoIds);
@@ -140,7 +168,7 @@ serve(async (req) => {
       };
     });
 
-    const { data: purchases, error: purchasesInsertError } = await supabase
+    const { data: purchases, error: purchasesInsertError } = await supabaseAdmin
       .from('purchases')
       .insert(purchasesToInsert)
       .select();
