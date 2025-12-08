@@ -70,23 +70,62 @@ serve(async (req) => {
       });
     }
 
-    // Se não conseguiu obter do token, buscar pelo email (fallback)
+    // Se não conseguiu obter do token, buscar pelo email usando profiles (fallback)
     if (!buyerId) {
       console.log('⚠️ Token não fornecido, buscando por email:', buyerInfo.email);
-      const { data: userData } = await supabaseAdmin.auth.admin.listUsers();
-      const buyer = userData?.users?.find(u => u.email?.toLowerCase() === buyerInfo.email?.toLowerCase());
       
-      if (!buyer) {
-        console.error('❌ Usuário não encontrado pelo email:', buyerInfo.email);
-        return new Response(JSON.stringify({ 
-          success: false, 
-          error: 'Usuário não encontrado. Certifique-se de estar logado com o mesmo email.' 
-        }), {
-          status: 404,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+      // Buscar na tabela profiles pelo email
+      const { data: profileData, error: profileError } = await supabaseAdmin
+        .from('profiles')
+        .select('id')
+        .eq('email', buyerInfo.email.toLowerCase())
+        .maybeSingle();
+      
+      if (profileError) {
+        console.error('❌ Erro ao buscar perfil:', profileError);
       }
-      buyerId = buyer.id;
+      
+      if (profileData) {
+        buyerId = profileData.id;
+        console.log('✅ Usuário encontrado pelo email na tabela profiles:', buyerId);
+      } else {
+        // Último fallback: listUsers com paginação completa
+        console.log('⚠️ Tentando listUsers como último recurso...');
+        let allUsers: any[] = [];
+        let page = 1;
+        const perPage = 1000;
+        let hasMore = true;
+        
+        while (hasMore && page <= 10) { // Limite de 10 páginas (10.000 usuários)
+          const { data: userData } = await supabaseAdmin.auth.admin.listUsers({
+            page,
+            perPage
+          });
+          
+          if (userData?.users?.length > 0) {
+            allUsers = [...allUsers, ...userData.users];
+            hasMore = userData.users.length === perPage;
+            page++;
+          } else {
+            hasMore = false;
+          }
+        }
+        
+        const buyer = allUsers.find(u => u.email?.toLowerCase() === buyerInfo.email?.toLowerCase());
+        
+        if (!buyer) {
+          console.error('❌ Usuário não encontrado pelo email:', buyerInfo.email);
+          return new Response(JSON.stringify({ 
+            success: false, 
+            error: 'Usuário não encontrado. Certifique-se de estar logado com o mesmo email informado.' 
+          }), {
+            status: 404,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        buyerId = buyer.id;
+        console.log('✅ Usuário encontrado via listUsers:', buyerId);
+      }
     }
     
     const buyer = { id: buyerId };
