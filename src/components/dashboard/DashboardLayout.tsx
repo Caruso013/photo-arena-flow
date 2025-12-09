@@ -26,39 +26,39 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   return (
-    <div className="min-h-screen flex w-full bg-background">
+    <div className="min-h-screen flex w-full bg-background overflow-x-hidden">
       <DashboardSidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
       
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-w-0 w-full">
         {/* Header */}
         <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-          <div className="flex items-center justify-between px-4 py-3 md:py-4">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between px-3 py-2.5 md:px-4 md:py-4 gap-2">
+            <div className="flex items-center gap-2 min-w-0 flex-shrink-0">
               <Button 
                 variant="ghost" 
                 size="icon"
                 onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="md:hidden"
+                className="md:hidden h-9 w-9 flex-shrink-0"
               >
                 <Menu className="h-5 w-5" />
               </Button>
-              <Link to="/" className="hover:opacity-80 transition-opacity">
+              <Link to="/" className="hover:opacity-80 transition-opacity flex-shrink-0">
                 <img 
                   src="/lovable-uploads/6fdfc5d2-230c-4142-bf7c-3a326e5e45a8.png" 
                   alt="STA Fotos - Página Inicial" 
-                  className="h-8 md:h-10 w-auto cursor-pointer"
+                  className="h-7 md:h-10 w-auto cursor-pointer"
                   title="Voltar para página inicial"
                 />
               </Link>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 md:gap-2 flex-shrink-0">
               <ThemeToggle />
               
               {/* User Menu */}
-            <DropdownMenu>
+              <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-8 w-8 md:h-10 md:w-10 rounded-full">
+                  <Button variant="ghost" className="relative h-8 w-8 md:h-10 md:w-10 rounded-full p-0">
                     <Avatar className="h-8 w-8 md:h-10 md:w-10">
                       <AvatarImage src={profile?.avatar_url} alt={profile?.full_name} />
                       <AvatarFallback className="text-xs md:text-sm">
@@ -69,10 +69,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56" align="end" forceMount>
                   <div className="flex flex-col space-y-1 p-2">
-                    <p className="text-sm font-medium leading-none">
+                    <p className="text-sm font-medium leading-none truncate">
                       {profile?.full_name || 'Usuário'}
                     </p>
-                    <p className="text-xs leading-none text-muted-foreground">
+                    <p className="text-xs leading-none text-muted-foreground truncate">
                       {profile?.email}
                     </p>
                     <div className="mt-1">
@@ -107,9 +107,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 px-4 py-4 md:py-8 pb-20 md:pb-8">
+        <main className="flex-1 px-3 py-3 md:px-6 md:py-8 pb-20 md:pb-8 overflow-x-hidden">
           <DynamicBreadcrumb />
-          {children}
+          <div className="w-full max-w-full overflow-x-hidden">
+            {children}
+          </div>
         </main>
 
         {/* Bottom Navigation - Mobile Only */}
