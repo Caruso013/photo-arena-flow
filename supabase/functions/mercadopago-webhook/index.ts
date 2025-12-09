@@ -11,32 +11,69 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const webhookSecret = Deno.env.get('MERCADO_PAGO_WEBHOOK_SECRET');
+  const mpAccessToken = Deno.env.get('MERCADO_PAGO_ACCESS_TOKEN')!;
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+  // Obter headers e query params
+  const xSignature = req.headers.get('x-signature') || '';
+  const xRequestId = req.headers.get('x-request-id') || '';
+  const userAgent = req.headers.get('user-agent') || '';
+  const ipAddress = req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip') || 'unknown';
+  const url = new URL(req.url);
+  const dataId = url.searchParams.get('data.id') || '';
+
+  // Ler o body uma única vez
+  const rawBody = await req.text();
+  let payload: any = {};
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const webhookSecret = Deno.env.get('MERCADO_PAGO_WEBHOOK_SECRET')!;
-    const mpAccessToken = Deno.env.get('MERCADO_PAGO_ACCESS_TOKEN')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    payload = rawBody ? JSON.parse(rawBody) : {};
+  } catch {
+    console.warn('Body não é JSON válido');
+  }
 
-    // Obter headers e query params
-    const xSignature = req.headers.get('x-signature') || '';
-    const xRequestId = req.headers.get('x-request-id') || '';
-    const url = new URL(req.url);
-    const dataId = url.searchParams.get('data.id') || '';
-
-    // Ler o body uma única vez
-    const rawBody = await req.text();
-    let payload: any = {};
+  // Helper para registrar log de webhook
+  const logWebhook = async (
+    eventType: string,
+    signatureValid: boolean,
+    responseStatus: number,
+    errorMessage?: string,
+    paymentId?: string,
+    merchantOrderId?: string
+  ) => {
     try {
-      payload = rawBody ? JSON.parse(rawBody) : {};
-    } catch {
-      console.warn('Body não é JSON válido');
+      await supabase.from('webhook_logs').insert({
+        event_type: eventType,
+        payment_id: paymentId || dataId || payload?.data?.id?.toString() || null,
+        merchant_order_id: merchantOrderId || null,
+        signature_valid: signatureValid,
+        ip_address: ipAddress,
+        user_agent: userAgent,
+        request_headers: {
+          'x-signature': xSignature ? xSignature.substring(0, 50) + '...' : null,
+          'x-request-id': xRequestId
+        },
+        request_body: {
+          topic: payload?.topic,
+          type: payload?.type,
+          action: payload?.action,
+          data_id: dataId
+        },
+        response_status: responseStatus,
+        error_message: errorMessage || null
+      });
+    } catch (logError) {
+      console.error('Erro ao registrar log de webhook:', logError);
     }
+  };
 
+  try {
     console.log('=== Webhook Mercado Pago Recebido ===');
-    console.log('Headers:', { xSignature, xRequestId });
+    console.log('Headers:', { xSignature: xSignature ? 'present' : 'missing', xRequestId });
     console.log('Query params:', { dataId });
-    console.log('Body:', rawBody);
+    console.log('IP:', ipAddress);
 
     // Validar assinatura - OBRIGATÓRIO em produção
     let signatureValid = false;
@@ -56,11 +93,25 @@ serve(async (req) => {
         });
 
         if (ts && hash) {
-          // Criar o manifest conforme documentação: "id:{data.id};request-id:{x-request-id};ts:{ts};"
+          // Verificar timestamp não muito antigo (máximo 5 minutos)
+          const timestampSeconds = parseInt(ts, 10);
+          const nowSeconds = Math.floor(Date.now() / 1000);
+          const timeDiff = Math.abs(nowSeconds - timestampSeconds);
+          
+          if (timeDiff > 300) { // 5 minutos
+            console.error('❌ Timestamp muito antigo:', { timeDiff, ts });
+            await logWebhook('signature_expired', false, 401, `Timestamp expired: ${timeDiff}s old`);
+            return new Response(JSON.stringify({ error: 'Signature timestamp expired' }), {
+              status: 401,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+          }
+          
+          // Criar o manifest conforme documentação
           const dataIdLower = isNaN(Number(dataId)) ? dataId.toLowerCase() : dataId;
           const manifest = `id:${dataIdLower};request-id:${xRequestId};ts:${ts};`;
           
-          console.log('Validando assinatura:', { manifest, ts, hashLength: hash.length });
+          console.log('Validando assinatura...');
 
           // Calcular HMAC SHA256
           const encoder = new TextEncoder();
@@ -86,17 +137,22 @@ serve(async (req) => {
             signatureValid = true;
             console.log('✅ Assinatura válida!');
           } else {
-            console.error('❌ Assinatura inválida!', {
-              expected: calculatedHash.substring(0, 20) + '...',
-              received: hash.substring(0, 20) + '...'
-            });
+            console.error('❌ Assinatura inválida!');
+            await logWebhook('signature_invalid', false, 401, 'Hash mismatch');
           }
+        } else {
+          console.error('❌ Formato de assinatura inválido');
+          await logWebhook('signature_malformed', false, 401, 'Missing ts or v1 in signature');
         }
       } catch (e) {
         console.error('❌ Erro ao validar assinatura:', e);
+        await logWebhook('signature_error', false, 500, e.message);
       }
     } else {
       console.warn('⚠️ Dados insuficientes para validar assinatura');
+      if (isProduction && xSignature) {
+        await logWebhook('signature_incomplete', false, 401, 'Missing required signature data');
+      }
     }
     
     // SEGURANÇA: Em produção, rejeitar webhooks com assinatura inválida
@@ -160,7 +216,7 @@ serve(async (req) => {
       return purchaseStatus;
     };
 
-    // Helper: Enviar email de confirmação com redirecionamento
+    // Helper: Enviar email de confirmação
     const sendConfirmationEmail = async (purchaseIds: string[]) => {
       console.log('📧 Enviando email de confirmação...');
       try {
@@ -173,7 +229,7 @@ serve(async (req) => {
           },
           body: JSON.stringify({ 
             purchaseIds,
-            redirectUrl: `https://gtpqppvyjrnnuhlsbpqd.supabase.co/dashboard/purchases?purchase_ids=${purchaseIdsParam}`
+            redirectUrl: `https://stafotos.com/dashboard/purchases?purchase_ids=${purchaseIdsParam}`
           }),
         });
         
@@ -196,7 +252,9 @@ serve(async (req) => {
       });
       
       if (!paymentRes.ok) {
-        console.error('❌ Falha ao buscar payment:', await paymentRes.text());
+        const errText = await paymentRes.text();
+        console.error('❌ Falha ao buscar payment:', errText);
+        await logWebhook('payment_fetch_error', signatureValid, 500, errText, paymentId);
         return new Response(JSON.stringify({ error: 'Failed to fetch payment' }), { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -204,11 +262,12 @@ serve(async (req) => {
       }
       
       const paymentData = await paymentRes.json();
-      console.log('💰 Payment data:', JSON.stringify(paymentData, null, 2));
+      console.log('💰 Payment status:', paymentData.status);
       
       const externalReference = paymentData.external_reference as string | undefined;
       if (!externalReference) {
         console.error('❌ Payment sem external_reference');
+        await logWebhook('payment_no_reference', signatureValid, 400, 'No external reference', paymentId);
         return new Response(JSON.stringify({ error: 'No external reference' }), { 
           status: 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -216,6 +275,9 @@ serve(async (req) => {
       }
       
       const finalStatus = await updatePurchases(externalReference, paymentData.status, paymentId);
+      
+      // Registrar sucesso
+      await logWebhook(`payment_${paymentData.status}`, signatureValid, 200, null, paymentId);
       
       // Enviar email SOMENTE se o pagamento foi APROVADO
       if (finalStatus === 'completed') {
@@ -237,7 +299,9 @@ serve(async (req) => {
       });
       
       if (!moRes.ok) {
-        console.error('❌ Falha ao buscar merchant_order:', await moRes.text());
+        const errText = await moRes.text();
+        console.error('❌ Falha ao buscar merchant_order:', errText);
+        await logWebhook('merchant_order_fetch_error', signatureValid, 500, errText, null, merchantOrderId);
         return new Response(JSON.stringify({ error: 'Failed to fetch merchant order' }), { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -245,7 +309,7 @@ serve(async (req) => {
       }
       
       const mo = await moRes.json();
-      console.log('📦 Merchant order:', JSON.stringify(mo, null, 2));
+      console.log('📦 Merchant order status:', mo.order_status);
 
       const externalReference: string | undefined = mo.external_reference;
       const approvedPayment = (mo.payments || []).find((p: any) => p.status === 'approved');
@@ -255,6 +319,7 @@ serve(async (req) => {
 
       if (!externalReference) {
         console.error('❌ Merchant order sem external_reference');
+        await logWebhook('merchant_order_no_reference', signatureValid, 400, 'No external reference', null, merchantOrderId);
         return new Response(JSON.stringify({ error: 'No external reference' }), { 
           status: 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -266,6 +331,9 @@ serve(async (req) => {
       else if (anyRejected) statusForRef = 'rejected';
 
       const finalStatus = await updatePurchases(externalReference, statusForRef, approvedPayment?.id?.toString());
+      
+      // Registrar sucesso
+      await logWebhook(`merchant_order_${statusForRef}`, signatureValid, 200, null, approvedPayment?.id?.toString(), merchantOrderId);
       
       // Enviar email SOMENTE se o pagamento foi APROVADO
       if (finalStatus === 'completed') {
@@ -286,7 +354,7 @@ serve(async (req) => {
     const paymentIdFromPayload = dataId || payload?.data?.id || (resource?.match(/payments\/(\d+)/)?.[1]);
     const merchantOrderIdFromResource = resource?.match(/merchant_orders\/(\d+)/)?.[1];
 
-    console.log('📋 Tipo de notificação detectada:', { topic, resource, paymentIdFromPayload, merchantOrderIdFromResource });
+    console.log('📋 Tipo de notificação:', { topic, paymentIdFromPayload, merchantOrderIdFromResource });
 
     // Processar conforme o tipo
     if ((topic === 'payment' || payload?.action?.includes('payment')) && paymentIdFromPayload) {
@@ -302,13 +370,16 @@ serve(async (req) => {
       return await processPayment(paymentIdFromPayload.toString());
     }
 
+    // Evento não reconhecido
     console.log('⚠️ Evento não reconhecido, retornando 200');
+    await logWebhook('unknown_event', signatureValid, 200, 'Unrecognized event type');
     return new Response(JSON.stringify({ message: 'Webhook received' }), { 
       headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
     });
 
   } catch (error) {
     console.error('❌ Erro no webhook:', error);
+    await logWebhook('error', false, 500, error.message);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

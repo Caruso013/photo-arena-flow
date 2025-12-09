@@ -1382,6 +1382,54 @@ export type Database = {
         }
         Relationships: []
       }
+      webhook_logs: {
+        Row: {
+          created_at: string | null
+          error_message: string | null
+          event_type: string
+          id: string
+          ip_address: string | null
+          merchant_order_id: string | null
+          payment_id: string | null
+          processed_at: string | null
+          request_body: Json | null
+          request_headers: Json | null
+          response_status: number | null
+          signature_valid: boolean | null
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          error_message?: string | null
+          event_type: string
+          id?: string
+          ip_address?: string | null
+          merchant_order_id?: string | null
+          payment_id?: string | null
+          processed_at?: string | null
+          request_body?: Json | null
+          request_headers?: Json | null
+          response_status?: number | null
+          signature_valid?: boolean | null
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          ip_address?: string | null
+          merchant_order_id?: string | null
+          payment_id?: string | null
+          processed_at?: string | null
+          request_body?: Json | null
+          request_headers?: Json | null
+          response_status?: number | null
+          signature_valid?: boolean | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       campaign_revenue_distribution: {
@@ -1731,6 +1779,7 @@ export type Database = {
         Args: { days_to_keep?: number }
         Returns: number
       }
+      cleanup_old_webhook_logs: { Args: never; Returns: undefined }
       generate_short_code: { Args: never; Returns: string }
       get_cache_statistics: {
         Args: never
