@@ -253,3 +253,73 @@ html {
     display: none;
   }
 }
+
+/* =====================================================
+   MOBILE DASHBOARD OPTIMIZATIONS
+   ===================================================== */
+
+/* Prevent zoom on input focus (iOS Safari) */
+@media (max-width: 768px) {
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+}
+
+/* Fix double-tap zoom on mobile */
+* {
+  touch-action: manipulation;
+}
+
+/* Dashboard mobile layout improvements */
+@media (max-width: 640px) {
+  /* Prevent horizontal overflow */
+  body {
+    overflow-x: hidden;
+  }
+  
+  /* Dashboard stat cards - responsive grid */
+  .dashboard-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+  
+  /* Make tables scrollable horizontally */
+  .dashboard-table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Smaller text for mobile dashboard */
+  .dashboard-card-value {
+    font-size: 1.25rem;
+    line-height: 1.2;
+  }
+  
+  .dashboard-card-label {
+    font-size: 0.75rem;
+  }
+  
+  /* Fix charts overflow */
+  .recharts-responsive-container {
+    max-width: 100% !important;
+  }
+}
+
+/* Dashboard responsive container */
+.dashboard-container {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* Mobile-first card spacing */
+@media (max-width: 768px) {
+  .dashboard-section {
+    margin-bottom: 1rem;
+  }
+  
+  .dashboard-card {
+    padding: 0.875rem;
+  }
+}

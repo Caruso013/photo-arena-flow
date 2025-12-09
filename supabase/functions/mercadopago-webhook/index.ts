@@ -38,8 +38,10 @@ serve(async (req) => {
     console.log('Query params:', { dataId });
     console.log('Body:', rawBody);
 
-    // Validar assinatura se disponível
+    // Validar assinatura - OBRIGATÓRIO em produção
     let signatureValid = false;
+    const isProduction = mpAccessToken && !mpAccessToken.startsWith('TEST-');
+    
     if (xSignature && xRequestId && webhookSecret && dataId) {
       try {
         // Separar o x-signature em ts e v1
@@ -55,11 +57,10 @@ serve(async (req) => {
 
         if (ts && hash) {
           // Criar o manifest conforme documentação: "id:{data.id};request-id:{x-request-id};ts:{ts};"
-          // Se data.id for alfanumérico, converter para minúsculas
           const dataIdLower = isNaN(Number(dataId)) ? dataId.toLowerCase() : dataId;
           const manifest = `id:${dataIdLower};request-id:${xRequestId};ts:${ts};`;
           
-          console.log('Validando assinatura:', { manifest, ts, hash });
+          console.log('Validando assinatura:', { manifest, ts, hashLength: hash.length });
 
           // Calcular HMAC SHA256
           const encoder = new TextEncoder();
@@ -85,17 +86,26 @@ serve(async (req) => {
             signatureValid = true;
             console.log('✅ Assinatura válida!');
           } else {
-            console.warn('⚠️ Assinatura inválida (mas continuando)', {
-              expected: calculatedHash,
-              received: hash
+            console.error('❌ Assinatura inválida!', {
+              expected: calculatedHash.substring(0, 20) + '...',
+              received: hash.substring(0, 20) + '...'
             });
           }
         }
       } catch (e) {
-        console.warn('Erro ao validar assinatura (continuando):', e);
+        console.error('❌ Erro ao validar assinatura:', e);
       }
     } else {
-      console.warn('Dados insuficientes para validar assinatura (continuando)');
+      console.warn('⚠️ Dados insuficientes para validar assinatura');
+    }
+    
+    // SEGURANÇA: Em produção, rejeitar webhooks com assinatura inválida
+    if (isProduction && !signatureValid && xSignature) {
+      console.error('🚫 REJEITANDO webhook com assinatura inválida em produção');
+      return new Response(JSON.stringify({ error: 'Invalid signature' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
     // Helper: Atualizar purchases no banco
