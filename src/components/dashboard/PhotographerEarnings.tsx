@@ -77,15 +77,16 @@ export const PhotographerEarnings = () => {
         throw error;
       }
 
-      // Buscar nomes dos compradores
+      // Buscar nomes dos compradores - usar função RPC segura ou profiles com nova política
       const buyerIds = [...new Set(revenueData?.map((r: any) => r.purchases?.buyer_id).filter(Boolean))];
       
+      // Com a nova política RLS, fotógrafos podem ver perfis de quem comprou deles
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, full_name, email')
+        .select('id, full_name')
         .in('id', buyerIds);
 
-      const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+      const profileMap = new Map(profiles?.map(p => [p.id, { ...p, email: '' }]) || []);
 
       // Processar dados por campanha e comprador
       const campaignMap = new Map<string, CampaignEarnings>();
@@ -300,13 +301,8 @@ export const PhotographerEarnings = () => {
                               <div className="space-y-1">
                                 <div className="flex items-center gap-2">
                                   <User className="h-4 w-4 text-primary" />
-                                  <span className="font-medium">{buyer.buyer_name}</span>
+                                  <span className="font-medium">{buyer.buyer_name || 'Cliente'}</span>
                                 </div>
-                                {buyer.buyer_email && (
-                                  <div className="text-xs text-muted-foreground">
-                                    {buyer.buyer_email}
-                                  </div>
-                                )}
                                 <div className="text-xs text-muted-foreground flex items-center gap-1">
                                   <Calendar className="h-3 w-3" />
                                   {new Date(buyer.purchase_date).toLocaleString('pt-BR')}

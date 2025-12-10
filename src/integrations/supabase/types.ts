@@ -80,6 +80,13 @@ export type Database = {
             foreignKeyName: "campaign_photographers_assigned_by_fkey"
             columns: ["assigned_by"]
             isOneToOne: false
+            referencedRelation: "buyer_names_for_photographers"
+            referencedColumns: ["buyer_id"]
+          },
+          {
+            foreignKeyName: "campaign_photographers_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -124,6 +131,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "campaigns_for_home"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_photographers_photographer_id_fkey"
+            columns: ["photographer_id"]
+            isOneToOne: false
+            referencedRelation: "buyer_names_for_photographers"
+            referencedColumns: ["buyer_id"]
           },
           {
             foreignKeyName: "campaign_photographers_photographer_id_fkey"
@@ -218,6 +232,13 @@ export type Database = {
             foreignKeyName: "campaigns_photographer_id_fkey"
             columns: ["photographer_id"]
             isOneToOne: false
+            referencedRelation: "buyer_names_for_photographers"
+            referencedColumns: ["buyer_id"]
+          },
+          {
+            foreignKeyName: "campaigns_photographer_id_fkey"
+            columns: ["photographer_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -294,6 +315,13 @@ export type Database = {
             foreignKeyName: "coupon_uses_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "buyer_names_for_photographers"
+            referencedColumns: ["buyer_id"]
+          },
+          {
+            foreignKeyName: "coupon_uses_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -363,6 +391,13 @@ export type Database = {
           value?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "coupons_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "buyer_names_for_photographers"
+            referencedColumns: ["buyer_id"]
+          },
           {
             foreignKeyName: "coupons_created_by_fkey"
             columns: ["created_by"]
@@ -575,6 +610,13 @@ export type Database = {
             foreignKeyName: "organization_members_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "buyer_names_for_photographers"
+            referencedColumns: ["buyer_id"]
+          },
+          {
+            foreignKeyName: "organization_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -740,6 +782,13 @@ export type Database = {
             foreignKeyName: "photo_collaborators_added_by_fkey"
             columns: ["added_by"]
             isOneToOne: false
+            referencedRelation: "buyer_names_for_photographers"
+            referencedColumns: ["buyer_id"]
+          },
+          {
+            foreignKeyName: "photo_collaborators_added_by_fkey"
+            columns: ["added_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -756,6 +805,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "public_profiles_safe"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "photo_collaborators_collaborator_id_fkey"
+            columns: ["collaborator_id"]
+            isOneToOne: false
+            referencedRelation: "buyer_names_for_photographers"
+            referencedColumns: ["buyer_id"]
           },
           {
             foreignKeyName: "photo_collaborators_collaborator_id_fkey"
@@ -870,6 +926,13 @@ export type Database = {
             foreignKeyName: "photographer_applications_processed_by_fkey"
             columns: ["processed_by"]
             isOneToOne: false
+            referencedRelation: "buyer_names_for_photographers"
+            referencedColumns: ["buyer_id"]
+          },
+          {
+            foreignKeyName: "photographer_applications_processed_by_fkey"
+            columns: ["processed_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -886,6 +949,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "public_profiles_safe"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "photographer_applications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "buyer_names_for_photographers"
+            referencedColumns: ["buyer_id"]
           },
           {
             foreignKeyName: "photographer_applications_user_id_fkey"
@@ -945,6 +1015,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "photographer_goals_photographer_id_fkey"
+            columns: ["photographer_id"]
+            isOneToOne: false
+            referencedRelation: "buyer_names_for_photographers"
+            referencedColumns: ["buyer_id"]
+          },
           {
             foreignKeyName: "photographer_goals_photographer_id_fkey"
             columns: ["photographer_id"]
@@ -1045,6 +1122,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "campaigns_for_home"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "photos_photographer_id_fkey"
+            columns: ["photographer_id"]
+            isOneToOne: false
+            referencedRelation: "buyer_names_for_photographers"
+            referencedColumns: ["buyer_id"]
           },
           {
             foreignKeyName: "photos_photographer_id_fkey"
@@ -1154,6 +1238,13 @@ export type Database = {
             foreignKeyName: "purchases_buyer_id_fkey"
             columns: ["buyer_id"]
             isOneToOne: false
+            referencedRelation: "buyer_names_for_photographers"
+            referencedColumns: ["buyer_id"]
+          },
+          {
+            foreignKeyName: "purchases_buyer_id_fkey"
+            columns: ["buyer_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -1177,6 +1268,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "photos"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchases_photographer_id_fkey"
+            columns: ["photographer_id"]
+            isOneToOne: false
+            referencedRelation: "buyer_names_for_photographers"
+            referencedColumns: ["buyer_id"]
           },
           {
             foreignKeyName: "purchases_photographer_id_fkey"
@@ -1233,6 +1331,13 @@ export type Database = {
           purchase_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_revenue_shares_photographer"
+            columns: ["photographer_id"]
+            isOneToOne: false
+            referencedRelation: "buyer_names_for_photographers"
+            referencedColumns: ["buyer_id"]
+          },
           {
             foreignKeyName: "fk_revenue_shares_photographer"
             columns: ["photographer_id"]
@@ -1432,6 +1537,43 @@ export type Database = {
       }
     }
     Views: {
+      buyer_names_for_photographers: {
+        Row: {
+          buyer_id: string | null
+          buyer_name: string | null
+          photographer_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchases_photographer_id_fkey"
+            columns: ["photographer_id"]
+            isOneToOne: false
+            referencedRelation: "buyer_names_for_photographers"
+            referencedColumns: ["buyer_id"]
+          },
+          {
+            foreignKeyName: "purchases_photographer_id_fkey"
+            columns: ["photographer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchases_photographer_id_fkey"
+            columns: ["photographer_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchases_photographer_id_fkey"
+            columns: ["photographer_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaign_revenue_distribution: {
         Row: {
           id: string | null
@@ -1484,6 +1626,13 @@ export type Database = {
             foreignKeyName: "campaigns_photographer_id_fkey"
             columns: ["photographer_id"]
             isOneToOne: false
+            referencedRelation: "buyer_names_for_photographers"
+            referencedColumns: ["buyer_id"]
+          },
+          {
+            foreignKeyName: "campaigns_photographer_id_fkey"
+            columns: ["photographer_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -1523,6 +1672,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_photographer_id_fkey"
+            columns: ["photographer_id"]
+            isOneToOne: false
+            referencedRelation: "buyer_names_for_photographers"
+            referencedColumns: ["buyer_id"]
           },
           {
             foreignKeyName: "campaigns_photographer_id_fkey"
@@ -1575,6 +1731,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_photographer_id_fkey"
+            columns: ["photographer_id"]
+            isOneToOne: false
+            referencedRelation: "buyer_names_for_photographers"
+            referencedColumns: ["buyer_id"]
           },
           {
             foreignKeyName: "campaigns_photographer_id_fkey"
@@ -1691,6 +1854,13 @@ export type Database = {
             foreignKeyName: "purchases_photographer_id_fkey"
             columns: ["correct_photographer_id"]
             isOneToOne: false
+            referencedRelation: "buyer_names_for_photographers"
+            referencedColumns: ["buyer_id"]
+          },
+          {
+            foreignKeyName: "purchases_photographer_id_fkey"
+            columns: ["correct_photographer_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -1781,6 +1951,10 @@ export type Database = {
       }
       cleanup_old_webhook_logs: { Args: never; Returns: undefined }
       generate_short_code: { Args: never; Returns: string }
+      get_buyer_name_for_photographer: {
+        Args: { p_buyer_id: string; p_photographer_id: string }
+        Returns: string
+      }
       get_cache_statistics: {
         Args: never
         Returns: {
