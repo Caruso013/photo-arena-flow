@@ -497,6 +497,8 @@ const Campaign = () => {
     setShowPaymentModal(true);
   };
 
+  const [addedToCart, setAddedToCart] = useState<string | null>(null);
+
   const handleAddToCart = (photo: Photo) => {
     if (!user) {
       toast({
@@ -518,8 +520,20 @@ const Campaign = () => {
       watermarked_url: photo.watermarked_url,
       thumbnail_url: photo.thumbnail_url,
       campaign_id: campaign?.id || '',
-      progressive_discount_enabled: campaign?.progressive_discount_enabled ?? true, // Habilitado por padrão
+      progressive_discount_enabled: campaign?.progressive_discount_enabled ?? true,
     });
+
+    // Feedback visual de sucesso
+    setAddedToCart(photo.id);
+    haptic.medium();
+    
+    toast({
+      title: "✓ Adicionado ao carrinho!",
+      description: `${photoName} foi adicionada ao seu carrinho.`,
+    });
+
+    // Limpar feedback após 1.5 segundos
+    setTimeout(() => setAddedToCart(null), 1500);
   };
 
   const handlePaymentSuccess = async (paymentData: any) => {
@@ -1157,11 +1171,20 @@ const Campaign = () => {
                             <div className="flex gap-1 sm:gap-2">
                             <Button 
                               size="sm" 
-                              variant="outline"
+                              variant={addedToCart === photo.id ? "default" : "outline"}
                               onClick={() => handleAddToCart(photo)}
-                              className="gap-1 h-8 sm:h-9 w-8 sm:w-auto px-2 sm:px-3"
+                              className={`gap-1 h-8 sm:h-9 w-8 sm:w-auto px-2 sm:px-3 transition-all ${
+                                addedToCart === photo.id ? 'bg-green-600 hover:bg-green-700 scale-110' : ''
+                              }`}
+                              disabled={addedToCart === photo.id}
                             >
-                              <ShoppingCart className="h-3 w-3 sm:h-4 sm:w-4" />
+                              {addedToCart === photo.id ? (
+                                <svg className="h-3 w-3 sm:h-4 sm:w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                              ) : (
+                                <ShoppingCart className="h-3 w-3 sm:h-4 sm:w-4" />
+                              )}
                             </Button>
                             <Button 
                               size="sm" 

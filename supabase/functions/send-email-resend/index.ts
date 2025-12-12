@@ -79,7 +79,7 @@ serve(async (req) => {
                 <p>Suas fotos já estão disponíveis no seu dashboard e podem ser baixadas a qualquer momento.</p>
                 
                 <div style="text-align: center;">
-                    <a href="${Deno.env.get('VITE_SUPABASE_URL')?.replace('supabase.co', 'lovableproject.com') || 'http://localhost:8080'}/dashboard" class="button">
+                    <a href="https://www.stafotos.com/dashboard" class="button">
                         Acessar Minhas Fotos
                     </a>
                 </div>
