@@ -51,12 +51,8 @@ const Cart = () => {
   // Total final
   const finalTotal = Math.max(0, subtotalAfterProgressiveDiscount - couponDiscountAmount);
 
-  useEffect(() => {
-    // Redirecionar para login se não estiver autenticado
-    if (!user) {
-      navigate("/auth");
-    }
-  }, [user, navigate]);
+  // Não redirecionar automaticamente - deixar usuário ver carrinho mesmo deslogado
+  // O redirecionamento acontece apenas ao tentar finalizar a compra
 
   const handleCheckout = () => {
     if (totalItems === 0) return;
@@ -144,6 +140,16 @@ const Cart = () => {
                 <Trash2 className="h-4 w-4 mr-2" />
                 Limpar Carrinho
               </Button>
+            </div>
+
+            {/* Cupom de Desconto - Mobile (acima dos itens) */}
+            <div className="lg:hidden mb-4">
+              <CouponInput
+                purchaseAmount={subtotalAfterProgressiveDiscount}
+                onCouponApplied={handleCouponApplied}
+                onCouponRemoved={handleCouponRemoved}
+                appliedCoupon={appliedCoupon}
+              />
             </div>
 
             {/* Desconto Progressivo Badge */}
@@ -286,7 +292,7 @@ const Cart = () => {
               </CardContent>
             </Card>
 
-            {/* Cupom de Desconto */}
+            {/* Cupom de Desconto - Desktop */}
             <CouponInput
               purchaseAmount={subtotalAfterProgressiveDiscount}
               onCouponApplied={handleCouponApplied}

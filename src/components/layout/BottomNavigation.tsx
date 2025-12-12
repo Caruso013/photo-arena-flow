@@ -1,7 +1,7 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
-import { Home, Calendar, ShoppingCart, Heart, User } from 'lucide-react';
+import { Home, Calendar, ShoppingCart, Heart, User, LogIn } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { useHapticFeedback } from '@/hooks/useHapticFeedback';
@@ -12,10 +12,8 @@ const BottomNavigation = () => {
   const location = useLocation();
   const haptic = useHapticFeedback();
 
-  // Não mostrar se não estiver logado
-  if (!user) return null;
-
-  const navItems = [
+  // Itens para usuários logados
+  const loggedInItems = [
     { 
       icon: Home, 
       label: 'Início', 
@@ -48,6 +46,33 @@ const BottomNavigation = () => {
       showBadge: false
     },
   ];
+
+  // Itens para usuários não logados (navegação reduzida)
+  const loggedOutItems = [
+    { 
+      icon: Home, 
+      label: 'Início', 
+      path: '/',
+      showBadge: false,
+      badgeCount: 0
+    },
+    { 
+      icon: Calendar, 
+      label: 'Eventos', 
+      path: '/events',
+      showBadge: false,
+      badgeCount: 0
+    },
+    { 
+      icon: LogIn, 
+      label: 'Entrar', 
+      path: '/auth',
+      showBadge: false,
+      badgeCount: 0
+    },
+  ];
+
+  const navItems = user ? loggedInItems : loggedOutItems;
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-lg border-t shadow-lg md:hidden safe-area-bottom">

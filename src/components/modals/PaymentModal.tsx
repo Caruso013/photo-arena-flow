@@ -323,6 +323,7 @@ export default function PaymentModal({
                     value={buyerData.name}
                     onChange={(e) => handleInputChange('name', e.target.value)}
                     placeholder="Seu primeiro nome"
+                    className="min-h-[48px]"
                   />
                 </div>
                 <div className="space-y-2">
@@ -332,6 +333,7 @@ export default function PaymentModal({
                     value={buyerData.surname}
                     onChange={(e) => handleInputChange('surname', e.target.value)}
                     placeholder="Seu sobrenome"
+                    className="min-h-[48px]"
                   />
                 </div>
               </div>
@@ -344,6 +346,7 @@ export default function PaymentModal({
                   value={buyerData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
                   placeholder="seu@email.com"
+                  className="min-h-[48px]"
                 />
               </div>
 
@@ -355,10 +358,12 @@ export default function PaymentModal({
                   value={buyerData.phone}
                   onChange={(e) => handleInputChange('phone', e.target.value)}
                   placeholder="(11) 99999-9999"
-                  className={buyerData.phone && buyerData.phone.length < 10 ? 'border-destructive' : ''}
+                  className={`min-h-[48px] ${buyerData.phone && buyerData.phone.length < 10 ? 'border-destructive' : ''}`}
                 />
                 {buyerData.phone && buyerData.phone.length < 10 && (
-                  <p className="text-sm text-destructive">Digite o telefone completo (DDD + número)</p>
+                  <p className="text-sm text-muted-foreground">
+                    {buyerData.phone.length}/{buyerData.phone.length > 10 ? '11' : '10'} dígitos
+                  </p>
                 )}
               </div>
 
@@ -370,16 +375,32 @@ export default function PaymentModal({
                   value={buyerData.document}
                   onChange={(e) => handleInputChange('document', e.target.value)}
                   placeholder="000.000.000-00"
-                  className={buyerData.document && buyerData.document.length < 11 ? 'border-destructive' : ''}
+                  className={`min-h-[48px] ${
+                    buyerData.document && buyerData.document.length === 11 && validateCPF(buyerData.document)
+                      ? 'border-green-500 focus:ring-green-500'
+                      : buyerData.document && (buyerData.document.length < 11 || !validateCPF(buyerData.document))
+                        ? 'border-destructive'
+                        : ''
+                  }`}
                 />
+                {buyerData.document && buyerData.document.length === 11 && validateCPF(buyerData.document) && (
+                  <div className="flex items-center gap-1 text-sm text-green-600">
+                    <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>CPF válido</span>
+                  </div>
+                )}
                 {buyerData.document && buyerData.document.length === 11 && !validateCPF(buyerData.document) && (
                   <div className="flex items-center gap-1 text-sm text-destructive">
                     <AlertCircle className="h-3.5 w-3.5" />
-                    <span>CPF inválido</span>
+                    <span>CPF inválido - verifique os números</span>
                   </div>
                 )}
                 {buyerData.document && buyerData.document.length < 11 && (
-                  <p className="text-sm text-destructive">CPF deve conter 11 dígitos</p>
+                  <p className="text-sm text-muted-foreground">
+                    {buyerData.document.length}/11 dígitos
+                  </p>
                 )}
               </div>
             </div>
@@ -400,23 +421,24 @@ export default function PaymentModal({
             </div>
 
             <div className="flex gap-3">
-              <Button variant="outline" onClick={handleModalClose} className="flex-1">
+              <Button variant="outline" onClick={handleModalClose} className="flex-1 min-h-[48px]">
                 Cancelar
               </Button>
               <Button 
                 onClick={handlePayment} 
                 disabled={!isFormValid() || loading}
-                className="flex-1"
+                className="flex-1 min-h-[48px] text-base font-semibold"
+                size="lg"
               >
                 {loading ? (
                   <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    <Loader2 className="h-5 w-5 mr-2 animate-spin" />
                     Processando...
                   </>
                 ) : (
                   <>
-                    <CreditCard className="h-4 w-4 mr-2" />
-                    Continuar
+                    <CreditCard className="h-5 w-5 mr-2" />
+                    Ir para Pagamento
                   </>
                 )}
               </Button>

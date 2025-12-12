@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
-import { ShoppingCart } from 'lucide-react';
+import { ShoppingCart, Download, CheckCircle2, Loader2 } from 'lucide-react';
 import { SkeletonCard } from '@/components/ui/skeleton-card';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
+import { Progress } from '@/components/ui/progress';
 
 interface Purchase {
   id: string;
@@ -29,6 +30,9 @@ const MyPurchases = () => {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [loading, setLoading] = useState(true);
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
+  const [downloadingAll, setDownloadingAll] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchMyPurchases();
@@ -105,8 +109,10 @@ const MyPurchases = () => {
     }
   };
 
-  const handleDownload = async (url: string, fileName: string) => {
+  const handleDownload = useCallback(async (url: string, fileName: string, purchaseId?: string) => {
     try {
+      if (purchaseId) setDownloadingId(purchaseId);
+      
       if (!url) {
         toast({
           title: "Erro",
@@ -126,8 +132,6 @@ const MyPurchases = () => {
       } else {
         filePath = url.split('photos-original/')[1] || url;
       }
-
-      console.log('Baixando foto:', { filePath, originalUrl: url });
 
       // Gerar URL assinada de curta duração (60 segundos)
       const { data: signedData, error: signedError } = await supabase
@@ -159,8 +163,49 @@ const MyPurchases = () => {
         description: "Não foi possível baixar a foto. Tente novamente.",
         variant: "destructive",
       });
+    } finally {
+      if (purchaseId) setDownloadingId(null);
     }
-  };
+  }, []);
+
+  const handleDownloadAll = useCallback(async () => {
+    if (purchases.length === 0) return;
+    
+    setDownloadingAll(true);
+    setDownloadProgress(0);
+    
+    try {
+      const completedPurchases = purchases.filter(p => p.status === 'completed');
+      
+      for (let i = 0; i < completedPurchases.length; i++) {
+        const purchase = completedPurchases[i];
+        await handleDownload(
+          purchase.photo.original_url, 
+          `foto-${purchase.photo.id}.jpg`
+        );
+        setDownloadProgress(Math.round(((i + 1) / completedPurchases.length) * 100));
+        // Pequeno delay entre downloads para não sobrecarregar
+        if (i < completedPurchases.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
+      
+      toast({
+        title: "Downloads concluídos!",
+        description: `${completedPurchases.length} foto(s) baixada(s) com sucesso.`,
+      });
+    } catch (error) {
+      console.error('Erro no download em lote:', error);
+      toast({
+        title: "Erro no download",
+        description: "Algumas fotos podem não ter sido baixadas. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setDownloadingAll(false);
+      setDownloadProgress(0);
+    }
+  }, [purchases, handleDownload]);
 
   useEffect(() => {
     const buildSigned = async () => {
@@ -183,14 +228,50 @@ const MyPurchases = () => {
     if (purchases.length) buildSigned();
   }, [purchases]);
 
+  const completedCount = purchases.filter(p => p.status === 'completed').length;
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold mb-2">Minhas Compras</h1>
-        <p className="text-muted-foreground">
-          {purchases.length} compra(s) realizada(s)
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold mb-2">Minhas Compras</h1>
+          <p className="text-muted-foreground">
+            {purchases.length} compra(s) realizada(s)
+          </p>
+        </div>
+        
+        {/* Botão Baixar Todas - aparece só se houver compras completas */}
+        {completedCount > 1 && (
+          <Button
+            onClick={handleDownloadAll}
+            disabled={downloadingAll}
+            className="w-full sm:w-auto min-h-[48px] gap-2"
+            size="lg"
+          >
+            {downloadingAll ? (
+              <>
+                <Loader2 className="h-5 w-5 animate-spin" />
+                Baixando... {downloadProgress}%
+              </>
+            ) : (
+              <>
+                <Download className="h-5 w-5" />
+                Baixar Todas ({completedCount})
+              </>
+            )}
+          </Button>
+        )}
       </div>
+
+      {/* Barra de progresso do download em lote */}
+      {downloadingAll && (
+        <div className="space-y-2">
+          <Progress value={downloadProgress} className="h-2" />
+          <p className="text-sm text-muted-foreground text-center">
+            Baixando {Math.ceil((downloadProgress / 100) * completedCount)} de {completedCount} fotos...
+          </p>
+        </div>
+      )}
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -275,13 +356,21 @@ const MyPurchases = () => {
                       </div>
                       <Button
                         size="sm"
-                        className="w-full gap-2"
-                        onClick={() => handleDownload(purchase.photo.original_url, `foto-${purchase.photo.id}.jpg`)}
+                        className="w-full gap-2 min-h-[44px]"
+                        onClick={() => handleDownload(purchase.photo.original_url, `foto-${purchase.photo.id}.jpg`, purchase.id)}
+                        disabled={downloadingId === purchase.id}
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                        </svg>
-                        Baixar Alta Resolução
+                        {downloadingId === purchase.id ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Baixando...
+                          </>
+                        ) : (
+                          <>
+                            <Download className="w-4 h-4" />
+                            Baixar Alta Resolução
+                          </>
+                        )}
                       </Button>
                     </div>
                   ) : (
