@@ -14,6 +14,26 @@ export interface UploadTask {
   progress: number;
   error?: string;
   retryCount: number;
+  fileSequence: number; // Número extraído do nome do arquivo para ordenação
+}
+
+// Extrai número do nome do arquivo da câmera (ex: IMG_0001.jpg → 1, DSC_0234.jpg → 234)
+function extractFileSequence(fileName: string): number {
+  // Remove extensão
+  const nameWithoutExt = fileName.replace(/\.[^/.]+$/, '');
+  
+  // Tenta extrair números do nome do arquivo
+  // Padrões comuns: IMG_0001, DSC_0234, DSCN0001, _MG_1234, etc.
+  const matches = nameWithoutExt.match(/(\d+)/g);
+  
+  if (matches && matches.length > 0) {
+    // Pega o maior número encontrado (geralmente é o sequencial da câmera)
+    const numbers = matches.map(m => parseInt(m, 10));
+    return Math.max(...numbers);
+  }
+  
+  // Se não encontrar número, retorna 0
+  return 0;
 }
 
 export interface UploadBatch {
@@ -57,7 +77,8 @@ class BackgroundUploadService {
   ): string {
     const batchId = `batch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
-    const tasks: UploadTask[] = Array.from(files).map((file, index) => ({
+    // Criar tarefas com número de sequência extraído do nome do arquivo
+    const tasksUnsorted: UploadTask[] = Array.from(files).map((file, index) => ({
       id: `task_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`,
       file,
       fileName: file.name,
@@ -66,10 +87,14 @@ class BackgroundUploadService {
       title: title || `Foto ${index + 1}`,
       price,
       photographerId,
-      status: 'pending',
+      status: 'pending' as const,
       progress: 0,
       retryCount: 0,
+      fileSequence: extractFileSequence(file.name),
     }));
+
+    // Ordenar tarefas pelo número do arquivo para manter ordem cronológica da câmera
+    const tasks = tasksUnsorted.sort((a, b) => a.fileSequence - b.fileSequence);
 
     const batch: UploadBatch = {
       id: batchId,
@@ -176,7 +201,9 @@ class BackgroundUploadService {
       }, 500);
 
       try {
-        // Get next sequence number for this campaign
+        // Usar número do arquivo como base para sequência
+        // Isso mantém a ordem cronológica das fotos da câmera
+        // O fileSequence já foi extraído do nome do arquivo (ex: IMG_0234.jpg → 234)
         const { data: maxSeqData } = await supabase
           .from('photos')
           .select('upload_sequence')
@@ -185,7 +212,13 @@ class BackgroundUploadService {
           .limit(1)
           .maybeSingle();
         
-        const nextSequence = (maxSeqData?.upload_sequence || 0) + 1;
+        // Base offset: maior sequência existente no evento
+        const baseOffset = maxSeqData?.upload_sequence || 0;
+        
+        // Upload sequence = base offset + número do arquivo da câmera
+        // Isso garante que fotos novas não sobrescrevam a ordenação de fotos antigas
+        // E mantém a ordem cronológica dentro do lote
+        const uploadSequence = baseOffset + task.fileSequence;
 
         // Upload original photo (private)
         const { data: originalData, error: originalError } = await supabase.storage
@@ -228,7 +261,7 @@ class BackgroundUploadService {
             title: task.title,
             price: task.price,
             is_available: true,
-            upload_sequence: nextSequence,
+            upload_sequence: uploadSequence,
           });
 
         if (dbError) throw dbError;
