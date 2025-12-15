@@ -10,7 +10,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { CreditCard, Loader2, ShoppingCart, ArrowLeft, AlertCircle, Percent, Tag } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
-import { emailService } from '@/lib/emailService';
 import { useProgressiveDiscount, getNextDiscountThreshold } from '@/hooks/useProgressiveDiscount';
 
 declare global {
@@ -65,8 +64,9 @@ export default function PaymentModal({
   const subtotal = itemsToProcess.reduce((sum, item) => sum + (item.price || 0), 0);
   const totalItems = itemsToProcess.length;
   
-  // Verificar se desconto progressivo está habilitado
-  const progressiveDiscountEnabled = itemsToProcess.some(item => item.progressive_discount_enabled !== false);
+  // Verificar se desconto progressivo está habilitado (todas as fotos precisam permitir)
+  const progressiveDiscountEnabled = itemsToProcess.length > 0 &&
+    itemsToProcess.every(item => item.progressive_discount_enabled !== false);
   
   // Calcular preço médio por foto
   const averagePrice = totalItems > 0 ? subtotal / totalItems : 0;
@@ -77,7 +77,7 @@ export default function PaymentModal({
     averagePrice,
     progressiveDiscountEnabled
   );
-  
+
   // Preço final com desconto aplicado
   const totalPrice = progressiveDiscount.total;
   
