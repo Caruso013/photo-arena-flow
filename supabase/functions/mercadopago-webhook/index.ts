@@ -247,31 +247,32 @@ serve(async (req) => {
       return purchaseStatus;
     };
 
-    // Helper: Enviar email de confirmação
+    // Helper: Enviar email de confirmação (fire-and-forget, não bloqueia o fluxo)
     const sendConfirmationEmail = async (purchaseIds: string[]) => {
-      console.log('📧 Enviando email de confirmação...');
-      try {
-        const purchaseIdsParam = purchaseIds.join(',');
-        const emailResp = await fetch(`${supabaseUrl}/functions/v1/send-purchase-confirmation`, {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json', 
-            'Authorization': `Bearer ${supabaseServiceKey}` 
-          },
-          body: JSON.stringify({ 
-            purchaseIds,
-            redirectUrl: `https://stafotos.com/dashboard/purchases?purchase_ids=${purchaseIdsParam}`
-          }),
-        });
-        
-        if (!emailResp.ok) {
-          console.error('❌ Falha ao enviar email:', await emailResp.text());
-        } else {
-          console.log('✅ Email enviado com sucesso');
+      console.log('📧 Tentando enviar email de confirmação (não bloqueante)...');
+      // Usar setTimeout para não bloquear a resposta do webhook
+      // O email é enviado em background e qualquer erro é apenas logado
+      setTimeout(async () => {
+        try {
+          const emailResp = await fetch(`${supabaseUrl}/functions/v1/send-purchase-confirmation`, {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json', 
+              'Authorization': `Bearer ${supabaseServiceKey}` 
+            },
+            body: JSON.stringify({ purchaseIds }),
+          });
+          
+          const result = await emailResp.json().catch(() => ({}));
+          console.log('📧 Resultado do email:', result);
+        } catch (err) {
+          // Apenas logar - NUNCA falhar o webhook por causa de email
+          console.warn('📧 Email não enviado (não crítico):', err);
         }
-      } catch (err) {
-        console.error('❌ Erro ao chamar função de email:', err);
-      }
+      }, 100);
+      
+      // Retornar imediatamente - não esperar o email
+      console.log('📧 Email agendado em background');
     };
 
     // Helper: Processar Payment
