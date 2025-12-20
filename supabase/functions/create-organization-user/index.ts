@@ -33,6 +33,11 @@ serve(async (req) => {
       throw new Error(`Missing required fields. Received: ${JSON.stringify(Object.keys(body))}`);
     }
 
+    // Validar formato do email (@stafotos.com)
+    if (!email.endsWith('@stafotos.com')) {
+      console.warn('Email não segue o padrão @stafotos.com:', email);
+    }
+
     console.log('Creating organization user:', { organizationId, organizationName, email });
 
     // 1. Criar usuário no Auth

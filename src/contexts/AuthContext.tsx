@@ -5,7 +5,7 @@ import { toast } from '@/components/ui/use-toast';
 import { logger } from '@/lib/logger';
 import { handleError } from '@/lib/errorHandler';
 
-export type UserRole = 'user' | 'photographer' | 'admin' | 'organizer';
+export type UserRole = 'user' | 'photographer' | 'admin' | 'organizer' | 'organization';
 export type OrganizationRole = 'admin' | 'organization' | 'photographer' | 'user';
 
 export interface UserProfile {

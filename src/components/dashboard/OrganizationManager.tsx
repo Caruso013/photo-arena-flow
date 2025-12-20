@@ -39,28 +39,33 @@ export const OrganizationManager: React.FC<OrganizationManagerProps> = ({ organi
     admin_percentage: 30
   });
 
-  const generateCredentials = (orgName: string) => {
+  const generateCredentials = (orgName: string, createdAt?: string) => {
+    // Nome limpo para o email (sem acentos e caracteres especiais)
     const login = orgName
       .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
       .replace(/[^a-z0-9]/g, '');
     
-    // Gerar senha forte com maiúsculas, minúsculas e números
-    const randomNum = Math.floor(1000 + Math.random() * 9000); // 4 dígitos
-    const orgNameClean = orgName.replace(/[^a-zA-Z0-9]/g, '');
-    const password = `${orgNameClean.charAt(0).toUpperCase()}${orgNameClean.slice(1).toLowerCase()}@Sta${randomNum}`;
+    // Data formatada para a senha (YYYY-MM-DD)
+    const dateFormatted = createdAt 
+      ? new Date(createdAt).toISOString().split('T')[0]
+      : new Date().toISOString().split('T')[0];
     
+    // Nome para a senha (apenas letras/números, mantendo case original)
+    const nameForPassword = orgName.replace(/[^a-zA-Z0-9]/g, '');
+    
+    // Formato: nome@stafotos.com e senha: Nome+YYYY-MM-DD
     return {
-      email: `${login}@sta.local`,
-      password
+      email: `${login}@stafotos.com`,
+      password: `${nameForPassword}+${dateFormatted}`
     };
   };
 
   const handleCreateCredentials = async (org: Organization) => {
     setCreatingCredentials(true);
     try {
-      const { email, password } = generateCredentials(org.name);
+      const { email, password } = generateCredentials(org.name, org.created_at);
 
       // Tentar usar Edge Function primeiro (produção)
       try {

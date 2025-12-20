@@ -3,10 +3,18 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { DollarSign, Calendar, TrendingUp, FileText } from 'lucide-react';
+import { DollarSign, Calendar, TrendingUp, FileText, User, Camera } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { formatCurrency } from '@/lib/utils';
 import AdminLayout from '@/components/dashboard/AdminLayout';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 interface OrganizationData {
   id: string;
@@ -14,21 +22,18 @@ interface OrganizationData {
   admin_percentage: number;
 }
 
-interface RevenueData {
+interface SaleData {
+  id: string;
   organization_amount: number;
+  photographer_amount: number;
   created_at: string;
   purchase_id: string;
-  purchases: {
-    amount: number;
-    photo_id: string;
-    photos: {
-      campaign_id: string;
-      campaigns: {
-        title: string;
-        event_date: string;
-      };
-    };
-  };
+  photographer_name: string | null;
+  buyer_name: string | null;
+  photo_title: string | null;
+  campaign_title: string | null;
+  event_date: string | null;
+  purchase_amount: number;
 }
 
 interface EventRevenue {
@@ -42,7 +47,7 @@ interface EventRevenue {
 const OrganizationRevenue = () => {
   const { user, profile } = useAuth();
   const [organization, setOrganization] = useState<OrganizationData | null>(null);
-  const [revenues, setRevenues] = useState<RevenueData[]>([]);
+  const [sales, setSales] = useState<SaleData[]>([]);
   const [loading, setLoading] = useState(true);
   const [cycleInfo, setCycleInfo] = useState({
     cycleStart: new Date(),
@@ -52,7 +57,7 @@ const OrganizationRevenue = () => {
   });
 
   useEffect(() => {
-    if (user && profile?.role === 'organizer') {
+    if (user && profile?.role === 'organization') {
       fetchOrganizationData();
     }
   }, [user, profile]);
@@ -101,17 +106,22 @@ const OrganizationRevenue = () => {
         daysUntilPayment
       });
 
-      // 3. Buscar receitas do ciclo
-      const { data: revenuesData, error: revenuesError } = await supabase
+      // 3. Buscar vendas com nomes de fotógrafos e compradores
+      const { data: salesData, error: salesError } = await supabase
         .from('revenue_shares')
         .select(`
+          id,
           organization_amount,
+          photographer_amount,
           created_at,
           purchase_id,
+          photographer_id,
           purchases (
             amount,
+            buyer_id,
             photo_id,
             photos (
+              title,
               campaign_id,
               campaigns (
                 title,
@@ -125,9 +135,51 @@ const OrganizationRevenue = () => {
         .lte('created_at', cycleEnd.toISOString())
         .order('created_at', { ascending: false });
 
-      if (revenuesError) throw revenuesError;
+      if (salesError) throw salesError;
 
-      setRevenues(revenuesData || []);
+      // 4. Buscar nomes dos fotógrafos e compradores
+      const salesWithNames: SaleData[] = [];
+      
+      for (const sale of salesData || []) {
+        // Buscar nome do fotógrafo
+        let photographerName = null;
+        if (sale.photographer_id) {
+          const { data: photographer } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', sale.photographer_id)
+            .single();
+          photographerName = photographer?.full_name || 'Fotógrafo';
+        }
+
+        // Buscar nome do comprador
+        let buyerName = null;
+        const purchase = sale.purchases as any;
+        if (purchase?.buyer_id) {
+          const { data: buyer } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', purchase.buyer_id)
+            .single();
+          buyerName = buyer?.full_name || 'Cliente';
+        }
+
+        salesWithNames.push({
+          id: sale.id,
+          organization_amount: Number(sale.organization_amount),
+          photographer_amount: Number(sale.photographer_amount),
+          created_at: sale.created_at,
+          purchase_id: sale.purchase_id,
+          photographer_name: photographerName,
+          buyer_name: buyerName,
+          photo_title: purchase?.photos?.title || 'Foto',
+          campaign_title: purchase?.photos?.campaigns?.title || 'Evento',
+          event_date: purchase?.photos?.campaigns?.event_date,
+          purchase_amount: Number(purchase?.amount || 0),
+        });
+      }
+
+      setSales(salesWithNames);
 
     } catch (error) {
       console.error('Error fetching organization data:', error);
@@ -142,30 +194,28 @@ const OrganizationRevenue = () => {
   };
 
   const getTotalRevenue = () => {
-    return revenues.reduce((sum, rev) => sum + Number(rev.organization_amount), 0);
+    return sales.reduce((sum, sale) => sum + sale.organization_amount, 0);
   };
 
   const getEventRevenues = (): EventRevenue[] => {
     const eventMap = new Map<string, EventRevenue>();
 
-    revenues.forEach(rev => {
-      const campaign = rev.purchases?.photos?.campaigns;
-      if (!campaign) return;
-
-      const campaignId = rev.purchases.photos.campaign_id;
+    sales.forEach(sale => {
+      const campaignTitle = sale.campaign_title || 'Evento';
+      const campaignId = sale.campaign_title || 'unknown';
       
       if (!eventMap.has(campaignId)) {
         eventMap.set(campaignId, {
           campaignId,
-          campaignTitle: campaign.title,
-          eventDate: campaign.event_date,
+          campaignTitle,
+          eventDate: sale.event_date || '',
           totalRevenue: 0,
           salesCount: 0
         });
       }
 
       const event = eventMap.get(campaignId)!;
-      event.totalRevenue += Number(rev.organization_amount);
+      event.totalRevenue += sale.organization_amount;
       event.salesCount += 1;
     });
 
@@ -204,7 +254,7 @@ const OrganizationRevenue = () => {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">🏢 {organization.name}</h1>
           <p className="text-muted-foreground mt-1">
-            Dashboard de Receitas • Participação: {organization.admin_percentage}%
+            Relatório de Vendas • Participação: {organization.admin_percentage}%
           </p>
         </div>
 
@@ -266,7 +316,7 @@ const OrganizationRevenue = () => {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{revenues.length}</div>
+              <div className="text-2xl font-bold">{sales.length}</div>
               <p className="text-xs text-muted-foreground mt-1">
                 Fotos vendidas no período
               </p>
@@ -287,6 +337,77 @@ const OrganizationRevenue = () => {
           </Card>
         </div>
 
+        {/* Tabela de Vendas Detalhada */}
+        <div>
+          <h2 className="text-xl font-semibold mb-4">📋 Vendas Detalhadas</h2>
+          
+          {sales.length === 0 ? (
+            <Card>
+              <CardContent className="text-center py-12">
+                <p className="text-muted-foreground">
+                  Nenhuma venda registrada neste ciclo de pagamento.
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Data</TableHead>
+                      <TableHead>Evento</TableHead>
+                      <TableHead>
+                        <div className="flex items-center gap-1">
+                          <Camera className="h-3 w-3" />
+                          Fotógrafo
+                        </div>
+                      </TableHead>
+                      <TableHead>
+                        <div className="flex items-center gap-1">
+                          <User className="h-3 w-3" />
+                          Comprador
+                        </div>
+                      </TableHead>
+                      <TableHead className="text-right">Valor Venda</TableHead>
+                      <TableHead className="text-right">Sua Receita</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {sales.map((sale) => (
+                      <TableRow key={sale.id}>
+                        <TableCell className="whitespace-nowrap">
+                          {new Date(sale.created_at).toLocaleDateString('pt-BR')}
+                        </TableCell>
+                        <TableCell>
+                          <div className="font-medium">{sale.campaign_title}</div>
+                          {sale.event_date && (
+                            <div className="text-xs text-muted-foreground">
+                              {new Date(sale.event_date).toLocaleDateString('pt-BR')}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm">{sale.photographer_name || '-'}</span>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm">{sale.buyer_name || '-'}</span>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatCurrency(sale.purchase_amount)}
+                        </TableCell>
+                        <TableCell className="text-right font-semibold text-green-600 dark:text-green-400">
+                          {formatCurrency(sale.organization_amount)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
         {/* Lista de Eventos e Receitas */}
         <div>
           <h2 className="text-xl font-semibold mb-4">📊 Receita por Evento</h2>
@@ -295,7 +416,7 @@ const OrganizationRevenue = () => {
             <Card>
               <CardContent className="text-center py-12">
                 <p className="text-muted-foreground">
-                  Nenhuma venda registrada neste ciclo de pagamento.
+                  Nenhum evento com vendas neste ciclo.
                 </p>
               </CardContent>
             </Card>
@@ -308,10 +429,12 @@ const OrganizationRevenue = () => {
                       <div className="flex-1">
                         <h3 className="font-semibold text-lg">{event.campaignTitle}</h3>
                         <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            {new Date(event.eventDate).toLocaleDateString('pt-BR')}
-                          </span>
+                          {event.eventDate && (
+                            <span className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              {new Date(event.eventDate).toLocaleDateString('pt-BR')}
+                            </span>
+                          )}
                           <span className="flex items-center gap-1">
                             <TrendingUp className="h-3 w-3" />
                             {event.salesCount} {event.salesCount === 1 ? 'foto vendida' : 'fotos vendidas'}
