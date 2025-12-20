@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Photo {
   id: string;
@@ -23,6 +24,7 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { profile } = useAuth();
   const [items, setItems] = useState<Photo[]>(() => {
     const saved = localStorage.getItem('cart');
     return saved ? JSON.parse(saved) : [];
@@ -33,6 +35,17 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [items]);
 
   const addToCart = (photo: Photo) => {
+    // Bloquear organizações de adicionar ao carrinho
+    const role = profile?.role;
+    if (role === 'organization') {
+      toast({
+        title: "Ação não permitida",
+        description: "Organizações não podem comprar fotos.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setItems(current => {
       if (current.find(item => item.id === photo.id)) {
         toast({

@@ -78,15 +78,25 @@ const DashboardSidebar = ({ isOpen, onToggle }: DashboardSidebarProps) => {
     { title: 'Cache', url: '/dashboard/admin/cache-management', icon: Database },
   ];
 
+  // Menu items para organizações - APENAS relatório de vendas
+  const organizationItems = [
+    { title: 'Início', url: '/', icon: Home },
+    { title: 'Relatório de Vendas', url: '/dashboard/organization/revenue', icon: FileText },
+    { title: 'Perfil', url: '/dashboard/profile', icon: UserCircle },
+  ];
+
   const getMenuItems = () => {
-    switch (profile?.role) {
-      case 'admin':
-        return adminItems;
-      case 'photographer':
-        return photographerItems;
-      default:
-        return userItems;
+    const role = profile?.role;
+    if (role === 'admin') {
+      return adminItems;
     }
+    if (role === 'photographer') {
+      return photographerItems;
+    }
+    if (role === 'organization') {
+      return organizationItems;
+    }
+    return userItems;
   };
 
   const items = getMenuItems();

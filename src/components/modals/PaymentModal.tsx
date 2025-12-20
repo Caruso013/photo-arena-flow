@@ -45,7 +45,7 @@ export default function PaymentModal({
   onPaymentSuccess,
   appliedCoupon
 }: PaymentModalProps) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
@@ -58,6 +58,19 @@ export default function PaymentModal({
     phone: '',
     document: '',
   });
+
+  // Bloquear organizações de fazer compras
+  useEffect(() => {
+    const role = profile?.role;
+    if (isOpen && role === 'organization') {
+      toast({
+        title: "Ação não permitida",
+        description: "Organizações não podem comprar fotos.",
+        variant: "destructive",
+      });
+      onClose();
+    }
+  }, [isOpen, profile?.role]);
 
   // Support both single photo and multiple photos (cart)
   const itemsToProcess = photos && photos.length > 0 ? photos : (photo ? [photo] : []);
