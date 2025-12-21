@@ -43,9 +43,24 @@ self.addEventListener('activate', (event) => {
 
 // Interceptar requisições de rede
 self.addEventListener('fetch', (event) => {
-  // Permite uploads continuarem mesmo quando a página é fechada
-  if (event.request.url.includes('/storage/v1/object/')) {
-    // Requisições para Supabase storage - não interferir
+  const url = event.request.url;
+  
+  // NÃO interferir em requisições do Mercado Pago e outros serviços externos
+  if (
+    url.includes('mercadopago.com') ||
+    url.includes('mercadolibre.com') ||
+    url.includes('mercadolivre.com') ||
+    url.includes('mlstatic.com') ||
+    url.includes('newrelic.com') ||
+    url.includes('/storage/v1/object/') ||
+    url.includes('supabase.co/functions')
+  ) {
+    // Deixar o navegador lidar normalmente - não interferir
+    return;
+  }
+  
+  // Apenas cache para requisições do mesmo origem
+  if (!url.startsWith(self.location.origin)) {
     return;
   }
   
