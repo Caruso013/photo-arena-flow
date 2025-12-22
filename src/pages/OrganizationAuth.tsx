@@ -81,14 +81,14 @@ const OrganizationAuth = () => {
               <Input
                 id="email"
                 type="email"
-                placeholder="organizacao@sta.com"
+                placeholder="organizacao@stafotos.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={loading}
                 autoComplete="email"
               />
               <p className="text-xs text-muted-foreground">
-                Use o email cadastrado pelo administrador
+                Email no formato: nomeorganizacao@stafotos.com
               </p>
             </div>
 

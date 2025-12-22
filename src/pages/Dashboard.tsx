@@ -23,7 +23,7 @@ const Dashboard = () => {
   }
 
   // Redirecionar organizações para seu dashboard específico
-  if (profile.role === 'organizer' && location.pathname === '/dashboard') {
+  if (profile.role === 'organization' && location.pathname === '/dashboard') {
     return <Navigate to="/dashboard/organization/revenue" replace />;
   }
 
