@@ -392,7 +392,14 @@ const PhotographerDashboard = () => {
                 <Card>
                   <CardContent className="p-4">
                     <h3 className="font-semibold mb-4">Vendas dos Últimos 30 Dias</h3>
-                    <SalesChart data={salesData} loading={loadingSales} />
+                    {loadingSales ? (
+                      <div className="animate-pulse space-y-4">
+                        <div className="h-4 bg-muted rounded w-1/3" />
+                        <div className="h-[200px] bg-muted rounded" />
+                      </div>
+                    ) : (
+                      <SalesChart data={salesData} />
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>

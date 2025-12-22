@@ -11,7 +11,7 @@ interface MetricCardProps {
     value: number;
     isPositive: boolean;
   };
-  variant?: 'default' | 'primary' | 'success' | 'warning' | 'danger';
+  variant?: 'default' | 'primary' | 'secondary' | 'success' | 'warning' | 'danger';
   loading?: boolean;
 }
 
@@ -25,6 +25,11 @@ const variantStyles = {
     bg: 'bg-gradient-to-br from-primary/10 to-primary/5',
     iconBg: 'bg-primary',
     iconColor: 'text-primary-foreground',
+  },
+  secondary: {
+    bg: 'bg-gradient-to-br from-blue-500/10 to-indigo-500/5',
+    iconBg: 'bg-gradient-to-br from-blue-500 to-indigo-500',
+    iconColor: 'text-white',
   },
   success: {
     bg: 'bg-gradient-to-br from-green-500/10 to-emerald-500/5',
