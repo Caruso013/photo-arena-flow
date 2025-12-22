@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/components/ui/use-toast';
+import { formatCurrency } from '@/lib/utils';
 import { 
   Settings, 
   Building2, 
@@ -12,10 +13,17 @@ import {
   Shield,
   TrendingUp,
   UserCheck,
-  Activity
+  Activity,
+  DollarSign,
+  Image,
+  Clock,
+  CheckCircle2
 } from 'lucide-react';
 import AdminNavbar from './AdminNavbar';
-import StatCard from './StatCard';
+import WelcomeHeader from './WelcomeHeader';
+import MetricCard from './MetricCard';
+import QuickActions, { QuickAction } from './QuickActions';
+import RecentActivity, { ActivityItem } from './RecentActivity';
 import FinancialDashboard from './FinancialDashboard';
 import { OrganizationManager } from './OrganizationManager';
 import { CampaignManager } from './CampaignManager';
@@ -58,11 +66,27 @@ interface Campaign {
   organization_percentage: number;
 }
 
+interface Stats {
+  totalRevenue: number;
+  platformRevenue: number;
+  photosSold: number;
+  pendingPayouts: number;
+  pendingApplications: number;
+}
+
 const AdminDashboard = () => {
   const { user, profile } = useAuth();
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [recentActivities, setRecentActivities] = useState<ActivityItem[]>([]);
+  const [stats, setStats] = useState<Stats>({
+    totalRevenue: 0,
+    platformRevenue: 0,
+    photosSold: 0,
+    pendingPayouts: 0,
+    pendingApplications: 0,
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -75,31 +99,83 @@ const AdminDashboard = () => {
     try {
       setLoading(true);
       
-      const { data: orgsData, error: orgsError } = await supabase
+      // Fetch organizations
+      const { data: orgsData } = await supabase
         .from('organizations')
         .select('*')
         .order('created_at', { ascending: false });
-
-      if (orgsError) throw orgsError;
       setOrganizations(orgsData || []);
 
-      const { data: usersData, error: usersError } = await supabase
+      // Fetch users
+      const { data: usersData } = await supabase
         .from('profiles')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(50);
-
-      if (usersError) throw usersError;
       setUsers(usersData || []);
 
-      const { data: campaignsData, error: campaignsError } = await supabase
+      // Fetch campaigns
+      const { data: campaignsData } = await supabase
         .from('campaigns')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(20);
-
-      if (campaignsError) throw campaignsError;
       setCampaigns(campaignsData || []);
+
+      // Fetch revenue stats
+      const { data: revenueData } = await supabase
+        .from('revenue_shares')
+        .select('platform_amount, photographer_amount, organization_amount, created_at');
+      
+      const totalRevenue = revenueData?.reduce((sum, r) => 
+        sum + Number(r.platform_amount) + Number(r.photographer_amount) + Number(r.organization_amount), 0) || 0;
+      const platformRevenue = revenueData?.reduce((sum, r) => sum + Number(r.platform_amount), 0) || 0;
+
+      // Fetch photo sales count
+      const { count: photosSold } = await supabase
+        .from('purchases')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'completed');
+
+      // Fetch pending payouts
+      const { data: pendingPayouts } = await supabase
+        .from('payout_requests')
+        .select('amount')
+        .eq('status', 'pending');
+      const pendingPayoutsTotal = pendingPayouts?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
+
+      // Fetch pending applications
+      const { count: pendingApplications } = await supabase
+        .from('photographer_applications')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending');
+
+      setStats({
+        totalRevenue,
+        platformRevenue,
+        photosSold: photosSold || 0,
+        pendingPayouts: pendingPayoutsTotal,
+        pendingApplications: pendingApplications || 0,
+      });
+
+      // Fetch recent activities
+      const { data: recentSales } = await supabase
+        .from('purchases')
+        .select('id, amount, created_at, photo:photos(title)')
+        .eq('status', 'completed')
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      const activities: ActivityItem[] = (recentSales || []).map((sale: any) => ({
+        id: sale.id,
+        type: 'sale' as const,
+        title: 'Nova venda',
+        description: sale.photo?.title || 'Foto vendida',
+        timestamp: sale.created_at,
+        amount: Number(sale.amount),
+      }));
+
+      setRecentActivities(activities);
 
     } catch (error) {
       console.error('Error fetching admin data:', error);
@@ -125,127 +201,163 @@ const AdminDashboard = () => {
     );
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
+  const quickActions: QuickAction[] = [
+    {
+      icon: UserCheck,
+      label: 'Aprovar Fotógrafos',
+      description: `${stats.pendingApplications} pendentes`,
+      href: '/dashboard/admin/photographers',
+      variant: 'purple',
+      badge: stats.pendingApplications > 0 ? stats.pendingApplications : undefined,
+    },
+    {
+      icon: DollarSign,
+      label: 'Pagamentos',
+      description: 'Gerenciar repasses',
+      href: '/dashboard/admin/financial',
+      variant: 'green',
+    },
+    {
+      icon: Building2,
+      label: 'Organizações',
+      description: `${organizations.length} cadastradas`,
+      href: '/dashboard/admin/organizations',
+      variant: 'blue',
+    },
+    {
+      icon: Camera,
+      label: 'Eventos',
+      description: `${campaigns.filter(c => c.is_active).length} ativos`,
+      href: '/dashboard/admin/events',
+      variant: 'yellow',
+    },
+  ];
 
   return (
-    <>
-      <div className="min-h-screen bg-gray-50/50 dark:bg-background">
-        <AdminNavbar 
-          currentUser={{
-            id: user?.id || '',
-            email: user?.email || '',
-            full_name: profile?.full_name || undefined,
-            avatar_url: profile?.avatar_url || undefined
-          }}
-          pendingApplications={0}
-          eventApplications={[]}
-          onApplicationResponse={() => {}}
+    <div className="min-h-screen bg-background">
+      <AdminNavbar 
+        currentUser={{
+          id: user?.id || '',
+          email: user?.email || '',
+          full_name: profile?.full_name || undefined,
+          avatar_url: profile?.avatar_url || undefined
+        }}
+        pendingApplications={stats.pendingApplications}
+        eventApplications={[]}
+        onApplicationResponse={() => {}}
+      />
+      
+      <main className="container mx-auto px-4 py-6 sm:py-8 space-y-6 sm:space-y-8">
+        {/* Welcome Header */}
+        <WelcomeHeader
+          title="Painel Administrativo"
+          subtitle="Gerencie a plataforma, fotógrafos, eventos e finanças"
+          userName={profile?.full_name || undefined}
+          avatarUrl={profile?.avatar_url || undefined}
+          icon={Shield}
         />
-        
-        <main className="container mx-auto px-4 py-8">
-          <div className="space-y-8">
-            {/* Welcome Section */}
-            <div className="space-y-2">
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-                Bem-vindo ao Painel Administrativo
-              </h1>
-              <p className="text-sm sm:text-base text-muted-foreground">
-                Gerencie organizações, eventos e fotógrafos da plataforma
-              </p>
-            </div>
 
-            {/* Stats Cards */}
-            <div className="grid gap-3 sm:gap-4 md:gap-6 grid-cols-2 lg:grid-cols-4">
-              <StatCard
-                title="Organizações"
-                value={organizations.length}
-                subtitle="Cadastradas"
-                icon={Building2}
-                iconColor="bg-primary text-primary-foreground"
-                bgGradient="from-primary/10 to-primary/20"
-              />
-              
-              <StatCard
-                title="Usuários"
-                value={users.length}
-                subtitle="Registrados"
-                icon={Users}
-                iconColor="bg-accent text-accent-foreground"
-                bgGradient="from-accent/10 to-accent/20"
-              />
-              
-              <StatCard
-                title="Eventos Ativos"
-                value={campaigns.filter(c => c.is_active).length}
-                subtitle={`${campaigns.length} total`}
-                icon={Camera}
-                iconColor="bg-secondary text-secondary-foreground"
-                bgGradient="from-secondary/10 to-secondary/20"
-              />
-              
-              <StatCard
-                title="Fotógrafos"
-                value={users.filter(u => u.role === 'photographer').length}
-                subtitle="Ativos"
-                icon={UserCheck}
-                iconColor="bg-muted text-muted-foreground"
-                bgGradient="from-muted/30 to-muted/50"
-              />
-            </div>
+        {/* Metric Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <MetricCard
+            title="Receita da Plataforma"
+            value={formatCurrency(stats.platformRevenue)}
+            subtitle="Taxa acumulada"
+            icon={DollarSign}
+            variant="success"
+            loading={loading}
+          />
+          <MetricCard
+            title="Fotos Vendidas"
+            value={stats.photosSold}
+            subtitle="Total de vendas"
+            icon={Image}
+            variant="primary"
+            loading={loading}
+          />
+          <MetricCard
+            title="Fotógrafos Ativos"
+            value={users.filter(u => u.role === 'photographer').length}
+            subtitle={`${stats.pendingApplications} pendentes`}
+            icon={Camera}
+            variant="warning"
+            loading={loading}
+          />
+          <MetricCard
+            title="Repasses Pendentes"
+            value={formatCurrency(stats.pendingPayouts)}
+            subtitle="Aguardando aprovação"
+            icon={Clock}
+            variant="danger"
+            loading={loading}
+          />
+        </div>
 
-            {/* Management Tabs */}
-            <Tabs defaultValue="photographer-apps" className="space-y-6">
+        {/* Quick Actions */}
+        <QuickActions 
+          actions={quickActions} 
+          title="Ações Rápidas"
+          columns={4}
+        />
+
+        {/* Recent Activity and Management Tabs */}
+        <div className="grid lg:grid-cols-3 gap-6">
+          {/* Recent Activity */}
+          <div className="lg:col-span-1">
+            <RecentActivity 
+              activities={recentActivities}
+              title="Últimas Vendas"
+              emptyMessage="Nenhuma venda recente"
+            />
+          </div>
+
+          {/* Management Tabs */}
+          <div className="lg:col-span-2">
+            <Tabs defaultValue="photographer-apps" className="space-y-4">
               <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 text-xs gap-1 h-auto sm:h-10 p-1">
-                <TabsTrigger value="photographer-apps" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1 py-2 sm:py-0 h-14 sm:h-9">
+                <TabsTrigger value="photographer-apps" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1 py-2 sm:py-0 h-12 sm:h-9">
                   <Camera className="h-4 w-4 flex-shrink-0" />
                   <span className="text-[10px] sm:text-xs">Fotógrafos</span>
                 </TabsTrigger>
-                <TabsTrigger value="financial" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1 py-2 sm:py-0 h-14 sm:h-9">
+                <TabsTrigger value="financial" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1 py-2 sm:py-0 h-12 sm:h-9">
                   <TrendingUp className="h-4 w-4 flex-shrink-0" />
-                  <span className="text-[10px] sm:text-xs hidden sm:inline">Financeiro</span>
-                  <span className="text-[10px] sm:hidden">$</span>
+                  <span className="text-[10px] sm:text-xs">Financeiro</span>
                 </TabsTrigger>
-                <TabsTrigger value="organizations" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1 py-2 sm:py-0 h-14 sm:h-9">
+                <TabsTrigger value="organizations" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1 py-2 sm:py-0 h-12 sm:h-9">
                   <Building2 className="h-4 w-4 flex-shrink-0" />
                   <span className="text-[10px] sm:text-xs">Orgs</span>
                 </TabsTrigger>
-                <TabsTrigger value="campaigns" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1 py-2 sm:py-0 h-14 sm:h-9 hidden sm:flex">
+                <TabsTrigger value="campaigns" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1 py-2 sm:py-0 h-12 sm:h-9 hidden sm:flex">
                   <Activity className="h-4 w-4 flex-shrink-0" />
-                  <span className="text-[10px] sm:text-xs">Campanhas</span>
+                  <span className="text-[10px] sm:text-xs">Eventos</span>
                 </TabsTrigger>
-                <TabsTrigger value="users" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1 py-2 sm:py-0 h-14 sm:h-9 hidden sm:flex">
+                <TabsTrigger value="users" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1 py-2 sm:py-0 h-12 sm:h-9 hidden sm:flex">
                   <Users className="h-4 w-4 flex-shrink-0" />
                   <span className="text-[10px] sm:text-xs">Usuários</span>
                 </TabsTrigger>
-                <TabsTrigger value="profile" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1 py-2 sm:py-0 h-14 sm:h-9 hidden sm:flex">
+                <TabsTrigger value="profile" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1 py-2 sm:py-0 h-12 sm:h-9 hidden sm:flex">
                   <Settings className="h-4 w-4 flex-shrink-0" />
                   <span className="text-[10px] sm:text-xs">Perfil</span>
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="photographer-apps" className="space-y-6">
+              <TabsContent value="photographer-apps" className="space-y-4">
                 <PhotographerApplicationsManager />
               </TabsContent>
 
-              <TabsContent value="financial" className="space-y-6">
+              <TabsContent value="financial" className="space-y-4">
                 <FinancialDashboard userRole="admin" />
               </TabsContent>
 
-              <TabsContent value="organizations" className="space-y-6">
+              <TabsContent value="organizations" className="space-y-4">
                 <OrganizationManager organizations={organizations} onRefresh={fetchAdminData} />
               </TabsContent>
 
-              <TabsContent value="campaigns" className="space-y-6">
+              <TabsContent value="campaigns" className="space-y-4">
                 <CampaignManager campaigns={campaigns} onRefresh={fetchAdminData} />
               </TabsContent>
 
-              <TabsContent value="users" className="space-y-6">
+              <TabsContent value="users" className="space-y-4">
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -254,14 +366,14 @@ const AdminDashboard = () => {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-4">
+                    <div className="space-y-3 max-h-[400px] overflow-y-auto">
                       {users.map((userItem) => (
-                        <Card key={userItem.id}>
+                        <Card key={userItem.id} className="bg-muted/30">
                           <CardContent className="p-4">
                             <div className="flex justify-between items-start gap-4">
-                              <div className="flex-1">
-                                <h4 className="font-medium">{userItem.full_name || 'Nome não informado'}</h4>
-                                <p className="text-sm text-muted-foreground">{userItem.email}</p>
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-medium truncate">{userItem.full_name || 'Nome não informado'}</h4>
+                                <p className="text-sm text-muted-foreground truncate">{userItem.email}</p>
                                 <div className="flex gap-2 mt-2">
                                   <UserRoleManager
                                     userId={userItem.id}
@@ -271,8 +383,8 @@ const AdminDashboard = () => {
                                   />
                                 </div>
                               </div>
-                              <span className="text-sm text-muted-foreground whitespace-nowrap">
-                                {new Date(userItem.created_at).toLocaleDateString()}
+                              <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                {new Date(userItem.created_at).toLocaleDateString('pt-BR')}
                               </span>
                             </div>
                           </CardContent>
@@ -283,14 +395,14 @@ const AdminDashboard = () => {
                 </Card>
               </TabsContent>
 
-              <TabsContent value="profile" className="space-y-6">
+              <TabsContent value="profile" className="space-y-4">
                 <ProfileEditor />
               </TabsContent>
             </Tabs>
           </div>
-        </main>
-      </div>
-    </>
+        </div>
+      </main>
+    </div>
   );
 };
 

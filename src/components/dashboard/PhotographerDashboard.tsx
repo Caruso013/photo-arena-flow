@@ -2,27 +2,35 @@ import React, { useState, useEffect } from 'react';
 import { formatCurrency } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { MaskedInput, masks } from '@/components/ui/masked-input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Upload, Camera, DollarSign, BarChart3, Plus, Edit, CreditCard, AlertCircle, CalendarPlus, Clock } from 'lucide-react';
+import { 
+  Upload, 
+  Camera, 
+  DollarSign, 
+  BarChart3, 
+  CalendarPlus, 
+  CreditCard, 
+  TrendingUp,
+  Image,
+  Target,
+  User,
+  Wallet
+} from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import AntiScreenshotProtection from '@/components/security/AntiScreenshotProtection';
 import UploadPhotoModal from '@/components/modals/UploadPhotoModal';
 import CreateCampaignModal from '@/components/modals/CreateCampaignModal';
-import CreateAlbumModal from '@/components/modals/CreateAlbumModal';
-import EditCampaignCoverModal from '@/components/modals/EditCampaignCoverModal';
 import PhotographerGoals from './PhotographerGoals';
 import { ProfileEditor } from '../profile/ProfileEditor';
 import { SalesChart } from './SalesChart';
 import { useSalesData } from '@/hooks/useSalesData';
+import WelcomeHeader from './WelcomeHeader';
+import MetricCard from './MetricCard';
+import QuickActions, { QuickAction } from './QuickActions';
+import RecentActivity, { ActivityItem } from './RecentActivity';
 
 interface Campaign {
   id: string;
@@ -32,7 +40,7 @@ interface Campaign {
   location?: string;
   cover_image_url?: string;
   is_active: boolean;
-  organization_percentage?: number; // Made optional to match database
+  organization_percentage?: number;
   photographer_id?: string | null;
   organization_id?: string | null;
   created_at: string;
@@ -40,45 +48,27 @@ interface Campaign {
   photos?: { count: number }[];
 }
 
-interface Photo {
-  id: string;
-  title: string;
-  watermarked_url: string;
-  thumbnail_url: string;
-  price: number;
-  is_available: boolean;
-  campaign: {
-    title: string;
-  };
-}
-
 interface Stats {
   totalSales: number;
   monthlySales: number;
   pendingAmount: number;
   availableAmount: number;
-}
-
-interface PayoutRequest {
-  id: string;
-  amount: number;
-  status: string;
-  requested_at: string;
-  processed_at: string | null;
-  notes: string | null;
+  totalPhotos: number;
+  conversionRate: number;
 }
 
 const PhotographerDashboard = () => {
   const { profile, user } = useAuth();
   const { data: salesData, loading: loadingSales } = useSalesData(30, user?.id);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-  const [photos, setPhotos] = useState<Photo[]>([]);
-  const [payoutRequests, setPayoutRequests] = useState<PayoutRequest[]>([]);
+  const [recentSales, setRecentSales] = useState<ActivityItem[]>([]);
   const [stats, setStats] = useState<Stats>({
     totalSales: 0,
     monthlySales: 0,
     pendingAmount: 0,
-    availableAmount: 0
+    availableAmount: 0,
+    totalPhotos: 0,
+    conversionRate: 0
   });
   const [loading, setLoading] = useState(true);
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -86,31 +76,6 @@ const PhotographerDashboard = () => {
   const [selectedCampaignForAlbum, setSelectedCampaignForAlbum] = useState<{ id: string; title: string } | null>(null);
   const [showEditCoverModal, setShowEditCoverModal] = useState(false);
   const [selectedCampaignForCover, setSelectedCampaignForCover] = useState<{ id: string; title: string; coverUrl?: string } | null>(null);
-  const [payoutAmount, setPayoutAmount] = useState('');
-  const [isRequestingPayout, setIsRequestingPayout] = useState(false);
-  const [payoutError, setPayoutError] = useState('');
-  const [pixKey, setPixKey] = useState('');
-  const [pixKeyType, setPixKeyType] = useState<'cpf' | 'cnpj' | 'email' | 'phone' | 'random' | null>(null);
-  
-  // Detectar tipo de chave PIX automaticamente
-  const detectPixKeyType = (value: string) => {
-    const cleanValue = value.replace(/\D/g, '');
-    
-    if (/^\d+$/.test(cleanValue)) {
-      if (cleanValue.length <= 11) return 'cpf';
-      if (cleanValue.length <= 14) return 'cnpj';
-      if (cleanValue.length <= 11) return 'phone';
-    }
-    if (/@/.test(value)) return 'email';
-    return 'random';
-  };
-  
-  const handlePixKeyChange = (value: string) => {
-    setPixKey(value);
-    setPixKeyType(detectPixKeyType(value));
-  };
-  const [recipientName, setRecipientName] = useState('');
-  const [institution, setInstitution] = useState('');
 
   useEffect(() => {
     fetchData();
@@ -119,24 +84,19 @@ const PhotographerDashboard = () => {
   const fetchData = async () => {
     await Promise.all([
       fetchCampaigns(),
-      fetchPhotos(),
-      fetchPayoutRequests(),
-      fetchStats()
+      fetchStats(),
+      fetchRecentSales()
     ]);
     setLoading(false);
   };
 
   const fetchCampaigns = async () => {
     try {
-      // Buscar campanhas onde o fotógrafo tem fotos
-      const { data: photosData, error: photosError } = await supabase
+      const { data: photosData } = await supabase
         .from('photos')
         .select('campaign_id')
         .eq('photographer_id', profile?.id);
 
-      if (photosError) throw photosError;
-
-      // Pegar IDs únicos de campanhas
       const campaignIds = [...new Set(photosData?.map(p => p.campaign_id) || [])];
 
       if (campaignIds.length === 0) {
@@ -144,130 +104,52 @@ const PhotographerDashboard = () => {
         return;
       }
 
-      // Buscar detalhes das campanhas
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('campaigns')
-        .select(`
-          *,
-          photos(count)
-        `)
+        .select('*, photos(count)')
         .in('id', campaignIds)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
       setCampaigns(data || []);
     } catch (error) {
       console.error('Error fetching campaigns:', error);
     }
   };
 
-  const fetchPhotos = async () => {
+  const fetchRecentSales = async () => {
     try {
-      console.log('🔍 Buscando fotos do fotógrafo:', profile?.id);
-      
-      const { data, error } = await supabase
-        .from('photos')
-        .select(`
-          *,
-          campaign:campaigns(title)
-        `)
+      const { data } = await supabase
+        .from('purchases')
+        .select('id, amount, created_at, buyer:profiles!purchases_buyer_id_fkey(full_name), photo:photos(title)')
         .eq('photographer_id', profile?.id)
+        .eq('status', 'completed')
         .order('created_at', { ascending: false })
-        .limit(8);
+        .limit(5);
 
-      if (error) {
-        console.error('❌ Erro ao buscar fotos:', error);
-        throw error;
-      }
-      
-      console.log('✅ Fotos encontradas:', data?.length, data);
-      setPhotos(data || []);
+      const activities: ActivityItem[] = (data || []).map((sale: any) => ({
+        id: sale.id,
+        type: 'sale' as const,
+        title: sale.buyer?.full_name || 'Cliente',
+        description: sale.photo?.title || 'Foto vendida',
+        timestamp: sale.created_at,
+        amount: Number(sale.amount),
+      }));
+
+      setRecentSales(activities);
     } catch (error) {
-      console.error('Error fetching photos:', error);
-    }
-  };
-
-  const fetchPayoutRequests = async () => {
-    if (!user) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from('payout_requests')
-        .select('*')
-        .eq('photographer_id', user.id)
-        .order('requested_at', { ascending: false });
-
-      if (error) throw error;
-      setPayoutRequests(data || []);
-    } catch (error) {
-      console.error('Error fetching payout requests:', error);
-    }
-  };
-
-  const requestPayout = async () => {
-    if (!user || !payoutAmount) return;
-    
-    setIsRequestingPayout(true);
-    setPayoutError('');
-    
-    try {
-      const amount = parseFloat(payoutAmount);
-      
-      if (amount <= 0) {
-        setPayoutError('O valor deve ser maior que zero');
-        return;
-      }
-
-      if (amount > stats.availableAmount) {
-        setPayoutError('O valor não pode ser maior que a receita disponível');
-        return;
-      }
-
-      // Validate recipient info
-      if (!pixKey || pixKey.trim() === '') {
-        setPayoutError('Informe a chave PIX para receber o repasse');
-        return;
-      }
-
-      if (!recipientName || recipientName.trim() === '') {
-        setPayoutError('Informe o nome completo do beneficiário');
-        return;
-      }
-
-      if (!institution || institution.trim() === '') {
-        setPayoutError('Informe a instituição / banco do beneficiário');
-        return;
-      }
-
-      const { error } = await supabase
-        .from('payout_requests')
-        .insert({
-          photographer_id: user.id,
-          amount: amount,
-          pix_key: pixKey.trim(),
-          recipient_name: recipientName.trim(),
-          institution: institution.trim()
-        });
-
-      if (error) throw error;
-
-      setPayoutAmount('');
-      await fetchPayoutRequests();
-    } catch (error) {
-      console.error('Error requesting payout:', error);
-      setPayoutError('Erro ao solicitar repasse. Tente novamente.');
-    } finally {
-      setIsRequestingPayout(false);
+      console.error('Error fetching recent sales:', error);
     }
   };
 
   const fetchStats = async () => {
     try {
-      if (import.meta.env.DEV) {
-        console.debug('fetchStats start', { profileId: profile?.id, userId: user?.id, email: profile?.email });
-      }
-      
-      // Buscar todas as vendas completas
+      // Count total photos
+      const { count: totalPhotos } = await supabase
+        .from('photos')
+        .select('*', { count: 'exact', head: true })
+        .eq('photographer_id', profile?.id);
+
+      // Count sales
       const { data: salesData } = await supabase
         .from('purchases')
         .select('created_at')
@@ -276,30 +158,28 @@ const PhotographerDashboard = () => {
 
       const totalSales = salesData?.length || 0;
 
-      // Calcular vendas do mês atual
+      // Monthly sales
       const now = new Date();
       const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const monthlySales = salesData?.filter(sale => {
-        const saleDate = new Date(sale.created_at);
-        return saleDate >= firstDayOfMonth;
-      }).length || 0;
+      const monthlySales = salesData?.filter(sale => 
+        new Date(sale.created_at) >= firstDayOfMonth
+      ).length || 0;
 
-      // Buscar revenue_shares com informações de purchase para calcular pendente/disponível
-      const { data: rsWithPurchase, error: rsError } = await supabase
+      // Calculate conversion rate
+      const conversionRate = totalPhotos && totalPhotos > 0 
+        ? ((totalSales / totalPhotos) * 100) 
+        : 0;
+
+      // Revenue shares
+      const { data: rsData } = await supabase
         .from('revenue_shares')
         .select('photographer_amount, purchases!revenue_shares_purchase_id_fkey(created_at, status)')
         .eq('photographer_id', profile?.id);
 
-      if (rsError) {
-        console.error('❌ Erro ao buscar revenue shares:', rsError);
-      }
-
-  if (import.meta.env.DEV) console.debug('Revenue shares found:', rsWithPurchase?.length || 0);
-
       let availableSum = 0;
       let pendingSum = 0;
 
-      rsWithPurchase?.forEach((row: any) => {
+      rsData?.forEach((row: any) => {
         const amt = Number(row.photographer_amount || 0);
         const purchase = row.purchases;
         
@@ -315,8 +195,7 @@ const PhotographerDashboard = () => {
         }
       });
 
-      // Descontar solicitações pendentes/aprovadas/completed do saldo disponível
-      // Apenas 'rejected' libera o saldo de volta
+      // Subtract pending/approved payouts
       const { data: reqs } = await supabase
         .from('payout_requests')
         .select('amount, status')
@@ -324,463 +203,263 @@ const PhotographerDashboard = () => {
         .in('status', ['pending', 'approved', 'completed']);
 
       const blockedAmount = reqs?.reduce((sum, r) => sum + Number(r.amount || 0), 0) || 0;
-
       const finalAvailable = Math.max(availableSum - blockedAmount, 0);
-      
-      if (import.meta.env.DEV) {
-        console.debug('💰 VALORES FINANCEIROS:', {
-          pendingSum,
-          availableSum,
-          blockedAmount,
-          finalAvailable,
-          timestamp: new Date().toISOString()
-        });
-      }
 
       setStats({
         totalSales,
         monthlySales,
         pendingAmount: pendingSum,
-        availableAmount: finalAvailable
+        availableAmount: finalAvailable,
+        totalPhotos: totalPhotos || 0,
+        conversionRate
       });
     } catch (error) {
       console.error('Error fetching stats:', error);
     }
   };
 
+  const quickActions: QuickAction[] = [
+    {
+      icon: CalendarPlus,
+      label: 'Criar Evento',
+      variant: 'yellow',
+      onClick: () => {}, // Handled by CreateCampaignModal
+    },
+    {
+      icon: Upload,
+      label: 'Upload Fotos',
+      variant: 'blue',
+      onClick: () => setShowUploadModal(true),
+    },
+    {
+      icon: Wallet,
+      label: 'Solicitar Saque',
+      description: formatCurrency(stats.availableAmount),
+      variant: 'green',
+      href: '/dashboard/photographer/payout',
+    },
+    {
+      icon: BarChart3,
+      label: 'Relatórios',
+      variant: 'purple',
+      href: '/dashboard/photographer/reports',
+    },
+  ];
+
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div className="space-y-6 p-4">
+        <Skeleton className="h-32 w-full rounded-2xl" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-28" />)}
+        </div>
       </div>
     );
   }
 
   return (
     <AntiScreenshotProtection>
-      <div className="space-y-8">
-        {/* Welcome Section with Profile */}
-        <div className="relative overflow-hidden rounded-2xl p-6 sm:p-8 bg-gradient-to-br from-primary via-primary/95 to-primary/80 text-white shadow-2xl">
-          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS1vcGFjaXR5PSIwLjA1IiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-20"></div>
-          <div className="relative z-10 flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6">
-            {/* Profile Avatar */}
-            <Avatar className="h-20 w-20 sm:h-24 sm:w-24 border-4 border-white/30 shadow-xl animate-scale-in ring-4 ring-white/10">
-              <AvatarImage 
-                src={profile?.avatar_url || ''} 
-                alt={profile?.full_name || 'Fotógrafo'}
-                className="object-cover"
-              />
-              <AvatarFallback className="text-3xl bg-white/20 backdrop-blur-sm">
-                <Camera className="h-10 w-10 sm:h-12 sm:w-12 text-white" />
-              </AvatarFallback>
-            </Avatar>
+      <div className="space-y-6 sm:space-y-8">
+        {/* Welcome Header */}
+        <WelcomeHeader
+          title="Painel do Fotógrafo 📸"
+          subtitle="Gerencie seus eventos, fotos e acompanhe suas vendas"
+          userName={profile?.full_name || undefined}
+          avatarUrl={profile?.avatar_url || undefined}
+          icon={Camera}
+        />
 
-            {/* Welcome Text */}
-            <div className="flex-1 text-center sm:text-left">
-              <h1 className="text-3xl sm:text-4xl font-bold mb-2 animate-fade-in drop-shadow-lg">
-                Painel do Fotógrafo 📸
-              </h1>
-              <p className="text-base sm:text-lg opacity-95 drop-shadow-md">
-                Olá, <span className="font-semibold">{profile?.full_name || 'Fotógrafo'}</span>! Gerencie seus eventos e fotos aqui.
-              </p>
-            </div>
+        {/* Metric Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <MetricCard
+            title="Saldo Disponível"
+            value={formatCurrency(stats.availableAmount)}
+            subtitle="Pronto para saque"
+            icon={DollarSign}
+            variant="success"
+          />
+          <MetricCard
+            title="A Liberar"
+            value={formatCurrency(stats.pendingAmount)}
+            subtitle="Aguardando 12h"
+            icon={CreditCard}
+            variant="warning"
+          />
+          <MetricCard
+            title="Vendas do Mês"
+            value={stats.monthlySales}
+            subtitle={`${stats.totalSales} total`}
+            icon={TrendingUp}
+            variant="primary"
+          />
+          <MetricCard
+            title="Fotos Publicadas"
+            value={stats.totalPhotos}
+            subtitle={`${stats.conversionRate.toFixed(1)}% conversão`}
+            icon={Image}
+            variant="default"
+          />
+        </div>
+
+        {/* Quick Actions with Create Event Modal */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-foreground">Ações Rápidas</h3>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            {/* Create Event Card - Special handling for modal */}
+            <Card className="cursor-pointer hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 border-2 border-transparent hover:border-yellow-500/30 bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-950/20 dark:to-orange-950/20 group overflow-hidden">
+              <CardContent className="p-4 sm:p-6 flex flex-col items-center justify-center text-center h-[140px] sm:h-[160px]">
+                <div className="h-12 w-12 sm:h-14 sm:w-14 mx-auto rounded-xl bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center shadow-lg group-hover:shadow-xl group-hover:scale-110 transition-all duration-300 mb-3">
+                  <CalendarPlus className="h-6 w-6 sm:h-7 sm:w-7 text-white" />
+                </div>
+                <CreateCampaignModal onCampaignCreated={fetchData} />
+              </CardContent>
+            </Card>
+
+            {/* Upload Photos */}
+            <Card 
+              className="cursor-pointer hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 border-2 border-transparent hover:border-blue-500/30 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20 group overflow-hidden"
+              onClick={() => setShowUploadModal(true)}
+            >
+              <CardContent className="p-4 sm:p-6 flex flex-col items-center justify-center text-center h-[140px] sm:h-[160px]">
+                <div className="h-12 w-12 sm:h-14 sm:w-14 mx-auto rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-lg group-hover:shadow-xl group-hover:scale-110 transition-all duration-300 mb-3">
+                  <Upload className="h-6 w-6 sm:h-7 sm:w-7 text-white" />
+                </div>
+                <h4 className="font-semibold text-sm sm:text-base text-foreground">Upload Fotos</h4>
+              </CardContent>
+            </Card>
+
+            {/* Request Payout */}
+            <Link to="/dashboard/photographer/payout">
+              <Card className="cursor-pointer hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 border-2 border-transparent hover:border-green-500/30 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 group overflow-hidden">
+                <CardContent className="p-4 sm:p-6 flex flex-col items-center justify-center text-center h-[140px] sm:h-[160px]">
+                  <div className="h-12 w-12 sm:h-14 sm:w-14 mx-auto rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center shadow-lg group-hover:shadow-xl group-hover:scale-110 transition-all duration-300 mb-3">
+                    <Wallet className="h-6 w-6 sm:h-7 sm:w-7 text-white" />
+                  </div>
+                  <h4 className="font-semibold text-sm sm:text-base text-foreground">Solicitar Saque</h4>
+                  <p className="text-xs text-muted-foreground mt-1">{formatCurrency(stats.availableAmount)}</p>
+                </CardContent>
+              </Card>
+            </Link>
+
+            {/* Reports */}
+            <Link to="/dashboard/photographer/reports">
+              <Card className="cursor-pointer hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 border-2 border-transparent hover:border-purple-500/30 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 group overflow-hidden">
+                <CardContent className="p-4 sm:p-6 flex flex-col items-center justify-center text-center h-[140px] sm:h-[160px]">
+                  <div className="h-12 w-12 sm:h-14 sm:w-14 mx-auto rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg group-hover:shadow-xl group-hover:scale-110 transition-all duration-300 mb-3">
+                    <BarChart3 className="h-6 w-6 sm:h-7 sm:w-7 text-white" />
+                  </div>
+                  <h4 className="font-semibold text-sm sm:text-base text-foreground">Relatórios</h4>
+                </CardContent>
+              </Card>
+            </Link>
           </div>
         </div>
 
-        {/* Ações Principais - Cards Grandes */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-          {/* Criar Evento */}
-          <Card 
-            className="hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 border-2 border-transparent hover:border-yellow-500/30 bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-950/20 dark:to-orange-950/20 group overflow-hidden"
-          >
-            <CardContent className="p-6 sm:p-8 flex flex-col items-center justify-center text-center h-[180px] sm:h-[200px] relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/5 to-orange-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              <div className="relative z-10 space-y-3 sm:space-y-4">
-                <div className="h-16 w-16 sm:h-20 sm:w-20 mx-auto rounded-2xl bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center shadow-lg group-hover:shadow-xl group-hover:scale-110 transition-all duration-300">
-                  <CalendarPlus className="h-8 w-8 sm:h-10 sm:w-10 text-white" />
-                </div>
-                <div>
-                  <CreateCampaignModal onCampaignCreated={fetchData} />
-                  <p className="text-xs text-muted-foreground mt-1">Clique para criar</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Content Grid */}
+        <div className="grid lg:grid-cols-3 gap-6">
+          {/* Recent Sales */}
+          <div className="lg:col-span-1">
+            <RecentActivity 
+              activities={recentSales}
+              title="Últimas Vendas"
+              emptyMessage="Nenhuma venda ainda"
+            />
+          </div>
 
-          {/* Upload de Fotos */}
-          <Card 
-            className="cursor-pointer hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 border-2 border-transparent hover:border-blue-500/30 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20 group overflow-hidden"
-            onClick={() => setShowUploadModal(true)}
-          >
-            <CardContent className="p-6 sm:p-8 flex flex-col items-center justify-center text-center h-[180px] sm:h-[200px] relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-400/5 to-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              <div className="relative z-10 space-y-3 sm:space-y-4">
-                <div className="h-16 w-16 sm:h-20 sm:w-20 mx-auto rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-lg group-hover:shadow-xl group-hover:scale-110 transition-all duration-300">
-                  <Upload className="h-8 w-8 sm:h-10 sm:w-10 text-white" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-lg sm:text-xl text-foreground">Upload de Fotos</h3>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Tabs */}
+          <div className="lg:col-span-2">
+            <Tabs defaultValue="analytics" className="space-y-4">
+              <TabsList className="grid w-full grid-cols-4 h-auto sm:h-10 p-1">
+                <TabsTrigger value="analytics" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1 py-2 sm:py-0 h-12 sm:h-9">
+                  <BarChart3 className="h-4 w-4" />
+                  <span className="text-[10px] sm:text-xs">Analytics</span>
+                </TabsTrigger>
+                <TabsTrigger value="events" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1 py-2 sm:py-0 h-12 sm:h-9">
+                  <Camera className="h-4 w-4" />
+                  <span className="text-[10px] sm:text-xs">Eventos</span>
+                </TabsTrigger>
+                <TabsTrigger value="goals" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1 py-2 sm:py-0 h-12 sm:h-9">
+                  <Target className="h-4 w-4" />
+                  <span className="text-[10px] sm:text-xs">Metas</span>
+                </TabsTrigger>
+                <TabsTrigger value="profile" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1 py-2 sm:py-0 h-12 sm:h-9">
+                  <User className="h-4 w-4" />
+                  <span className="text-[10px] sm:text-xs">Perfil</span>
+                </TabsTrigger>
+              </TabsList>
 
-          {/* A Receber */}
-          <Card className="hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 border-2 border-muted/50 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900/30 dark:to-slate-800/30 group overflow-hidden">
-            <CardContent className="p-6 sm:p-8 flex flex-col items-center justify-center text-center h-[180px] sm:h-[200px] relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-slate-400/5 to-slate-500/5" />
-              <div className="relative z-10 space-y-3">
-                <div className="h-14 w-14 sm:h-16 sm:w-16 mx-auto rounded-2xl bg-muted/80 flex items-center justify-center shadow-md">
-                  <CreditCard className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-muted-foreground mb-2">🔒 A Receber</p>
-                  <p className="text-2xl sm:text-3xl font-bold text-foreground">
-                    {formatCurrency(stats.pendingAmount)}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Disponível pra Repasse - Apenas Informativo */}
-          <Card className="border-2 border-green-200 dark:border-green-900 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 overflow-hidden">
-            <CardContent className="p-6 sm:p-8 flex flex-col items-center justify-center text-center h-[180px] sm:h-[200px] relative">
-              <div className="relative z-10 space-y-3">
-                <div className="h-14 w-14 sm:h-16 sm:w-16 mx-auto rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg">
-                  <DollarSign className="h-7 w-7 sm:h-8 sm:w-8 text-white" />
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-muted-foreground mb-2">✅ Disponível p/ Repasse</p>
-                  <p className="text-2xl sm:text-3xl font-bold text-green-600 dark:text-green-400">
-                    {formatCurrency(stats.availableAmount)}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    💰 Seu saldo disponível para saque
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Main Content Tabs */}
-        <Tabs defaultValue="analytics" className="space-y-6">
-          <TabsList className="grid w-full max-w-3xl grid-cols-2 sm:grid-cols-4 h-auto sm:h-11 p-1 bg-muted/50">
-            <TabsTrigger value="analytics" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 sm:py-0 h-14 sm:h-9 data-[state=active]:bg-background data-[state=active]:shadow-md">
-              <BarChart3 className="h-4 w-4 flex-shrink-0" />
-              <span className="text-xs sm:text-sm font-medium">Analytics</span>
-            </TabsTrigger>
-            <TabsTrigger value="campaigns" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 sm:py-0 h-14 sm:h-9 data-[state=active]:bg-background data-[state=active]:shadow-md">
-              <Camera className="h-4 w-4 flex-shrink-0" />
-              <span className="text-xs sm:text-sm font-medium">Eventos</span>
-            </TabsTrigger>
-            <TabsTrigger value="payouts" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 sm:py-0 h-14 sm:h-9 data-[state=active]:bg-background data-[state=active]:shadow-md">
-              <CreditCard className="h-4 w-4 flex-shrink-0" />
-              <span className="text-xs sm:text-sm font-medium">Repasses</span>
-            </TabsTrigger>
-            <TabsTrigger value="profile" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 sm:py-0 h-14 sm:h-9 data-[state=active]:bg-background data-[state=active]:shadow-md">
-              <Edit className="h-4 w-4" />
-              <span className="text-xs sm:text-sm font-medium">Meu perfil</span>
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="analytics" className="space-y-6">
-            {/* Cards de Estatísticas */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
-              <Card className="hover:shadow-xl transition-all duration-300 border-2 border-transparent hover:border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10 dark:from-primary/10 dark:to-primary/5 overflow-hidden group">
-                <CardContent className="p-6 relative">
-                  <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <div className="relative z-10">
-                    <div className="flex items-center gap-4">
-                      <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg flex-shrink-0">
-                        <DollarSign className="h-6 w-6 text-white" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Receita Total</p>
-                        <p className="text-2xl sm:text-3xl font-bold text-foreground truncate mt-1">
-                          {formatCurrency(stats.pendingAmount + stats.availableAmount)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="hover:shadow-xl transition-all duration-300 border-2 border-transparent hover:border-accent/20 bg-gradient-to-br from-accent/5 to-accent/10 overflow-hidden group">
-                <CardContent className="p-6 relative">
-                  <div className="absolute inset-0 bg-gradient-to-br from-accent/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <div className="relative z-10">
-                    <div className="flex items-center gap-4">
-                      <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-accent to-accent/80 flex items-center justify-center shadow-lg flex-shrink-0">
-                        <BarChart3 className="h-6 w-6 text-accent-foreground" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total de vendas</p>
-                        <p className="text-2xl sm:text-3xl font-bold text-foreground mt-1">{stats.totalSales}</p>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="hover:shadow-xl transition-all duration-300 border-2 border-transparent hover:border-blue-500/20 bg-gradient-to-br from-blue-500/5 to-cyan-500/10 dark:from-blue-500/10 dark:to-cyan-500/5 overflow-hidden group">
-                <CardContent className="p-6 relative">
-                  <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <div className="relative z-10">
-                    <div className="flex items-center gap-4">
-                      <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-lg flex-shrink-0">
-                        <Camera className="h-6 w-6 text-white" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Ticket Médio</p>
-                        <p className="text-2xl sm:text-3xl font-bold text-foreground truncate mt-1">
-                          {formatCurrency(stats.totalSales > 0 ? (stats.pendingAmount + stats.availableAmount) / stats.totalSales : 0)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Gráfico e Metas */}
-            <div className="grid gap-6 lg:grid-cols-2">
-              <div>
-                {loadingSales ? (
-                  <div className="space-y-4">
-                    <Skeleton className="h-[350px] w-full" />
-                  </div>
-                ) : (
-                  <SalesChart 
-                    data={salesData} 
-                    title="📈 Minhas Vendas - Últimos 30 Dias"
-                    description="Acompanhe a evolução das suas vendas e receita"
-                    type="area"
-                  />
-                )}
-              </div>
-              
-              <PhotographerGoals />
-            </div>
-          </TabsContent>
-
-          <TabsContent value="campaigns" className="space-y-4">
-            <div className="flex justify-between items-center">
-              <div>
-                <h2 className="text-2xl font-bold text-foreground">Eventos com Fotos</h2>
-                <p className="text-sm text-muted-foreground mt-1">Gerencie seus eventos e crie álbuns</p>
-              </div>
-              <CreateCampaignModal onCampaignCreated={fetchData} />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-              {campaigns.map((campaign) => (
-                <Card key={campaign.id} className="overflow-hidden hover:shadow-2xl transition-all duration-300 group border-2 border-transparent hover:border-primary/20">
-                  <div className="aspect-[4/3] bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 relative overflow-hidden">
-                    {campaign.cover_image_url ? (
-                      <img
-                        src={campaign.cover_image_url}
-                        alt={campaign.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Camera className="h-16 w-16 text-muted-foreground opacity-30" />
-                      </div>
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    <Badge 
-                      variant={campaign.is_active ? "default" : "secondary"} 
-                      className="absolute top-3 right-3 shadow-lg"
-                    >
-                      {campaign.is_active ? "✓ Ativo" : "○ Inativo"}
-                    </Badge>
-                  </div>
-                  <CardContent className="p-4 sm:p-5">
-                    <CardTitle className="text-lg sm:text-xl mb-2 line-clamp-1">{campaign.title}</CardTitle>
-                    {campaign.description && (
-                      <CardDescription className="text-sm mb-3 line-clamp-2">
-                        {campaign.description}
-                      </CardDescription>
-                    )}
-                    <div className="flex flex-wrap gap-2 text-xs sm:text-sm text-muted-foreground mb-4">
-                      {campaign.location && (
-                        <span className="flex items-center gap-1">
-                          📍 {campaign.location}
-                        </span>
-                      )}
-                      {campaign.event_date && (
-                        <span className="flex items-center gap-1">
-                          📅 {new Date(campaign.event_date).toLocaleDateString('pt-BR')}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex justify-between items-center gap-2 pt-3 border-t border-border">
-                      <span className="text-sm font-medium text-muted-foreground">
-                        🖼️ {campaign.photos?.[0]?.count || 0} fotos
-                      </span>
-                      <div className="flex gap-2">
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          className="gap-1 h-8"
-                          onClick={() => {
-                            setSelectedCampaignForCover({ 
-                              id: campaign.id, 
-                              title: campaign.title,
-                              coverUrl: campaign.cover_image_url 
-                            });
-                            setShowEditCoverModal(true);
-                          }}
-                        >
-                          <Edit className="h-3 w-3" />
-                          <span className="hidden sm:inline">Capa</span>
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="default" 
-                          className="gap-1 h-8"
-                          onClick={() => {
-                            setSelectedCampaignForAlbum({ id: campaign.id, title: campaign.title });
-                            setShowCreateAlbumModal(true);
-                          }}
-                        >
-                          <Plus className="h-3 w-3" />
-                          <span className="hidden sm:inline">Álbum</span>
-                        </Button>
-                      </div>
-                    </div>
+              <TabsContent value="analytics" className="space-y-4">
+                <Card>
+                  <CardContent className="p-4">
+                    <h3 className="font-semibold mb-4">Vendas dos Últimos 30 Dias</h3>
+                    <SalesChart data={salesData} loading={loadingSales} />
                   </CardContent>
                 </Card>
-              ))}
-            </div>
+              </TabsContent>
 
-            {campaigns.length === 0 && (
-              <Card className="p-8 sm:p-12 text-center border-2 border-dashed">
-                <div className="max-w-md mx-auto space-y-4">
-                  <div className="h-20 w-20 mx-auto rounded-full bg-muted/50 flex items-center justify-center">
-                    <Camera className="h-10 w-10 text-muted-foreground" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold mb-2">Nenhum evento com fotos</h3>
-                    <p className="text-muted-foreground">
-                      Comece fazendo upload de fotos ou aplique para eventos disponíveis
-                    </p>
-                  </div>
-                  <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
-                    <Button onClick={() => setShowUploadModal(true)} className="gap-2" size="lg">
-                      <Upload className="h-5 w-5" />
-                      Fazer Upload de Fotos
-                    </Button>
-                    <Link to="/eventos-proximos">
-                      <Button variant="outline" className="gap-2 w-full sm:w-auto" size="lg">
-                        <CalendarPlus className="h-5 w-5" />
-                        Ver Eventos Disponíveis
-                      </Button>
-                    </Link>
-                  </div>
+              <TabsContent value="events" className="space-y-4">
+                <div className="grid gap-4">
+                  {campaigns.length === 0 ? (
+                    <Card className="p-8 text-center">
+                      <Camera className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground">Nenhum evento ainda</p>
+                      <p className="text-sm text-muted-foreground mt-1">Crie seu primeiro evento para começar!</p>
+                    </Card>
+                  ) : (
+                    campaigns.slice(0, 4).map((campaign) => (
+                      <Card key={campaign.id} className="overflow-hidden hover:shadow-md transition-shadow">
+                        <CardContent className="p-4 flex items-center gap-4">
+                          <div className="h-16 w-16 rounded-lg bg-muted flex-shrink-0 overflow-hidden">
+                            {campaign.cover_image_url ? (
+                              <img src={campaign.cover_image_url} alt={campaign.title} className="h-full w-full object-cover" />
+                            ) : (
+                              <div className="h-full w-full flex items-center justify-center">
+                                <Camera className="h-6 w-6 text-muted-foreground" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-medium truncate">{campaign.title}</h4>
+                            <p className="text-sm text-muted-foreground">{campaign.photos?.[0]?.count || 0} fotos</p>
+                          </div>
+                          <Link 
+                            to={`/dashboard/photographer/events/${campaign.id}`}
+                            className="text-sm text-primary hover:underline"
+                          >
+                            Gerenciar
+                          </Link>
+                        </CardContent>
+                      </Card>
+                    ))
+                  )}
                 </div>
-              </Card>
-            )}
-          </TabsContent>
+              </TabsContent>
 
-          <TabsContent value="payouts" className="space-y-4">
-            <Card className="p-8 text-center">
-              <div className="max-w-2xl mx-auto space-y-6">
-                <div className="h-20 w-20 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
-                  <CreditCard className="h-10 w-10 text-primary" />
-                </div>
-                
-                <div>
-                  <h3 className="text-2xl font-bold mb-2">Solicitação de Saque</h3>
-                  <p className="text-muted-foreground">
-                    Acesse a página dedicada para solicitar seus repasses e acompanhar o histórico de pagamentos
-                  </p>
-                </div>
+              <TabsContent value="goals" className="space-y-4">
+                <PhotographerGoals />
+              </TabsContent>
 
-                <div className="grid gap-4 md:grid-cols-2 text-left bg-muted/30 p-6 rounded-lg">
-                  <div className="space-y-2">
-                    <p className="text-sm font-semibold text-muted-foreground">Saldo Disponível</p>
-                    <p className="text-3xl font-bold text-green-600 dark:text-green-400">
-                      {formatCurrency(stats.availableAmount)}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Pronto para saque
-                    </p>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <p className="text-sm font-semibold text-muted-foreground">Solicitações Pendentes</p>
-                    <p className="text-3xl font-bold text-amber-600 dark:text-amber-400">
-                      {payoutRequests.filter(r => r.status === 'pending' || r.status === 'approved').length}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Em processamento
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
-                  <Link to="/dashboard/photographer/payout" className="flex-1 sm:flex-initial">
-                    <Button size="lg" className="w-full gap-2">
-                      <DollarSign className="h-5 w-5" />
-                      Solicitar Saque
-                    </Button>
-                  </Link>
-                  <Link to="/dashboard/photographer/payout" className="flex-1 sm:flex-initial">
-                    <Button size="lg" variant="outline" className="w-full gap-2">
-                      <Clock className="h-5 w-5" />
-                      Ver Histórico
-                    </Button>
-                  </Link>
-                </div>
-
-                <p className="text-xs text-muted-foreground">
-                  💡 Valor mínimo para saque: R$ 50,00 | Processamento: até 2 dias úteis
-                </p>
-              </div>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="profile" className="space-y-6">
-            <ProfileEditor />
-          </TabsContent>
-        </Tabs>
+              <TabsContent value="profile" className="space-y-4">
+                <ProfileEditor />
+              </TabsContent>
+            </Tabs>
+          </div>
         </div>
+      </div>
 
+      {/* Upload Modal - using Dialog pattern */}
       {showUploadModal && (
-        <UploadPhotoModal 
-          onClose={() => setShowUploadModal(false)}
-          onUploadComplete={fetchData}
-        />
-      )}
-
-      {showCreateAlbumModal && selectedCampaignForAlbum && (
-        <CreateAlbumModal
-          campaignId={selectedCampaignForAlbum.id}
-          campaignTitle={selectedCampaignForAlbum.title}
-          open={showCreateAlbumModal}
-          onClose={() => {
-            setShowCreateAlbumModal(false);
-            setSelectedCampaignForAlbum(null);
-          }}
-          onAlbumCreated={fetchData}
-        />
-      )}
-
-      {showEditCoverModal && selectedCampaignForCover && (
-        <EditCampaignCoverModal
-          campaignId={selectedCampaignForCover.id}
-          campaignTitle={selectedCampaignForCover.title}
-          currentCoverUrl={selectedCampaignForCover.coverUrl}
-          open={showEditCoverModal}
-          onClose={() => {
-            setShowEditCoverModal(false);
-            setSelectedCampaignForCover(null);
-          }}
-          onCoverUpdated={fetchData}
-        />
+        <Dialog open={showUploadModal} onOpenChange={setShowUploadModal}>
+          <DialogContent className="max-w-2xl">
+            <UploadPhotoModal 
+              onClose={() => setShowUploadModal(false)}
+              onUploadComplete={() => {
+                setShowUploadModal(false);
+                fetchData();
+              }}
+            />
+          </DialogContent>
+        </Dialog>
       )}
     </AntiScreenshotProtection>
   );
