@@ -1,27 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/components/ui/use-toast';
 import { 
   Settings, 
   Building2, 
   Users, 
-  DollarSign,
-  Save,
-  BarChart3,
   Camera,
   Shield,
   TrendingUp,
   UserCheck,
   Activity
 } from 'lucide-react';
-import DashboardLayout from './DashboardLayout';
 import AdminNavbar from './AdminNavbar';
 import StatCard from './StatCard';
 import FinancialDashboard from './FinancialDashboard';
@@ -36,7 +28,7 @@ interface Organization {
   name: string;
   description: string | null;
   admin_percentage: number;
-  is_active?: boolean; // Made optional to match database response
+  is_active?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -46,11 +38,8 @@ interface User {
   email: string;
   full_name: string | null;
   role: string;
-  organization_role?: string | null; // Made optional
-  organization_id?: string | null; // Made optional
   created_at: string;
   avatar_url?: string | null;
-  payout_percentage?: number;
   updated_at: string;
 }
 
@@ -69,29 +58,16 @@ interface Campaign {
   organization_percentage: number;
 }
 
-interface EventApplication {
-  id: string;
-  photographer?: { full_name: string; email: string };
-  campaign?: { title: string };
-  status: string;
-  applied_at: string;
-}
-
 const AdminDashboard = () => {
   const { user, profile } = useAuth();
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-  const [eventApplications, setEventApplications] = useState<EventApplication[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editingOrg, setEditingOrg] = useState<string | null>(null);
-  const [newPercentages, setNewPercentages] = useState<{ [key: string]: number }>({});
 
   useEffect(() => {
-    
     if (user && profile?.role === 'admin') {
       fetchAdminData();
-    } else if (user && profile) {
     }
   }, [user, profile]);
 
@@ -137,59 +113,6 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleUpdateOrganizationPercentage = async (orgId: string, newPercentage: number) => {
-    try {
-      const { error } = await supabase
-        .from('organizations')
-        .update({ admin_percentage: newPercentage })
-        .eq('id', orgId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Porcentagem atualizada!",
-        description: "A porcentagem da organização foi atualizada com sucesso.",
-      });
-
-      setEditingOrg(null);
-      setNewPercentages({});
-      fetchAdminData();
-    } catch (error) {
-      console.error('Error updating organization percentage:', error);
-      toast({
-        title: "Erro ao atualizar",
-        description: "Não foi possível atualizar a porcentagem.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleApplicationResponse = async (applicationId: string, action: 'approve' | 'reject') => {
-    try {
-      const { error } = await supabase
-        .from('event_applications')
-        .update({ status: action === 'approve' ? 'approved' : 'rejected' })
-        .eq('id', applicationId);
-
-      if (error) throw error;
-
-      toast({
-        title: action === 'approve' ? "Candidatura aprovada!" : "Candidatura rejeitada!",
-        description: `A candidatura foi ${action === 'approve' ? 'aprovada' : 'rejeitada'} com sucesso.`,
-      });
-
-      // Refresh applications
-      fetchAdminData();
-    } catch (error) {
-      console.error('Error updating application:', error);
-      toast({
-        title: "Erro ao atualizar",
-        description: "Não foi possível atualizar a candidatura.",
-        variant: "destructive",
-      });
-    }
-  };
-
   if (!user || profile?.role !== 'admin') {
     return (
       <div className="text-center p-8">
@@ -212,7 +135,7 @@ const AdminDashboard = () => {
 
   return (
     <>
-      <div className="min-h-screen bg-gray-50/50">
+      <div className="min-h-screen bg-gray-50/50 dark:bg-background">
         <AdminNavbar 
           currentUser={{
             id: user?.id || '',
@@ -220,9 +143,9 @@ const AdminDashboard = () => {
             full_name: profile?.full_name || undefined,
             avatar_url: profile?.avatar_url || undefined
           }}
-          pendingApplications={eventApplications.filter(app => app.status === 'pending').length}
-          eventApplications={eventApplications}
-          onApplicationResponse={handleApplicationResponse}
+          pendingApplications={0}
+          eventApplications={[]}
+          onApplicationResponse={() => {}}
         />
         
         <main className="container mx-auto px-4 py-8">
@@ -240,18 +163,18 @@ const AdminDashboard = () => {
             {/* Stats Cards */}
             <div className="grid gap-3 sm:gap-4 md:gap-6 grid-cols-2 lg:grid-cols-4">
               <StatCard
-                title="Organizações Ativas"
-                value={organizations.filter(o => o.is_active).length}
-                subtitle={`${organizations.length} total`}
+                title="Organizações"
+                value={organizations.length}
+                subtitle="Cadastradas"
                 icon={Building2}
                 iconColor="bg-primary text-primary-foreground"
                 bgGradient="from-primary/10 to-primary/20"
               />
               
               <StatCard
-                title="Usuários Registrados"
+                title="Usuários"
                 value={users.length}
-                subtitle="Total na plataforma"
+                subtitle="Registrados"
                 icon={Users}
                 iconColor="bg-accent text-accent-foreground"
                 bgGradient="from-accent/10 to-accent/20"
@@ -267,9 +190,9 @@ const AdminDashboard = () => {
               />
               
               <StatCard
-                title="Candidaturas Pendentes"
-                value={eventApplications.filter(app => app.status === 'pending').length}
-                subtitle="Requer aprovação"
+                title="Fotógrafos"
+                value={users.filter(u => u.role === 'photographer').length}
+                subtitle="Ativos"
                 icon={UserCheck}
                 iconColor="bg-muted text-muted-foreground"
                 bgGradient="from-muted/30 to-muted/50"
@@ -278,14 +201,10 @@ const AdminDashboard = () => {
 
             {/* Management Tabs */}
             <Tabs defaultValue="photographer-apps" className="space-y-6">
-              <TabsList className="grid w-full grid-cols-4 sm:grid-cols-7 text-xs gap-1 h-auto sm:h-10 p-1">
+              <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 text-xs gap-1 h-auto sm:h-10 p-1">
                 <TabsTrigger value="photographer-apps" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1 py-2 sm:py-0 h-14 sm:h-9">
                   <Camera className="h-4 w-4 flex-shrink-0" />
                   <span className="text-[10px] sm:text-xs">Fotógrafos</span>
-                </TabsTrigger>
-                <TabsTrigger value="applications" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1 py-2 sm:py-0 h-14 sm:h-9">
-                  <UserCheck className="h-4 w-4 flex-shrink-0" />
-                  <span className="text-[10px] sm:text-xs">Eventos</span>
                 </TabsTrigger>
                 <TabsTrigger value="financial" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1 py-2 sm:py-0 h-14 sm:h-9">
                   <TrendingUp className="h-4 w-4 flex-shrink-0" />
@@ -310,68 +229,64 @@ const AdminDashboard = () => {
                 </TabsTrigger>
               </TabsList>
 
-          <TabsContent value="photographer-apps" className="space-y-6">
-            <PhotographerApplicationsManager />
-          </TabsContent>
+              <TabsContent value="photographer-apps" className="space-y-6">
+                <PhotographerApplicationsManager />
+              </TabsContent>
 
-          <TabsContent value="applications" className="space-y-6">
-            <PhotographerApplicationsManager />
-          </TabsContent>
+              <TabsContent value="financial" className="space-y-6">
+                <FinancialDashboard userRole="admin" />
+              </TabsContent>
 
-          <TabsContent value="financial" className="space-y-6">
-            <FinancialDashboard userRole="admin" />
-          </TabsContent>
+              <TabsContent value="organizations" className="space-y-6">
+                <OrganizationManager organizations={organizations} onRefresh={fetchAdminData} />
+              </TabsContent>
 
-          <TabsContent value="organizations" className="space-y-6">
-            <OrganizationManager organizations={organizations} onRefresh={fetchAdminData} />
-          </TabsContent>
+              <TabsContent value="campaigns" className="space-y-6">
+                <CampaignManager campaigns={campaigns} onRefresh={fetchAdminData} />
+              </TabsContent>
 
-          <TabsContent value="campaigns" className="space-y-6">
-            <CampaignManager campaigns={campaigns} onRefresh={fetchAdminData} />
-          </TabsContent>
-
-          <TabsContent value="users" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5" />
-                  Usuários do Sistema
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {users.map((user) => (
-                    <Card key={user.id}>
-                      <CardContent className="p-4">
-                        <div className="flex justify-between items-start gap-4">
-                          <div className="flex-1">
-                            <h4 className="font-medium">{user.full_name || 'Nome não informado'}</h4>
-                            <p className="text-sm text-muted-foreground">{user.email}</p>
-                            <div className="flex gap-2 mt-2">
-                              <UserRoleManager
-                                userId={user.id}
-                                currentRole={user.role}
-                                userName={user.full_name || user.email}
-                                onRoleUpdate={fetchAdminData}
-                              />
+              <TabsContent value="users" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Users className="h-5 w-5" />
+                      Usuários do Sistema
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {users.map((userItem) => (
+                        <Card key={userItem.id}>
+                          <CardContent className="p-4">
+                            <div className="flex justify-between items-start gap-4">
+                              <div className="flex-1">
+                                <h4 className="font-medium">{userItem.full_name || 'Nome não informado'}</h4>
+                                <p className="text-sm text-muted-foreground">{userItem.email}</p>
+                                <div className="flex gap-2 mt-2">
+                                  <UserRoleManager
+                                    userId={userItem.id}
+                                    currentRole={userItem.role}
+                                    userName={userItem.full_name || userItem.email}
+                                    onRoleUpdate={fetchAdminData}
+                                  />
+                                </div>
+                              </div>
+                              <span className="text-sm text-muted-foreground whitespace-nowrap">
+                                {new Date(userItem.created_at).toLocaleDateString()}
+                              </span>
                             </div>
-                          </div>
-                          <span className="text-sm text-muted-foreground whitespace-nowrap">
-                            {new Date(user.created_at).toLocaleDateString()}
-                          </span>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-          <TabsContent value="profile" className="space-y-6">
-            <ProfileEditor />
-          </TabsContent>
-        </Tabs>
+              <TabsContent value="profile" className="space-y-6">
+                <ProfileEditor />
+              </TabsContent>
+            </Tabs>
           </div>
         </main>
       </div>
