@@ -52,13 +52,16 @@ export const OrganizationManager: React.FC<OrganizationManagerProps> = ({ organi
       ? new Date(createdAt).toISOString().split('T')[0]
       : new Date().toISOString().split('T')[0];
     
-    // Nome para a senha (apenas letras/números, mantendo case original)
-    const nameForPassword = orgName.replace(/[^a-zA-Z0-9]/g, '');
+    // Nome para a senha: primeira letra maiúscula, resto minúsculo
+    const nameClean = orgName.replace(/[^a-zA-Z0-9]/g, '');
+    const firstUpper = nameClean.charAt(0).toUpperCase();
+    const restLower = nameClean.slice(1).toLowerCase();
     
-    // Formato: nome@stafotos.com e senha: Nome+YYYY-MM-DD
+    // Formato: nome@stafotos.com e senha: Nome@YYYY-MM-DD
+    // Atende requisitos: maiúscula + minúscula + número + caractere especial
     return {
       email: `${login}@stafotos.com`,
-      password: `${nameForPassword}+${dateFormatted}`
+      password: `${firstUpper}${restLower}@${dateFormatted}`
     };
   };
 
