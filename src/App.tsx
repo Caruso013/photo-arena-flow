@@ -54,7 +54,6 @@ const PhotographerApplication = lazy(() => import("./pages/dashboard/Photographe
 const PhotographerEvents = lazy(() => import("./pages/dashboard/photographer/PhotographerEvents"));
 const ManageEvent = lazy(() => import("./pages/dashboard/photographer/ManageEvent"));
 const PhotographerEarnings = lazy(() => import("./pages/dashboard/photographer/PhotographerEarnings"));
-const PhotographerReports = lazy(() => import("./pages/dashboard/photographer/PhotographerReports"));
 const AlbumReports = lazy(() => import("./pages/dashboard/photographer/AlbumReports"));
 const PhotographerSettings = lazy(() => import("./pages/dashboard/photographer/PhotographerSettings"));
 const Goals = lazy(() => import("./pages/dashboard/photographer/Goals"));
@@ -160,7 +159,6 @@ const AppContent = () => {
             <Route path="photographer/featured" element={<FeaturedPhotos />} />
             <Route path="photographer/payout" element={<PayoutRequest />} />
             <Route path="photographer/earnings" element={<PhotographerEarnings />} />
-            <Route path="photographer/reports" element={<PhotographerReports />} />
             <Route path="photographer/album-reports" element={<AlbumReports />} />
             <Route path="photographer/goals" element={<Goals />} />
             <Route path="photographer/settings" element={<PhotographerSettings />} />
