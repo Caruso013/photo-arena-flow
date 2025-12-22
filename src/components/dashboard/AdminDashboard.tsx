@@ -207,7 +207,6 @@ const AdminDashboard = () => {
       label: 'Aprovar Fotógrafos',
       description: `${stats.pendingApplications} pendentes`,
       href: '/dashboard/admin/photographers',
-      variant: 'purple',
       badge: stats.pendingApplications > 0 ? stats.pendingApplications : undefined,
     },
     {
@@ -215,21 +214,18 @@ const AdminDashboard = () => {
       label: 'Pagamentos',
       description: 'Gerenciar repasses',
       href: '/dashboard/admin/financial',
-      variant: 'green',
     },
     {
       icon: Building2,
       label: 'Organizações',
       description: `${organizations.length} cadastradas`,
       href: '/dashboard/admin/organizations',
-      variant: 'blue',
     },
     {
       icon: Camera,
       label: 'Eventos',
       description: `${campaigns.filter(c => c.is_active).length} ativos`,
       href: '/dashboard/admin/events',
-      variant: 'yellow',
     },
   ];
 
