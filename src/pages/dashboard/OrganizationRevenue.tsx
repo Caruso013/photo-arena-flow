@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { DollarSign, Calendar, TrendingUp, FileText, User, Camera } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { formatCurrency } from '@/lib/utils';
-import AdminLayout from '@/components/dashboard/AdminLayout';
+
 import {
   Table,
   TableBody,
@@ -224,22 +224,18 @@ const OrganizationRevenue = () => {
 
   if (loading) {
     return (
-      <AdminLayout>
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-        </div>
-      </AdminLayout>
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
     );
   }
 
   if (!organization) {
     return (
-      <AdminLayout>
-        <div className="text-center py-12">
-          <h2 className="text-2xl font-bold mb-2">Organização não encontrada</h2>
-          <p className="text-muted-foreground">Não foi possível encontrar sua organização.</p>
-        </div>
-      </AdminLayout>
+      <div className="text-center py-12">
+        <h2 className="text-2xl font-bold mb-2">Organização não encontrada</h2>
+        <p className="text-muted-foreground">Não foi possível encontrar sua organização.</p>
+      </div>
     );
   }
 
@@ -248,8 +244,7 @@ const OrganizationRevenue = () => {
   const isPaid = cycleInfo.daysUntilPayment < 0;
 
   return (
-    <AdminLayout>
-      <div className="space-y-8">
+    <div className="space-y-8">
         {/* Header */}
         <div>
           <h1 className="text-3xl font-bold tracking-tight">🏢 {organization.name}</h1>
@@ -454,8 +449,7 @@ const OrganizationRevenue = () => {
             </div>
           )}
         </div>
-      </div>
-    </AdminLayout>
+    </div>
   );
 };
 
