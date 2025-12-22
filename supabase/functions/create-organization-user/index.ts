@@ -26,7 +26,7 @@ serve(async (req) => {
     const body = await req.json();
     const { organizationId, organizationName, email, password } = body;
 
-    console.log('Received request body:', body);
+    console.log('Received request body:', { organizationId, organizationName, email, password: '***' });
 
     if (!organizationId || !organizationName || !email || !password) {
       console.error('Missing fields:', { organizationId: !!organizationId, organizationName: !!organizationName, email: !!email, password: !!password });
@@ -38,65 +38,127 @@ serve(async (req) => {
       console.warn('Email não segue o padrão @stafotos.com:', email);
     }
 
-    console.log('Creating organization user:', { organizationId, organizationName, email });
+    console.log('Processing organization user:', { organizationId, organizationName, email });
 
-    // 1. Criar usuário no Auth
-    const { data: authData, error: authError } = await supabaseClient.auth.admin.createUser({
-      email: email,
-      password: password,
-      email_confirm: true,
-      user_metadata: {
-        full_name: organizationName,
-        role: 'organization',
-        organization_name: organizationName
-      }
-    });
+    let userId: string;
 
-    if (authError) {
-      console.error('Auth error:', authError);
-      throw authError;
+    // 1. Verificar se usuário já existe
+    const { data: existingUsers, error: listError } = await supabaseClient.auth.admin.listUsers();
+    
+    if (listError) {
+      console.error('Error listing users:', listError);
+      throw listError;
     }
 
-    console.log('User created in auth:', authData.user.id);
+    const existingUser = existingUsers.users.find(u => u.email === email);
 
-    // 2. Criar perfil
-    const { error: profileError } = await supabaseClient
-      .from('profiles')
-      .insert({
-        id: authData.user.id,
+    if (existingUser) {
+      console.log('User already exists, updating password:', existingUser.id);
+      
+      // Atualizar senha do usuário existente
+      const { error: updateError } = await supabaseClient.auth.admin.updateUserById(
+        existingUser.id,
+        { 
+          password: password,
+          user_metadata: {
+            full_name: organizationName,
+            role: 'organization',
+            organization_name: organizationName
+          }
+        }
+      );
+
+      if (updateError) {
+        console.error('Error updating user password:', updateError);
+        throw updateError;
+      }
+
+      userId = existingUser.id;
+      console.log('Password updated for existing user:', userId);
+
+      // Atualizar role no perfil se necessário
+      const { error: profileUpdateError } = await supabaseClient
+        .from('profiles')
+        .update({ 
+          role: 'organization',
+          full_name: organizationName 
+        })
+        .eq('id', userId);
+
+      if (profileUpdateError) {
+        console.warn('Could not update profile role:', profileUpdateError);
+      }
+
+    } else {
+      console.log('Creating new user:', email);
+      
+      // Criar novo usuário
+      const { data: authData, error: authError } = await supabaseClient.auth.admin.createUser({
         email: email,
-        full_name: organizationName,
-        role: 'organization'
+        password: password,
+        email_confirm: true,
+        user_metadata: {
+          full_name: organizationName,
+          role: 'organization',
+          organization_name: organizationName
+        }
       });
 
-    if (profileError) {
-      console.error('Profile error:', profileError);
-      throw profileError;
+      if (authError) {
+        console.error('Auth error:', authError);
+        throw authError;
+      }
+
+      userId = authData.user.id;
+      console.log('New user created in auth:', userId);
+
+      // O trigger handle_new_user já cria o perfil automaticamente
+      // Mas vamos garantir que o role está correto
+      await new Promise(resolve => setTimeout(resolve, 500)); // Aguardar trigger
+
+      const { error: profileUpdateError } = await supabaseClient
+        .from('profiles')
+        .update({ role: 'organization' })
+        .eq('id', userId);
+
+      if (profileUpdateError) {
+        console.warn('Could not update profile role:', profileUpdateError);
+      }
     }
 
-    console.log('Profile created');
-
-    // 3. Vincular usuário à organização
+    // 2. Criar/atualizar vínculo com organização (upsert)
     const { error: linkError } = await supabaseClient
       .from('organization_users')
-      .insert({
-        user_id: authData.user.id,
-        organization_id: organizationId
-      });
+      .upsert(
+        {
+          user_id: userId,
+          organization_id: organizationId,
+          updated_at: new Date().toISOString()
+        },
+        { 
+          onConflict: 'user_id,organization_id',
+          ignoreDuplicates: false 
+        }
+      );
 
     if (linkError) {
       console.error('Link error:', linkError);
-      throw linkError;
+      // Se for erro de constraint, tentar insert simples
+      if (linkError.code === '23505') {
+        console.log('Link already exists, ignoring...');
+      } else {
+        throw linkError;
+      }
     }
 
-    console.log('Organization user link created');
+    console.log('Organization user link created/updated');
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        userId: authData.user.id,
+        userId: userId,
         email,
-        message: 'Organization user created successfully'
+        message: existingUser ? 'User password updated and linked' : 'Organization user created successfully'
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
