@@ -258,11 +258,19 @@ const AdminDashboard = () => {
         />
 
         {/* Metric Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
           <MetricCard
-            title="Receita da Plataforma"
+            title="Receita Total Bruta"
+            value={formatCurrency(stats.totalRevenue)}
+            subtitle="Todas as vendas"
+            icon={TrendingUp}
+            variant="primary"
+            loading={loading}
+          />
+          <MetricCard
+            title="Receita Plataforma"
             value={formatCurrency(stats.platformRevenue)}
-            subtitle="Taxa acumulada"
+            subtitle={`${stats.totalRevenue > 0 ? ((stats.platformRevenue / stats.totalRevenue) * 100).toFixed(1) : 0}% do total`}
             icon={DollarSign}
             variant="success"
             loading={loading}
@@ -270,15 +278,15 @@ const AdminDashboard = () => {
           <MetricCard
             title="Fotos Vendidas"
             value={stats.photosSold}
-            subtitle="Total de vendas"
+            subtitle="Compras completadas"
             icon={Image}
-            variant="primary"
+            variant="secondary"
             loading={loading}
           />
           <MetricCard
-            title="Fotógrafos Ativos"
+            title="Fotógrafos"
             value={users.filter(u => u.role === 'photographer').length}
-            subtitle={`${stats.pendingApplications} pendentes`}
+            subtitle={stats.pendingApplications > 0 ? `${stats.pendingApplications} pendentes` : 'Ativos'}
             icon={Camera}
             variant="warning"
             loading={loading}
