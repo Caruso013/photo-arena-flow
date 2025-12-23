@@ -78,10 +78,17 @@ interface CycleData {
   sales: SaleData[];
 }
 
+interface AllTimeTotals {
+  totalRevenue: number;
+  totalSales: number;
+  allSales: SaleData[];
+}
+
 const OrganizationRevenue = () => {
   const { user, profile } = useAuth();
   const [organization, setOrganization] = useState<OrganizationData | null>(null);
   const [cycles, setCycles] = useState<CycleData[]>([]);
+  const [allTimeTotals, setAllTimeTotals] = useState<AllTimeTotals>({ totalRevenue: 0, totalSales: 0, allSales: [] });
   const [loading, setLoading] = useState(true);
   const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set());
   const [selectedCycle, setSelectedCycle] = useState<string>('0');
@@ -97,19 +104,17 @@ const OrganizationRevenue = () => {
     const currentDay = now.getDate();
     const cyclesData: Omit<CycleData, 'sales'>[] = [];
 
-    // Calcular os 3 ciclos (atual + 2 anteriores)
-    for (let i = 0; i < 3; i++) {
+    // Calcular 6 ciclos para cobrir mais histórico
+    for (let i = 0; i < 6; i++) {
       let cycleStart: Date;
       let cycleEnd: Date;
       let paymentDate: Date;
 
       if (currentDay < 5) {
-        // Estamos antes do dia 5, então o ciclo atual é do mês anterior
         cycleStart = new Date(now.getFullYear(), now.getMonth() - 2 - i, 5, 0, 0, 0);
         cycleEnd = new Date(now.getFullYear(), now.getMonth() - 1 - i, 4, 23, 59, 59);
         paymentDate = new Date(now.getFullYear(), now.getMonth() - 1 - i, 5);
       } else {
-        // Estamos depois do dia 5
         cycleStart = new Date(now.getFullYear(), now.getMonth() - 1 - i, 5, 0, 0, 0);
         cycleEnd = new Date(now.getFullYear(), now.getMonth() - i, 4, 23, 59, 59);
         paymentDate = new Date(now.getFullYear(), now.getMonth() - i, 5);
@@ -118,7 +123,6 @@ const OrganizationRevenue = () => {
       const daysUntilPayment = Math.ceil((paymentDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
       const isPast = daysUntilPayment < 0;
       
-      // Criar label do ciclo
       const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
       const label = i === 0 
         ? 'Ciclo Atual' 
@@ -155,90 +159,112 @@ const OrganizationRevenue = () => {
       const org = orgUser.organizations as unknown as OrganizationData;
       setOrganization(org);
 
-      // 2. Calcular os 3 ciclos
-      const cyclesInfo = calculateCycles();
+      console.log('📊 Buscando dados da organização:', org.name, 'ID:', org.id);
 
-      // 3. Buscar vendas de todos os ciclos
-      const cyclesWithSales: CycleData[] = [];
-
-      for (const cycle of cyclesInfo) {
-        const { data: salesData, error: salesError } = await supabase
-          .from('revenue_shares')
-          .select(`
-            id,
-            organization_amount,
-            photographer_amount,
-            created_at,
-            purchase_id,
-            photographer_id,
-            purchases (
-              amount,
-              buyer_id,
-              photo_id,
-              photos (
+      // 2. PRIMEIRO: Buscar TODAS as vendas (sem filtro de data) para mostrar histórico total
+      const { data: allSalesData, error: allSalesError } = await supabase
+        .from('revenue_shares')
+        .select(`
+          id,
+          organization_amount,
+          photographer_amount,
+          created_at,
+          purchase_id,
+          photographer_id,
+          purchases (
+            amount,
+            buyer_id,
+            photo_id,
+            photos (
+              title,
+              campaign_id,
+              campaigns (
                 title,
-                campaign_id,
-                campaigns (
-                  title,
-                  event_date
-                )
+                event_date
               )
             )
-          `)
-          .eq('organization_id', org.id)
-          .gte('created_at', cycle.cycleStart.toISOString())
-          .lte('created_at', cycle.cycleEnd.toISOString())
-          .order('created_at', { ascending: false });
+          )
+        `)
+        .eq('organization_id', org.id)
+        .order('created_at', { ascending: false });
 
-        if (salesError) throw salesError;
+      if (allSalesError) {
+        console.error('❌ Erro ao buscar todas as vendas:', allSalesError);
+        throw allSalesError;
+      }
 
-        // Buscar nomes dos fotógrafos e compradores
-        const salesWithNames: SaleData[] = [];
-        
-        for (const sale of salesData || []) {
-          let photographerName = null;
-          if (sale.photographer_id) {
-            const { data: photographer } = await supabase
-              .from('profiles')
-              .select('full_name')
-              .eq('id', sale.photographer_id)
-              .single();
-            photographerName = photographer?.full_name || 'Fotógrafo';
-          }
+      console.log('✅ Total de vendas encontradas:', allSalesData?.length || 0);
 
-          let buyerName = null;
-          const purchase = sale.purchases as any;
-          if (purchase?.buyer_id) {
-            const { data: buyer } = await supabase
-              .from('profiles')
-              .select('full_name')
-              .eq('id', purchase.buyer_id)
-              .single();
-            buyerName = buyer?.full_name || 'Cliente';
-          }
-
-          salesWithNames.push({
-            id: sale.id,
-            organization_amount: Number(sale.organization_amount),
-            photographer_amount: Number(sale.photographer_amount),
-            created_at: sale.created_at,
-            purchase_id: sale.purchase_id,
-            photographer_name: photographerName,
-            buyer_name: buyerName,
-            photo_title: purchase?.photos?.title || 'Foto',
-            campaign_title: purchase?.photos?.campaigns?.title || 'Evento',
-            event_date: purchase?.photos?.campaigns?.event_date,
-            purchase_amount: Number(purchase?.amount || 0),
-          });
+      // Processar todas as vendas
+      const processedAllSales: SaleData[] = [];
+      for (const sale of allSalesData || []) {
+        let photographerName = null;
+        if (sale.photographer_id) {
+          const { data: photographer } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', sale.photographer_id)
+            .single();
+          photographerName = photographer?.full_name || 'Fotógrafo';
         }
 
-        cyclesWithSales.push({
-          ...cycle,
-          sales: salesWithNames
+        let buyerName = null;
+        const purchase = sale.purchases as any;
+        if (purchase?.buyer_id) {
+          const { data: buyer } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', purchase.buyer_id)
+            .single();
+          buyerName = buyer?.full_name || 'Cliente';
+        }
+
+        processedAllSales.push({
+          id: sale.id,
+          organization_amount: Number(sale.organization_amount),
+          photographer_amount: Number(sale.photographer_amount),
+          created_at: sale.created_at,
+          purchase_id: sale.purchase_id,
+          photographer_name: photographerName,
+          buyer_name: buyerName,
+          photo_title: purchase?.photos?.title || 'Foto',
+          campaign_title: purchase?.photos?.campaigns?.title || 'Evento',
+          event_date: purchase?.photos?.campaigns?.event_date,
+          purchase_amount: Number(purchase?.amount || 0),
         });
       }
 
-      setCycles(cyclesWithSales);
+      const totalAllTimeRevenue = processedAllSales.reduce((sum, sale) => sum + sale.organization_amount, 0);
+      console.log('💰 Total histórico:', totalAllTimeRevenue);
+
+      setAllTimeTotals({
+        totalRevenue: totalAllTimeRevenue,
+        totalSales: processedAllSales.length,
+        allSales: processedAllSales
+      });
+
+      // 3. Calcular os ciclos
+      const cyclesInfo = calculateCycles();
+
+      // 4. Distribuir vendas nos ciclos
+      const cyclesWithSales: CycleData[] = cyclesInfo.map(cycle => {
+        const cycleSales = processedAllSales.filter(sale => {
+          const saleDate = new Date(sale.created_at);
+          return saleDate >= cycle.cycleStart && saleDate <= cycle.cycleEnd;
+        });
+        
+        return {
+          ...cycle,
+          sales: cycleSales
+        };
+      });
+
+      // Filtrar apenas ciclos com vendas ou os 3 primeiros
+      const relevantCycles = cyclesWithSales.filter((cycle, index) => 
+        cycle.sales.length > 0 || index < 3
+      ).slice(0, 6);
+
+      setCycles(relevantCycles);
 
     } catch (error) {
       console.error('Error fetching organization data:', error);
@@ -308,11 +334,9 @@ const OrganizationRevenue = () => {
     });
   };
 
-  const getAllTimeTotals = () => {
-    const totalRevenue = cycles.reduce((sum, cycle) => sum + getTotalRevenue(cycle.sales), 0);
-    const totalSales = cycles.reduce((sum, cycle) => sum + cycle.sales.length, 0);
-    return { totalRevenue, totalSales };
-  };
+  // Use allTimeTotals from state instead of calculating from cycles
+  const displayAllTimeRevenue = allTimeTotals.totalRevenue;
+  const displayAllTimeSales = allTimeTotals.totalSales;
 
   if (loading) {
     return (
@@ -340,7 +364,6 @@ const OrganizationRevenue = () => {
     );
   }
 
-  const { totalRevenue: allTimeRevenue, totalSales: allTimeSales } = getAllTimeTotals();
   const currentCycle = cycles[parseInt(selectedCycle)] || cycles[0];
   const currentCycleSales = currentCycle?.sales || [];
   const currentCycleRevenue = getTotalRevenue(currentCycleSales);
@@ -389,22 +412,22 @@ const OrganizationRevenue = () => {
             <div className="p-4 rounded-lg bg-background/50 border">
               <p className="text-sm text-muted-foreground mb-1">Receita Total</p>
               <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                {formatCurrency(allTimeRevenue)}
+                {formatCurrency(displayAllTimeRevenue)}
               </p>
             </div>
             <div className="p-4 rounded-lg bg-background/50 border">
               <p className="text-sm text-muted-foreground mb-1">Total de Vendas</p>
-              <p className="text-2xl font-bold">{allTimeSales}</p>
+              <p className="text-2xl font-bold">{displayAllTimeSales}</p>
             </div>
             <div className="p-4 rounded-lg bg-background/50 border">
               <p className="text-sm text-muted-foreground mb-1">Média por Ciclo</p>
               <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {formatCurrency(allTimeRevenue / 3)}
+                {formatCurrency(displayAllTimeRevenue / Math.max(cycles.length, 1))}
               </p>
             </div>
             <div className="p-4 rounded-lg bg-background/50 border">
               <p className="text-sm text-muted-foreground mb-1">Ciclos Analisados</p>
-              <p className="text-2xl font-bold">3</p>
+              <p className="text-2xl font-bold">{cycles.length}</p>
             </div>
           </div>
         </CardContent>

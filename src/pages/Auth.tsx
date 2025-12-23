@@ -9,7 +9,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Camera, ArrowLeft, AlertCircle, CheckCircle2, Mail } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
+import { Camera, ArrowLeft, AlertCircle, CheckCircle2, Mail, Info } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
@@ -33,6 +35,11 @@ const Auth = () => {
   const [signupPassword, setSignupPassword] = useState('');
   const [signupName, setSignupName] = useState('');
   const [signupRole, setSignupRole] = useState<'user' | 'photographer'>('user');
+  
+  // Photographer-specific fields
+  const [photographerExperience, setPhotographerExperience] = useState('');
+  const [photographerEquipment, setPhotographerEquipment] = useState('');
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -109,9 +116,62 @@ const Auth = () => {
       setErrors(fieldErrors);
       return;
     }
+
+    // Validações específicas para fotógrafos
+    if (signupRole === 'photographer') {
+      if (!acceptedTerms) {
+        setErrors({ terms: 'Você precisa aceitar os termos da plataforma' });
+        toast({
+          title: "Termos obrigatórios",
+          description: "Você precisa aceitar os termos da plataforma para se cadastrar como fotógrafo.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (!photographerExperience || parseInt(photographerExperience) < 0) {
+        setErrors({ experience: 'Informe seus anos de experiência' });
+        return;
+      }
+    }
     
     setIsLoading(true);
-    const { error } = await signUp(signupEmail, signupPassword, signupName, signupRole);
+    
+    // Se for fotógrafo, criar como 'user' e depois criar a aplicação
+    const roleToCreate = signupRole === 'photographer' ? 'user' : signupRole;
+    
+    const { error } = await signUp(signupEmail, signupPassword, signupName, roleToCreate);
+    
+    if (!error && signupRole === 'photographer') {
+      // Aguardar um pouco para o usuário ser criado
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Buscar o usuário recém-criado
+      const { data: userData } = await supabase.auth.getUser();
+      
+      if (userData?.user) {
+        // Criar a aplicação de fotógrafo
+        const { error: appError } = await supabase
+          .from('photographer_applications')
+          .insert({
+            user_id: userData.user.id,
+            message: `Cadastro via formulário. Experiência: ${photographerExperience} anos. Equipamento: ${photographerEquipment || 'Não informado'}`,
+            experience_years: parseInt(photographerExperience) || 0,
+            equipment: photographerEquipment || null,
+            status: 'pending'
+          });
+        
+        if (appError) {
+          console.error('Erro ao criar aplicação:', appError);
+        } else {
+          toast({
+            title: "Cadastro enviado!",
+            description: "Sua solicitação para fotógrafo foi enviada. Você será notificado após a análise.",
+          });
+        }
+      }
+    }
+    
     setIsLoading(false);
     
     if (!error) {
@@ -119,6 +179,9 @@ const Auth = () => {
       setSignupPassword('');
       setSignupName('');
       setSignupRole('user');
+      setPhotographerExperience('');
+      setPhotographerEquipment('');
+      setAcceptedTerms(false);
     } else {
       // Traduzir erros do Supabase
       if (error.message.includes('already registered') || 
@@ -406,10 +469,94 @@ const Auth = () => {
                         : 'Como usuário, você poderá comprar fotos dos eventos.'}
                     </p>
                   </div>
+
+                  {/* Campos específicos para fotógrafos */}
+                  {signupRole === 'photographer' && (
+                    <>
+                      <Alert className="bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900">
+                        <Info className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                        <AlertDescription className="text-xs text-amber-700 dark:text-amber-300">
+                          <strong>Termos para Fotógrafos:</strong>
+                          <ul className="mt-1 space-y-0.5 list-disc list-inside">
+                            <li>Taxa da plataforma: 9% sobre cada venda</li>
+                            <li>Você recebe 91% do valor de cada foto vendida</li>
+                            <li>Seu perfil será liberado após análise da equipe</li>
+                            <li>Prazo de análise: até 48 horas úteis</li>
+                          </ul>
+                        </AlertDescription>
+                      </Alert>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="experience" className="text-sm">Anos de experiência *</Label>
+                        <Input
+                          id="experience"
+                          type="number"
+                          min="0"
+                          max="50"
+                          placeholder="Ex: 3"
+                          value={photographerExperience}
+                          onChange={(e) => {
+                            setPhotographerExperience(e.target.value);
+                            setErrors({ ...errors, experience: '' });
+                          }}
+                          required
+                          className={`h-11 sm:h-12 text-sm ${errors.experience ? 'border-destructive' : ''}`}
+                        />
+                        {errors.experience && (
+                          <p className="text-xs text-destructive flex items-center gap-1">
+                            <AlertCircle className="h-3 w-3" />
+                            {errors.experience}
+                          </p>
+                        )}
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="equipment" className="text-sm">Equipamento fotográfico</Label>
+                        <Textarea
+                          id="equipment"
+                          placeholder="Ex: Canon 5D Mark IV, lentes 24-70mm e 70-200mm..."
+                          value={photographerEquipment}
+                          onChange={(e) => setPhotographerEquipment(e.target.value)}
+                          className="text-sm min-h-[80px]"
+                          rows={2}
+                        />
+                        <p className="text-xs text-muted-foreground">Opcional, mas ajuda na aprovação</p>
+                      </div>
+                      
+                      <div className="flex items-start space-x-3 p-3 bg-muted/50 rounded-lg border">
+                        <Checkbox
+                          id="terms"
+                          checked={acceptedTerms}
+                          onCheckedChange={(checked) => {
+                            setAcceptedTerms(checked as boolean);
+                            setErrors({ ...errors, terms: '' });
+                          }}
+                          className="mt-0.5"
+                        />
+                        <div className="space-y-1">
+                          <Label htmlFor="terms" className="text-sm font-medium cursor-pointer">
+                            Li e aceito os termos da plataforma *
+                          </Label>
+                          <p className="text-xs text-muted-foreground">
+                            Aceito a taxa de 9% da plataforma e que meu perfil será analisado antes de ser liberado.
+                          </p>
+                        </div>
+                      </div>
+                      {errors.terms && (
+                        <p className="text-xs text-destructive flex items-center gap-1">
+                          <AlertCircle className="h-3 w-3" />
+                          {errors.terms}
+                        </p>
+                      )}
+                    </>
+                  )}
+                  
                   <Alert className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900">
                     <Mail className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                     <AlertDescription className="text-xs text-blue-700 dark:text-blue-300">
-                      Você receberá um email de confirmação. Verifique sua caixa de entrada e pasta de spam antes de fazer login.
+                      {signupRole === 'photographer' 
+                        ? 'Após confirmar seu email, sua solicitação será analisada pela nossa equipe.'
+                        : 'Você receberá um email de confirmação. Verifique sua caixa de entrada e pasta de spam antes de fazer login.'}
                     </AlertDescription>
                   </Alert>
                   <Button 

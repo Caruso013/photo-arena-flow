@@ -7,8 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from '@/components/ui/use-toast';
-import { Camera, CheckCircle2, Clock, XCircle, AlertCircle } from 'lucide-react';
+import { Camera, CheckCircle2, Clock, XCircle, AlertCircle, Info, Percent, UserCheck } from 'lucide-react';
 import { z } from 'zod';
 
 const applicationSchema = z.object({
@@ -34,6 +36,7 @@ export const PhotographerApplicationForm = () => {
   const [application, setApplication] = useState<Application | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [formData, setFormData] = useState({
     message: '',
     portfolio_url: '',
@@ -102,6 +105,16 @@ export const PhotographerApplicationForm = () => {
       toast({
         title: "Erro de validação",
         description: "Por favor, corrija os erros no formulário.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!acceptedTerms) {
+      setErrors({ terms: 'Você precisa aceitar os termos da plataforma' });
+      toast({
+        title: "Termos obrigatórios",
+        description: "Você precisa aceitar os termos da plataforma para enviar a solicitação.",
         variant: "destructive",
       });
       return;
@@ -270,6 +283,20 @@ export const PhotographerApplicationForm = () => {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Termos da Plataforma */}
+          <Alert className="bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900">
+            <Info className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            <AlertDescription className="text-xs text-amber-700 dark:text-amber-300">
+              <strong>Termos para Fotógrafos STA Fotos:</strong>
+              <ul className="mt-1 space-y-0.5 list-disc list-inside">
+                <li>Taxa da plataforma: 9% sobre cada venda</li>
+                <li>Você recebe 91% do valor de cada foto vendida</li>
+                <li>Pagamentos processados a cada dia 5</li>
+                <li>Seu perfil será analisado antes de ser liberado</li>
+              </ul>
+            </AlertDescription>
+          </Alert>
+
           <div className="space-y-2">
             <Label htmlFor="message">
               Por que você quer ser fotógrafo? <span className="text-red-500">*</span>
@@ -342,6 +369,33 @@ export const PhotographerApplicationForm = () => {
               <p className="text-sm text-red-500">{errors.equipment}</p>
             )}
           </div>
+
+          {/* Checkbox de aceite dos termos */}
+          <div className="flex items-start space-x-3 p-3 bg-muted/50 rounded-lg border">
+            <Checkbox
+              id="terms"
+              checked={acceptedTerms}
+              onCheckedChange={(checked) => {
+                setAcceptedTerms(checked as boolean);
+                setErrors({ ...errors, terms: '' });
+              }}
+              className="mt-0.5"
+            />
+            <div className="space-y-1">
+              <Label htmlFor="terms" className="text-sm font-medium cursor-pointer">
+                Li e aceito os termos da plataforma *
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Aceito a taxa de 9% da plataforma e que meu perfil será analisado antes de ser liberado.
+              </p>
+            </div>
+          </div>
+          {errors.terms && (
+            <p className="text-sm text-red-500 flex items-center gap-1">
+              <AlertCircle className="h-3 w-3" />
+              {errors.terms}
+            </p>
+          )}
 
           <Button type="submit" disabled={submitting} className="w-full">
             {submitting ? (
