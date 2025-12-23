@@ -104,24 +104,32 @@ const OrganizationRevenue = () => {
     const currentDay = now.getDate();
     const cyclesData: Omit<CycleData, 'sales'>[] = [];
 
-    // Calcular 6 ciclos para cobrir mais histórico
+    // Calcular ciclos baseado no dia 5 de cada mês
+    // Ciclo: dia 5 do mês X até dia 4 do mês X+1
+    // Se hoje é dia 23/12/2025:
+    // - Ciclo atual: 05/12/2025 a 04/01/2026 (ainda não fechou)
+    // - Ciclo anterior: 05/11/2025 a 04/12/2025 (já fechou, pago em 05/12)
+    
     for (let i = 0; i < 6; i++) {
       let cycleStart: Date;
       let cycleEnd: Date;
       let paymentDate: Date;
 
-      if (currentDay < 5) {
-        cycleStart = new Date(now.getFullYear(), now.getMonth() - 2 - i, 5, 0, 0, 0);
-        cycleEnd = new Date(now.getFullYear(), now.getMonth() - 1 - i, 4, 23, 59, 59);
-        paymentDate = new Date(now.getFullYear(), now.getMonth() - 1 - i, 5);
+      if (currentDay >= 5) {
+        // Estamos após o dia 5, então o ciclo atual começou este mês
+        // Ciclo 0 (atual): mês atual dia 5 até próximo mês dia 4
+        cycleStart = new Date(now.getFullYear(), now.getMonth() - i, 5, 0, 0, 0);
+        cycleEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 4, 23, 59, 59);
+        paymentDate = new Date(now.getFullYear(), now.getMonth() - i + 1, 5);
       } else {
+        // Estamos antes do dia 5, então o ciclo atual começou mês passado
         cycleStart = new Date(now.getFullYear(), now.getMonth() - 1 - i, 5, 0, 0, 0);
         cycleEnd = new Date(now.getFullYear(), now.getMonth() - i, 4, 23, 59, 59);
         paymentDate = new Date(now.getFullYear(), now.getMonth() - i, 5);
       }
 
       const daysUntilPayment = Math.ceil((paymentDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-      const isPast = daysUntilPayment < 0;
+      const isPast = paymentDate < now;
       
       const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
       const label = i === 0 
