@@ -151,7 +151,7 @@ const Index = () => {
                 <span className="text-primary animate-pulse">melhores momentos</span>
               </h1>
               
-              <p className="text-xl sm:text-2xl text-gray-300 max-w-3xl mx-auto leading-relaxed">
+              <p className="text-xl sm:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
                 Encontre suas fotos instantaneamente com IA, compre em segundos 
                 e receba digitalmente. Simples, rápido e mágico.
               </p>

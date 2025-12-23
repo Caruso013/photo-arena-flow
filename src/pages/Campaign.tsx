@@ -1161,7 +1161,7 @@ const Campaign = () => {
                       <CardContent className="p-2 sm:p-3">
                         <div className="space-y-1 sm:space-y-2">
                           {/* Nome da foto */}
-                          <p className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 truncate">
+                          <p className="text-xs sm:text-sm font-medium text-foreground truncate">
                             {getPhotoName(photo, index)}
                           </p>
                           <div className="flex justify-between items-center gap-2">

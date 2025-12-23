@@ -31,7 +31,7 @@ All colors MUST be HSL.
     --primary-light: 45 93% 57%;
 
     --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted-foreground: 215 16% 40%;
 
     --accent: 210 40% 96.1%;
     --accent-foreground: 222.2 47.4% 11.2%;
@@ -88,7 +88,7 @@ All colors MUST be HSL.
 
     /* Muted - Para elementos desabilitados/secundários */
     --muted: 0 0% 18%; /* #2d2d2d */
-    --muted-foreground: 0 0% 65%; /* #a6a6a6 */
+    --muted-foreground: 0 0% 70%; /* #b3b3b3 - Mais claro para melhor legibilidade */
 
     /* Accent - Para highlights */
     --accent: 0 0% 18%; /* #2d2d2d */
