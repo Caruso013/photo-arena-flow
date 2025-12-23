@@ -260,19 +260,58 @@ serve(async (req) => {
 
     const baseAppUrl = 'https://www.stafotos.com';
 
+    // Sanitizar dados do comprador para evitar cc_rejected_high_risk
+    const sanitizedName = buyerInfo.name?.trim() || 'Cliente';
+    const sanitizedSurname = buyerInfo.surname?.trim() || 'STA';
+    const sanitizedEmail = buyerInfo.email?.trim().toLowerCase() || '';
+    const sanitizedPhone = buyerInfo.phone?.replace(/\D/g, '') || '';
+    const sanitizedDocument = buyerInfo.document?.replace(/\D/g, '') || '';
+    
+    // Log dos dados do payer para debug
+    console.log('📋 Dados do payer:', {
+      name: sanitizedName,
+      surname: sanitizedSurname,
+      email: sanitizedEmail,
+      phone: sanitizedPhone,
+      document: sanitizedDocument,
+    });
+
+    // Validar dados mínimos
+    if (!sanitizedName || sanitizedName.length < 2) {
+      console.error('❌ Nome inválido:', sanitizedName);
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: 'Nome do comprador inválido. Por favor, preencha seu nome completo.' 
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
+    if (!sanitizedSurname || sanitizedSurname.length < 2) {
+      console.error('❌ Sobrenome inválido:', sanitizedSurname);
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: 'Sobrenome do comprador inválido. Por favor, preencha seu sobrenome.' 
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const preferenceData = {
       items,
       payer: {
-        name: buyerInfo.name,
-        surname: buyerInfo.surname,
-        email: buyerInfo.email,
+        name: sanitizedName,
+        surname: sanitizedSurname,
+        email: sanitizedEmail,
         phone: {
-          area_code: buyerInfo.phone.substring(0, 2),
-          number: buyerInfo.phone.substring(2),
+          area_code: sanitizedPhone.substring(0, 2),
+          number: sanitizedPhone.substring(2),
         },
         identification: {
           type: 'CPF',
-          number: buyerInfo.document,
+          number: sanitizedDocument,
         },
       },
       back_urls: {

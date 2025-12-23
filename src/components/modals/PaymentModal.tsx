@@ -98,9 +98,20 @@ export default function PaymentModal({
   const nextThreshold = getNextDiscountThreshold(totalItems);
 
   const handleInputChange = (field: string, value: string) => {
-    // Remove formatação para validação
-    const cleanValue = value.replace(/\D/g, '');
-    setBuyerData(prev => ({ ...prev, [field]: cleanValue }));
+    // Só remove caracteres não-numéricos para campos numéricos (phone e document)
+    if (field === 'phone' || field === 'document') {
+      const cleanValue = value.replace(/\D/g, '');
+      setBuyerData(prev => ({ ...prev, [field]: cleanValue }));
+    } else if (field === 'name' || field === 'surname') {
+      // Para nome e sobrenome, apenas limpa espaços extras e mantém letras
+      const cleanValue = value.replace(/\s+/g, ' ').trimStart();
+      setBuyerData(prev => ({ ...prev, [field]: cleanValue }));
+    } else if (field === 'email') {
+      // Para email, apenas trim e lowercase
+      setBuyerData(prev => ({ ...prev, [field]: value.trim().toLowerCase() }));
+    } else {
+      setBuyerData(prev => ({ ...prev, [field]: value }));
+    }
   };
 
   const isFormValid = () => {
@@ -147,12 +158,13 @@ export default function PaymentModal({
     setLoading(true);
 
     try {
+      // Garantir que os dados estejam limpos antes de enviar
       const buyerInfo = {
-        name: buyerData.name,
-        surname: buyerData.surname,
-        email: buyerData.email,
-        phone: buyerData.phone,
-        document: buyerData.document,
+        name: buyerData.name.trim(),
+        surname: buyerData.surname.trim(),
+        email: buyerData.email.trim().toLowerCase(),
+        phone: buyerData.phone.replace(/\D/g, ''),
+        document: buyerData.document.replace(/\D/g, ''),
       };
 
       const { data, error } = await supabase.functions.invoke('create-payment-preference', {
