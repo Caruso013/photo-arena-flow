@@ -45,13 +45,12 @@ const Header = () => {
     }
   };
 
+  // Navegação simplificada: 5 itens principais
   const navItems = [
     { to: '/', label: 'HOME', icon: Home },
     { to: '/events', label: 'EVENTOS', icon: Calendar },
     { to: '/highlights', label: 'DESTAQUES', icon: Camera },
-    { to: '/fotografos', label: 'FOTÓGRAFOS', icon: User },
     { to: '/tutorial', label: 'COMO FUNCIONA', icon: BookOpen },
-    { to: '/faq', label: 'AJUDA', icon: HelpCircle },
     { to: '/contato', label: 'CONTATO', icon: Mail },
   ];
 

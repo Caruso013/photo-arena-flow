@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Camera, Search, MapPin, Calendar, ArrowRight, Zap, Shield, Users, Trophy, Star, TrendingUp, Sparkles } from 'lucide-react';
+import { Camera, Search, MapPin, Calendar, ArrowRight, Zap, Shield, Users, Trophy, Star, TrendingUp, Sparkles, ScanFace } from 'lucide-react';
 import MainLayout from '@/components/layout/MainLayout';
 
 interface FeaturedCampaign {
@@ -131,7 +131,7 @@ const Home = () => {
   return (
     <MainLayout>
       {/* Hero Section */}
-      <section className="relative overflow-hidden py-20 md:py-32">
+      <section className="relative overflow-hidden py-16 md:py-28">
         {/* Background com gradiente animado */}
         <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/10 via-background to-yellow-600/5"></div>
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-yellow-500/20 via-transparent to-transparent"></div>
@@ -147,31 +147,38 @@ const Home = () => {
                 Tecnologia de Reconhecimento Facial IA
               </span>
             </div>
-            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold mb-8 leading-tight text-foreground">
-              Relembre a sua <span className="text-yellow-500">história</span>
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight text-foreground">
+              Encontre suas <span className="text-yellow-500">fotos</span> em segundos
             </h1>
-            <p className="text-xl md:text-2xl text-muted-foreground mb-10 leading-relaxed max-w-3xl mx-auto">
-              Encontre suas melhores fotos de eventos esportivos em segundos com nossa tecnologia de reconhecimento facial inteligente
+            <p className="text-lg md:text-xl text-muted-foreground mb-8 leading-relaxed max-w-2xl mx-auto">
+              Tire uma selfie e nossa IA encontra automaticamente todas as suas fotos de eventos esportivos
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            
+            {/* CTAs Principais */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8">
               <Button 
                 size="lg" 
-                className="gap-2 text-lg px-10 py-7 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 shadow-lg shadow-yellow-500/30 hover:shadow-xl hover:shadow-yellow-500/50 transition-all duration-300 hover:scale-105"
+                className="gap-3 text-lg px-8 py-6 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 shadow-lg shadow-yellow-500/30 hover:shadow-xl hover:shadow-yellow-500/50 transition-all duration-300 hover:scale-105 w-full sm:w-auto"
                 onClick={() => navigate('/events')}
               >
-                <Search className="h-6 w-6" />
-                Encontrar Minhas Fotos
+                <ScanFace className="h-6 w-6" />
+                Buscar com Reconhecimento Facial
               </Button>
               <Button 
                 size="lg" 
                 variant="outline"
-                className="gap-2 text-lg px-10 py-7 border-2 border-yellow-500/30 hover:border-yellow-500 hover:bg-yellow-500/10 transition-all duration-300"
-                onClick={() => navigate('/sobre')}
+                className="gap-2 text-lg px-8 py-6 border-2 border-border hover:border-primary hover:bg-primary/5 transition-all duration-300 w-full sm:w-auto"
+                onClick={() => navigate('/events')}
               >
-                Sobre Nós
-                <ArrowRight className="h-5 w-5" />
+                <Calendar className="h-5 w-5" />
+                Ver Todos os Eventos
               </Button>
             </div>
+            
+            {/* Texto explicativo adicional */}
+            <p className="text-sm text-muted-foreground">
+              Mais de {stats.photos.toLocaleString()} fotos disponíveis em {stats.events} eventos
+            </p>
           </div>
         </div>
       </section>
