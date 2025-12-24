@@ -159,10 +159,20 @@ const OrganizationRevenue = () => {
         .from('organization_users')
         .select('organization_id, organizations(*)')
         .eq('user_id', user?.id)
-        .single();
+        .maybeSingle(); // Usa maybeSingle para não dar erro se não encontrar
 
-      if (orgUserError) throw orgUserError;
-      if (!orgUser) throw new Error('Organization not found');
+      if (orgUserError) {
+        console.error('Erro ao buscar vínculo organização:', orgUserError);
+        throw orgUserError;
+      }
+      
+      // Se não encontrou vínculo, mostrar tela de organização não encontrada
+      if (!orgUser || !orgUser.organizations) {
+        console.log('Usuário não está vinculado a nenhuma organização');
+        setOrganization(null);
+        setLoading(false);
+        return;
+      }
 
       const org = orgUser.organizations as unknown as OrganizationData;
       setOrganization(org);
@@ -176,6 +186,7 @@ const OrganizationRevenue = () => {
           id,
           organization_amount,
           photographer_amount,
+          platform_amount,
           created_at,
           purchase_id,
           photographer_id,
@@ -227,6 +238,12 @@ const OrganizationRevenue = () => {
           buyerName = buyer?.full_name || 'Cliente';
         }
 
+        // Calcular valor total da venda (soma de todas as partes)
+        const purchaseAmount = Number(purchase?.amount || 0);
+        const totalSaleValue = purchaseAmount > 0 
+          ? purchaseAmount 
+          : (Number(sale.organization_amount) + Number(sale.photographer_amount) + Number(sale.platform_amount || 0));
+
         processedAllSales.push({
           id: sale.id,
           organization_amount: Number(sale.organization_amount),
@@ -238,7 +255,7 @@ const OrganizationRevenue = () => {
           photo_title: purchase?.photos?.title || 'Foto',
           campaign_title: purchase?.photos?.campaigns?.title || 'Evento',
           event_date: purchase?.photos?.campaigns?.event_date,
-          purchase_amount: Number(purchase?.amount || 0),
+          purchase_amount: totalSaleValue,
         });
       }
 
