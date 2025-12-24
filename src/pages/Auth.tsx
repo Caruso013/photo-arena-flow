@@ -18,7 +18,7 @@ import { toast } from '@/components/ui/use-toast';
 import { signUpSchema, signInSchema } from '@/lib/validation';
 
 const Auth = () => {
-  const { signIn, signUp, user, loading } = useAuth();
+  const { signIn, signUp, user, profile, loading } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
@@ -42,10 +42,11 @@ const Auth = () => {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   useEffect(() => {
-    if (user) {
+    // Evita loop: só redireciona quando o perfil já está disponível
+    if (user && profile) {
       navigate('/dashboard');
     }
-  }, [user, navigate]);
+  }, [user, profile, navigate]);
 
   // Detectar parâmetro mode=forgot na URL
   useEffect(() => {
