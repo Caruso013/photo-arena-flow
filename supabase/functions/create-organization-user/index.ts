@@ -76,17 +76,21 @@ serve(async (req) => {
       userId = existingUser.id;
       console.log('Password updated for existing user:', userId);
 
-      // Atualizar role no perfil se necessário
-      const { error: profileUpdateError } = await supabaseClient
+      // Criar ou atualizar perfil (upsert para garantir que existe)
+      console.log('Upserting profile for existing user:', userId);
+      const { error: profileUpsertError } = await supabaseClient
         .from('profiles')
-        .update({ 
-          role: 'organization',
-          full_name: organizationName 
-        })
-        .eq('id', userId);
+        .upsert({
+          id: userId,
+          email: email,
+          full_name: organizationName,
+          role: 'organization'
+        }, { onConflict: 'id' });
 
-      if (profileUpdateError) {
-        console.warn('Could not update profile role:', profileUpdateError);
+      if (profileUpsertError) {
+        console.error('Could not upsert profile:', profileUpsertError);
+      } else {
+        console.log('Profile upserted successfully for user:', userId);
       }
 
     } else {
@@ -112,17 +116,21 @@ serve(async (req) => {
       userId = authData.user.id;
       console.log('New user created in auth:', userId);
 
-      // O trigger handle_new_user já cria o perfil automaticamente
-      // Mas vamos garantir que o role está correto
-      await new Promise(resolve => setTimeout(resolve, 500)); // Aguardar trigger
-
-      const { error: profileUpdateError } = await supabaseClient
+      // Criar perfil diretamente com upsert (não depender apenas do trigger)
+      console.log('Upserting profile for new user:', userId);
+      const { error: profileUpsertError } = await supabaseClient
         .from('profiles')
-        .update({ role: 'organization' })
-        .eq('id', userId);
+        .upsert({
+          id: userId,
+          email: email,
+          full_name: organizationName,
+          role: 'organization'
+        }, { onConflict: 'id' });
 
-      if (profileUpdateError) {
-        console.warn('Could not update profile role:', profileUpdateError);
+      if (profileUpsertError) {
+        console.error('Could not upsert profile for new user:', profileUpsertError);
+      } else {
+        console.log('Profile created successfully for new user:', userId);
       }
     }
 
