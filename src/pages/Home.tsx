@@ -156,13 +156,14 @@ const Home = () => {
             
             {/* CTAs Principais */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8">
+              {/* Botão de Reconhecimento Facial - TEMPORARIAMENTE DESATIVADO */}
               <Button 
                 size="lg" 
                 className="gap-3 text-lg px-8 py-6 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 shadow-lg shadow-yellow-500/30 hover:shadow-xl hover:shadow-yellow-500/50 transition-all duration-300 hover:scale-105 w-full sm:w-auto"
                 onClick={() => navigate('/events')}
               >
-                <ScanFace className="h-6 w-6" />
-                Buscar com Reconhecimento Facial
+                <Calendar className="h-6 w-6" />
+                Encontrar Minhas Fotos
               </Button>
               <Button 
                 size="lg" 
