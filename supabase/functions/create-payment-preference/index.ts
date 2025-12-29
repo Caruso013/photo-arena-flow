@@ -7,7 +7,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Função para calcular o desconto progressivo (deve ser igual ao frontend)
+// Função para calcular o desconto progressivo (SINCRONIZADO com frontend useProgressiveDiscount.ts)
 function calculateProgressiveDiscount(quantity: number): number {
   if (quantity >= 10) {
     return 20; // 20% para 10+ fotos
@@ -18,6 +18,7 @@ function calculateProgressiveDiscount(quantity: number): number {
   }
   return 0;
 }
+// NOTA: Os thresholds acima devem ser IDÊNTICOS aos de src/hooks/useProgressiveDiscount.ts
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {

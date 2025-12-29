@@ -55,6 +55,9 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
   const [photographerStats, setPhotographerStats] = useState<PhotographerStats[]>([]);
   const [revenueData, setRevenueData] = useState<RevenueData[]>([]);
   const [totalRevenue, setTotalRevenue] = useState(0);
+  const [platformRevenue, setPlatformRevenue] = useState(0);
+  const [photographersRevenue, setPhotographersRevenue] = useState(0);
+  const [organizationsRevenue, setOrganizationsRevenue] = useState(0);
   const [userStats, setUserStats] = useState<PhotographerStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [generatingReport, setGeneratingReport] = useState(false);
@@ -197,6 +200,11 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
 
       if (revenueError) throw revenueError;
 
+      // Calcular totais de receita por categoria
+      let totalPlatform = 0;
+      let totalPhotographers = 0;
+      let totalOrganizations = 0;
+
       // Agrupar por mês
       const monthlyMap = new Map<string, { platform: number; photographers: number; organizations: number }>();
       const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
@@ -213,7 +221,17 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
         monthly.platform += Number(share.platform_amount || 0);
         monthly.photographers += Number(share.photographer_amount || 0);
         monthly.organizations += Number(share.organization_amount || 0);
+
+        // Acumular totais
+        totalPlatform += Number(share.platform_amount || 0);
+        totalPhotographers += Number(share.photographer_amount || 0);
+        totalOrganizations += Number(share.organization_amount || 0);
       });
+
+      // Definir receitas separadas
+      setPlatformRevenue(totalPlatform);
+      setPhotographersRevenue(totalPhotographers);
+      setOrganizationsRevenue(totalOrganizations);
 
       const monthlyData: RevenueData[] = Array.from(monthlyMap.entries()).map(([month, data]) => ({
         month,
@@ -462,24 +480,99 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
 
   return (
     <div className="space-y-6">
+      {/* Revenue Distribution Cards - Admin Only */}
+      {userRole === 'admin' && (
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-4">
+          <Card className="border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-primary/10">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Receita Total Bruta</CardTitle>
+              <div className="p-2 bg-primary/20 rounded-lg">
+                <DollarSign className="h-5 w-5 text-primary" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-primary">
+                {formatCurrency(totalRevenue)}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {photographerStats.reduce((sum, p) => sum + p.total_sales, 0)} vendas realizadas
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-2 border-green-500/30 bg-gradient-to-br from-green-500/5 to-green-500/10">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Receita STA (Plataforma)</CardTitle>
+              <div className="p-2 bg-green-500/20 rounded-lg">
+                <TrendingUp className="h-5 w-5 text-green-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">
+                {formatCurrency(platformRevenue)}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {totalRevenue > 0 ? ((platformRevenue / totalRevenue) * 100).toFixed(1) : 0}% do total
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-2 border-blue-500/30 bg-gradient-to-br from-blue-500/5 to-blue-500/10">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Receita Fotógrafos</CardTitle>
+              <div className="p-2 bg-blue-500/20 rounded-lg">
+                <Camera className="h-5 w-5 text-blue-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-blue-600">
+                {formatCurrency(photographersRevenue)}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {totalRevenue > 0 ? ((photographersRevenue / totalRevenue) * 100).toFixed(1) : 0}% do total
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-2 border-amber-500/30 bg-gradient-to-br from-amber-500/5 to-amber-500/10">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Receita Organizações</CardTitle>
+              <div className="p-2 bg-amber-500/20 rounded-lg">
+                <Users className="h-5 w-5 text-amber-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-amber-600">
+                {formatCurrency(organizationsRevenue)}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {totalRevenue > 0 ? ((organizationsRevenue / totalRevenue) * 100).toFixed(1) : 0}% do total
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Overview Cards */}
       <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="hover:shadow-lg transition-all hover:-translate-y-1 border-2 border-primary/20">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Receita Total</CardTitle>
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <DollarSign className="h-5 w-5 text-primary" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl sm:text-3xl font-bold text-primary">
-              {formatCurrency(totalRevenue)}
-            </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              Total de vendas realizadas
-            </p>
-          </CardContent>
-        </Card>
+        {userRole === 'photographer' && (
+          <Card className="hover:shadow-lg transition-all hover:-translate-y-1 border-2 border-primary/20">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Sua Receita Total</CardTitle>
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <DollarSign className="h-5 w-5 text-primary" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl sm:text-3xl font-bold text-primary">
+                {formatCurrency(totalRevenue)}
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Total de vendas realizadas
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         <Card className="hover:shadow-lg transition-all hover:-translate-y-1">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

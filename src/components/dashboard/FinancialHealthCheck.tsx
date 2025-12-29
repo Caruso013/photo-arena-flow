@@ -24,6 +24,11 @@ interface HealthMetrics {
   photographersWithBalance: number;
   orphanedRevenueShares: number;
   missingRevenueShares: number;
+  // Novas métricas de distribuição de receita
+  platformRevenue: number;
+  photographersRevenue: number;
+  organizationsRevenue: number;
+  avgTicket: number;
 }
 
 export const FinancialHealthCheck = () => {
@@ -47,8 +52,9 @@ export const FinancialHealthCheck = () => {
       if (purchasesError) throw purchasesError;
 
       const totalRevenue = purchases?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
+      const avgTicket = purchases?.length ? totalRevenue / purchases.length : 0;
 
-      // 2. Total de revenue_shares
+      // 2. Total de revenue_shares com valores detalhados
       const { data: revenueShares, error: sharesError } = await supabase
         .from('revenue_shares')
         .select('photographer_amount, platform_amount, organization_amount, purchase_id');
@@ -59,6 +65,11 @@ export const FinancialHealthCheck = () => {
         (sum, s) => sum + Number(s.photographer_amount) + Number(s.platform_amount) + Number(s.organization_amount), 
         0
       ) || 0;
+
+      // Calcular receitas separadas
+      const platformRevenue = revenueShares?.reduce((sum, s) => sum + Number(s.platform_amount), 0) || 0;
+      const photographersRevenue = revenueShares?.reduce((sum, s) => sum + Number(s.photographer_amount), 0) || 0;
+      const organizationsRevenue = revenueShares?.reduce((sum, s) => sum + Number(s.organization_amount), 0) || 0;
 
       // 3. Verificar revenue_shares órfãs (sem purchase)
       const purchaseIds = new Set(purchases?.map(p => p.id) || []);
@@ -131,7 +142,11 @@ export const FinancialHealthCheck = () => {
         approvedPayouts,
         photographersWithBalance,
         orphanedRevenueShares: orphanedShares,
-        missingRevenueShares: missingShares
+        missingRevenueShares: missingShares,
+        platformRevenue,
+        photographersRevenue,
+        organizationsRevenue,
+        avgTicket
       });
 
       setErrors(newErrors);
@@ -215,63 +230,96 @@ export const FinancialHealthCheck = () => {
 
         {/* Métricas */}
         {metrics && (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            <div className="p-4 rounded-lg border bg-card">
-              <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-                <DollarSign className="h-4 w-4" />
-                Receita Total
+          <div className="space-y-4">
+            {/* Cards de Distribuição de Receita - Destacados */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="p-4 rounded-lg border-2 border-primary/30 bg-primary/5">
+                <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+                  <DollarSign className="h-4 w-4 text-primary" />
+                  Receita Total Bruta
+                </div>
+                <div className="text-2xl font-bold text-primary">{formatCurrency(metrics.totalRevenue)}</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {metrics.totalPurchases} vendas • Ticket médio: {formatCurrency(metrics.avgTicket)}
+                </div>
               </div>
-              <div className="text-2xl font-bold">{formatCurrency(metrics.totalRevenue)}</div>
-              <div className="text-xs text-muted-foreground mt-1">
-                {metrics.totalPurchases} vendas confirmadas
+
+              <div className="p-4 rounded-lg border-2 border-green-500/30 bg-green-500/5">
+                <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+                  <TrendingUp className="h-4 w-4 text-green-600" />
+                  Receita Plataforma (STA)
+                </div>
+                <div className="text-2xl font-bold text-green-600">{formatCurrency(metrics.platformRevenue)}</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {metrics.totalRevenue > 0 ? ((metrics.platformRevenue / metrics.totalRevenue) * 100).toFixed(1) : 0}% do total
+                </div>
+              </div>
+
+              <div className="p-4 rounded-lg border-2 border-blue-500/30 bg-blue-500/5">
+                <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+                  <Users className="h-4 w-4 text-blue-600" />
+                  Receita Fotógrafos
+                </div>
+                <div className="text-2xl font-bold text-blue-600">{formatCurrency(metrics.photographersRevenue)}</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {metrics.totalRevenue > 0 ? ((metrics.photographersRevenue / metrics.totalRevenue) * 100).toFixed(1) : 0}% do total
+                </div>
+              </div>
+
+              <div className="p-4 rounded-lg border-2 border-amber-500/30 bg-amber-500/5">
+                <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+                  <DollarSign className="h-4 w-4 text-amber-600" />
+                  Receita Organizações
+                </div>
+                <div className="text-2xl font-bold text-amber-600">{formatCurrency(metrics.organizationsRevenue)}</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {metrics.totalRevenue > 0 ? ((metrics.organizationsRevenue / metrics.totalRevenue) * 100).toFixed(1) : 0}% do total
+                </div>
               </div>
             </div>
 
-            <div className="p-4 rounded-lg border bg-card">
-              <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-                <TrendingUp className="h-4 w-4" />
-                Divisões de Receita
+            {/* Cards de Integridade */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="p-4 rounded-lg border bg-card">
+                <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+                  <TrendingUp className="h-4 w-4" />
+                  Divisões de Receita
+                </div>
+                <div className="text-2xl font-bold">{metrics.totalRevenueShares}</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  registros de comissão
+                </div>
               </div>
-              <div className="text-2xl font-bold">{metrics.totalRevenueShares}</div>
-              <div className="text-xs text-muted-foreground mt-1">
-                registros de comissão
-              </div>
-            </div>
 
-            <div className="p-4 rounded-lg border bg-card">
-              <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-                <Users className="h-4 w-4" />
-                Fotógrafos c/ Saldo
+              <div className="p-4 rounded-lg border bg-card">
+                <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+                  <Users className="h-4 w-4" />
+                  Fotógrafos c/ Saldo
+                </div>
+                <div className="text-2xl font-bold">{metrics.photographersWithBalance}</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  com saldo disponível
+                </div>
               </div>
-              <div className="text-2xl font-bold">{metrics.photographersWithBalance}</div>
-              <div className="text-xs text-muted-foreground mt-1">
-                com saldo disponível
+
+              <div className="p-4 rounded-lg border bg-card">
+                <div className="text-muted-foreground text-sm mb-1">Repasses Pendentes</div>
+                <div className="text-2xl font-bold text-yellow-600">{metrics.pendingPayouts}</div>
+                <Badge variant="outline" className="mt-1">Aguardando</Badge>
               </div>
-            </div>
 
-            <div className="p-4 rounded-lg border bg-card">
-              <div className="text-muted-foreground text-sm mb-1">Repasses Pendentes</div>
-              <div className="text-2xl font-bold text-yellow-600">{metrics.pendingPayouts}</div>
-              <Badge variant="outline" className="mt-1">Aguardando</Badge>
-            </div>
-
-            <div className="p-4 rounded-lg border bg-card">
-              <div className="text-muted-foreground text-sm mb-1">Repasses Aprovados</div>
-              <div className="text-2xl font-bold text-green-600">{metrics.approvedPayouts}</div>
-              <Badge className="mt-1 bg-green-600">Processando</Badge>
-            </div>
-
-            <div className="p-4 rounded-lg border bg-card">
-              <div className="text-muted-foreground text-sm mb-1">Integridade dos Dados</div>
-              <div className="text-2xl font-bold">
-                {metrics.orphanedRevenueShares === 0 && metrics.missingRevenueShares === 0 ? '100%' : '⚠️'}
+              <div className="p-4 rounded-lg border bg-card">
+                <div className="text-muted-foreground text-sm mb-1">Integridade</div>
+                <div className="text-2xl font-bold">
+                  {metrics.orphanedRevenueShares === 0 && metrics.missingRevenueShares === 0 ? '100%' : '⚠️'}
+                </div>
+                <Badge 
+                  variant={metrics.orphanedRevenueShares === 0 && metrics.missingRevenueShares === 0 ? 'default' : 'destructive'}
+                  className="mt-1"
+                >
+                  {metrics.orphanedRevenueShares === 0 && metrics.missingRevenueShares === 0 ? 'OK' : 'Atenção'}
+                </Badge>
               </div>
-              <Badge 
-                variant={metrics.orphanedRevenueShares === 0 && metrics.missingRevenueShares === 0 ? 'default' : 'destructive'}
-                className="mt-1"
-              >
-                {metrics.orphanedRevenueShares === 0 && metrics.missingRevenueShares === 0 ? 'OK' : 'Atenção'}
-              </Badge>
             </div>
           </div>
         )}
