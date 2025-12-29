@@ -144,14 +144,14 @@ const Home = () => {
             <div className="inline-block mb-6 px-5 py-2.5 bg-yellow-500/10 border border-yellow-500/30 rounded-full backdrop-blur-sm">
               <span className="text-yellow-600 dark:text-yellow-400 font-semibold text-sm flex items-center gap-2">
                 <Sparkles className="h-4 w-4" />
-                Tecnologia de Reconhecimento Facial IA
+                Plataforma de Fotos Esportivas
               </span>
             </div>
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight text-foreground">
               Encontre suas <span className="text-yellow-500">fotos</span> em segundos
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground mb-8 leading-relaxed max-w-2xl mx-auto">
-              Tire uma selfie e nossa IA encontra automaticamente todas as suas fotos de eventos esportivos
+              Acesse eventos esportivos e encontre todas as suas fotos de forma rápida e fácil
             </p>
             
             {/* CTAs Principais */}
@@ -338,9 +338,9 @@ const Home = () => {
               <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Zap className="h-8 w-8 text-primary" />
               </div>
-              <h3 className="text-xl font-bold mb-3 text-foreground">Reconhecimento Facial IA</h3>
+              <h3 className="text-xl font-bold mb-3 text-foreground">Busca Rápida</h3>
               <p className="text-muted-foreground">
-                Encontre suas fotos automaticamente com nossa tecnologia de reconhecimento facial avançada
+                Encontre suas fotos por evento, data ou número de peito de forma rápida e fácil
               </p>
             </Card>
 
