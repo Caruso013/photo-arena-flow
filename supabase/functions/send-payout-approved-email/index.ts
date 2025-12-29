@@ -1,5 +1,6 @@
 // 💸 Email de Repasse Aprovado - STA Fotos
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.74.0";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const corsHeaders = {
@@ -29,6 +30,57 @@ serve(async (req) => {
   }
 
   try {
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    );
+
+    // ========== VALIDAÇÃO DE ROLE (ADMIN ONLY) ==========
+    const authHeader = req.headers.get('Authorization');
+    
+    if (!authHeader) {
+      console.warn('Tentativa de envio de email de repasse sem autenticação');
+      return new Response(
+        JSON.stringify({ error: 'Token de autenticação não fornecido' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
+
+    if (userError || !user) {
+      console.warn('Token inválido ou expirado para envio de email de repasse');
+      return new Response(
+        JSON.stringify({ error: 'Não autorizado' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Verificar se é admin
+    const { data: profile } = await supabaseClient
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (profile?.role !== 'admin') {
+      console.warn(`Tentativa não autorizada de enviar email de repasse por usuário ${user.id} com role ${profile?.role}`);
+      return new Response(
+        JSON.stringify({ error: 'Apenas administradores podem enviar emails de aprovação de repasse' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    console.log('Admin autorizado para enviar email de repasse:', user.id);
+    // ========== FIM DA VALIDAÇÃO DE ROLE ==========
+
     const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
     const { 
       photographerEmail, 
@@ -43,6 +95,8 @@ serve(async (req) => {
     if (!photographerEmail) {
       throw new Error('Email do fotógrafo é obrigatório');
     }
+
+    console.log('Enviando email de repasse aprovado para:', photographerEmail);
 
     const html = `
       <!DOCTYPE html>
@@ -111,12 +165,14 @@ serve(async (req) => {
       html,
     });
 
+    console.log('Email de repasse aprovado enviado com sucesso para:', photographerEmail);
+
     return new Response(
       JSON.stringify({ success: true }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error('Erro:', error);
+    console.error('Erro ao enviar email de repasse:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
