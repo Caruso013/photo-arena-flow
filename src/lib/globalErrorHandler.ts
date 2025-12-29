@@ -84,14 +84,9 @@ export const setupGlobalErrorHandling = () => {
     if (event.error && event.error.stack) {
       toast({
         title: 'Erro inesperado',
-        description: 'Ocorreu um erro inesperado. A página será recarregada automaticamente. Se o problema persistir, entre em contato: contato@stafotos.com',
+        description: 'Ocorreu um erro inesperado. Recarregue a página para continuar. Se o problema persistir, entre em contato: contato@stafotos.com',
         variant: 'destructive',
       });
-      
-      // Recarregar a página após 3 segundos
-      setTimeout(() => {
-        window.location.reload();
-      }, 3000);
     }
   });
 

@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Camera, Search, MapPin, Calendar, ArrowRight, Zap, Shield, Users, Trophy, Star, TrendingUp, Sparkles, ScanFace } from 'lucide-react';
+import { Camera, Search, MapPin, Calendar, ArrowRight, Zap, Shield, Users, Trophy, Star, TrendingUp, Sparkles } from 'lucide-react';
 import MainLayout from '@/components/layout/MainLayout';
 
 interface FeaturedCampaign {
