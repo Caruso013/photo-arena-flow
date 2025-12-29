@@ -23,9 +23,48 @@ serve(async (req) => {
       }
     );
 
+    // ========== VALIDAÇÃO DE ROLE (ADMIN ONLY) ==========
+    const authHeader = req.headers.get('Authorization');
+    
+    if (!authHeader) {
+      console.warn('Tentativa de acesso sem autenticação');
+      return new Response(
+        JSON.stringify({ error: 'Token de autenticação não fornecido' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
+
+    if (userError || !user) {
+      console.warn('Token inválido ou expirado');
+      return new Response(
+        JSON.stringify({ error: 'Não autorizado' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Verificar se é admin
+    const { data: profile } = await supabaseClient
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (profile?.role !== 'admin') {
+      console.warn(`Acesso negado para usuário ${user.id} com role ${profile?.role}`);
+      return new Response(
+        JSON.stringify({ error: 'Apenas administradores podem criar usuários de organização' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    // ========== FIM DA VALIDAÇÃO DE ROLE ==========
+
     const body = await req.json();
     const { organizationId, organizationName, email, password } = body;
 
+    console.log('Admin autorizado:', user.id);
     console.log('Received request body:', { organizationId, organizationName, email, password: '***' });
 
     if (!organizationId || !organizationName || !email || !password) {
