@@ -65,7 +65,7 @@ serve(async (req) => {
     const { organizationId, organizationName, email, password } = body;
 
     console.log('Admin autorizado:', user.id);
-    console.log('Received request body:', { organizationId, organizationName, email, password: '***' });
+    console.log('Criando usuário organização:', { organizationId, organizationName, email });
 
     if (!organizationId || !organizationName || !email || !password) {
       console.error('Missing fields:', { organizationId: !!organizationId, organizationName: !!organizationName, email: !!email, password: !!password });
