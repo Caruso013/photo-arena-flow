@@ -30,7 +30,7 @@ const OrganizationAuth = () => {
     setLoading(true);
 
     try {
-      const { error } = await signIn(email, password);
+      const { error } = await signIn(email, password.trim());
 
       if (error) {
         toast({
