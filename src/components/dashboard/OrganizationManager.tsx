@@ -47,15 +47,19 @@ export const OrganizationManager: React.FC<OrganizationManagerProps> = ({ organi
       .replace(/[\u0300-\u036f]/g, '')
       .replace(/[^a-z0-9]/g, '');
     
-    // Gerar senha simples mas segura: Org + ano + @ + 4 dígitos aleatórios
-    // Exemplo: Org2024@1234
-    const year = new Date().getFullYear();
-    const randomDigits = Math.floor(1000 + Math.random() * 9000); // 4 dígitos
+    // Senha determinística: NomeLimpo@DataCriação (DDMMYYYY)
+    // Exemplo: goalcup@03102025
+    // Se não tiver data de criação, usar data atual
+    const date = createdAt ? new Date(createdAt) : new Date();
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    const dateString = `${day}${month}${year}`;
     
-    // Senha mais curta e memorável: Org2024@XXXX
+    // Senha: login@dataCriação (ex: goalcup@03102025)
     return {
       email: `${login}@stafotos.com`,
-      password: `Org${year}@${randomDigits}`
+      password: `${login}@${dateString}`
     };
   };
 
