@@ -606,22 +606,6 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
           </CardContent>
         </Card>
 
-        {userRole === 'photographer' && userStats && (
-          <Card className="hover:shadow-lg transition-all hover:-translate-y-1 border-2 border-primary/30 bg-primary/5">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Sua Posição</CardTitle>
-              <div className="p-2 bg-primary/10 rounded-lg">
-                <Target className="h-5 w-5 text-primary" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl sm:text-3xl font-bold">#{userStats.rank}</div>
-              <p className="text-xs text-muted-foreground mt-2">
-                {formatCurrency(userStats.total_revenue)} em vendas
-              </p>
-            </CardContent>
-          </Card>
-        )}
       </div>
 
       {/* Botão Gerar Relatório - Apenas para Admin */}
@@ -675,8 +659,8 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
         </Card>
       )}
 
-      <Tabs defaultValue="ranking" className="space-y-6">
-        <TabsList className={userRole === 'photographer' ? 'grid w-full max-w-2xl grid-cols-2' : 'grid w-full max-w-md grid-cols-2'}>
+      <Tabs defaultValue={userRole === 'admin' ? 'ranking' : 'revenue'} className="space-y-6">
+        <TabsList className="grid w-full max-w-md grid-cols-2">
           {userRole === 'admin' && (
             <TabsTrigger value="ranking" className="gap-2">
               <Trophy className="h-4 w-4" />
