@@ -52,17 +52,27 @@ export async function downloadOriginalPhoto(originalUrl: string, fileName: strin
       return;
     }
 
-    // Abrir em nova aba para download
+    // Baixar a imagem como blob para forçar download real
+    const response = await fetch(signedUrl);
+    if (!response.ok) {
+      throw new Error('Falha ao baixar imagem');
+    }
+    
+    const blob = await response.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    
+    // Criar link de download com blob URL
     const link = document.createElement('a');
-    link.href = signedUrl;
-    link.target = '_blank';
+    link.href = blobUrl;
     link.download = fileName;
-    link.rel = 'noopener noreferrer';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     
-    toast.success('Download iniciado!');
+    // Limpar blob URL da memória
+    URL.revokeObjectURL(blobUrl);
+    
+    toast.success('Download concluído!');
   } catch (error) {
     console.error('Erro no download:', error);
     toast.error('Erro ao baixar foto');
