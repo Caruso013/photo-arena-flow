@@ -27,9 +27,9 @@ import PhotographerGoals from './PhotographerGoals';
 import { ProfileEditor } from '../profile/ProfileEditor';
 import { SalesChart } from './SalesChart';
 import { useSalesData } from '@/hooks/useSalesData';
+import { usePhotographerBalance } from '@/hooks/usePhotographerBalance';
 import WelcomeHeader from './WelcomeHeader';
 import MetricCard from './MetricCard';
-import QuickActions, { QuickAction } from './QuickActions';
 import RecentActivity, { ActivityItem } from './RecentActivity';
 
 interface Campaign {
@@ -48,34 +48,15 @@ interface Campaign {
   photos?: { count: number }[];
 }
 
-interface Stats {
-  totalSales: number;
-  monthlySales: number;
-  pendingAmount: number;
-  availableAmount: number;
-  totalPhotos: number;
-  conversionRate: number;
-}
-
 const PhotographerDashboard = () => {
   const { profile, user } = useAuth();
   const { data: salesData, loading: loadingSales } = useSalesData(30, user?.id);
+  const balance = usePhotographerBalance();
+  
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [recentSales, setRecentSales] = useState<ActivityItem[]>([]);
-  const [stats, setStats] = useState<Stats>({
-    totalSales: 0,
-    monthlySales: 0,
-    pendingAmount: 0,
-    availableAmount: 0,
-    totalPhotos: 0,
-    conversionRate: 0
-  });
   const [loading, setLoading] = useState(true);
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [showCreateAlbumModal, setShowCreateAlbumModal] = useState(false);
-  const [selectedCampaignForAlbum, setSelectedCampaignForAlbum] = useState<{ id: string; title: string } | null>(null);
-  const [showEditCoverModal, setShowEditCoverModal] = useState(false);
-  const [selectedCampaignForCover, setSelectedCampaignForCover] = useState<{ id: string; title: string; coverUrl?: string } | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -84,7 +65,6 @@ const PhotographerDashboard = () => {
   const fetchData = async () => {
     await Promise.all([
       fetchCampaigns(),
-      fetchStats(),
       fetchRecentSales()
     ]);
     setLoading(false);
@@ -145,106 +125,6 @@ const PhotographerDashboard = () => {
     }
   };
 
-  const fetchStats = async () => {
-    try {
-      // Count total photos
-      const { count: totalPhotos } = await supabase
-        .from('photos')
-        .select('*', { count: 'exact', head: true })
-        .eq('photographer_id', profile?.id);
-
-      // Count sales
-      const { data: salesData } = await supabase
-        .from('purchases')
-        .select('created_at')
-        .eq('photographer_id', profile?.id)
-        .eq('status', 'completed');
-
-      const totalSales = salesData?.length || 0;
-
-      // Monthly sales
-      const now = new Date();
-      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const monthlySales = salesData?.filter(sale => 
-        new Date(sale.created_at) >= firstDayOfMonth
-      ).length || 0;
-
-      // Calculate conversion rate
-      const conversionRate = totalPhotos && totalPhotos > 0 
-        ? ((totalSales / totalPhotos) * 100) 
-        : 0;
-
-      // Revenue shares
-      const { data: rsData } = await supabase
-        .from('revenue_shares')
-        .select('photographer_amount, purchases!revenue_shares_purchase_id_fkey(created_at, status)')
-        .eq('photographer_id', profile?.id);
-
-      let availableSum = 0;
-      let pendingSum = 0;
-
-      rsData?.forEach((row: any) => {
-        const amt = Number(row.photographer_amount || 0);
-        const purchase = row.purchases;
-        
-        if (purchase?.status === 'completed') {
-          const createdDate = new Date(purchase.created_at);
-          const hoursSinceSale = (Date.now() - createdDate.getTime()) / (1000 * 60 * 60);
-          
-          if (hoursSinceSale >= 12) {
-            availableSum += amt;
-          } else {
-            pendingSum += amt;
-          }
-        }
-      });
-
-      // Subtract pending/approved payouts
-      const { data: reqs } = await supabase
-        .from('payout_requests')
-        .select('amount, status')
-        .eq('photographer_id', user?.id)
-        .in('status', ['pending', 'approved', 'completed']);
-
-      const blockedAmount = reqs?.reduce((sum, r) => sum + Number(r.amount || 0), 0) || 0;
-      const finalAvailable = Math.max(availableSum - blockedAmount, 0);
-
-      setStats({
-        totalSales,
-        monthlySales,
-        pendingAmount: pendingSum,
-        availableAmount: finalAvailable,
-        totalPhotos: totalPhotos || 0,
-        conversionRate
-      });
-    } catch (error) {
-      console.error('Error fetching stats:', error);
-    }
-  };
-
-  const quickActions: QuickAction[] = [
-    {
-      icon: CalendarPlus,
-      label: 'Criar Evento',
-      onClick: () => {}, // Handled by CreateCampaignModal
-    },
-    {
-      icon: Upload,
-      label: 'Upload Fotos',
-      onClick: () => setShowUploadModal(true),
-    },
-    {
-      icon: Wallet,
-      label: 'Solicitar Saque',
-      description: formatCurrency(stats.availableAmount),
-      href: '/dashboard/photographer/payout',
-    },
-    {
-      icon: BarChart3,
-      label: 'Relatórios',
-      href: '/dashboard/photographer/album-reports',
-    },
-  ];
 
   if (loading) {
     return (
@@ -273,29 +153,29 @@ const PhotographerDashboard = () => {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <MetricCard
             title="Saldo Disponível"
-            value={formatCurrency(stats.availableAmount)}
+            value={formatCurrency(balance.availableAmount)}
             subtitle="Pronto para saque"
             icon={DollarSign}
             variant="success"
           />
           <MetricCard
             title="A Liberar"
-            value={formatCurrency(stats.pendingAmount)}
+            value={formatCurrency(balance.pendingAmount)}
             subtitle="Aguardando 12h"
             icon={CreditCard}
             variant="warning"
           />
           <MetricCard
             title="Vendas do Mês"
-            value={stats.monthlySales}
-            subtitle={`${stats.totalSales} total`}
+            value={balance.monthlySales}
+            subtitle={`${balance.totalSales} total`}
             icon={TrendingUp}
             variant="primary"
           />
           <MetricCard
             title="Fotos Publicadas"
-            value={stats.totalPhotos}
-            subtitle={`${stats.conversionRate.toFixed(1)}% conversão`}
+            value={balance.totalPhotos}
+            subtitle={`${balance.conversionRate.toFixed(1)}% conversão`}
             icon={Image}
             variant="default"
           />
@@ -336,7 +216,7 @@ const PhotographerDashboard = () => {
                     <Wallet className="h-6 w-6 sm:h-7 sm:w-7 text-primary-foreground" />
                   </div>
                   <h4 className="font-semibold text-sm sm:text-base text-foreground">Solicitar Saque</h4>
-                  <p className="text-xs text-muted-foreground mt-1">{formatCurrency(stats.availableAmount)}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{formatCurrency(balance.availableAmount)}</p>
                 </CardContent>
               </Card>
             </Link>

@@ -11,6 +11,7 @@ import { DollarSign, Clock, CheckCircle, XCircle, AlertCircle, Banknote } from '
 import { formatCurrency } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { usePhotographerBalance } from '@/hooks/usePhotographerBalance';
 
 interface PayoutRequest {
   id: string;
@@ -24,14 +25,12 @@ interface PayoutRequest {
   notes: string | null;
 }
 
-const PayoutRequest = () => {
+const PayoutRequestPage = () => {
   const { user } = useAuth();
-  const [loading, setLoading] = useState(true);
+  const balance = usePhotographerBalance();
   const [submitting, setSubmitting] = useState(false);
-  const [availableAmount, setAvailableAmount] = useState(0);
-  const [pendingAmount, setPendingAmount] = useState(0);
   const [requests, setRequests] = useState<PayoutRequest[]>([]);
-  const [hasPendingRequest, setHasPendingRequest] = useState(false);
+  const [loadingRequests, setLoadingRequests] = useState(true);
 
   // Form
   const [pixKey, setPixKey] = useState('');
@@ -40,95 +39,17 @@ const PayoutRequest = () => {
   const [pixKeyType, setPixKeyType] = useState<'cpf' | 'phone' | 'email' | 'random'>('cpf');
 
   useEffect(() => {
-    fetchData();
+    if (user) {
+      fetchRequests();
+    }
   }, [user]);
 
-  const fetchData = async () => {
+  const fetchRequests = async () => {
     if (!user) return;
-
+    
     try {
-      setLoading(true);
-      console.log('🔄 Carregando dados financeiros do fotógrafo:', user.id);
-
-      // Buscar saldo disponível e pendente
-      const { data: earnings, error: earningsError } = await supabase
-        .from('revenue_shares')
-        .select('photographer_amount, purchase:purchases!inner(status, created_at)')
-        .eq('photographer_id', user.id);
-
-      if (earningsError) {
-        console.error('❌ Erro ao buscar earnings:', earningsError);
-        throw earningsError;
-      }
-
-      console.log('✅ Revenue shares encontrados:', earnings?.length || 0);
-
-      const now = new Date();
-      const securityPeriod = 12 * 60 * 60 * 1000; // 12 horas
-
-      let available = 0;
-      let pending = 0;
-
-      earnings?.forEach((earning: any) => {
-        const purchaseDate = new Date(earning.purchase.created_at);
-        const timeSincePurchase = now.getTime() - purchaseDate.getTime();
-
-        if (earning.purchase.status === 'completed') {
-          if (timeSincePurchase >= securityPeriod) {
-            available += earning.photographer_amount;
-          } else {
-            pending += earning.photographer_amount;
-          }
-        }
-      });
-
-      console.log('💰 Saldos calculados:', {
-        available: formatCurrency(available),
-        pending: formatCurrency(pending)
-      });
-
-      // Buscar solicitações não concluídas (pending, approved)
-      // completed = já foi pago e deve ser descontado do available
-      const { data: payoutRequests, error: payoutError } = await supabase
-        .from('payout_requests')
-        .select('amount, status')
-        .eq('photographer_id', user.id)
-        .in('status', ['pending', 'approved', 'completed']);
-
-      if (payoutError) {
-        console.error('❌ Erro ao buscar payout requests:', payoutError);
-        throw payoutError;
-      }
-
-      // Separar valores por status
-      const completedAmount = payoutRequests?.filter(r => r.status === 'completed').reduce((sum, req) => sum + req.amount, 0) || 0;
-      const inProcessAmount = payoutRequests?.filter(r => r.status === 'pending' || r.status === 'approved').reduce((sum, req) => sum + req.amount, 0) || 0;
+      setLoadingRequests(true);
       
-      console.log('💰 Valores:', {
-        completedAmount: formatCurrency(completedAmount),
-        inProcessAmount: formatCurrency(inProcessAmount),
-        availableBeforeDiscount: formatCurrency(available)
-      });
-      
-      // Descontar valores já pagos e em processo
-      available -= (completedAmount + inProcessAmount);
-
-      setAvailableAmount(Math.max(0, available));
-      setPendingAmount(pending);
-
-      // Verificar se há solicitação pendente (apenas para info)
-      const hasPending = payoutRequests?.some(req => req.status === 'pending' || req.status === 'approved') || false;
-      setHasPendingRequest(hasPending);
-
-      console.log('✅ Status final:', {
-        availableAmount: formatCurrency(Math.max(0, available)),
-        pendingAmount: formatCurrency(pending),
-        hasPendingRequest: hasPending,
-        completedAmount: formatCurrency(completedAmount),
-        inProcessAmount: formatCurrency(inProcessAmount)
-      });
-
-      // Buscar histórico de solicitações
       const { data: history, error: historyError } = await supabase
         .from('payout_requests')
         .select('*')
@@ -138,14 +59,14 @@ const PayoutRequest = () => {
 
       if (historyError) throw historyError;
       setRequests(history || []);
-
     } catch (error) {
-      console.error('❌ Error fetching data:', error);
-      toast.error('Erro ao carregar dados');
+      console.error('Error fetching requests:', error);
     } finally {
-      setLoading(false);
+      setLoadingRequests(false);
     }
   };
+
+  const hasPendingRequest = requests.some(r => r.status === 'pending' || r.status === 'approved');
 
   const validatePixKey = (key: string, type: typeof pixKeyType): boolean => {
     switch (type) {
@@ -186,8 +107,8 @@ const PayoutRequest = () => {
       return;
     }
 
-    if (availableAmount < 50) {
-      toast.error('Valor mínimo para saque é R$ 50,00. Você tem apenas ' + formatCurrency(availableAmount) + ' disponível.');
+    if (balance.availableAmount < 50) {
+      toast.error('Valor mínimo para saque é R$ 50,00. Você tem apenas ' + formatCurrency(balance.availableAmount) + ' disponível.');
       return;
     }
 
@@ -206,7 +127,7 @@ const PayoutRequest = () => {
 
       console.log('📤 Criando solicitação de repasse...', {
         photographer_id: user.id,
-        amount: availableAmount,
+        amount: balance.availableAmount,
         pix_key_length: pixKey.length,
         recipient_name: recipientName,
       });
@@ -216,7 +137,7 @@ const PayoutRequest = () => {
         .from('payout_requests')
         .insert({
           photographer_id: user.id,
-          amount: availableAmount,
+          amount: balance.availableAmount,
           pix_key: pixKey,
           recipient_name: recipientName,
           institution: institution || null,
@@ -233,7 +154,7 @@ const PayoutRequest = () => {
       console.log('✅ Solicitação criada com sucesso:', insertedData);
 
       toast.success('Solicitação de saque enviada com sucesso!', {
-        description: `${formatCurrency(availableAmount)} será processado em até 2 dias úteis`
+        description: `${formatCurrency(balance.availableAmount)} será processado em até 2 dias úteis`
       });
       
       // Limpar formulário
@@ -243,7 +164,7 @@ const PayoutRequest = () => {
       setPixKeyType('cpf');
       
       // Recarregar dados
-      await fetchData();
+      await Promise.all([fetchRequests(), balance.refetch()]);
 
     } catch (error: any) {
       console.error('❌ Erro ao solicitar repasse:', error);
@@ -284,7 +205,7 @@ const PayoutRequest = () => {
     }
   };
 
-  if (loading) {
+  if (balance.loading || loadingRequests) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-12 w-64" />
@@ -360,7 +281,7 @@ const PayoutRequest = () => {
           </CardHeader>
           <CardContent>
             <p className="text-2xl sm:text-3xl font-bold text-green-600 dark:text-green-400">
-              {formatCurrency(availableAmount)}
+              {formatCurrency(balance.availableAmount)}
             </p>
             <p className="text-xs text-muted-foreground mt-1">Pode ser sacado agora</p>
           </CardContent>
@@ -375,7 +296,7 @@ const PayoutRequest = () => {
           </CardHeader>
           <CardContent>
             <p className="text-2xl sm:text-3xl font-bold">
-              {formatCurrency(pendingAmount)}
+              {formatCurrency(balance.pendingAmount)}
             </p>
             <p className="text-xs text-muted-foreground mt-1">Disponível em até 12h</p>
           </CardContent>
@@ -499,7 +420,7 @@ const PayoutRequest = () => {
                 <div className="space-y-2">
                   <Label>Valor a Receber</Label>
                   <div className="text-3xl sm:text-4xl font-bold text-green-600 dark:text-green-400">
-                    {formatCurrency(availableAmount)}
+                    {formatCurrency(balance.availableAmount)}
                   </div>
                   <p className="text-xs sm:text-sm text-muted-foreground">
                     Este é o valor total disponível para saque
@@ -507,7 +428,7 @@ const PayoutRequest = () => {
                 </div>
 
                 {/* Alertas */}
-                {availableAmount < 50 && (
+                {balance.availableAmount < 50 && (
                   <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-lg">
                     <p className="text-sm text-amber-800 dark:text-amber-200">
                       ⚠️ Valor mínimo para saque: R$ 50,00
@@ -515,7 +436,7 @@ const PayoutRequest = () => {
                   </div>
                 )}
 
-                {hasPendingRequest && availableAmount >= 50 && (
+                {hasPendingRequest && balance.availableAmount >= 50 && (
                   <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-lg">
                     <p className="text-sm text-blue-800 dark:text-blue-200">
                       ℹ️ Você tem solicitações em processamento. Este novo saque será adicionado à fila e processado após a aprovação das anteriores.
@@ -526,10 +447,10 @@ const PayoutRequest = () => {
                 <Button
                   type="submit"
                   size="lg"
-                  disabled={submitting || availableAmount < 50}
+                  disabled={submitting || balance.availableAmount < 50}
                   className="w-full h-12 sm:h-14 text-base sm:text-lg"
                 >
-                  {submitting ? 'Enviando...' : `Solicitar Saque de ${formatCurrency(availableAmount)}`}
+                  {submitting ? 'Enviando...' : `Solicitar Saque de ${formatCurrency(balance.availableAmount)}`}
                 </Button>
               </form>
             </CardContent>
@@ -589,4 +510,4 @@ const PayoutRequest = () => {
   );
 };
 
-export default PayoutRequest;
+export default PayoutRequestPage;

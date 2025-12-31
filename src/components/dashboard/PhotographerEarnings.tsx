@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { formatCurrency } from '@/lib/utils';
-import { Camera, Calendar, TrendingUp, AlertCircle, User, ImageIcon, ChevronDown, ChevronUp, Download, Mail } from 'lucide-react';
+import { Camera, Calendar, TrendingUp, AlertCircle, User, ImageIcon, ChevronDown, ChevronUp, Download, Mail, DollarSign, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { downloadOriginalPhoto, downloadMultiplePhotos } from '@/lib/photoDownload';
+import { usePhotographerBalance } from '@/hooks/usePhotographerBalance';
 import {
   Dialog,
   DialogContent,
@@ -51,10 +52,9 @@ interface CampaignEarnings {
 
 export const PhotographerEarnings = () => {
   const { user } = useAuth();
+  const balance = usePhotographerBalance();
   const [earnings, setEarnings] = useState<CampaignEarnings[]>([]);
   const [loading, setLoading] = useState(true);
-  const [totalEarned, setTotalEarned] = useState(0);
-  const [totalPhotosSold, setTotalPhotosSold] = useState(0);
   const [expandedBuyers, setExpandedBuyers] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -217,8 +217,6 @@ export const PhotographerEarnings = () => {
       });
 
       setEarnings(Array.from(campaignMap.values()).sort((a, b) => b.total_earned - a.total_earned));
-      setTotalEarned(totalSum);
-      setTotalPhotosSold(photoCount);
     } catch (error) {
       console.error('Erro ao buscar ganhos:', error);
       toast.error('Erro ao carregar ganhos');
@@ -255,8 +253,42 @@ export const PhotographerEarnings = () => {
         </AlertDescription>
       </Alert>
 
-      {/* Cards de Resumo - Apenas métricas gerais */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Cards de Resumo - Usando hook centralizado */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="border-2 border-green-500/30">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <DollarSign className="h-4 w-4 text-green-600" />
+              Saldo Disponível
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">
+              {formatCurrency(balance.availableAmount)}
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Pronto para saque
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-2 border-yellow-500/30">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Clock className="h-4 w-4 text-yellow-600" />
+              A Liberar
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-yellow-600">
+              {formatCurrency(balance.pendingAmount)}
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Aguardando 12h
+            </p>
+          </CardContent>
+        </Card>
+
         <Card className="border-2 border-primary/30">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -266,10 +298,10 @@ export const PhotographerEarnings = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-primary">
-              {formatCurrency(totalEarned)}
+              {formatCurrency(balance.totalEarned)}
             </div>
             <p className="text-xs text-muted-foreground mt-2">
-              Sua receita total de todas as vendas
+              Sua receita total histórica
             </p>
           </CardContent>
         </Card>
@@ -283,10 +315,10 @@ export const PhotographerEarnings = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">
-              {totalPhotosSold}
+              {balance.totalPhotosSold}
             </div>
             <p className="text-xs text-muted-foreground mt-2">
-              Total de fotos vendidas em todos os eventos
+              Total de fotos vendidas
             </p>
           </CardContent>
         </Card>
