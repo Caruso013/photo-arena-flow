@@ -7,6 +7,13 @@ import { toast } from '@/components/ui/use-toast';
 import { CheckCircle2, XCircle, Calendar, User, Mail, MessageSquare, Clock, Camera } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
+interface Organization {
+  id: string;
+  name: string;
+  logo_url: string | null;
+  primary_color: string | null;
+}
+
 interface Application {
   id: string;
   campaign_id: string;
@@ -19,12 +26,14 @@ interface Application {
     title: string;
     event_date: string | null;
     location: string | null;
+    organization_id: string | null;
   } | null;
   profiles?: {
     full_name: string;
     email: string;
     avatar_url: string | null;
   } | null;
+  organization?: Organization | null;
 }
 
 export const ApplicationsManager = () => {
@@ -58,8 +67,17 @@ export const ApplicationsManager = () => {
       const campaignIds = [...new Set(applicationsData.map(app => app.campaign_id))];
       const { data: campaignsData } = await supabase
         .from('campaigns')
-        .select('id, title, event_date, location')
+        .select('id, title, event_date, location, organization_id')
         .in('id', campaignIds);
+
+      // Buscar organizações relacionadas
+      const orgIds = [...new Set(campaignsData?.map(c => c.organization_id).filter(Boolean) || [])];
+      const { data: orgsData } = orgIds.length > 0 
+        ? await supabase
+            .from('organizations')
+            .select('id, name, logo_url, primary_color')
+            .in('id', orgIds as string[])
+        : { data: [] };
 
       // Buscar perfis de fotógrafos
       const photographerIds = [...new Set(applicationsData.map(app => app.photographer_id))];
@@ -69,11 +87,19 @@ export const ApplicationsManager = () => {
         .in('id', photographerIds);
 
       // Combinar dados
-      const enrichedApplications = applicationsData.map(app => ({
-        ...app,
-        campaigns: campaignsData?.find(c => c.id === app.campaign_id) || null,
-        profiles: profilesData?.find(p => p.id === app.photographer_id) || null,
-      }));
+      const enrichedApplications = applicationsData.map(app => {
+        const campaign = campaignsData?.find(c => c.id === app.campaign_id);
+        const org = campaign?.organization_id 
+          ? orgsData?.find(o => o.id === campaign.organization_id) 
+          : null;
+        
+        return {
+          ...app,
+          campaigns: campaign || null,
+          profiles: profilesData?.find(p => p.id === app.photographer_id) || null,
+          organization: org || null,
+        };
+      });
 
       setApplications(enrichedApplications);
     } catch (error) {
@@ -241,6 +267,32 @@ export const ApplicationsManager = () => {
                         </div>
 
                         <div className="space-y-2">
+                          {/* Organization Branding */}
+                          {app.organization && (
+                            <div className="flex items-center gap-2 mb-2">
+                              {app.organization.logo_url ? (
+                                <img 
+                                  src={app.organization.logo_url}
+                                  alt={app.organization.name}
+                                  className="w-8 h-8 object-contain rounded"
+                                />
+                              ) : (
+                                <div 
+                                  className="w-8 h-8 rounded flex items-center justify-center text-white text-sm font-bold"
+                                  style={{ backgroundColor: app.organization.primary_color || '#D4AF37' }}
+                                >
+                                  {app.organization.name.charAt(0)}
+                                </div>
+                              )}
+                              <span 
+                                className="text-sm font-medium"
+                                style={{ color: app.organization.primary_color || undefined }}
+                              >
+                                {app.organization.name}
+                              </span>
+                            </div>
+                          )}
+                          
                           <h4 className="font-medium text-primary">
                             {app.campaigns?.title || 'Evento'}
                           </h4>

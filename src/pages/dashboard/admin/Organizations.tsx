@@ -18,6 +18,8 @@ interface Organization {
   name: string;
   description: string | null;
   admin_percentage: number;
+  logo_url: string | null;
+  primary_color: string | null;
   created_at: string;
   updated_at: string;
   monthly_revenue?: number;

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from '@/components/ui/use-toast';
-import { Building2, Edit, Trash2, Plus, Key, Copy, Check } from 'lucide-react';
+import { Building2, Edit, Trash2, Plus, Key, Copy, Check, Upload, Palette, Image } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 interface Organization {
@@ -16,6 +16,8 @@ interface Organization {
   name: string;
   description: string | null;
   admin_percentage: number;
+  logo_url: string | null;
+  primary_color: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -33,10 +35,14 @@ export const OrganizationManager: React.FC<OrganizationManagerProps> = ({ organi
   const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
   const [creatingCredentials, setCreatingCredentials] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    admin_percentage: 30
+    admin_percentage: 30,
+    logo_url: '',
+    primary_color: '#D4AF37'
   });
 
   const generateCredentials = (orgName: string, createdAt?: string) => {
@@ -288,7 +294,7 @@ export const OrganizationManager: React.FC<OrganizationManagerProps> = ({ organi
       });
 
       setCreateDialogOpen(false);
-      setFormData({ name: '', description: '', admin_percentage: 30 });
+      setFormData({ name: '', description: '', admin_percentage: 30, logo_url: '', primary_color: '#D4AF37' });
       onRefresh();
     } catch (error) {
       console.error('Error creating organization:', error);
@@ -363,7 +369,9 @@ export const OrganizationManager: React.FC<OrganizationManagerProps> = ({ organi
     setFormData({
       name: org.name,
       description: org.description || '',
-      admin_percentage: org.admin_percentage
+      admin_percentage: org.admin_percentage,
+      logo_url: org.logo_url || '',
+      primary_color: org.primary_color || '#D4AF37'
     });
     setEditDialogOpen(true);
   };
@@ -451,16 +459,51 @@ export const OrganizationManager: React.FC<OrganizationManagerProps> = ({ organi
         ) : (
           <div className="space-y-4">
             {organizations.map((org) => (
-              <Card key={org.id}>
+              <Card key={org.id} className="overflow-hidden">
                 <CardContent className="p-6">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <h4 className="font-medium text-lg">{org.name}</h4>
-                      <p className="text-sm text-muted-foreground">{org.description}</p>
-                      <div className="flex items-center gap-2 mt-2">
-                        <span className="text-sm text-muted-foreground">
-                          Criada em: {new Date(org.created_at).toLocaleDateString()}
-                        </span>
+                  <div className="flex justify-between items-start gap-4">
+                    <div className="flex items-start gap-4 flex-1">
+                      {/* Logo */}
+                      {org.logo_url ? (
+                        <img 
+                          src={org.logo_url} 
+                          alt={`Logo ${org.name}`}
+                          className="w-14 h-14 object-contain rounded-lg border bg-white p-1"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <div 
+                          className="w-14 h-14 rounded-lg flex items-center justify-center text-white font-bold text-xl"
+                          style={{ backgroundColor: org.primary_color || '#D4AF37' }}
+                        >
+                          {org.name.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h4 
+                            className="font-semibold text-lg"
+                            style={{ color: org.primary_color || undefined }}
+                          >
+                            {org.name}
+                          </h4>
+                          {org.primary_color && (
+                            <div 
+                              className="w-4 h-4 rounded-full border"
+                              style={{ backgroundColor: org.primary_color }}
+                              title={`Cor: ${org.primary_color}`}
+                            />
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">{org.description}</p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className="text-sm text-muted-foreground">
+                            Criada em: {new Date(org.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
                       </div>
                     </div>
                     
@@ -580,7 +623,7 @@ export const OrganizationManager: React.FC<OrganizationManagerProps> = ({ organi
               Atualize as informações da organização
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 max-h-[70vh] overflow-y-auto">
             <div>
               <Label htmlFor="edit-name">Nome</Label>
               <Input
@@ -610,6 +653,68 @@ export const OrganizationManager: React.FC<OrganizationManagerProps> = ({ organi
                 onChange={(e) => setFormData({ ...formData, admin_percentage: parseFloat(e.target.value) || 0 })}
               />
             </div>
+
+            {/* Cor Primária */}
+            <div className="space-y-2">
+              <Label htmlFor="edit-primary-color" className="flex items-center gap-2">
+                <Palette className="h-4 w-4" />
+                Cor Primária
+              </Label>
+              <div className="flex items-center gap-3">
+                <Input
+                  id="edit-primary-color"
+                  type="color"
+                  value={formData.primary_color}
+                  onChange={(e) => setFormData({ ...formData, primary_color: e.target.value })}
+                  className="w-16 h-10 p-1 cursor-pointer"
+                />
+                <Input
+                  value={formData.primary_color}
+                  onChange={(e) => setFormData({ ...formData, primary_color: e.target.value })}
+                  placeholder="#D4AF37"
+                  className="flex-1 font-mono"
+                />
+                <div 
+                  className="w-10 h-10 rounded-md border"
+                  style={{ backgroundColor: formData.primary_color }}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Esta cor será usada para destacar o nome da organização
+              </p>
+            </div>
+
+            {/* Logo URL */}
+            <div className="space-y-2">
+              <Label htmlFor="edit-logo-url" className="flex items-center gap-2">
+                <Image className="h-4 w-4" />
+                Logo (URL)
+              </Label>
+              <Input
+                id="edit-logo-url"
+                type="url"
+                value={formData.logo_url}
+                onChange={(e) => setFormData({ ...formData, logo_url: e.target.value })}
+                placeholder="https://exemplo.com/logo.png"
+              />
+              {formData.logo_url && (
+                <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+                  <img 
+                    src={formData.logo_url} 
+                    alt="Preview logo" 
+                    className="w-12 h-12 object-contain rounded"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = 'https://via.placeholder.com/48?text=Logo';
+                    }}
+                  />
+                  <span className="text-sm text-muted-foreground">Preview da logo</span>
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Cole a URL da logo da organização (PNG, JPG, SVG)
+              </p>
+            </div>
+
             <Button onClick={handleEdit} className="w-full">
               Salvar Alterações
             </Button>
