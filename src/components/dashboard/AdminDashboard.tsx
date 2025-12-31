@@ -36,6 +36,8 @@ interface Organization {
   name: string;
   description: string | null;
   admin_percentage: number;
+  logo_url: string | null;
+  primary_color: string | null;
   is_active?: boolean;
   created_at: string;
   updated_at: string;
