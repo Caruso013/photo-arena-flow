@@ -10,7 +10,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { toast } from 'sonner';
+import { downloadOriginalPhoto } from '@/lib/photoDownload';
 
 export interface ActivityItem {
   id: string;
@@ -74,16 +74,9 @@ const RecentActivity = ({
     });
   };
 
-  const downloadPhoto = (photoUrl: string, fileName: string) => {
-    const link = document.createElement('a');
-    link.href = photoUrl;
-    link.target = '_blank';
-    link.download = fileName;
-    link.rel = 'noopener noreferrer';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success('Download iniciado!');
+  const handleDownloadPhoto = async (photoUrl: string, photoId: string) => {
+    const fileName = `foto_${photoId?.slice(0, 8) || 'download'}.jpg`;
+    await downloadOriginalPhoto(photoUrl, fileName);
   };
 
   return (
@@ -175,9 +168,9 @@ const RecentActivity = ({
                             className="gap-1 h-7 text-xs"
                             onClick={(e) => {
                               e.stopPropagation();
-                              downloadPhoto(
+                              handleDownloadPhoto(
                                 activity.photoUrl!, 
-                                `foto_${activity.photoId?.slice(0, 8) || activity.id}.jpg`
+                                activity.photoId || activity.id
                               );
                             }}
                           >

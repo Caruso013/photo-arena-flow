@@ -12,6 +12,7 @@ import { Camera, Edit, Power, PowerOff, MapPin, Calendar, Plus, Trash2 } from 'l
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import CreateCampaignModal from '../modals/CreateCampaignModal';
 import { CampaignPhotographersManager } from './CampaignPhotographersManager';
+import { usePlatformPercentage } from '@/hooks/usePlatformPercentage';
 
 interface Campaign {
   id: string;
@@ -33,6 +34,9 @@ interface CampaignManagerProps {
 }
 
 export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onRefresh }) => {
+  const { percentage: platformPercentage, loading: loadingPercentage } = usePlatformPercentage();
+  const availablePercentage = 100 - platformPercentage;
+  
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
@@ -43,14 +47,26 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
     location: '',
     event_date: '',
     organization_id: '',
-    platform_percentage: 7,        // FIXO: 7%
-    photographer_percentage: 93,   // Padrão: fotógrafo fica com tudo
-    organization_percentage: 0     // Padrão: sem organização
+    platform_percentage: platformPercentage,
+    photographer_percentage: availablePercentage,
+    organization_percentage: 0
   });
 
   useEffect(() => {
     fetchOrganizations();
   }, []);
+
+  // Atualizar formData quando a taxa da plataforma carregar
+  useEffect(() => {
+    if (!loadingPercentage) {
+      setFormData(prev => ({
+        ...prev,
+        platform_percentage: platformPercentage,
+        photographer_percentage: availablePercentage,
+        organization_percentage: 0
+      }));
+    }
+  }, [platformPercentage, loadingPercentage, availablePercentage]);
 
   const fetchOrganizations = async () => {
     const { data } = await supabase
@@ -94,7 +110,7 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
       location: campaign.location || '',
       event_date: campaign.event_date || '',
       organization_id: campaign.organization_id || '',
-      platform_percentage: 7, // SEMPRE 7% (fixo)
+      platform_percentage: platformPercentage, // Usar taxa do sistema
       photographer_percentage: campaign.photographer_percentage,
       organization_percentage: campaign.organization_percentage
     });
@@ -103,8 +119,8 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
 
   // Ajusta automaticamente quando mudar porcentagem do fotógrafo
   const handlePhotographerPercentageChange = (value: number) => {
-    const photographerPct = Math.max(0, Math.min(93, value));
-    const organizationPct = 93 - photographerPct;
+    const photographerPct = Math.max(0, Math.min(availablePercentage, value));
+    const organizationPct = availablePercentage - photographerPct;
     
     setFormData(prev => ({
       ...prev,
@@ -115,8 +131,8 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
 
   // Ajusta automaticamente quando mudar porcentagem da organização
   const handleOrganizationPercentageChange = (value: number) => {
-    const organizationPct = Math.max(0, Math.min(93, value));
-    const photographerPct = 93 - organizationPct;
+    const organizationPct = Math.max(0, Math.min(availablePercentage, value));
+    const photographerPct = availablePercentage - organizationPct;
     
     setFormData(prev => ({
       ...prev,
@@ -128,22 +144,22 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
   const handleEdit = async () => {
     if (!selectedCampaign) return;
 
-    // Validação: plataforma deve ser sempre 7%
-    if (formData.platform_percentage !== 7) {
+    // Validação: plataforma deve usar taxa do sistema
+    if (formData.platform_percentage !== platformPercentage) {
       toast({
         title: "Erro na validação",
-        description: "A plataforma deve ter exatamente 7% (fixo).",
+        description: `A plataforma deve ter exatamente ${platformPercentage}% (configurado no sistema).`,
         variant: "destructive",
       });
       return;
     }
 
-    // Validação: fotógrafo + organização deve somar 93%
+    // Validação: fotógrafo + organização deve somar o disponível
     const sum = formData.photographer_percentage + formData.organization_percentage;
-    if (sum !== 93) {
+    if (sum !== availablePercentage) {
       toast({
         title: "Erro na divisão de receita",
-        description: `Fotógrafo + Organização deve somar 93% (atualmente: ${sum}%)`,
+        description: `Fotógrafo + Organização deve somar ${availablePercentage}% (atualmente: ${sum}%)`,
         variant: "destructive",
       });
       return;
@@ -380,14 +396,14 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
                 </Badge>
               </div>
               
-              {/* Plataforma - FIXO 7% */}
+              {/* Plataforma - Taxa do Sistema */}
               <div className="p-3 bg-primary/5 rounded-lg border border-primary/20">
                 <div className="flex items-center justify-between mb-2">
-                  <Label className="text-sm font-medium">🏢 Plataforma (Fixo)</Label>
-                  <Badge variant="default">7%</Badge>
+                  <Label className="text-sm font-medium">🏢 Plataforma (Sistema)</Label>
+                  <Badge variant="default">{platformPercentage}%</Badge>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Taxa fixa da plataforma não editável
+                  Taxa configurada no sistema (não editável por evento)
                 </p>
               </div>
 
@@ -402,7 +418,7 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
                       id="edit-photographer-percentage"
                       type="number"
                       min="0"
-                      max="93"
+                      max={availablePercentage}
                       value={formData.photographer_percentage}
                       onChange={(e) => handlePhotographerPercentageChange(Number(e.target.value))}
                       className="w-20 h-8 text-center"
@@ -413,7 +429,7 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
                 <input
                   type="range"
                   min="0"
-                  max="93"
+                  max={availablePercentage}
                   value={formData.photographer_percentage}
                   onChange={(e) => handlePhotographerPercentageChange(Number(e.target.value))}
                   className="w-full"
@@ -434,7 +450,7 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
                       id="edit-organization-percentage"
                       type="number"
                       min="0"
-                      max="93"
+                      max={availablePercentage}
                       value={formData.organization_percentage}
                       onChange={(e) => handleOrganizationPercentageChange(Number(e.target.value))}
                       className="w-20 h-8 text-center"
@@ -445,7 +461,7 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
                 <input
                   type="range"
                   min="0"
-                  max="93"
+                  max={availablePercentage}
                   value={formData.organization_percentage}
                   onChange={(e) => handleOrganizationPercentageChange(Number(e.target.value))}
                   className="w-full"
@@ -456,10 +472,10 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
               </div>
 
               {/* Alerta de validação */}
-              {(formData.photographer_percentage + formData.organization_percentage) !== 93 && (
+              {(formData.photographer_percentage + formData.organization_percentage) !== availablePercentage && (
                 <div className="p-2 bg-destructive/10 border border-destructive/20 rounded-md">
                   <p className="text-xs text-destructive">
-                    ⚠️ Atenção: Fotógrafo + Organização deve somar exatamente 93%
+                    ⚠️ Fotógrafo + Organização deve somar {availablePercentage}% (atual: {formData.photographer_percentage + formData.organization_percentage}%)
                   </p>
                 </div>
               )}

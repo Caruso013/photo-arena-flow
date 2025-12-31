@@ -8,6 +8,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { formatCurrency } from '@/lib/utils';
 import { Camera, Calendar, TrendingUp, AlertCircle, User, ImageIcon, ChevronDown, ChevronUp, Download, Mail } from 'lucide-react';
 import { toast } from 'sonner';
+import { downloadOriginalPhoto, downloadMultiplePhotos } from '@/lib/photoDownload';
 import {
   Dialog,
   DialogContent,
@@ -74,31 +75,16 @@ export const PhotographerEarnings = () => {
     });
   };
 
-  const downloadPhoto = (photoUrl: string, fileName: string) => {
-    // Abrir em nova aba para download direto (evita CORS)
-    const link = document.createElement('a');
-    link.href = photoUrl;
-    link.target = '_blank';
-    link.download = fileName;
-    link.rel = 'noopener noreferrer';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleDownloadPhoto = async (photoUrl: string, photoId: string, buyerName: string) => {
+    const fileName = `${buyerName.replace(/\s+/g, '_')}_${photoId.slice(0, 8)}.jpg`;
+    await downloadOriginalPhoto(photoUrl, fileName);
   };
 
-  const downloadAllPhotos = async (photos: PhotoPurchase[], buyerName: string) => {
-    toast.info(`Iniciando download de ${photos.length} fotos...`);
-    
-    for (let i = 0; i < photos.length; i++) {
-      const photo = photos[i];
-      const fileName = `${buyerName.replace(/\s+/g, '_')}_${photo.photo_id.slice(0, 8)}.jpg`;
-      
-      // Delay entre downloads para não sobrecarregar
-      await new Promise(resolve => setTimeout(resolve, i === 0 ? 0 : 800));
-      downloadPhoto(photo.photo_url, fileName);
-    }
-    
-    toast.success(`Download de ${photos.length} fotos iniciado!`);
+  const handleDownloadAllPhotos = async (photos: PhotoPurchase[], buyerName: string) => {
+    await downloadMultiplePhotos(
+      photos.map(p => ({ photo_url: p.photo_url, photo_id: p.photo_id })),
+      buyerName
+    );
   };
 
   const fetchEarnings = async () => {
@@ -408,7 +394,7 @@ export const PhotographerEarnings = () => {
                                     size="sm"
                                     variant="outline"
                                     className="gap-1"
-                                    onClick={() => downloadAllPhotos(buyer.photos, buyer.buyer_name)}
+                                    onClick={() => handleDownloadAllPhotos(buyer.photos, buyer.buyer_name)}
                                   >
                                     <Download className="h-3 w-3" />
                                     Download de Todas
