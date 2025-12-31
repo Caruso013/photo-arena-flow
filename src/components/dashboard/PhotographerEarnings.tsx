@@ -74,28 +74,31 @@ export const PhotographerEarnings = () => {
     });
   };
 
+  const downloadPhoto = (photoUrl: string, fileName: string) => {
+    // Abrir em nova aba para download direto (evita CORS)
+    const link = document.createElement('a');
+    link.href = photoUrl;
+    link.target = '_blank';
+    link.download = fileName;
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const downloadAllPhotos = async (photos: PhotoPurchase[], buyerName: string) => {
-    toast.info(`Preparando download de ${photos.length} fotos...`);
+    toast.info(`Iniciando download de ${photos.length} fotos...`);
     
-    for (const photo of photos) {
-      try {
-        const response = await fetch(photo.photo_url);
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${buyerName.replace(/\s+/g, '_')}_${photo.photo_id.slice(0, 8)}.jpg`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-        await new Promise(resolve => setTimeout(resolve, 500)); // Delay entre downloads
-      } catch (error) {
-        console.error('Erro ao baixar foto:', error);
-      }
+    for (let i = 0; i < photos.length; i++) {
+      const photo = photos[i];
+      const fileName = `${buyerName.replace(/\s+/g, '_')}_${photo.photo_id.slice(0, 8)}.jpg`;
+      
+      // Delay entre downloads para não sobrecarregar
+      await new Promise(resolve => setTimeout(resolve, i === 0 ? 0 : 800));
+      downloadPhoto(photo.photo_url, fileName);
     }
     
-    toast.success('Download concluído!');
+    toast.success(`Download de ${photos.length} fotos iniciado!`);
   };
 
   const fetchEarnings = async () => {
