@@ -76,6 +76,7 @@ const AdminProgressiveDiscountManager = lazy(() => import("./pages/dashboard/adm
 const AdminCouponManagement = lazy(() => import("./pages/dashboard/admin/CouponManagement"));
 const CacheManagement = lazy(() => import("./pages/dashboard/admin/CacheManagement"));
 const AdminFeaturedEvents = lazy(() => import("./pages/dashboard/admin/FeaturedEvents"));
+const PhotographerBalances = lazy(() => import("./pages/dashboard/admin/PhotographerBalances"));
 
 // Organization routes
 const OrganizationRevenue = lazy(() => import("./pages/dashboard/OrganizationRevenue"));
@@ -153,6 +154,7 @@ const AppContent = () => {
             <Route path="admin/coupons" element={<AdminCouponManagement />} />
             <Route path="admin/cache-management" element={<CacheManagement />} />
             <Route path="admin/featured-events" element={<AdminFeaturedEvents />} />
+            <Route path="admin/photographer-balances" element={<PhotographerBalances />} />
             <Route path="photographer/events" element={<PhotographerEvents />} />
             <Route path="photographer/manage-event/:id" element={<ManageEvent />} />
             <Route path="photographer/photos" element={<MyPhotos />} />

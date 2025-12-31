@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { formatCurrency } from '@/lib/utils';
-import { Camera, Calendar, TrendingUp, AlertCircle, User, ImageIcon } from 'lucide-react';
+import { Camera, Calendar, TrendingUp, AlertCircle, User, ImageIcon, ChevronDown, ChevronUp, Download, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -16,6 +16,19 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+
+interface PhotoPurchase {
+  photo_id: string;
+  photo_title: string;
+  photo_url: string;
+  amount: number;
+  purchase_date: string;
+}
 
 interface BuyerPurchase {
   buyer_id: string;
@@ -24,6 +37,7 @@ interface BuyerPurchase {
   photos_count: number;
   total_amount: number;
   purchase_date: string;
+  photos: PhotoPurchase[];
 }
 
 interface CampaignEarnings {
@@ -40,12 +54,49 @@ export const PhotographerEarnings = () => {
   const [loading, setLoading] = useState(true);
   const [totalEarned, setTotalEarned] = useState(0);
   const [totalPhotosSold, setTotalPhotosSold] = useState(0);
+  const [expandedBuyers, setExpandedBuyers] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (user) {
       fetchEarnings();
     }
   }, [user]);
+
+  const toggleBuyerExpanded = (buyerId: string) => {
+    setExpandedBuyers(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(buyerId)) {
+        newSet.delete(buyerId);
+      } else {
+        newSet.add(buyerId);
+      }
+      return newSet;
+    });
+  };
+
+  const downloadAllPhotos = async (photos: PhotoPurchase[], buyerName: string) => {
+    toast.info(`Preparando download de ${photos.length} fotos...`);
+    
+    for (const photo of photos) {
+      try {
+        const response = await fetch(photo.photo_url);
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${buyerName.replace(/\s+/g, '_')}_${photo.photo_id.slice(0, 8)}.jpg`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        await new Promise(resolve => setTimeout(resolve, 500)); // Delay entre downloads
+      } catch (error) {
+        console.error('Erro ao baixar foto:', error);
+      }
+    }
+    
+    toast.success('Download concluído!');
+  };
 
   const fetchEarnings = async () => {
     try {
@@ -57,11 +108,14 @@ export const PhotographerEarnings = () => {
         .select(`
           *,
           purchases!revenue_shares_purchase_id_fkey(
+            id,
             created_at,
             buyer_id,
+            amount,
             photos!purchases_photo_id_fkey(
               id,
               title,
+              original_url,
               price,
               campaigns!photos_campaign_id_fkey(
                 id,
@@ -77,16 +131,15 @@ export const PhotographerEarnings = () => {
         throw error;
       }
 
-      // Buscar nomes dos compradores - usar função RPC segura ou profiles com nova política
+      // Buscar nomes e emails dos compradores
       const buyerIds = [...new Set(revenueData?.map((r: any) => r.purchases?.buyer_id).filter(Boolean))];
       
-      // Com a nova política RLS, fotógrafos podem ver perfis de quem comprou deles
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, full_name')
+        .select('id, full_name, email')
         .in('id', buyerIds);
 
-      const profileMap = new Map(profiles?.map(p => [p.id, { ...p, email: '' }]) || []);
+      const profileMap = new Map(profiles?.map(p => [p.id, { full_name: p.full_name, email: p.email }]) || []);
 
       // Processar dados por campanha e comprador
       const campaignMap = new Map<string, CampaignEarnings>();
@@ -128,12 +181,20 @@ export const PhotographerEarnings = () => {
             photos_count: 0,
             total_amount: 0,
             purchase_date: purchase.created_at,
+            photos: [],
           });
         }
 
         const buyerData = buyersMap.get(buyerId)!;
         buyerData.photos_count += 1;
         buyerData.total_amount += photographerAmount;
+        buyerData.photos.push({
+          photo_id: photo.id,
+          photo_title: photo.title || `Foto ${photo.id.slice(0, 8)}`,
+          photo_url: photo.original_url,
+          amount: photographerAmount,
+          purchase_date: purchase.created_at,
+        });
 
         // Atualizar data se for mais recente
         if (new Date(purchase.created_at) > new Date(buyerData.purchase_date)) {
@@ -293,32 +354,86 @@ export const PhotographerEarnings = () => {
                       </DialogHeader>
                       <div className="space-y-3 mt-4">
                         {campaign.buyers.map((buyer) => (
-                          <div
+                          <Collapsible
                             key={buyer.buyer_id}
-                            className="border rounded-lg p-4 space-y-2 bg-muted/30"
+                            open={expandedBuyers.has(buyer.buyer_id)}
+                            onOpenChange={() => toggleBuyerExpanded(buyer.buyer_id)}
                           >
-                            <div className="flex items-start justify-between">
-                              <div className="space-y-1">
-                                <div className="flex items-center gap-2">
-                                  <User className="h-4 w-4 text-primary" />
-                                  <span className="font-medium">{buyer.buyer_name || 'Cliente'}</span>
+                            <div className="border rounded-lg p-4 space-y-2 bg-muted/30">
+                              <div className="flex items-start justify-between">
+                                <div className="space-y-1 flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <User className="h-4 w-4 text-primary" />
+                                    <span className="font-medium">{buyer.buyer_name || 'Cliente'}</span>
+                                    <CollapsibleTrigger asChild>
+                                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                                        {expandedBuyers.has(buyer.buyer_id) ? (
+                                          <ChevronUp className="h-4 w-4" />
+                                        ) : (
+                                          <ChevronDown className="h-4 w-4" />
+                                        )}
+                                      </Button>
+                                    </CollapsibleTrigger>
+                                  </div>
+                                  {buyer.buyer_email && (
+                                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                                      <Mail className="h-3 w-3" />
+                                      {buyer.buyer_email}
+                                    </div>
+                                  )}
+                                  <div className="text-xs text-muted-foreground flex items-center gap-1">
+                                    <Calendar className="h-3 w-3" />
+                                    {new Date(buyer.purchase_date).toLocaleString('pt-BR')}
+                                  </div>
                                 </div>
-                                <div className="text-xs text-muted-foreground flex items-center gap-1">
-                                  <Calendar className="h-3 w-3" />
-                                  {new Date(buyer.purchase_date).toLocaleString('pt-BR')}
+                                <div className="text-right space-y-1">
+                                  <div className="font-semibold text-green-600">
+                                    {formatCurrency(buyer.total_amount)}
+                                  </div>
+                                  <Badge variant="secondary" className="gap-1">
+                                    <ImageIcon className="h-3 w-3" />
+                                    {buyer.photos_count} foto{buyer.photos_count > 1 ? 's' : ''}
+                                  </Badge>
                                 </div>
                               </div>
-                              <div className="text-right space-y-1">
-                                <div className="font-semibold text-green-600">
-                                  {formatCurrency(buyer.total_amount)}
+
+                              {/* Lista de fotos expandível */}
+                              <CollapsibleContent className="space-y-3 pt-3 border-t mt-3">
+                                <div className="flex justify-between items-center">
+                                  <span className="text-sm font-medium">Fotos compradas:</span>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="gap-1"
+                                    onClick={() => downloadAllPhotos(buyer.photos, buyer.buyer_name)}
+                                  >
+                                    <Download className="h-3 w-3" />
+                                    Download de Todas
+                                  </Button>
                                 </div>
-                                <Badge variant="secondary" className="gap-1">
-                                  <ImageIcon className="h-3 w-3" />
-                                  {buyer.photos_count} foto{buyer.photos_count > 1 ? 's' : ''}
-                                </Badge>
-                              </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                  {buyer.photos.map((photo) => (
+                                    <div
+                                      key={photo.photo_id}
+                                      className="flex items-center gap-2 p-2 bg-background rounded border"
+                                    >
+                                      <div className="w-12 h-12 rounded overflow-hidden bg-muted flex-shrink-0">
+                                        <img
+                                          src={photo.photo_url}
+                                          alt={photo.photo_title}
+                                          className="w-full h-full object-cover"
+                                        />
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-xs font-medium truncate">{photo.photo_title}</p>
+                                        <p className="text-xs text-green-600">{formatCurrency(photo.amount)}</p>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </CollapsibleContent>
                             </div>
-                          </div>
+                          </Collapsible>
                         ))}
                       </div>
                     </DialogContent>

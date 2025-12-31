@@ -68,6 +68,7 @@ const DashboardSidebar = ({ isOpen, onToggle }: DashboardSidebarProps) => {
     { title: 'Início', url: '/', icon: Home },
     { title: 'Dashboard Admin', url: '/dashboard/admin', icon: LayoutDashboard },
     { title: 'Fotógrafos', url: '/dashboard/admin/photographers', icon: Camera },
+    { title: 'Saldos Fotógrafos', url: '/dashboard/admin/photographer-balances', icon: DollarSign },
     { title: 'Usuários', url: '/dashboard/admin/users', icon: Users },
     { title: 'Eventos', url: '/dashboard/admin/events', icon: Calendar },
     { title: 'Eventos em Destaque', url: '/dashboard/admin/featured-events', icon: Star },
@@ -123,8 +124,9 @@ const DashboardSidebar = ({ isOpen, onToggle }: DashboardSidebarProps) => {
         <div className="flex items-center justify-between p-4 border-b">
           {isOpen && (
             <span className="font-semibold text-sm">
-              {profile?.role === 'admin' ? 'Administração' :
-               profile?.role === 'photographer' ? 'Fotógrafo' : 'Menu'}
+              {profile?.role === 'admin' ? 'Área do Admin' :
+               profile?.role === 'photographer' ? 'Área do Fotógrafo' : 
+               profile?.role === 'organization' ? 'Área da Organização' : 'Área do Cliente'}
             </span>
           )}
           <Button

@@ -47,33 +47,43 @@ export const ProfileEditor: React.FC = () => {
     setUploading(true);
 
     try {
-      // Delete old avatar if exists
-      if (avatarUrl) {
-        const oldPath = avatarUrl.split('/').pop();
-        if (oldPath) {
-          await supabase.storage
-            .from('avatars')
-            .remove([`${user.id}/${oldPath}`]);
+      // Delete old avatar if exists - extract clean filename
+      if (avatarUrl && avatarUrl.includes('avatars/')) {
+        try {
+          const urlParts = avatarUrl.split('avatars/');
+          if (urlParts[1]) {
+            const oldPath = decodeURIComponent(urlParts[1].split('?')[0]);
+            await supabase.storage
+              .from('avatars')
+              .remove([oldPath]);
+          }
+        } catch (deleteError) {
+          console.warn('Could not delete old avatar:', deleteError);
         }
       }
 
-      // Upload new avatar
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}/avatar-${Date.now()}.${fileExt}`;
+      // Upload new avatar - simplified path for RLS compatibility
+      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
 
-      const { error: uploadError, data } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(fileName, file, {
           cacheControl: '3600',
           upsert: true
         });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('Upload error details:', uploadError);
+        throw new Error(uploadError.message || 'Erro ao fazer upload');
+      }
 
       // Get public URL
-      const { data: { publicUrl } } = supabase.storage
+      const { data: urlData } = supabase.storage
         .from('avatars')
         .getPublicUrl(fileName);
+      
+      const publicUrl = urlData.publicUrl;
 
       // Update profile with new avatar URL
       const { error: updateError } = await supabase
