@@ -1,18 +1,33 @@
+import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileText, Download, Calendar, TrendingUp, FileSpreadsheet } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { FileText, Download, Calendar, TrendingUp, FileSpreadsheet, DollarSign, Users, Building2 } from 'lucide-react';
 import AdminLayout from '@/components/dashboard/AdminLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
+import { formatCurrency } from '@/lib/utils';
 import * as XLSX from 'xlsx';
 
 const AdminReports = () => {
   const { profile } = useAuth();
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [summary, setSummary] = useState<{
+    totalRevenue: number;
+    platformRevenue: number;
+    photographersRevenue: number;
+    organizationsRevenue: number;
+    totalSales: number;
+  } | null>(null);
 
   const generateSalesReport = async () => {
     try {
-      const { data: purchases, error } = await supabase
+      setLoading(true);
+      let query = supabase
         .from('purchases')
         .select(`
           *,
@@ -22,6 +37,15 @@ const AdminReports = () => {
         `)
         .eq('status', 'completed')
         .order('created_at', { ascending: false });
+
+      if (startDate) {
+        query = query.gte('created_at', `${startDate}T00:00:00`);
+      }
+      if (endDate) {
+        query = query.lte('created_at', `${endDate}T23:59:59`);
+      }
+
+      const { data: purchases, error } = await query;
 
       if (error) throw error;
 
@@ -40,11 +64,13 @@ const AdminReports = () => {
 
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Vendas');
-      XLSX.writeFile(wb, `relatorio-vendas-${new Date().toISOString().split('T')[0]}.xlsx`);
+      
+      const dateRange = startDate && endDate ? `${startDate}_${endDate}` : new Date().toISOString().split('T')[0];
+      XLSX.writeFile(wb, `relatorio-vendas-${dateRange}.xlsx`);
 
       toast({
         title: "Relatório gerado!",
-        description: "O arquivo foi baixado com sucesso.",
+        description: `${purchases?.length || 0} vendas exportadas.`,
       });
     } catch (error) {
       console.error('Error generating report:', error);
@@ -53,12 +79,15 @@ const AdminReports = () => {
         description: "Não foi possível gerar o relatório.",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
   const generateEventsReport = async () => {
     try {
-      const { data: campaigns, error } = await supabase
+      setLoading(true);
+      let query = supabase
         .from('campaigns')
         .select(`
           *,
@@ -66,6 +95,15 @@ const AdminReports = () => {
           photos(count)
         `)
         .order('created_at', { ascending: false });
+
+      if (startDate) {
+        query = query.gte('event_date', startDate);
+      }
+      if (endDate) {
+        query = query.lte('event_date', endDate);
+      }
+
+      const { data: campaigns, error } = await query;
 
       if (error) throw error;
 
@@ -83,11 +121,13 @@ const AdminReports = () => {
 
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Eventos');
-      XLSX.writeFile(wb, `relatorio-eventos-${new Date().toISOString().split('T')[0]}.xlsx`);
+      
+      const dateRange = startDate && endDate ? `${startDate}_${endDate}` : new Date().toISOString().split('T')[0];
+      XLSX.writeFile(wb, `relatorio-eventos-${dateRange}.xlsx`);
 
       toast({
         title: "Relatório gerado!",
-        description: "O arquivo foi baixado com sucesso.",
+        description: `${campaigns?.length || 0} eventos exportados.`,
       });
     } catch (error) {
       console.error('Error generating report:', error);
@@ -96,17 +136,51 @@ const AdminReports = () => {
         description: "Não foi possível gerar o relatório.",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
   const generateFinancialReport = async () => {
     try {
-      const { data: revenueShares, error } = await supabase
+      setLoading(true);
+      
+      let query = supabase
         .from('revenue_shares')
         .select('*')
         .order('created_at', { ascending: false });
 
+      if (startDate) {
+        query = query.gte('created_at', `${startDate}T00:00:00`);
+      }
+      if (endDate) {
+        query = query.lte('created_at', `${endDate}T23:59:59`);
+      }
+
+      const { data: revenueShares, error } = await query;
+
       if (error) throw error;
+
+      // Calcular totais
+      let totalPlatform = 0;
+      let totalPhotographers = 0;
+      let totalOrganizations = 0;
+
+      revenueShares?.forEach(rs => {
+        totalPlatform += Number(rs.platform_amount || 0);
+        totalPhotographers += Number(rs.photographer_amount || 0);
+        totalOrganizations += Number(rs.organization_amount || 0);
+      });
+
+      const totalRevenue = totalPlatform + totalPhotographers + totalOrganizations;
+
+      setSummary({
+        totalRevenue,
+        platformRevenue: totalPlatform,
+        photographersRevenue: totalPhotographers,
+        organizationsRevenue: totalOrganizations,
+        totalSales: revenueShares?.length || 0,
+      });
 
       // Buscar dados relacionados separadamente
       const enrichedData = await Promise.all(
@@ -144,13 +218,25 @@ const AdminReports = () => {
         }))
       );
 
+      // Adicionar linha de totais
+      XLSX.utils.sheet_add_aoa(ws, [
+        [],
+        ['RESUMO FINANCEIRO'],
+        ['Total Receita:', `R$ ${totalRevenue.toFixed(2)}`],
+        ['Lucro Plataforma:', `R$ ${totalPlatform.toFixed(2)}`],
+        ['Repassado Fotógrafos:', `R$ ${totalPhotographers.toFixed(2)}`],
+        ['Repassado Organizações:', `R$ ${totalOrganizations.toFixed(2)}`],
+      ], { origin: -1 });
+
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Financeiro');
-      XLSX.writeFile(wb, `relatorio-financeiro-${new Date().toISOString().split('T')[0]}.xlsx`);
+      
+      const dateRange = startDate && endDate ? `${startDate}_${endDate}` : new Date().toISOString().split('T')[0];
+      XLSX.writeFile(wb, `relatorio-financeiro-${dateRange}.xlsx`);
 
       toast({
         title: "Relatório gerado!",
-        description: "O arquivo foi baixado com sucesso.",
+        description: `${revenueShares?.length || 0} transações exportadas.`,
       });
     } catch (error) {
       console.error('Error generating report:', error);
@@ -159,6 +245,63 @@ const AdminReports = () => {
         description: "Não foi possível gerar o relatório.",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchSummary = async () => {
+    try {
+      setLoading(true);
+      
+      let query = supabase
+        .from('revenue_shares')
+        .select('platform_amount, photographer_amount, organization_amount');
+
+      if (startDate) {
+        query = query.gte('created_at', `${startDate}T00:00:00`);
+      }
+      if (endDate) {
+        query = query.lte('created_at', `${endDate}T23:59:59`);
+      }
+
+      const { data: revenueShares, error } = await query;
+
+      if (error) throw error;
+
+      let totalPlatform = 0;
+      let totalPhotographers = 0;
+      let totalOrganizations = 0;
+
+      revenueShares?.forEach(rs => {
+        totalPlatform += Number(rs.platform_amount || 0);
+        totalPhotographers += Number(rs.photographer_amount || 0);
+        totalOrganizations += Number(rs.organization_amount || 0);
+      });
+
+      const totalRevenue = totalPlatform + totalPhotographers + totalOrganizations;
+
+      setSummary({
+        totalRevenue,
+        platformRevenue: totalPlatform,
+        photographersRevenue: totalPhotographers,
+        organizationsRevenue: totalOrganizations,
+        totalSales: revenueShares?.length || 0,
+      });
+
+      toast({
+        title: "Resumo atualizado!",
+        description: `Período: ${startDate || 'início'} até ${endDate || 'hoje'}`,
+      });
+    } catch (error) {
+      console.error('Error fetching summary:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível buscar o resumo.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -200,9 +343,113 @@ const AdminReports = () => {
       <div className="space-y-8">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Relatórios</h1>
-          <p className="text-muted-foreground">Gere e exporte relatórios da plataforma</p>
+          <p className="text-muted-foreground">Gere e exporte relatórios da plataforma com filtros de período</p>
         </div>
 
+        {/* Filtros de Data */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Período do Relatório
+            </CardTitle>
+            <CardDescription>
+              Selecione o período para filtrar os dados dos relatórios
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-4 items-end">
+              <div className="space-y-2">
+                <Label htmlFor="startDate">Data Início</Label>
+                <Input
+                  id="startDate"
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-44"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="endDate">Data Fim</Label>
+                <Input
+                  id="endDate"
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-44"
+                />
+              </div>
+              <Button onClick={fetchSummary} disabled={loading} variant="secondary">
+                Atualizar Resumo
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Resumo Financeiro */}
+        {summary && (
+          <div className="grid gap-4 md:grid-cols-4">
+            <Card className="border-2 border-green-500/30">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <DollarSign className="h-4 w-4 text-green-500" />
+                  Receita Total
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600">{formatCurrency(summary.totalRevenue)}</div>
+                <p className="text-xs text-muted-foreground">{summary.totalSales} vendas</p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-2 border-primary/30">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-primary" />
+                  Lucro Plataforma
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-primary">{formatCurrency(summary.platformRevenue)}</div>
+                <p className="text-xs text-muted-foreground">
+                  {summary.totalRevenue > 0 ? ((summary.platformRevenue / summary.totalRevenue) * 100).toFixed(1) : 0}% do total
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-2 border-blue-500/30">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Users className="h-4 w-4 text-blue-500" />
+                  Fotógrafos
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-blue-600">{formatCurrency(summary.photographersRevenue)}</div>
+                <p className="text-xs text-muted-foreground">
+                  {summary.totalRevenue > 0 ? ((summary.photographersRevenue / summary.totalRevenue) * 100).toFixed(1) : 0}% do total
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-2 border-purple-500/30">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-purple-500" />
+                  Organizações
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-purple-600">{formatCurrency(summary.organizationsRevenue)}</div>
+                <p className="text-xs text-muted-foreground">
+                  {summary.totalRevenue > 0 ? ((summary.organizationsRevenue / summary.totalRevenue) * 100).toFixed(1) : 0}% do total
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Botões de Relatório */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {reports.map((report) => (
             <Card key={report.title}>
@@ -218,26 +465,29 @@ const AdminReports = () => {
                   variant="outline" 
                   className="w-full gap-2"
                   onClick={report.action}
+                  disabled={loading}
                 >
                   <FileSpreadsheet className="h-4 w-4" />
-                  Exportar XLSX
+                  {loading ? 'Gerando...' : 'Exportar XLSX'}
                 </Button>
               </CardContent>
             </Card>
           ))}
         </div>
 
+        {/* Info */}
         <Card>
           <CardHeader>
-            <CardTitle>Relatórios Personalizados</CardTitle>
+            <CardTitle>Informações</CardTitle>
             <CardDescription>
-              Em breve: Crie relatórios personalizados com filtros avançados
+              Os relatórios são gerados considerando o período selecionado. Se nenhuma data for informada, todos os registros serão incluídos.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-8 text-muted-foreground">
-              <FileText className="h-16 w-16 mx-auto mb-4 opacity-50" />
-              <p>Funcionalidade em desenvolvimento</p>
+            <div className="text-sm text-muted-foreground space-y-2">
+              <p>• <strong>Relatório de Vendas:</strong> Lista todas as compras concluídas com dados do comprador e fotógrafo.</p>
+              <p>• <strong>Relatório de Eventos:</strong> Lista todos os eventos cadastrados no período.</p>
+              <p>• <strong>Relatório Financeiro:</strong> Detalhamento da divisão de receitas (plataforma, fotógrafos, organizações).</p>
             </div>
           </CardContent>
         </Card>
