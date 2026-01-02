@@ -15,6 +15,8 @@ interface AlbumReport {
   photos_sold: number;
   total_revenue: number;
   avg_photo_price: number;
+  unique_buyers: number; // Quantidade de compradores únicos
+  avg_ticket: number;    // Ticket médio = receita / compradores
 }
 
 interface OverallMetrics {
@@ -50,12 +52,13 @@ const AlbumReports = () => {
     try {
       setLoading(true);
 
-      // Buscar revenue_shares do fotógrafo com informações de álbum
+      // Buscar revenue_shares do fotógrafo com informações de álbum e buyer
       const { data: revenueData, error } = await supabase
         .from('revenue_shares')
         .select(`
           *,
           purchases!revenue_shares_purchase_id_fkey(
+            buyer_id,
             photos!purchases_photo_id_fkey(
               sub_event_id,
               price,
@@ -73,15 +76,17 @@ const AlbumReports = () => {
 
       if (error) throw error;
 
-      // Agrupar por álbum
-      const albumMap = new Map<string, AlbumReport>();
+      // Agrupar por álbum (com tracking de compradores únicos)
+      const albumMap = new Map<string, AlbumReport & { buyers: Set<string> }>();
       let totalRev = 0;
       let totalPhotos = 0;
 
       revenueData?.forEach((revenue: any) => {
-        const photo = revenue.purchases?.photos;
+        const purchase = revenue.purchases;
+        const photo = purchase?.photos;
         const subEvent = photo?.sub_events;
         const campaign = subEvent?.campaigns;
+        const buyerId = purchase?.buyer_id;
 
         if (!subEvent) return; // Fotos sem álbum
 
@@ -99,19 +104,34 @@ const AlbumReports = () => {
             photos_sold: 0,
             total_revenue: 0,
             avg_photo_price: 0,
+            unique_buyers: 0,
+            avg_ticket: 0,
+            buyers: new Set<string>(),
           });
         }
 
         const albumReport = albumMap.get(albumId)!;
         albumReport.photos_sold += 1;
         albumReport.total_revenue += photographerAmount;
+        if (buyerId) {
+          albumReport.buyers.add(buyerId);
+        }
       });
 
-      // Calcular médias
-      const albumReports = Array.from(albumMap.values()).map(album => ({
-        ...album,
-        avg_photo_price: album.photos_sold > 0 ? album.total_revenue / album.photos_sold : 0,
-      })).sort((a, b) => b.total_revenue - a.total_revenue);
+      // Calcular médias e ticket médio
+      const albumReports = Array.from(albumMap.values()).map(album => {
+        const uniqueBuyers = album.buyers.size;
+        return {
+          album_id: album.album_id,
+          album_title: album.album_title,
+          campaign_title: album.campaign_title,
+          photos_sold: album.photos_sold,
+          total_revenue: album.total_revenue,
+          avg_photo_price: album.photos_sold > 0 ? album.total_revenue / album.photos_sold : 0,
+          unique_buyers: uniqueBuyers,
+          avg_ticket: uniqueBuyers > 0 ? album.total_revenue / uniqueBuyers : 0,
+        };
+      }).sort((a, b) => b.total_revenue - a.total_revenue);
 
       setAlbums(albumReports);
       setTotalRevenue(totalRev);
@@ -338,10 +358,14 @@ const AlbumReports = () => {
                       <p className="text-sm text-muted-foreground mb-3">
                         {album.campaign_title}
                       </p>
-                      <div className="grid grid-cols-3 gap-4 text-sm">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                         <div>
                           <p className="text-muted-foreground">Fotos Vendidas</p>
                           <p className="font-semibold">{album.photos_sold}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Compradores</p>
+                          <p className="font-semibold">{album.unique_buyers}</p>
                         </div>
                         <div>
                           <p className="text-muted-foreground">Receita Total</p>
@@ -351,8 +375,8 @@ const AlbumReports = () => {
                         </div>
                         <div>
                           <p className="text-muted-foreground">Ticket Médio</p>
-                          <p className="font-semibold">
-                            {formatCurrency(album.avg_photo_price)}
+                          <p className="font-semibold text-primary">
+                            {formatCurrency(album.avg_ticket)}
                           </p>
                         </div>
                       </div>
