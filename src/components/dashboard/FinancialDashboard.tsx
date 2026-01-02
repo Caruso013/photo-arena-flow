@@ -818,20 +818,13 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
                   </CardHeader>
                   <CardContent className="space-y-4">
                   <div className="flex justify-between">
-                    <span>Posição no Ranking:</span>
-                    <div className="flex items-center gap-2">
-                      {getRankBadge(userStats.rank)}
-                    </div>
-                  </div>
-                  
-                  <div className="flex justify-between">
                     <span>Total de Vendas:</span>
                     <span className="font-semibold">{userStats.total_sales}</span>
                   </div>
                   
                   <div className="flex justify-between">
                     <span>Receita Total:</span>
-                    <span className="font-semibold">
+                    <span className="font-semibold text-primary">
                       {formatCurrency(userStats.total_revenue)}
                     </span>
                   </div>
@@ -840,6 +833,13 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
                     <span>Preço Médio por Foto:</span>
                     <span className="font-semibold">
                       {formatCurrency(userStats.avg_photo_price)}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between">
+                    <span>Taxa de Conversão:</span>
+                    <span className="font-semibold">
+                      {userStats.total_photos > 0 ? ((userStats.total_sales / userStats.total_photos) * 100).toFixed(1) : 0}%
                     </span>
                   </div>
                 </CardContent>
@@ -894,6 +894,19 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
                           className="h-2"
                         />
                       </div>
+
+                      <div className="pt-4 border-t">
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-green-600">
+                            {progress.photosRealized >= (currentGoal.photos_target || 0) ? '🎉' : '💪'}
+                          </div>
+                          <p className="text-sm text-muted-foreground mt-2">
+                            {progress.photosRealized >= (currentGoal.photos_target || 0) 
+                              ? "Parabéns! Você atingiu sua meta de fotos!" 
+                              : `Faltam ${(currentGoal.photos_target || 0) - progress.photosRealized} fotos para sua meta!`}
+                          </p>
+                        </div>
+                      </div>
                     </>
                   ) : (
                     <div className="text-center py-6">
@@ -906,20 +919,6 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
                       </p>
                     </div>
                   )}
-                  
-                  <div className="pt-4 border-t">
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-primary">
-                        {userStats.rank <= 3 ? '🏆' : userStats.rank <= 10 ? '🥇' : '📈'}
-                      </div>
-                      <p className="text-sm text-muted-foreground mt-2">
-                        {userStats.rank === 1 && "Parabéns! Você é o fotógrafo #1!"}
-                        {userStats.rank > 1 && userStats.rank <= 3 && "Excelente! Você está no pódio!"}
-                        {userStats.rank > 3 && userStats.rank <= 10 && "Muito bem! Você está no Top 10!"}
-                        {userStats.rank > 10 && "Continue se esforçando para subir no ranking!"}
-                      </p>
-                    </div>
-                  </div>
                 </CardContent>
               </Card>
             </div>

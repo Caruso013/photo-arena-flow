@@ -50,13 +50,18 @@ interface Campaign {
 
 const PhotographerDashboard = () => {
   const { profile, user } = useAuth();
-  const { data: salesData, loading: loadingSales } = useSalesData(30, user?.id);
+  const [chartDays, setChartDays] = useState(30);
+  const { data: salesData, loading: loadingSales, refetch: refetchSales } = useSalesData(chartDays, user?.id);
   const balance = usePhotographerBalance();
   
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [recentSales, setRecentSales] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showUploadModal, setShowUploadModal] = useState(false);
+
+  const handlePeriodChange = (days: number) => {
+    setChartDays(days);
+  };
 
   useEffect(() => {
     fetchData();
@@ -269,19 +274,23 @@ const PhotographerDashboard = () => {
               </TabsList>
 
               <TabsContent value="analytics" className="space-y-4">
-                <Card>
-                  <CardContent className="p-4">
-                    <h3 className="font-semibold mb-4">Vendas dos Últimos 30 Dias</h3>
-                    {loadingSales ? (
+                {loadingSales ? (
+                  <Card>
+                    <CardContent className="p-4">
                       <div className="animate-pulse space-y-4">
                         <div className="h-4 bg-muted rounded w-1/3" />
                         <div className="h-[200px] bg-muted rounded" />
                       </div>
-                    ) : (
-                      <SalesChart data={salesData} />
-                    )}
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <SalesChart 
+                    data={salesData} 
+                    onPeriodChange={handlePeriodChange}
+                    selectedPeriod={chartDays}
+                    showPeriodFilter={true}
+                  />
+                )}
               </TabsContent>
 
               <TabsContent value="events" className="space-y-4">
