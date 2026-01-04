@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-  import { Textarea } from '@/components/ui/textarea';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
-import { Upload, X, Camera, CheckCircle2, FolderOpen, Image as ImageIcon, Info, RefreshCw, DollarSign } from 'lucide-react';
+import { Upload, X, Camera, CheckCircle2, FolderOpen, Image as ImageIcon, Info, RefreshCw, DollarSign, KeyRound, AlertTriangle } from 'lucide-react';
 import { backgroundUploadService } from '@/lib/backgroundUploadService';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { usePhotographerPix } from '@/hooks/usePhotographerPix';
 
 interface Campaign {
   id: string;
@@ -30,6 +32,7 @@ interface UploadPhotoModalProps {
 
 const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadComplete }) => {
   const { profile } = useAuth();
+  const { hasPixKey, canUploadPhotos, loading: pixLoading } = usePhotographerPix();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [subEvents, setSubEvents] = useState<SubEvent[]>([]);
   const [selectedCampaign, setSelectedCampaign] = useState('');
@@ -344,7 +347,29 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
 
         <div className="overflow-y-auto flex-1 px-6 py-4">
           <form className="space-y-6">
-          {campaigns.length === 0 ? (
+          {/* Bloqueio se não tem PIX cadastrado */}
+          {!pixLoading && !canUploadPhotos ? (
+            <div className="p-8 text-center border-2 border-dashed border-destructive/50 rounded-xl bg-destructive/5">
+              <div className="h-16 w-16 rounded-full bg-destructive/10 mx-auto mb-4 flex items-center justify-center">
+                <KeyRound className="h-8 w-8 text-destructive" />
+              </div>
+              <h3 className="text-lg font-bold mb-2 text-destructive">Chave PIX Obrigatória</h3>
+              <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
+                Para fazer upload de fotos e receber seus pagamentos, você precisa primeiro cadastrar uma chave PIX.
+              </p>
+              <div className="flex flex-col gap-2">
+                <Button asChild variant="default">
+                  <Link to="/dashboard/photographer/pix" onClick={onClose}>
+                    <KeyRound className="h-4 w-4 mr-2" />
+                    Cadastrar Chave PIX
+                  </Link>
+                </Button>
+                <Button onClick={onClose} variant="outline">
+                  Fechar
+                </Button>
+              </div>
+            </div>
+          ) : campaigns.length === 0 ? (
             <div className="p-8 text-center border-2 border-dashed rounded-xl bg-muted/30">
               <div className="h-16 w-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
                 <Camera className="h-8 w-8 text-muted-foreground" />
