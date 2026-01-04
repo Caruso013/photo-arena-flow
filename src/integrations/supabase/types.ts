@@ -1071,6 +1071,13 @@ export type Database = {
           id: string
           is_banned: boolean | null
           photographer_platform_percentage: number | null
+          pix_change_requested_at: string | null
+          pix_institution: string | null
+          pix_key: string | null
+          pix_key_type: string | null
+          pix_pending_change: Json | null
+          pix_recipient_name: string | null
+          pix_verified_at: string | null
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string
         }
@@ -1082,6 +1089,13 @@ export type Database = {
           id: string
           is_banned?: boolean | null
           photographer_platform_percentage?: number | null
+          pix_change_requested_at?: string | null
+          pix_institution?: string | null
+          pix_key?: string | null
+          pix_key_type?: string | null
+          pix_pending_change?: Json | null
+          pix_recipient_name?: string | null
+          pix_verified_at?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
         }
@@ -1093,6 +1107,13 @@ export type Database = {
           id?: string
           is_banned?: boolean | null
           photographer_platform_percentage?: number | null
+          pix_change_requested_at?: string | null
+          pix_institution?: string | null
+          pix_key?: string | null
+          pix_key_type?: string | null
+          pix_pending_change?: Json | null
+          pix_recipient_name?: string | null
+          pix_verified_at?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
         }

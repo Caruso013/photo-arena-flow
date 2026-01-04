@@ -19,6 +19,7 @@ import {
   Database,
   Gift,
   Star,
+  KeyRound,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -53,6 +54,7 @@ const DashboardSidebar = ({ isOpen, onToggle }: DashboardSidebarProps) => {
   const photographerItems = [
     { title: 'Início', url: '/', icon: Home },
     { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
+    { title: 'Chave PIX', url: '/dashboard/photographer/pix', icon: KeyRound },
     { title: 'Meus Eventos', url: '/dashboard/events', icon: Calendar },
     { title: 'Eventos Próximos', url: '/eventos-proximos', icon: Calendar },
     { title: 'Minhas Fotos', url: '/dashboard/photos', icon: Image },
