@@ -93,8 +93,8 @@ export default function PixSettings() {
                 <p className="font-medium">{getPixTypeLabel(pixKeyType)}</p>
               </div>
               <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Status</p>
-                <p className="font-medium text-green-600">{pixKeyMasked}</p>
+                <p className="text-sm text-muted-foreground">Chave PIX</p>
+                <p className="font-medium text-green-600">{pixKeyMasked || 'Cadastrada'}</p>
               </div>
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Nome do Titular</p>

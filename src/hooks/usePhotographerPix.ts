@@ -2,8 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { encryptSensitive, decryptSensitive } from '@/lib/pixEncryption';
-import { maskSensitiveData } from '@/lib/encryption';
 
 export interface PixKeyData {
   pixKey: string;
@@ -17,7 +15,7 @@ interface PendingChangeData {
   pixKeyType: string;
   recipientName: string;
   institution?: string;
-  [key: string]: string | undefined; // Index signature for Json compatibility
+  [key: string]: string | undefined;
 }
 
 export interface PhotographerPixStatus {
@@ -61,8 +59,35 @@ function calculateBusinessDaysRemaining(requestDate: Date): number {
   return Math.max(0, 3 - businessDays);
 }
 
+function maskPixKey(pixKey: string | null, type: string | null): string | null {
+  if (!pixKey) return null;
+  
+  switch (type) {
+    case 'cpf':
+      return pixKey.replace(/(\d{3})\.(\d{3})\.(\d{3})-(\d{2})/, '***.$2.***-**');
+    case 'cnpj':
+      return pixKey.replace(/(\d{2})\.(\d{3})\.(\d{3})\/(\d{4})-(\d{2})/, '**.$2.***/$4-**');
+    case 'email':
+      const [local, domain] = pixKey.split('@');
+      if (local && domain) {
+        const maskedLocal = local.length > 2 ? local[0] + '***' + local[local.length - 1] : '***';
+        return `${maskedLocal}@${domain}`;
+      }
+      return '***@***';
+    case 'telefone':
+      return pixKey.replace(/\((\d{2})\)\s?(\d{4,5})-?(\d{4})/, '(**) *****-$3');
+    case 'aleatoria':
+      if (pixKey.length > 8) {
+        return pixKey.substring(0, 4) + '****' + pixKey.substring(pixKey.length - 4);
+      }
+      return '****';
+    default:
+      return '***********';
+  }
+}
+
 export function usePhotographerPix(): PhotographerPixStatus {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [pixData, setPixData] = useState<{
     pixKey: string | null;
@@ -153,13 +178,10 @@ export function usePhotographerPix(): PhotographerPixStatus {
     }
 
     try {
-      // Encrypt PIX key before saving
-      const encryptedPixKey = await encryptSensitive(data.pixKey, 'pix');
-
       const { error } = await supabase
         .from('profiles')
         .update({
-          pix_key: encryptedPixKey,
+          pix_key: data.pixKey,
           pix_key_type: data.pixKeyType,
           pix_recipient_name: data.recipientName,
           pix_institution: data.institution || null,
@@ -188,11 +210,8 @@ export function usePhotographerPix(): PhotographerPixStatus {
     }
 
     try {
-      // Encrypt PIX key before saving
-      const encryptedPixKey = await encryptSensitive(data.pixKey, 'pix');
-
       const pendingChange: PendingChangeData = {
-        pixKey: encryptedPixKey,
+        pixKey: data.pixKey,
         pixKeyType: data.pixKeyType,
         recipientName: data.recipientName,
         institution: data.institution,
@@ -245,22 +264,6 @@ export function usePhotographerPix(): PhotographerPixStatus {
     }
   };
 
-  // Mask PIX key for display
-  const getMaskedPixKey = (): string | null => {
-    if (!pixData?.pixKey || !pixData?.pixKeyType) return null;
-    
-    // PIX key is encrypted, so we just show the type
-    const typeLabels: Record<string, string> = {
-      cpf: 'CPF',
-      cnpj: 'CNPJ',
-      email: 'E-mail',
-      telefone: 'Telefone',
-      aleatoria: 'Chave Aleatória',
-    };
-    
-    return `${typeLabels[pixData.pixKeyType] || 'PIX'} cadastrado`;
-  };
-
   const hasPixKey = !!pixData?.pixKey && !!pixData?.verifiedAt;
   const hasPendingChange = !!pixData?.pendingChange;
   const daysUntilChangeApplied = pixData?.changeRequestedAt 
@@ -269,7 +272,7 @@ export function usePhotographerPix(): PhotographerPixStatus {
 
   return {
     hasPixKey,
-    pixKeyMasked: getMaskedPixKey(),
+    pixKeyMasked: maskPixKey(pixData?.pixKey ?? null, pixData?.pixKeyType ?? null),
     pixKeyType: pixData?.pixKeyType || null,
     recipientName: pixData?.recipientName || null,
     institution: pixData?.institution || null,
