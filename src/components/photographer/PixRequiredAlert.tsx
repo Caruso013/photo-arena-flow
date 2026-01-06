@@ -22,7 +22,7 @@ export function PixRequiredAlert({ variant = 'banner', showButton = true }: PixR
         <AlertTriangle className="h-4 w-4" />
         <span>Cadastre sua chave PIX para fazer upload</span>
         {showButton && (
-          <Link to="/dashboard/fotografo/pix" className="underline font-medium">
+          <Link to="/dashboard/photographer/pix" className="underline font-medium">
             Cadastrar
           </Link>
         )}
@@ -42,7 +42,7 @@ export function PixRequiredAlert({ variant = 'banner', showButton = true }: PixR
         </p>
         {showButton && (
           <Button asChild variant="destructive" size="sm">
-            <Link to="/dashboard/fotografo/pix">
+            <Link to="/dashboard/photographer/pix">
               <KeyRound className="h-4 w-4 mr-2" />
               Cadastrar Chave PIX
             </Link>
@@ -63,7 +63,7 @@ export function PixRequiredAlert({ variant = 'banner', showButton = true }: PixR
         </span>
         {showButton && (
           <Button asChild variant="outline" size="sm" className="shrink-0 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground">
-            <Link to="/dashboard/fotografo/pix">
+            <Link to="/dashboard/photographer/pix">
               Cadastrar Agora
             </Link>
           </Button>

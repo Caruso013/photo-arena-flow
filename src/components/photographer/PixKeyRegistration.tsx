@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { KeyRound, AlertTriangle, CheckCircle, Clock, Info } from 'lucide-react';
@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { MaskedInput, masks, validateCPF, validateCNPJ } from '@/components/ui/masked-input';
 import { usePhotographerPix, PixKeyData } from '@/hooks/usePhotographerPix';
+import { toast } from 'sonner';
 
 const pixKeySchema = z.object({
   pixKey: z.string().min(1, 'Chave PIX é obrigatória'),
@@ -64,19 +65,27 @@ export function PixKeyRegistration({ isUpdate = false, onSuccess }: PixKeyRegist
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedType, setSelectedType] = useState<string>('');
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   const {
     register,
     handleSubmit,
     setValue,
     watch,
+    control,
     formState: { errors },
     reset,
   } = useForm<PixKeyFormData>({
     resolver: zodResolver(pixKeySchema),
+    defaultValues: {
+      pixKey: '',
+      recipientName: '',
+      institution: '',
+    },
   });
 
   const pixKeyType = watch('pixKeyType');
+  const pixKeyValue = watch('pixKey');
 
   const getMask = (type: string): string | undefined => {
     switch (type) {
@@ -92,16 +101,23 @@ export function PixKeyRegistration({ isUpdate = false, onSuccess }: PixKeyRegist
   };
 
   const validatePixKey = (value: string, type: string): string | null => {
+    if (!value || !type) return null;
+    
     switch (type) {
       case 'cpf':
+        const cpfClean = value.replace(/\D/g, '');
+        if (cpfClean.length < 11) return 'CPF incompleto';
         return validateCPF(value) ? null : 'CPF inválido';
       case 'cnpj':
+        const cnpjClean = value.replace(/\D/g, '');
+        if (cnpjClean.length < 14) return 'CNPJ incompleto';
         return validateCNPJ(value) ? null : 'CNPJ inválido';
       case 'email':
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         return emailRegex.test(value) ? null : 'E-mail inválido';
       case 'telefone':
         const phoneClean = value.replace(/\D/g, '');
+        if (phoneClean.length < 10) return 'Telefone incompleto';
         return phoneClean.length >= 10 ? null : 'Telefone inválido';
       case 'aleatoria':
         return value.length >= 20 ? null : 'Chave aleatória deve ter pelo menos 20 caracteres';
@@ -110,10 +126,23 @@ export function PixKeyRegistration({ isUpdate = false, onSuccess }: PixKeyRegist
     }
   };
 
+  // Validate on change
+  const handlePixKeyChange = (value: string) => {
+    setValue('pixKey', value);
+    if (pixKeyType && value) {
+      const error = validatePixKey(value, pixKeyType);
+      setValidationError(error);
+    } else {
+      setValidationError(null);
+    }
+  };
+
   const onSubmit = async (data: PixKeyFormData) => {
     // Validate PIX key based on type
-    const validationError = validatePixKey(data.pixKey, data.pixKeyType);
-    if (validationError) {
+    const keyError = validatePixKey(data.pixKey, data.pixKeyType);
+    if (keyError) {
+      setValidationError(keyError);
+      toast.error(keyError);
       return;
     }
 
@@ -207,6 +236,7 @@ export function PixKeyRegistration({ isUpdate = false, onSuccess }: PixKeyRegist
                 setSelectedType(value);
                 setValue('pixKeyType', value as PixKeyFormData['pixKeyType']);
                 setValue('pixKey', ''); // Clear when type changes
+                setValidationError(null);
               }}
             >
               <SelectTrigger>
@@ -228,28 +258,38 @@ export function PixKeyRegistration({ isUpdate = false, onSuccess }: PixKeyRegist
           {/* Chave PIX */}
           <div className="space-y-2">
             <Label htmlFor="pixKey">Chave PIX *</Label>
-            {getMask(pixKeyType) ? (
-              <MaskedInput
-                mask={getMask(pixKeyType)!}
-                placeholder={
-                  pixKeyType === 'cpf' ? '000.000.000-00' :
-                  pixKeyType === 'cnpj' ? '00.000.000/0000-00' :
-                  pixKeyType === 'telefone' ? '(00) 00000-0000' : ''
-                }
-                {...register('pixKey')}
-              />
-            ) : (
-              <Input
-                type={pixKeyType === 'email' ? 'email' : 'text'}
-                placeholder={
-                  pixKeyType === 'email' ? 'seu@email.com' :
-                  pixKeyType === 'aleatoria' ? 'Cole sua chave aleatória' : 'Digite sua chave PIX'
-                }
-                {...register('pixKey')}
-              />
-            )}
-            {errors.pixKey && (
-              <p className="text-sm text-destructive">{errors.pixKey.message}</p>
+            <Controller
+              name="pixKey"
+              control={control}
+              render={({ field }) => (
+                getMask(pixKeyType) ? (
+                  <MaskedInput
+                    mask={getMask(pixKeyType)!}
+                    placeholder={
+                      pixKeyType === 'cpf' ? '000.000.000-00' :
+                      pixKeyType === 'cnpj' ? '00.000.000/0000-00' :
+                      pixKeyType === 'telefone' ? '(00) 00000-0000' : ''
+                    }
+                    value={field.value || ''}
+                    onChange={(e) => handlePixKeyChange(e.target.value)}
+                    onBlur={field.onBlur}
+                  />
+                ) : (
+                  <Input
+                    type={pixKeyType === 'email' ? 'email' : 'text'}
+                    placeholder={
+                      pixKeyType === 'email' ? 'seu@email.com' :
+                      pixKeyType === 'aleatoria' ? 'Cole sua chave aleatória' : 'Digite sua chave PIX'
+                    }
+                    value={field.value || ''}
+                    onChange={(e) => handlePixKeyChange(e.target.value)}
+                    onBlur={field.onBlur}
+                  />
+                )
+              )}
+            />
+            {(errors.pixKey || validationError) && (
+              <p className="text-sm text-destructive">{validationError || errors.pixKey?.message}</p>
             )}
           </div>
 

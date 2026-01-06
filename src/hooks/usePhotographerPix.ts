@@ -173,7 +173,13 @@ export function usePhotographerPix(): PhotographerPixStatus {
 
   const registerPixKey = async (data: PixKeyData): Promise<boolean> => {
     if (!user?.id) {
-      toast.error('Usuário não autenticado');
+      toast.error('Usuário não autenticado. Faça login novamente.');
+      return false;
+    }
+
+    // Validação básica
+    if (!data.pixKey || !data.pixKeyType || !data.recipientName) {
+      toast.error('Preencha todos os campos obrigatórios');
       return false;
     }
 
@@ -181,40 +187,54 @@ export function usePhotographerPix(): PhotographerPixStatus {
       const { error } = await supabase
         .from('profiles')
         .update({
-          pix_key: data.pixKey,
+          pix_key: data.pixKey.trim(),
           pix_key_type: data.pixKeyType,
-          pix_recipient_name: data.recipientName,
-          pix_institution: data.institution || null,
+          pix_recipient_name: data.recipientName.trim(),
+          pix_institution: data.institution?.trim() || null,
           pix_verified_at: new Date().toISOString(),
           pix_pending_change: null,
           pix_change_requested_at: null,
         })
         .eq('id', user.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        if (error.message.includes('permission') || error.code === 'PGRST301') {
+          toast.error('Sem permissão para atualizar o perfil. Tente fazer login novamente.');
+        } else {
+          toast.error('Erro ao cadastrar chave PIX. Tente novamente.');
+        }
+        return false;
+      }
 
-      toast.success('Chave PIX cadastrada com sucesso!');
+      toast.success('🎉 Chave PIX cadastrada com sucesso!');
       await fetchPixData();
       return true;
     } catch (error) {
       console.error('Error registering PIX key:', error);
-      toast.error('Erro ao cadastrar chave PIX');
+      toast.error('Erro inesperado ao cadastrar chave PIX');
       return false;
     }
   };
 
   const requestPixChange = async (data: PixKeyData): Promise<boolean> => {
     if (!user?.id) {
-      toast.error('Usuário não autenticado');
+      toast.error('Usuário não autenticado. Faça login novamente.');
+      return false;
+    }
+
+    // Validação básica
+    if (!data.pixKey || !data.pixKeyType || !data.recipientName) {
+      toast.error('Preencha todos os campos obrigatórios');
       return false;
     }
 
     try {
       const pendingChange: PendingChangeData = {
-        pixKey: data.pixKey,
+        pixKey: data.pixKey.trim(),
         pixKeyType: data.pixKeyType,
-        recipientName: data.recipientName,
-        institution: data.institution,
+        recipientName: data.recipientName.trim(),
+        institution: data.institution?.trim(),
       };
 
       const { error } = await supabase
@@ -225,21 +245,25 @@ export function usePhotographerPix(): PhotographerPixStatus {
         })
         .eq('id', user.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        toast.error('Erro ao solicitar alteração de PIX. Tente novamente.');
+        return false;
+      }
 
-      toast.success('Solicitação de alteração registrada! Será aplicada em 3 dias úteis.');
+      toast.success('⏳ Solicitação de alteração registrada! Será aplicada em 3 dias úteis.');
       await fetchPixData();
       return true;
     } catch (error) {
       console.error('Error requesting PIX change:', error);
-      toast.error('Erro ao solicitar alteração de PIX');
+      toast.error('Erro inesperado ao solicitar alteração');
       return false;
     }
   };
 
   const cancelPendingChange = async (): Promise<boolean> => {
     if (!user?.id) {
-      toast.error('Usuário não autenticado');
+      toast.error('Usuário não autenticado. Faça login novamente.');
       return false;
     }
 
