@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 
 export interface PhotographerBalance {
   // Valores principais
@@ -19,6 +20,7 @@ export interface PhotographerBalance {
   
   // Estado
   loading: boolean;
+  error: Error | null;
   refetch: () => Promise<void>;
 }
 
@@ -30,6 +32,7 @@ export const usePhotographerBalance = (photographerId?: string): PhotographerBal
   const effectiveId = photographerId || user?.id;
   
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
   const [balance, setBalance] = useState({
     totalEarned: 0,
     availableAmount: 0,
@@ -51,6 +54,7 @@ export const usePhotographerBalance = (photographerId?: string): PhotographerBal
 
     try {
       setLoading(true);
+      setError(null);
 
       // 1. Buscar revenue_shares com status da purchase
       const { data: revenueData, error: revenueError } = await supabase
@@ -155,6 +159,11 @@ export const usePhotographerBalance = (photographerId?: string): PhotographerBal
 
     } catch (error) {
       console.error('Erro ao buscar saldo do fotógrafo:', error);
+      setError(error as Error);
+      // Mostrar toast apenas na primeira falha, não em refetch silencioso
+      if (!balance.totalEarned && !balance.totalPhotosSold) {
+        toast.error('Não foi possível carregar seus dados financeiros. Tente novamente.');
+      }
     } finally {
       setLoading(false);
     }
@@ -167,6 +176,7 @@ export const usePhotographerBalance = (photographerId?: string): PhotographerBal
   return {
     ...balance,
     loading,
+    error,
     refetch: fetchBalance,
   };
 };

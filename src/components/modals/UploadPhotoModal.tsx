@@ -295,6 +295,26 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
       return;
     }
 
+    // Validação do preço
+    const priceValue = parseFloat(price);
+    if (isNaN(priceValue) || priceValue < 1) {
+      toast({
+        title: "Preço inválido",
+        description: "O preço mínimo é R$ 1,00",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (priceValue > 500) {
+      toast({
+        title: "Preço muito alto",
+        description: "O preço máximo permitido é R$ 500,00",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Atualizar configuração de desconto progressivo na campanha
     try {
       await supabase
@@ -311,7 +331,7 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
       selectedCampaign,
       selectedSubEvent,
       title,
-      parseFloat(price),
+      priceValue,
       profile.id
     );
 
@@ -537,14 +557,21 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
               type="number"
               step="0.01"
               min="1"
+              max="500"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
+              onBlur={(e) => {
+                const val = parseFloat(e.target.value);
+                if (isNaN(val) || val < 1) setPrice('1.00');
+                else if (val > 500) setPrice('500.00');
+                else setPrice(val.toFixed(2));
+              }}
               className="h-12 text-lg font-bold text-center"
               placeholder="10.00"
               required
             />
             <p className="text-xs text-muted-foreground text-center">
-              💡 Todas as fotos terão o mesmo preço
+              💡 Preço de R$ 1,00 a R$ 500,00 por foto
             </p>
           </div>
 
@@ -559,17 +586,17 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
             
             <label 
               htmlFor="files" 
-              className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-primary/50 rounded-2xl cursor-pointer bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5 hover:from-primary/10 hover:via-primary/15 hover:to-primary/10 transition-all duration-300 group shadow-sm hover:shadow-md"
+              className="flex flex-col items-center justify-center w-full h-28 sm:h-40 border-2 border-dashed border-primary/50 rounded-2xl cursor-pointer bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5 hover:from-primary/10 hover:via-primary/15 hover:to-primary/10 transition-all duration-300 group shadow-sm hover:shadow-md"
             >
-              <div className="flex flex-col items-center justify-center p-4 text-center">
-                <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-3 group-hover:bg-primary/20 group-hover:scale-110 transition-all duration-300">
-                  <Upload className="h-8 w-8 text-primary" />
+              <div className="flex flex-col items-center justify-center p-3 sm:p-4 text-center">
+                <div className="h-12 w-12 sm:h-16 sm:w-16 rounded-full bg-primary/10 flex items-center justify-center mb-2 sm:mb-3 group-hover:bg-primary/20 group-hover:scale-110 transition-all duration-300">
+                  <Upload className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
                 </div>
-                <p className="mb-1 text-sm font-bold text-foreground">
+                <p className="mb-1 text-xs sm:text-sm font-bold text-foreground">
                   Clique ou arraste suas fotos
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  Sem limite de quantidade • Máx 2.5MB por foto
+                <p className="text-[10px] sm:text-xs text-muted-foreground">
+                  Sem limite • Máx 2.5MB/foto
                 </p>
               </div>
               <input
