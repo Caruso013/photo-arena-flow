@@ -4,11 +4,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { FileText, Download, Calendar, TrendingUp, FileSpreadsheet, DollarSign, Users, Building2 } from 'lucide-react';
+import { FileText, Download, Calendar, TrendingUp, FileSpreadsheet, DollarSign, Users, Building2, ShoppingCart } from 'lucide-react';
 import AdminLayout from '@/components/dashboard/AdminLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { formatCurrency } from '@/lib/utils';
+import { ActiveCartsViewer } from '@/components/dashboard/ActiveCartsViewer';
 import * as XLSX from 'xlsx';
 
 const AdminReports = () => {
@@ -491,6 +492,9 @@ const AdminReports = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Interesses dos Clientes (Carrinhos/Favoritos) */}
+        <ActiveCartsViewer />
       </div>
     </AdminLayout>
   );

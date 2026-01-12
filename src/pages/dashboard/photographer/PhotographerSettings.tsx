@@ -1,10 +1,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Settings, User, Camera, DollarSign, Bell } from 'lucide-react';
+import { Settings, User, Camera, DollarSign, Bell, Package } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/contexts/AuthContext';
+import { ExtraServicesManager } from '@/components/dashboard/ExtraServicesManager';
 
 const PhotographerSettings = () => {
   const { profile } = useAuth();
@@ -236,6 +237,11 @@ const PhotographerSettings = () => {
             </CardContent>
           </Card>
         </div>
+      </div>
+
+      {/* Seção de Serviços Extras */}
+      <div className="mt-6">
+        <ExtraServicesManager />
       </div>
     </div>
   );

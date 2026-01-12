@@ -17,6 +17,8 @@ import { usePhotographerPix } from '@/hooks/usePhotographerPix';
 interface Campaign {
   id: string;
   title: string;
+  price_locked?: boolean;
+  locked_price?: number | null;
 }
 
 interface SubEvent {
@@ -39,6 +41,7 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
   const [selectedSubEvent, setSelectedSubEvent] = useState('');
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('10.00');
+  const [priceLocked, setPriceLocked] = useState(false);
   const [files, setFiles] = useState<FileList | null>(null);
   const [uploading, setUploading] = useState(false);
   const [creatingNewFolder, setCreatingNewFolder] = useState(false);
@@ -54,11 +57,21 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
   useEffect(() => {
     if (selectedCampaign) {
       fetchSubEvents(selectedCampaign);
+      
+      // Verificar se a campanha tem preço bloqueado
+      const campaign = campaigns.find(c => c.id === selectedCampaign);
+      if (campaign?.price_locked && campaign.locked_price) {
+        setPrice(campaign.locked_price.toFixed(2));
+        setPriceLocked(true);
+      } else {
+        setPriceLocked(false);
+      }
     } else {
       setSubEvents([]);
       setSelectedSubEvent('');
+      setPriceLocked(false);
     }
-  }, [selectedCampaign]);
+  }, [selectedCampaign, campaigns]);
 
   const fetchCampaigns = async () => {
     try {
@@ -74,7 +87,7 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
       // Buscar eventos criados pelo fotógrafo OU onde está atribuído via campaign_photographers
       const { data: ownCampaigns, error: ownError } = await supabase
         .from('campaigns')
-        .select('id, title, event_date, is_active')
+        .select('id, title, event_date, is_active, price_locked, locked_price')
         .eq('photographer_id', profile.id)
         .eq('is_active', true);
 
@@ -88,7 +101,9 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
             id,
             title,
             event_date,
-            is_active
+            is_active,
+            price_locked,
+            locked_price
           )
         `)
         .eq('photographer_id', profile.id)
@@ -543,14 +558,19 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
           )}
 
           {/* Campo Preço */}
-          <div className="space-y-3 p-4 bg-muted/30 border border-border/50 rounded-xl">
+          <div className={`space-y-3 p-4 rounded-xl border ${priceLocked ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-300 dark:border-amber-700' : 'bg-muted/30 border-border/50'}`}>
             <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-background flex items-center justify-center flex-shrink-0">
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
+              <div className={`h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 ${priceLocked ? 'bg-amber-200 dark:bg-amber-900' : 'bg-background'}`}>
+                {priceLocked ? <KeyRound className="h-4 w-4 text-amber-700 dark:text-amber-300" /> : <DollarSign className="h-4 w-4 text-muted-foreground" />}
               </div>
               <Label htmlFor="price" className="font-semibold text-base">
-                Preço por foto (R$) *
+                Preço por foto (R$) {priceLocked ? '🔒' : '*'}
               </Label>
+              {priceLocked && (
+                <span className="text-xs bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200 px-2 py-1 rounded-full">
+                  Definido pelo Admin
+                </span>
+              )}
             </div>
             <Input
               id="price"
@@ -559,20 +579,28 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
               min="1"
               max="500"
               value={price}
-              onChange={(e) => setPrice(e.target.value)}
+              onChange={(e) => !priceLocked && setPrice(e.target.value)}
               onBlur={(e) => {
+                if (priceLocked) return;
                 const val = parseFloat(e.target.value);
                 if (isNaN(val) || val < 1) setPrice('1.00');
                 else if (val > 500) setPrice('500.00');
                 else setPrice(val.toFixed(2));
               }}
-              className="h-12 text-lg font-bold text-center"
+              className={`h-12 text-lg font-bold text-center ${priceLocked ? 'bg-amber-100 dark:bg-amber-900/50 cursor-not-allowed' : ''}`}
               placeholder="10.00"
               required
+              disabled={priceLocked}
             />
-            <p className="text-xs text-muted-foreground text-center">
-              💡 Preço de R$ 1,00 a R$ 500,00 por foto
-            </p>
+            {priceLocked ? (
+              <p className="text-xs text-amber-700 dark:text-amber-300 text-center">
+                🔒 Este evento tem preço fixo definido pelo administrador. Não é possível alterar.
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground text-center">
+                💡 Preço de R$ 1,00 a R$ 500,00 por foto
+              </p>
+            )}
           </div>
 
           {/* Seleção de Fotos */}

@@ -47,6 +47,50 @@ export type Database = {
         }
         Relationships: []
       }
+      extra_services: {
+        Row: {
+          id: string
+          photographer_id: string
+          name: string
+          description: string | null
+          price: number
+          is_active: boolean
+          service_type: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          photographer_id: string
+          name: string
+          description?: string | null
+          price?: number
+          is_active?: boolean
+          service_type?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          photographer_id?: string
+          name?: string
+          description?: string | null
+          price?: number
+          is_active?: boolean
+          service_type?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "extra_services_photographer_id_fkey"
+            columns: ["photographer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       campaign_photographers: {
         Row: {
           assigned_at: string | null
@@ -145,17 +189,20 @@ export type Database = {
         Row: {
           cover_image_url: string | null
           created_at: string
+          created_by_admin: boolean | null
           description: string | null
           event_date: string | null
           id: string
           is_active: boolean
           is_featured: boolean | null
           location: string | null
+          locked_price: number | null
           organization_id: string | null
           organization_percentage: number
           photographer_id: string | null
           photographer_percentage: number
           platform_percentage: number
+          price_locked: boolean | null
           progressive_discount_enabled: boolean | null
           short_code: string | null
           title: string
@@ -164,17 +211,20 @@ export type Database = {
         Insert: {
           cover_image_url?: string | null
           created_at?: string
+          created_by_admin?: boolean | null
           description?: string | null
           event_date?: string | null
           id?: string
           is_active?: boolean
           is_featured?: boolean | null
           location?: string | null
+          locked_price?: number | null
           organization_id?: string | null
           organization_percentage?: number
           photographer_id?: string | null
           photographer_percentage?: number
           platform_percentage?: number
+          price_locked?: boolean | null
           progressive_discount_enabled?: boolean | null
           short_code?: string | null
           title: string
@@ -183,17 +233,20 @@ export type Database = {
         Update: {
           cover_image_url?: string | null
           created_at?: string
+          created_by_admin?: boolean | null
           description?: string | null
           event_date?: string | null
           id?: string
           is_active?: boolean
           is_featured?: boolean | null
           location?: string | null
+          locked_price?: number | null
           organization_id?: string | null
           organization_percentage?: number
           photographer_id?: string | null
           photographer_percentage?: number
           platform_percentage?: number
+          price_locked?: boolean | null
           progressive_discount_enabled?: boolean | null
           short_code?: string | null
           title?: string
