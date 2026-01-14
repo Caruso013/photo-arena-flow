@@ -119,6 +119,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "campaign_photographers_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns_percentage_diagnosis"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "campaign_photographers_photographer_id_fkey"
             columns: ["photographer_id"]
             isOneToOne: false
@@ -1040,6 +1047,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "photos_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns_percentage_diagnosis"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "photos_photographer_id_fkey"
             columns: ["photographer_id"]
             isOneToOne: false
@@ -1313,6 +1327,13 @@ export type Database = {
             columns: ["campaign_id"]
             isOneToOne: false
             referencedRelation: "campaigns_for_home"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_events_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns_percentage_diagnosis"
             referencedColumns: ["id"]
           },
         ]
@@ -1643,6 +1664,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      campaigns_percentage_diagnosis: {
+        Row: {
+          created_at: string | null
+          has_organization: boolean | null
+          id: string | null
+          organization_percentage: number | null
+          photographer_percentage: number | null
+          platform_percentage: number | null
+          status: string | null
+          title: string | null
+          total_percentage: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          has_organization?: never
+          id?: string | null
+          organization_percentage?: never
+          photographer_percentage?: number | null
+          platform_percentage?: number | null
+          status?: never
+          title?: string | null
+          total_percentage?: never
+        }
+        Update: {
+          created_at?: string | null
+          has_organization?: never
+          id?: string | null
+          organization_percentage?: never
+          photographer_percentage?: number | null
+          platform_percentage?: number | null
+          status?: never
+          title?: string | null
+          total_percentage?: never
+        }
+        Relationships: []
       }
       coupon_stats: {
         Row: {

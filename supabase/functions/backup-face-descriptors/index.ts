@@ -98,14 +98,12 @@ serve(async (req) => {
       // Não falhar se apenas o histórico falhar
     }
 
-    // Limpar backups antigos (em background)
-    EdgeRuntime.waitUntil(
-      supabase.rpc('cleanup_old_face_backups').then(() => {
-        console.log('✅ Limpeza de backups antigos concluída');
-      }).catch(err => {
-        console.error('Erro na limpeza de backups:', err);
-      })
-    );
+    // Limpar backups antigos (em background - não bloqueia resposta)
+    supabase.rpc('cleanup_old_face_backups').then(() => {
+      console.log('✅ Limpeza de backups antigos concluída');
+    }).catch((err: Error) => {
+      console.error('Erro na limpeza de backups:', err);
+    });
 
     console.log(`✅ Backup concluído com sucesso: ${backupPath}`);
 

@@ -18,7 +18,8 @@ import {
   BookOpen,
   HelpCircle,
   Mail,
-  ShoppingCart
+  ShoppingCart,
+  Briefcase
 } from 'lucide-react';
 import {
   Sheet,
@@ -45,10 +46,11 @@ const Header = () => {
     }
   };
 
-  // Navegação simplificada: 5 itens principais
+  // Navegação simplificada: 6 itens principais
   const navItems = [
     { to: '/', label: 'HOME', icon: Home },
     { to: '/events', label: 'EVENTOS', icon: Calendar },
+    { to: '/servicos', label: 'SERVIÇOS', icon: Briefcase },
     { to: '/highlights', label: 'DESTAQUES', icon: Camera },
     { to: '/tutorial', label: 'COMO FUNCIONA', icon: BookOpen },
     { to: '/contato', label: 'CONTATO', icon: Mail },

@@ -53,6 +53,11 @@ serve(async (req) => {
 
     console.log(`📥 Baixando backup: ${pathToRestore}`);
 
+    // Garantir que pathToRestore não é undefined
+    if (!pathToRestore) {
+      throw new Error('Caminho do backup não encontrado');
+    }
+
     // Baixar o arquivo de backup
     const { data: backupFile, error: downloadError } = await supabase.storage
       .from('face-descriptors-backup')
