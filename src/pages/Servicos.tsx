@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import MainLayout from '@/components/layout/MainLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,7 +23,6 @@ interface Service {
   icon: React.ElementType;
   features: string[];
   popular?: boolean;
-  priceRange: string;
   deliveryTime: string;
 }
 
@@ -42,7 +40,6 @@ const services: Service[] = [
       'Marca d\'água removida'
     ],
     popular: true,
-    priceRange: 'A partir de R$ 50',
     deliveryTime: '24 horas'
   },
   {
@@ -57,7 +54,6 @@ const services: Service[] = [
       'Transições profissionais',
       'Formato otimizado para Instagram/TikTok'
     ],
-    priceRange: 'A partir de R$ 80',
     deliveryTime: '3-5 dias'
   },
   {
@@ -73,8 +69,7 @@ const services: Service[] = [
       'Entrega em pen drive ou nuvem'
     ],
     popular: true,
-    priceRange: 'A partir de R$ 300',
-    deliveryTime: '7 dias'
+    deliveryTime: 'Sob consulta'
   },
   {
     id: 'pacote-evento',
@@ -88,22 +83,28 @@ const services: Service[] = [
       'Galeria online para participantes',
       'Opção de venda de fotos'
     ],
-    priceRange: 'Sob consulta',
     deliveryTime: 'Personalizado'
   }
 ];
 
-const Servicos = () => {
-  const [selectedService, setSelectedService] = useState<string | null>(null);
+const STA_WHATSAPP = '5511999999999'; // Substituir pelo número real da STA
 
+const Servicos = () => {
   const handleContactService = (serviceId: string) => {
     const service = services.find(s => s.id === serviceId);
     if (service) {
       const message = encodeURIComponent(
-        `Olá! Gostaria de saber mais sobre o serviço "${service.title}". Podem me passar mais informações?`
+        `Olá! Gostaria de saber mais sobre o serviço "${service.title}". Podem me passar mais informações e valores?`
       );
-      window.open(`https://wa.me/5511999999999?text=${message}`, '_blank');
+      window.open(`https://wa.me/${STA_WHATSAPP}?text=${message}`, '_blank');
     }
+  };
+
+  const handleGeneralContact = () => {
+    const message = encodeURIComponent(
+      `Olá! Gostaria de saber mais sobre os serviços de fotografia da STA Fotos.`
+    );
+    window.open(`https://wa.me/${STA_WHATSAPP}?text=${message}`, '_blank');
   };
 
   return (
@@ -120,36 +121,8 @@ const Servicos = () => {
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             Serviços personalizados para atletas e organizadores. 
-            Escolha o que melhor atende suas necessidades e entre em contato conosco.
+            Escolha o que melhor atende suas necessidades e entre em contato conosco para um orçamento.
           </p>
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
-          <Card className="text-center">
-            <CardContent className="pt-6">
-              <div className="text-3xl font-bold text-primary mb-1">500+</div>
-              <div className="text-sm text-muted-foreground">Eventos Cobertos</div>
-            </CardContent>
-          </Card>
-          <Card className="text-center">
-            <CardContent className="pt-6">
-              <div className="text-3xl font-bold text-primary mb-1">50+</div>
-              <div className="text-sm text-muted-foreground">Fotógrafos</div>
-            </CardContent>
-          </Card>
-          <Card className="text-center">
-            <CardContent className="pt-6">
-              <div className="text-3xl font-bold text-primary mb-1">10k+</div>
-              <div className="text-sm text-muted-foreground">Clientes Satisfeitos</div>
-            </CardContent>
-          </Card>
-          <Card className="text-center">
-            <CardContent className="pt-6">
-              <div className="text-3xl font-bold text-primary mb-1">4.9</div>
-              <div className="text-sm text-muted-foreground">Avaliação Média</div>
-            </CardContent>
-          </Card>
         </div>
 
         {/* Services Grid */}
@@ -159,10 +132,9 @@ const Servicos = () => {
             return (
               <Card 
                 key={service.id}
-                className={`relative transition-all duration-300 hover:shadow-lg cursor-pointer ${
-                  selectedService === service.id ? 'ring-2 ring-primary' : ''
-                } ${service.popular ? 'border-primary/50' : ''}`}
-                onClick={() => setSelectedService(service.id === selectedService ? null : service.id)}
+                className={`relative transition-all duration-300 hover:shadow-lg ${
+                  service.popular ? 'border-primary/50' : ''
+                }`}
               >
                 {service.popular && (
                   <Badge className="absolute -top-2 right-4 bg-primary">
@@ -194,28 +166,18 @@ const Servicos = () => {
                       ))}
                     </ul>
 
-                    {/* Price and Delivery */}
+                    {/* Delivery Time */}
                     <div className="flex items-center justify-between pt-4 border-t">
-                      <div>
-                        <div className="text-sm text-muted-foreground">Valor</div>
-                        <div className="font-semibold text-primary">{service.priceRange}</div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-sm text-muted-foreground flex items-center gap-1 justify-end">
-                          <Clock className="h-3 w-3" />
-                          Entrega
-                        </div>
-                        <div className="font-medium">{service.deliveryTime}</div>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Clock className="h-4 w-4" />
+                        <span>Prazo de entrega: <strong className="text-foreground">{service.deliveryTime}</strong></span>
                       </div>
                     </div>
 
                     {/* Action Button */}
                     <Button 
                       className="w-full gap-2"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleContactService(service.id);
-                      }}
+                      onClick={() => handleContactService(service.id)}
                     >
                       <MessageCircle className="h-4 w-4" />
                       Solicitar Orçamento
@@ -233,19 +195,17 @@ const Servicos = () => {
           <CardContent className="p-8 text-center">
             <Users className="h-12 w-12 mx-auto mb-4 text-primary" />
             <h2 className="text-2xl font-bold mb-2">
-              Não encontrou o que procura?
+              Quer conhecer nossos fotógrafos?
             </h2>
             <p className="text-muted-foreground mb-6 max-w-xl mx-auto">
-              Entre em contato conosco e criaremos um serviço personalizado 
-              que atenda exatamente às suas necessidades.
+              Veja o portfólio dos nossos profissionais e escolha o fotógrafo 
+              que mais combina com o seu estilo. Entre em contato com a STA para contratar.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/contato">
-                <Button size="lg" variant="outline" className="gap-2">
-                  <MessageCircle className="h-5 w-5" />
-                  Fale Conosco
-                </Button>
-              </Link>
+              <Button size="lg" variant="outline" className="gap-2" onClick={handleGeneralContact}>
+                <MessageCircle className="h-5 w-5" />
+                Fale Conosco
+              </Button>
               <Link to="/fotografos">
                 <Button size="lg" className="gap-2">
                   <Camera className="h-5 w-5" />
@@ -264,8 +224,8 @@ const Servicos = () => {
               <CardContent className="pt-6">
                 <h3 className="font-semibold mb-2">Como funciona o processo de contratação?</h3>
                 <p className="text-sm text-muted-foreground">
-                  Após escolher o serviço, entre em contato pelo WhatsApp. Nossa equipe irá entender 
-                  suas necessidades e direcionar para o fotógrafo ideal.
+                  Após escolher o serviço ou fotógrafo, entre em contato pelo WhatsApp. Nossa equipe irá entender 
+                  suas necessidades e passar um orçamento personalizado.
                 </p>
               </CardContent>
             </Card>
@@ -273,7 +233,7 @@ const Servicos = () => {
               <CardContent className="pt-6">
                 <h3 className="font-semibold mb-2">Posso escolher o fotógrafo?</h3>
                 <p className="text-sm text-muted-foreground">
-                  Sim! Você pode ver o portfólio dos nossos fotógrafos e escolher aquele 
+                  Sim! Você pode ver o portfólio dos nossos fotógrafos na página de Fotógrafos e escolher aquele 
                   que mais combina com seu estilo.
                 </p>
               </CardContent>
@@ -282,17 +242,17 @@ const Servicos = () => {
               <CardContent className="pt-6">
                 <h3 className="font-semibold mb-2">Como é feito o pagamento?</h3>
                 <p className="text-sm text-muted-foreground">
-                  Aceitamos PIX, cartão de crédito e débito. O pagamento pode ser parcelado 
-                  dependendo do valor do serviço.
+                  Aceitamos PIX e cartão de crédito. Os valores e condições de pagamento 
+                  são combinados diretamente com a STA após o orçamento.
                 </p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-6">
-                <h3 className="font-semibold mb-2">E se eu não gostar das fotos?</h3>
+                <h3 className="font-semibold mb-2">Qual a área de atendimento?</h3>
                 <p className="text-sm text-muted-foreground">
-                  Trabalhamos com satisfação garantida. Se não estiver satisfeito, 
-                  faremos ajustes ou devolvemos seu dinheiro.
+                  Atendemos eventos em todo o Brasil, com foco principal em São Paulo 
+                  e região. Entre em contato para verificar disponibilidade.
                 </p>
               </CardContent>
             </Card>
