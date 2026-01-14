@@ -310,8 +310,8 @@ serve(async (req) => {
       const finalStatus = await updatePurchases(externalReference, paymentData.status, paymentId);
       
       // Registrar sucesso
-      await logWebhook(`payment_${paymentData.status}`, signatureValid, 200, null, paymentId);
-      
+      await logWebhook(`payment_${paymentData.status}`, signatureValid, 200, undefined, paymentId);
+
       // Enviar email SOMENTE se o pagamento foi APROVADO
       if (finalStatus === 'completed') {
         const purchaseIds = externalReference.split(',').map(id => id.trim()).filter(Boolean);
@@ -334,7 +334,7 @@ serve(async (req) => {
       if (!moRes.ok) {
         const errText = await moRes.text();
         console.error('❌ Falha ao buscar merchant_order:', errText);
-        await logWebhook('merchant_order_fetch_error', signatureValid, 500, errText, null, merchantOrderId);
+        await logWebhook('merchant_order_fetch_error', signatureValid, 500, errText, undefined, merchantOrderId);
         return new Response(JSON.stringify({ error: 'Failed to fetch merchant order' }), { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -353,7 +353,7 @@ serve(async (req) => {
 
       if (!externalReference) {
         console.error('❌ Merchant order sem external_reference');
-        await logWebhook('merchant_order_no_reference', signatureValid, 400, 'No external reference', null, merchantOrderId);
+        await logWebhook('merchant_order_no_reference', signatureValid, 400, 'No external reference', undefined, merchantOrderId);
         return new Response(JSON.stringify({ error: 'No external reference' }), { 
           status: 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -367,8 +367,8 @@ serve(async (req) => {
       const finalStatus = await updatePurchases(externalReference, statusForRef, approvedPayment?.id?.toString());
       
       // Registrar sucesso
-      await logWebhook(`merchant_order_${statusForRef}`, signatureValid, 200, null, approvedPayment?.id?.toString(), merchantOrderId);
-      
+      await logWebhook(`merchant_order_${statusForRef}`, signatureValid, 200, undefined, approvedPayment?.id?.toString(), merchantOrderId);
+
       // Enviar email SOMENTE se o pagamento foi APROVADO
       if (finalStatus === 'completed') {
         const purchaseIds = externalReference.split(',').map(id => id.trim()).filter(Boolean);
