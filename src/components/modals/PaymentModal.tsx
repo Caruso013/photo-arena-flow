@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { CreditCard, Loader2, ShoppingCart, ArrowLeft, AlertCircle, Percent, Tag } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { useProgressiveDiscount, getNextDiscountThreshold } from '@/hooks/useProgressiveDiscount';
+import TransparentCheckout from '@/components/checkout/TransparentCheckout';
 
 declare global {
   interface Window {
@@ -58,6 +59,9 @@ export default function PaymentModal({
     phone: '',
     document: '',
   });
+  
+  // Estado para controlar checkout transparente (novo) vs checkout pro (antigo)
+  const [useTransparentCheckout, setUseTransparentCheckout] = useState(true);
 
   // Bloquear organizações de fazer compras
   useEffect(() => {
@@ -155,6 +159,13 @@ export default function PaymentModal({
       return;
     }
 
+    // Com checkout transparente, só avançar para o formulário de cartão
+    if (useTransparentCheckout) {
+      setShowCheckout(true);
+      return;
+    }
+
+    // Checkout antigo (redirect para MP) - mantido como fallback
     setLoading(true);
 
     try {
@@ -471,39 +482,86 @@ export default function PaymentModal({
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="bg-success/10 border border-success/20 p-4 rounded-lg">
-              <p className="text-sm text-foreground mb-2">
-                <strong>Passo 2 de 2:</strong> Complete o pagamento usando o formulário abaixo
-              </p>
-              <ul className="text-xs text-muted-foreground space-y-1">
-                <li>• Use PIX para aprovação instantânea</li>
-                <li>• Após o pagamento, você receberá um e-mail de confirmação</li>
-                <li>• A foto estará disponível em "Minhas Compras"</li>
-              </ul>
-            </div>
-
-            <div className="flex items-center gap-4 p-4 bg-muted rounded-lg">
-              <div className="flex-1">
-                <h4 className="font-medium text-sm">
-                  {totalItems === 1 ? itemsToProcess[0].title || 'Foto' : `${totalItems} fotos`}
-                </h4>
-                {progressiveDiscountEnabled && progressiveDiscount.discountPercentage > 0 && (
-                  <p className="text-xs text-green-600 flex items-center gap-1">
-                    <Percent className="h-3 w-3" />
-                    {progressiveDiscount.discountPercentage}% de desconto aplicado
+            {useTransparentCheckout ? (
+              /* Checkout Transparente - Formulário de cartão no site */
+              <TransparentCheckout
+                photos={itemsToProcess.map(p => ({
+                  id: p.id,
+                  title: p.title,
+                  price: p.price,
+                }))}
+                buyerInfo={{
+                  name: buyerData.name,
+                  surname: buyerData.surname,
+                  email: buyerData.email,
+                  phone: buyerData.phone,
+                  document: buyerData.document,
+                }}
+                totalAmount={totalPrice}
+                progressiveDiscount={progressiveDiscountEnabled && progressiveDiscount.discountPercentage > 0 ? {
+                  enabled: true,
+                  percentage: progressiveDiscount.discountPercentage,
+                  amount: progressiveDiscount.discountAmount,
+                  subtotal: subtotal,
+                  total: totalPrice,
+                } : null}
+                onSuccess={(paymentData) => {
+                  toast({
+                    title: "Compra realizada!",
+                    description: "Suas fotos estão disponíveis em 'Minhas Compras'.",
+                  });
+                  if (onPaymentSuccess) {
+                    onPaymentSuccess(paymentData);
+                  }
+                  handleModalClose();
+                }}
+                onError={(error) => {
+                  toast({
+                    title: "Erro no pagamento",
+                    description: error,
+                    variant: "destructive",
+                  });
+                }}
+                onCancel={handleBack}
+              />
+            ) : (
+              /* Checkout Pro antigo - Widget do MP (fallback) */
+              <>
+                <div className="bg-success/10 border border-success/20 p-4 rounded-lg">
+                  <p className="text-sm text-foreground mb-2">
+                    <strong>Passo 2 de 2:</strong> Complete o pagamento usando o formulário abaixo
                   </p>
-                )}
-                <p className="text-xl font-bold text-primary">
-                  {formatCurrency(totalPrice)}
-                </p>
-              </div>
-            </div>
+                  <ul className="text-xs text-muted-foreground space-y-1">
+                    <li>• Use PIX para aprovação instantânea</li>
+                    <li>• Após o pagamento, você receberá um e-mail de confirmação</li>
+                    <li>• A foto estará disponível em "Minhas Compras"</li>
+                  </ul>
+                </div>
 
-            <div ref={checkoutContainerRef} className="cho-container min-h-[400px]"></div>
-            
-            <div className="text-center text-xs text-muted-foreground">
-              Ambiente seguro do Mercado Pago. Seus dados estão protegidos.
-            </div>
+                <div className="flex items-center gap-4 p-4 bg-muted rounded-lg">
+                  <div className="flex-1">
+                    <h4 className="font-medium text-sm">
+                      {totalItems === 1 ? itemsToProcess[0].title || 'Foto' : `${totalItems} fotos`}
+                    </h4>
+                    {progressiveDiscountEnabled && progressiveDiscount.discountPercentage > 0 && (
+                      <p className="text-xs text-green-600 flex items-center gap-1">
+                        <Percent className="h-3 w-3" />
+                        {progressiveDiscount.discountPercentage}% de desconto aplicado
+                      </p>
+                    )}
+                    <p className="text-xl font-bold text-primary">
+                      {formatCurrency(totalPrice)}
+                    </p>
+                  </div>
+                </div>
+
+                <div ref={checkoutContainerRef} className="cho-container min-h-[400px]"></div>
+                
+                <div className="text-center text-xs text-muted-foreground">
+                  Ambiente seguro do Mercado Pago. Seus dados estão protegidos.
+                </div>
+              </>
+            )}
           </div>
         )}
     </ResponsiveModal>

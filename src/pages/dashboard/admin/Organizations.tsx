@@ -82,7 +82,8 @@ const AdminOrganizations = () => {
 
       if (orgsError) throw orgsError;
 
-      // Calcular ciclo de pagamento de 30 dias (do dia 5 do mês passado até dia 4 do mês atual)
+      // Calcular ciclo de pagamento ATUAL (do dia 5 do mês atual até dia 4 do próximo mês)
+      // Isso mostra as vendas que estão acontecendo AGORA
       const now = new Date();
       const currentDay = now.getDate();
       
@@ -90,14 +91,26 @@ const AdminOrganizations = () => {
       let cycleEnd: Date;
       let paymentDate: Date;
       
+      // Ciclo ANTERIOR (para pagamentos pendentes)
+      let previousCycleStart: Date;
+      let previousCycleEnd: Date;
+      
       if (currentDay < 5) {
-        cycleStart = new Date(now.getFullYear(), now.getMonth() - 2, 5, 0, 0, 0);
-        cycleEnd = new Date(now.getFullYear(), now.getMonth() - 1, 4, 23, 59, 59);
-        paymentDate = new Date(now.getFullYear(), now.getMonth() - 1, 5);
-      } else {
+        // Antes do dia 5: ciclo atual é do mês passado (ex: 05/12 a 04/01)
         cycleStart = new Date(now.getFullYear(), now.getMonth() - 1, 5, 0, 0, 0);
         cycleEnd = new Date(now.getFullYear(), now.getMonth(), 4, 23, 59, 59);
         paymentDate = new Date(now.getFullYear(), now.getMonth(), 5);
+        // Ciclo anterior (para pagamentos pendentes)
+        previousCycleStart = new Date(now.getFullYear(), now.getMonth() - 2, 5, 0, 0, 0);
+        previousCycleEnd = new Date(now.getFullYear(), now.getMonth() - 1, 4, 23, 59, 59);
+      } else {
+        // Após o dia 5: ciclo atual é deste mês (ex: 05/01 a 04/02)
+        cycleStart = new Date(now.getFullYear(), now.getMonth(), 5, 0, 0, 0);
+        cycleEnd = new Date(now.getFullYear(), now.getMonth() + 1, 4, 23, 59, 59);
+        paymentDate = new Date(now.getFullYear(), now.getMonth() + 1, 5);
+        // Ciclo anterior (para pagamentos pendentes)
+        previousCycleStart = new Date(now.getFullYear(), now.getMonth() - 1, 5, 0, 0, 0);
+        previousCycleEnd = new Date(now.getFullYear(), now.getMonth(), 4, 23, 59, 59);
       }
       
       const cycleStartISO = cycleStart.toISOString();
@@ -125,22 +138,24 @@ const AdminOrganizations = () => {
         platformRevenue += Number(rev.platform_amount);
       });
 
-      // Calcular últimos 2 meses de histórico (incluindo o atual)
+      // Calcular últimos 3 meses de histórico (ciclos anteriores ao atual)
       const historicalData: MonthlyRevenue[] = [];
       
-      for (let monthOffset = 0; monthOffset < 3; monthOffset++) {
+      for (let monthOffset = 1; monthOffset <= 3; monthOffset++) {
         let histCycleStart: Date;
         let histCycleEnd: Date;
         let histPaymentDate: Date;
         
         if (currentDay < 5) {
-          histCycleStart = new Date(now.getFullYear(), now.getMonth() - 2 - monthOffset, 5, 0, 0, 0);
-          histCycleEnd = new Date(now.getFullYear(), now.getMonth() - 1 - monthOffset, 4, 23, 59, 59);
-          histPaymentDate = new Date(now.getFullYear(), now.getMonth() - 1 - monthOffset, 5);
-        } else {
+          // Antes do dia 5: histórico começa do ciclo anterior ao atual
           histCycleStart = new Date(now.getFullYear(), now.getMonth() - 1 - monthOffset, 5, 0, 0, 0);
           histCycleEnd = new Date(now.getFullYear(), now.getMonth() - monthOffset, 4, 23, 59, 59);
           histPaymentDate = new Date(now.getFullYear(), now.getMonth() - monthOffset, 5);
+        } else {
+          // Após o dia 5: histórico começa do ciclo anterior ao atual
+          histCycleStart = new Date(now.getFullYear(), now.getMonth() - monthOffset, 5, 0, 0, 0);
+          histCycleEnd = new Date(now.getFullYear(), now.getMonth() + 1 - monthOffset, 4, 23, 59, 59);
+          histPaymentDate = new Date(now.getFullYear(), now.getMonth() + 1 - monthOffset, 5);
         }
 
         const monthLabel = histPaymentDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
@@ -158,17 +173,15 @@ const AdminOrganizations = () => {
             0
           );
 
-          if (monthOffset > 0) { // Apenas adiciona ao histórico os meses anteriores
-            historicalData.push({
-              organization_id: org.id,
-              organization_name: org.name,
-              month_label: monthLabel,
-              cycle_start: histCycleStart,
-              cycle_end: histCycleEnd,
-              payment_date: histPaymentDate,
-              revenue
-            });
-          }
+          historicalData.push({
+            organization_id: org.id,
+            organization_name: org.name,
+            month_label: monthLabel,
+            cycle_start: histCycleStart,
+            cycle_end: histCycleEnd,
+            payment_date: histPaymentDate,
+            revenue
+          });
         }
       }
 
