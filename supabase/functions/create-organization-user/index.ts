@@ -72,10 +72,8 @@ serve(async (req) => {
       throw new Error(`Missing required fields. Received: ${JSON.stringify(Object.keys(body))}`);
     }
 
-    // Validar formato do email (@stafotos.com)
-    if (!email.endsWith('@stafotos.com')) {
-      console.warn('Email não segue o padrão @stafotos.com:', email);
-    }
+    // Log para debug do email
+    console.log('Email recebido para criar usuário:', email);
 
     console.log('Processing organization user:', { organizationId, organizationName, email });
 
