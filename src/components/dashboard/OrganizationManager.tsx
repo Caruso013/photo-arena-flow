@@ -47,22 +47,47 @@ export const OrganizationManager: React.FC<OrganizationManagerProps> = ({ organi
 
   const generateCredentials = (orgName: string, createdAt?: string) => {
     // Nome limpo para o email (sem acentos e caracteres especiais)
-    const login = orgName
+    let login = orgName
       .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9]/g, '');
+      .replace(/[^a-z0-9\s-]/g, '')
+      .trim();
     
-    // Senha determinística: NomeLimpo@DataCriação (DDMMYYYY)
-    // Exemplo: goalcup@03102025
-    // Se não tiver data de criação, usar data atual
+    // Se o nome tem mais de 15 caracteres, usar apenas as iniciais ou abreviar
+    if (login.replace(/\s+/g, '').length > 15) {
+      // Tentar pegar a primeira palavra (sigla se existir, ex: "apf")
+      const words = login.split(/[\s-]+/).filter(w => w.length > 0);
+      
+      // Se a primeira palavra parece ser uma sigla (até 6 chars), usar ela
+      if (words[0] && words[0].length <= 6) {
+        login = words[0];
+      } else {
+        // Senão, criar sigla das primeiras letras (max 8 letras)
+        login = words.map(w => w.charAt(0)).join('').substring(0, 8);
+      }
+    }
+    
+    // Remover espaços restantes
+    login = login.replace(/\s+/g, '');
+    
+    // Garantir mínimo de 3 caracteres
+    if (login.length < 3) {
+      login = orgName.toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]/g, '')
+        .substring(0, 10);
+    }
+    
+    // Senha determinística: login@DataCriação (DDMMYYYY)
+    // Exemplo: apf@03102025
     const date = createdAt ? new Date(createdAt) : new Date();
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = date.getFullYear();
     const dateString = `${day}${month}${year}`;
     
-    // Senha: login@dataCriação (ex: goalcup@03102025)
     return {
       email: `${login}@stafotos.com`,
       password: `${login}@${dateString}`
@@ -570,12 +595,12 @@ export const OrganizationManager: React.FC<OrganizationManagerProps> = ({ organi
                   <div className="flex items-center justify-between">
                     <div>
                       <Label className="text-xs text-muted-foreground">Email</Label>
-                      <p className="font-mono text-sm">{generateCredentials(selectedOrg.name).email}</p>
+                      <p className="font-mono text-sm break-all">{generateCredentials(selectedOrg.name, selectedOrg.created_at).email}</p>
                     </div>
                     <Button 
                       size="sm" 
                       variant="ghost"
-                      onClick={() => copyToClipboard(generateCredentials(selectedOrg.name).email, 'email')}
+                      onClick={() => copyToClipboard(generateCredentials(selectedOrg.name, selectedOrg.created_at).email, 'email')}
                     >
                       {copiedField === 'email' ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
                     </Button>
@@ -583,12 +608,12 @@ export const OrganizationManager: React.FC<OrganizationManagerProps> = ({ organi
                   <div className="flex items-center justify-between">
                     <div>
                       <Label className="text-xs text-muted-foreground">Senha</Label>
-                      <p className="font-mono text-sm">{generateCredentials(selectedOrg.name).password}</p>
+                      <p className="font-mono text-sm break-all">{generateCredentials(selectedOrg.name, selectedOrg.created_at).password}</p>
                     </div>
                     <Button 
                       size="sm" 
                       variant="ghost"
-                      onClick={() => copyToClipboard(generateCredentials(selectedOrg.name).password, 'password')}
+                      onClick={() => copyToClipboard(generateCredentials(selectedOrg.name, selectedOrg.created_at).password, 'password')}
                     >
                       {copiedField === 'password' ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
                     </Button>
@@ -598,7 +623,13 @@ export const OrganizationManager: React.FC<OrganizationManagerProps> = ({ organi
               
               <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-3 rounded-lg">
                 <p className="text-xs text-amber-800 dark:text-amber-200">
-                  ⚠️ Se o usuário já existir, as credenciais serão atualizadas. Anote e envie as credenciais para a organização.
+                  ⚠️ Se o usuário já existir, a senha será atualizada. Anote e envie as credenciais para a organização.
+                </p>
+              </div>
+
+              <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 p-3 rounded-lg">
+                <p className="text-xs text-blue-800 dark:text-blue-200">
+                  <strong>Acesso:</strong> A organização deve acessar em /auth/organization e usar estas credenciais.
                 </p>
               </div>
 
@@ -607,7 +638,7 @@ export const OrganizationManager: React.FC<OrganizationManagerProps> = ({ organi
                 className="w-full"
                 disabled={creatingCredentials}
               >
-                {creatingCredentials ? 'Criando...' : 'Criar Credenciais'}
+                {creatingCredentials ? 'Criando/Atualizando...' : 'Criar/Atualizar Credenciais'}
               </Button>
             </div>
           )}
