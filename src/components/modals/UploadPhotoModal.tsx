@@ -87,7 +87,7 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
       // Buscar eventos criados pelo fotógrafo OU onde está atribuído via campaign_photographers
       const { data: ownCampaigns, error: ownError } = await supabase
         .from('campaigns')
-        .select('id, title, event_date, is_active, price_locked, locked_price')
+        .select('id, title, event_date, is_active')
         .eq('photographer_id', profile.id)
         .eq('is_active', true);
 
@@ -101,9 +101,7 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
             id,
             title,
             event_date,
-            is_active,
-            price_locked,
-            locked_price
+            is_active
           )
         `)
         .eq('photographer_id', profile.id)

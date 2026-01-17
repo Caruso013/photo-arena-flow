@@ -419,10 +419,11 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
     });
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Erro no webhook:', error);
-    await logWebhook('error', false, 500, error.message);
-    return new Response(JSON.stringify({ error: error.message }), {
+    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+    await logWebhook('error', false, 500, errorMessage);
+    return new Response(JSON.stringify({ error: errorMessage }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
