@@ -23,7 +23,7 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const mpAccessToken = Deno.env.get('MP_ACCESS_TOKEN')!;
+    const mpAccessToken = Deno.env.get('MERCADO_PAGO_ACCESS_TOKEN')!;
     
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
     
@@ -78,7 +78,7 @@ serve(async (req) => {
             .from('purchases')
             .update({ 
               status: 'completed',
-              mercadopago_payment_id: paymentId.toString(),
+              stripe_payment_intent_id: paymentId.toString(),
             })
             .in('id', purchaseIds);
 
@@ -207,12 +207,9 @@ serve(async (req) => {
         .insert({
           photo_id: photo.id,
           buyer_id: buyerId,
-          photographer_id: photoData.user_id,
-          campaign_id: campaign.id,
+          photographer_id: photoData.photographer_id,
           amount: photo.price,
           status: 'pending',
-          buyer_email: buyerInfo.email.toLowerCase(),
-          buyer_name: `${buyerInfo.name} ${buyerInfo.surname}`.trim(),
         })
         .select()
         .single();
@@ -297,10 +294,10 @@ serve(async (req) => {
         });
       }
 
-      // Atualizar purchases com payment_id
+      // Atualizar purchases com payment_id (usando stripe_payment_intent_id para compatibilidade)
       await supabaseAdmin
         .from('purchases')
-        .update({ mercadopago_payment_id: mpResult.id?.toString() })
+        .update({ stripe_payment_intent_id: mpResult.id?.toString() })
         .in('id', purchaseIds);
 
       // Retornar dados do PIX
@@ -396,7 +393,7 @@ serve(async (req) => {
         .from('purchases')
         .update({ 
           status: finalStatus,
-          mercadopago_payment_id: mpResult.id?.toString(),
+          stripe_payment_intent_id: mpResult.id?.toString(),
         })
         .in('id', purchaseIds);
 
@@ -444,11 +441,12 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Erro:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Erro interno';
     return new Response(JSON.stringify({ 
       success: false, 
-      error: error.message || 'Erro interno' 
+      error: errorMessage 
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

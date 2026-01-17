@@ -99,11 +99,14 @@ serve(async (req) => {
     }
 
     // Limpar backups antigos (em background - não bloqueia resposta)
-    supabase.rpc('cleanup_old_face_backups').then(() => {
-      console.log('✅ Limpeza de backups antigos concluída');
-    }).catch((err: Error) => {
-      console.error('Erro na limpeza de backups:', err);
-    });
+    (async () => {
+      try {
+        await supabase.rpc('cleanup_old_face_backups');
+        console.log('✅ Limpeza de backups antigos concluída');
+      } catch (err) {
+        console.error('Erro na limpeza de backups:', err);
+      }
+    })();
 
     console.log(`✅ Backup concluído com sucesso: ${backupPath}`);
 
