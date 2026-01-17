@@ -8,9 +8,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Calendar, MapPin, Percent, DollarSign, Lock } from 'lucide-react';
+import { Plus, Calendar, MapPin, Percent } from 'lucide-react';
 import { usePlatformPercentage } from '@/hooks/usePlatformPercentage';
-import { Switch } from '@/components/ui/switch';
 
 interface CreateCampaignModalProps {
   organizationId?: string;
@@ -31,7 +30,6 @@ export default function CreateCampaignModal({
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   
-  // Atualiza os valores iniciais quando a plataforma percentage é carregada
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -40,8 +38,6 @@ export default function CreateCampaignModal({
     photographer_percentage: 91, // 100 - 9 (taxa fixa da plataforma)
     organization_percentage: 0,
     organization_id: organizationId || '',
-    price_locked: false, // Se o preço é imutável
-    locked_price: 10.00, // Preço fixo definido pelo admin
   });
 
   // Atualiza photographer_percentage quando platformPercentage muda
@@ -145,9 +141,6 @@ export default function CreateCampaignModal({
           organization_percentage: formData.organization_percentage,
           is_active: true,
           photographer_id: isAdmin ? null : profile?.id,
-          created_by_admin: isAdmin,
-          price_locked: isAdmin && formData.price_locked,
-          locked_price: isAdmin && formData.price_locked ? formData.locked_price : null,
         });
 
       if (error) throw error;
@@ -166,8 +159,6 @@ export default function CreateCampaignModal({
         photographer_percentage: 91, // 100 - 9 (taxa fixa)
         organization_percentage: 0,
         organization_id: organizationId || '',
-        price_locked: false,
-        locked_price: 10.00,
       });
       
       setOpen(false);
@@ -288,49 +279,6 @@ export default function CreateCampaignModal({
             </div>
           </div>
 
-          {/* Seção de Preço Bloqueado - apenas para admin */}
-          {isAdmin && (
-            <div className="space-y-4 p-4 bg-amber-50 dark:bg-amber-950/30 rounded-lg border-2 border-amber-300 dark:border-amber-800">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <h4 className="font-semibold text-lg flex items-center gap-2">
-                  <Lock className="h-5 w-5 text-amber-600" />
-                  Preço Bloqueado (Imutável)
-                </h4>
-                <Switch
-                  checked={formData.price_locked}
-                  onCheckedChange={(checked) => setFormData({ ...formData, price_locked: checked })}
-                />
-              </div>
-              
-              {formData.price_locked && (
-                <div className="space-y-3">
-                  <p className="text-sm text-amber-800 dark:text-amber-200">
-                    ⚠️ Quando ativado, os fotógrafos NÃO poderão alterar o preço das fotos. 
-                    Todas as fotos deste evento terão o preço fixo definido abaixo.
-                  </p>
-                  <div className="space-y-2">
-                    <Label htmlFor="locked_price" className="font-medium flex items-center gap-2">
-                      <DollarSign className="h-4 w-4" />
-                      Preço Fixo por Foto (R$)
-                    </Label>
-                    <Input
-                      id="locked_price"
-                      type="number"
-                      step="0.01"
-                      min="1"
-                      max="500"
-                      value={formData.locked_price}
-                      onChange={(e) => setFormData({ ...formData, locked_price: parseFloat(e.target.value) || 10 })}
-                      className="w-full max-w-xs text-lg font-bold"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      💡 Todas as fotos enviadas neste evento terão este preço
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
 
           {/* Seção de Divisão de Receita - apenas para admin */}
           {isAdmin && (
