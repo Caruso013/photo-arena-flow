@@ -106,10 +106,10 @@ const DashboardSidebar = ({ isOpen, onToggle }: DashboardSidebarProps) => {
 
   return (
     <>
-      {/* Overlay para mobile */}
+      {/* Overlay para mobile - tap to close */}
       {isOpen && (
         <div 
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-sm"
           onClick={onToggle}
         />
       )}
@@ -118,40 +118,44 @@ const DashboardSidebar = ({ isOpen, onToggle }: DashboardSidebarProps) => {
       <aside
         {...swipeHandlers}
         className={cn(
-          'fixed md:sticky top-0 left-0 h-screen bg-card border-r z-50 transition-all duration-300 ease-in-out flex flex-col',
-          isOpen ? 'translate-x-0 w-60 shadow-2xl md:shadow-none' : '-translate-x-full md:translate-x-0 md:w-16'
+          'fixed md:sticky top-0 left-0 h-screen bg-card border-r z-50 transition-transform duration-300 ease-out flex flex-col',
+          // Mobile: slide in/out, Desktop: sempre visível mas colapsado
+          isOpen 
+            ? 'translate-x-0 w-64 shadow-2xl' 
+            : '-translate-x-full md:translate-x-0 md:w-14'
         )}
       >
-        {/* Header da Sidebar */}
-        <div className="flex items-center justify-between p-4 border-b">
+        {/* Header da Sidebar - mais compacto */}
+        <div className="flex items-center justify-between p-3 border-b min-h-[52px]">
           {isOpen && (
-            <span className="font-semibold text-sm">
-              {profile?.role === 'admin' ? 'Área do Admin' :
-               profile?.role === 'photographer' ? 'Área do Fotógrafo' : 
-               profile?.role === 'organization' ? 'Área da Organização' : 'Área do Cliente'}
+            <span className="font-semibold text-sm truncate">
+              {profile?.role === 'admin' ? 'Admin' :
+               profile?.role === 'photographer' ? 'Fotógrafo' : 
+               profile?.role === 'organization' ? 'Organização' : 'Menu'}
             </span>
           )}
           <Button
             variant="ghost"
             size="icon"
             onClick={onToggle}
-            className="ml-auto"
+            className={cn("h-8 w-8", isOpen ? "ml-auto" : "mx-auto")}
           >
             <X className="h-4 w-4" />
           </Button>
         </div>
 
-        {/* Menu Items */}
-        <nav className="flex-1 overflow-y-auto p-2">
+        {/* Menu Items - scroll suave */}
+        <nav className="flex-1 overflow-y-auto overscroll-contain p-2 space-y-1">
           {/* Link para voltar ao site */}
           <NavLink
             to="/"
+            onClick={onToggle}
             className={({ isActive }) =>
               cn(
-                'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors mb-2',
+                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors',
                 isActive
                   ? 'bg-primary text-primary-foreground'
-                  : 'hover:bg-muted'
+                  : 'hover:bg-muted active:bg-muted/80'
               )
             }
           >
@@ -161,27 +165,28 @@ const DashboardSidebar = ({ isOpen, onToggle }: DashboardSidebarProps) => {
 
           <div className="border-t my-2" />
 
-          {/* Menu principal */}
+          {/* Menu principal - itens maiores para touch */}
           {items.map((item) => (
             <NavLink
               key={item.title}
               to={item.url}
               end
+              onClick={onToggle}
               className={({ isActive }) =>
                 cn(
-                  'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors mb-1',
+                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors',
                   isActive
                     ? profile?.role === 'admin'
                       ? 'bg-amber-500 text-white font-medium shadow-md'
                       : 'bg-primary text-primary-foreground font-medium'
                     : profile?.role === 'admin'
-                    ? 'bg-amber-400/90 text-amber-950 hover:bg-amber-500 hover:text-white font-medium'
-                    : 'hover:bg-muted'
+                    ? 'bg-amber-400/20 text-amber-700 dark:text-amber-300 hover:bg-amber-500 hover:text-white'
+                    : 'hover:bg-muted active:bg-muted/80'
                 )
               }
             >
               <item.icon className="h-5 w-5 shrink-0" />
-              {isOpen && <span>{item.title}</span>}
+              {isOpen && <span className="truncate">{item.title}</span>}
             </NavLink>
           ))}
         </nav>
