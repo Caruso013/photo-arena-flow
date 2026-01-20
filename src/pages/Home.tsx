@@ -49,10 +49,10 @@ const Home = () => {
 
   const fetchData = async () => {
     try {
-      // Buscar estatísticas
+      // Buscar estatísticas (com filtros para respeitar RLS)
       const [eventsCount, photosCount, photographersCount] = await Promise.all([
-        supabase.from('campaigns').select('id', { count: 'exact', head: true }),
-        supabase.from('photos').select('id', { count: 'exact', head: true }),
+        supabase.from('campaigns').select('id', { count: 'exact', head: true }).eq('is_active', true),
+        supabase.from('photos').select('id', { count: 'exact', head: true }).eq('is_available', true),
         supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'photographer')
       ]);
 

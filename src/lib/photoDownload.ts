@@ -2,6 +2,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 /**
+ * Detecta se é iOS/Safari
+ */
+function isIOS(): boolean {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
+/**
  * Gera URL assinada para download de foto do bucket privado photos-original
  * @param originalUrl - URL da foto original (pode ser path ou URL completa)
  * @returns URL assinada válida por 60 segundos
@@ -40,19 +48,36 @@ export async function getSignedPhotoUrl(originalUrl: string): Promise<string | n
 
 /**
  * Baixa uma foto do bucket privado usando URL assinada
+ * Compatível com iOS/Safari - abre em nova aba para permitir download
  * @param originalUrl - URL da foto original
  * @param fileName - Nome do arquivo para download
  */
 export async function downloadOriginalPhoto(originalUrl: string, fileName: string): Promise<void> {
   try {
+    toast.loading('Preparando download...', { id: 'download-toast' });
+    
     const signedUrl = await getSignedPhotoUrl(originalUrl);
     
     if (!signedUrl) {
-      toast.error('Erro ao gerar link de download');
+      toast.error('Erro ao gerar link de download', { id: 'download-toast' });
       return;
     }
 
-    // Baixar a imagem como blob para forçar download real
+    // Para iOS/Safari: abrir em nova aba (método mais confiável)
+    if (isIOS()) {
+      // No iOS, o melhor é abrir a imagem em nova aba e o usuário salva manualmente
+      const newWindow = window.open(signedUrl, '_blank');
+      if (newWindow) {
+        toast.success('Foto aberta! Toque e segure para salvar.', { id: 'download-toast' });
+      } else {
+        // Se popup bloqueado, tentar link direto
+        window.location.href = signedUrl;
+        toast.success('Baixando foto...', { id: 'download-toast' });
+      }
+      return;
+    }
+
+    // Para outros navegadores: baixar como blob
     const response = await fetch(signedUrl);
     if (!response.ok) {
       throw new Error('Falha ao baixar imagem');
@@ -65,17 +90,20 @@ export async function downloadOriginalPhoto(originalUrl: string, fileName: strin
     const link = document.createElement('a');
     link.href = blobUrl;
     link.download = fileName;
+    link.style.display = 'none';
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
     
-    // Limpar blob URL da memória
-    URL.revokeObjectURL(blobUrl);
+    // Cleanup
+    setTimeout(() => {
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+    }, 100);
     
-    toast.success('Download concluído!');
+    toast.success('Download concluído!', { id: 'download-toast' });
   } catch (error) {
     console.error('Erro no download:', error);
-    toast.error('Erro ao baixar foto');
+    toast.error('Erro ao baixar foto', { id: 'download-toast' });
   }
 }
 
@@ -94,8 +122,9 @@ export async function downloadMultiplePhotos(
     const photo = photos[i];
     const fileName = `${buyerName.replace(/\s+/g, '_')}_${photo.photo_id.slice(0, 8)}.jpg`;
     
-    // Delay entre downloads para não sobrecarregar
-    await new Promise(resolve => setTimeout(resolve, i === 0 ? 0 : 800));
+    // Delay maior para iOS
+    const delay = isIOS() ? 1500 : 800;
+    await new Promise(resolve => setTimeout(resolve, i === 0 ? 0 : delay));
     await downloadOriginalPhoto(photo.photo_url, fileName);
   }
   
