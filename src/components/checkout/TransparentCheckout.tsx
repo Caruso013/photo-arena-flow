@@ -362,24 +362,37 @@ export default function TransparentCheckout({
         });
         onSuccess(data);
       } else {
+        // Verificar se é erro de valor alto
+        const isHighValueError = data.error?.includes('valor') || 
+                                 data.error?.includes('limite') || 
+                                 data.error?.includes('PIX');
+        
         toast({
-          title: "Pagamento não aprovado",
-          description: data.message || "Tente novamente ou use outro cartão.",
+          title: isHighValueError ? "Valor muito alto" : "Pagamento não aprovado",
+          description: data.error || data.message || "Tente novamente ou use outro cartão.",
           variant: "destructive",
         });
         
         if (data.status === 'rejected') {
-          onError(data.message || 'Pagamento recusado');
+          onError(data.error || data.message || 'Pagamento recusado');
         } else if (data.status === 'pending') {
           toast({
             title: "Pagamento em análise",
             description: "Você receberá um email quando o pagamento for confirmado.",
           });
           onSuccess(data);
+        } else if (data.error) {
+          onError(data.error);
         }
       }
     } catch (error: any) {
       console.error('❌ Erro no pagamento:', error);
+      
+      // Verificar se é erro de limite/valor
+      const errorMsg = error.message || '';
+      const isHighValueError = errorMsg.includes('valor') || 
+                               errorMsg.includes('limite') || 
+                               errorMsg.includes('amount');
       
       if (error.cause) {
         const causes = error.cause;
@@ -405,8 +418,10 @@ export default function TransparentCheckout({
       }
       
       toast({
-        title: "Erro no pagamento",
-        description: error.message || "Verifique os dados e tente novamente.",
+        title: isHighValueError ? "Valor muito alto para cartão" : "Erro no pagamento",
+        description: isHighValueError 
+          ? "Para compras de valor alto, recomendamos usar PIX." 
+          : (error.message || "Verifique os dados e tente novamente."),
         variant: "destructive",
       });
     } finally {

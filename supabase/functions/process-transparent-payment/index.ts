@@ -379,7 +379,49 @@ serve(async (req) => {
         id: mpResult.id,
         status: mpResult.status,
         status_detail: mpResult.status_detail,
+        error: mpResult.error,
+        cause: mpResult.cause,
       }));
+
+      // Verificar se houve erro de API (valores altos, limites, etc)
+      if (mpResult.error || !mpResponse.ok) {
+        console.error('❌ Erro na API do Mercado Pago:', mpResult);
+        
+        // Deletar purchases criadas
+        await supabaseAdmin.from('purchases').delete().in('id', purchaseIds);
+        
+        // Extrair mensagem de erro específica
+        let errorMessage = 'Erro ao processar pagamento';
+        
+        if (mpResult.cause && Array.isArray(mpResult.cause) && mpResult.cause.length > 0) {
+          const cause = mpResult.cause[0];
+          // Tratar erros de limite de valor
+          if (cause.code === 'cc_amount_rate_limit_exceeded' || 
+              cause.description?.includes('amount') ||
+              cause.description?.includes('limit')) {
+            errorMessage = 'Valor muito alto para uma única transação. Tente dividir a compra em partes menores ou use PIX.';
+          } else if (cause.code === 'amount_above_limit') {
+            errorMessage = 'Valor acima do limite permitido para este cartão. Use PIX para valores maiores.';
+          } else {
+            errorMessage = cause.description || mpResult.message || errorMessage;
+          }
+        } else if (mpResult.message) {
+          if (mpResult.message.includes('amount') || mpResult.message.includes('limit')) {
+            errorMessage = 'Valor muito alto para uma única transação. Tente usar PIX para valores maiores.';
+          } else {
+            errorMessage = mpResult.message;
+          }
+        }
+        
+        return new Response(JSON.stringify({ 
+          success: false, 
+          error: errorMessage,
+          details: mpResult.cause || mpResult.error,
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
 
       // Atualizar status das purchases
       let finalStatus = 'pending';
@@ -533,11 +575,14 @@ function getStatusMessage(status: string, statusDetail: string): string {
       cc_rejected_card_disabled: 'Cartão desabilitado. Entre em contato com sua operadora.',
       cc_rejected_card_error: 'Erro no cartão. Tente novamente ou use outro cartão.',
       cc_rejected_duplicated_payment: 'Você já fez um pagamento com esse valor recentemente.',
-      cc_rejected_high_risk: 'Pagamento recusado por segurança. Use outro cartão.',
+      cc_rejected_high_risk: 'Pagamento recusado por segurança. Use outro cartão ou tente PIX.',
       cc_rejected_insufficient_amount: 'Saldo insuficiente.',
       cc_rejected_invalid_installments: 'Quantidade de parcelas inválida.',
       cc_rejected_max_attempts: 'Limite de tentativas excedido. Tente novamente mais tarde.',
       cc_rejected_other_reason: 'Pagamento não processado. Tente novamente.',
+      cc_amount_rate_limit_exceeded: 'Valor muito alto para este cartão. Tente usar PIX ou dividir a compra.',
+      amount_above_limit: 'Valor acima do limite permitido. Use PIX para valores maiores.',
+      cc_rejected_fraud: 'Pagamento recusado por segurança. Tente usar PIX.',
     },
   };
 
