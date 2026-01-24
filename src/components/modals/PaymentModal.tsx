@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ResponsiveModal, ResponsiveModalHeader, ResponsiveModalTitle, ResponsiveModalDescription } from '@/components/ui/responsive-modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +9,7 @@ import { MaskedInput, masks, validateCPF } from '@/components/ui/masked-input';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { CreditCard, Loader2, ShoppingCart, ArrowLeft, AlertCircle, Percent, Tag } from 'lucide-react';
+import { CreditCard, Loader2, ShoppingCart, ArrowLeft, AlertCircle, Percent, Tag, CheckCircle } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { useProgressiveDiscount, getNextDiscountThreshold } from '@/hooks/useProgressiveDiscount';
 import TransparentCheckout from '@/components/checkout/TransparentCheckout';
@@ -48,6 +49,7 @@ export default function PaymentModal({
 }: PaymentModalProps) {
   const { user, profile } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
   const [preferenceId, setPreferenceId] = useState<string | null>(null);
@@ -507,18 +509,43 @@ export default function PaymentModal({
                 } : null}
                 onSuccess={(paymentData) => {
                   toast({
-                    title: "Compra realizada!",
-                    description: "Suas fotos estão disponíveis em 'Minhas Compras'.",
+                    title: "✅ Compra realizada com sucesso!",
+                    description: "Redirecionando para suas fotos...",
                   });
                   if (onPaymentSuccess) {
                     onPaymentSuccess(paymentData);
                   }
                   handleModalClose();
+                  // Redirecionar para Minhas Compras após 1.5 segundos
+                  setTimeout(() => {
+                    navigate('/dashboard/my-purchases');
+                  }, 1500);
                 }}
                 onError={(error) => {
+                  // Determinar tipo de erro para mensagem mais clara
+                  let title = "Erro no pagamento";
+                  let description = error;
+                  
+                  if (error.includes('CPF') || error.includes('documento')) {
+                    title = "CPF inválido";
+                    description = "Por favor, verifique o número do CPF informado.";
+                  } else if (error.includes('cartão') || error.includes('card')) {
+                    title = "Problema com o cartão";
+                    description = "Verifique os dados do cartão ou tente outro método de pagamento.";
+                  } else if (error.includes('valor') || error.includes('limite') || error.includes('amount')) {
+                    title = "Valor muito alto";
+                    description = "Para valores altos, recomendamos usar PIX.";
+                  } else if (error.includes('recusado') || error.includes('rejected')) {
+                    title = "Pagamento recusado";
+                    description = "Seu banco recusou a transação. Tente outro cartão ou use PIX.";
+                  } else if (error.includes('network') || error.includes('timeout')) {
+                    title = "Erro de conexão";
+                    description = "Verifique sua conexão e tente novamente.";
+                  }
+                  
                   toast({
-                    title: "Erro no pagamento",
-                    description: error,
+                    title: title,
+                    description: description,
                     variant: "destructive",
                   });
                 }}

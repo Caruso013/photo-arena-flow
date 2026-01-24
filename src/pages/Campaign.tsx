@@ -551,41 +551,17 @@ const Campaign = () => {
   };
 
   const handlePaymentSuccess = async (paymentData: any) => {
-    if (!selectedPhoto || !user) return;
+    // O Edge Function process-transparent-payment já cria as purchases automaticamente
+    // Aqui apenas confirmamos o sucesso e fechamos o modal
+    
+    toast({
+      title: "✅ Compra realizada!",
+      description: "Sua foto foi comprada com sucesso. Você pode baixá-la em 'Minhas Compras'.",
+    });
 
-    try {
-      setPurchasing(true);
-
-      // Criar registro de compra
-      const { error } = await supabase
-        .from('purchases')
-        .insert({
-          photo_id: selectedPhoto.id,
-          buyer_id: user.id,
-          photographer_id: campaign?.photographer_id,
-          amount: selectedPhoto.price,
-          mercadopago_payment_id: paymentData.id,
-          status: 'completed'
-        });
-
-      if (error) throw error;
-
-      toast({
-        title: "Compra realizada!",
-        description: "Sua foto foi comprada com sucesso. Você pode baixá-la no seu dashboard.",
-      });
-
-      setShowPaymentModal(false);
-      setSelectedPhoto(null);
-    } catch (error) {
-      toast({
-        title: "Erro na compra",
-        description: "Houve um problema ao finalizar sua compra.",
-        variant: "destructive",
-      });
-    } finally {
-      setPurchasing(false);
-    }
+    setShowPaymentModal(false);
+    setSelectedPhoto(null);
+    setPurchasing(false);
   };
 
   const handleToggleFeatured = async (photoId: string, currentValue: boolean) => {
