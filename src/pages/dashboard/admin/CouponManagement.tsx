@@ -47,15 +47,42 @@ import {
   Calendar,
   ToggleLeft,
   ToggleRight,
-  AlertCircle
+  AlertCircle,
+  Loader2,
+  Wand2,
+  Copy,
+  Check
 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { toast } from 'sonner';
+
+// Gerar código aleatório
+const generateCouponCode = () => {
+  const prefixes = ['PROMO', 'DESC', 'SAVE', 'OFF', 'FOTO'];
+  const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+  const randomNum = Math.floor(Math.random() * 900) + 100;
+  const year = new Date().getFullYear().toString().slice(-2);
+  return `${prefix}${randomNum}${year}`;
+};
 
 const CouponManagement = () => {
   const { coupons, loading, createCoupon, updateCoupon, deleteCoupon, toggleCouponStatus, getCouponStats } = useCoupons();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null);
   const [couponStats, setCouponStats] = useState<CouponStats[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; coupon: Coupon | null }>({ open: false, coupon: null });
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -115,6 +142,23 @@ const CouponManagement = () => {
   };
 
   const handleSave = async () => {
+    // Validações
+    if (!formData.code || formData.code.trim().length < 3) {
+      toast.error('O código deve ter pelo menos 3 caracteres');
+      return;
+    }
+    
+    if (formData.value <= 0) {
+      toast.error('O valor do desconto deve ser maior que zero');
+      return;
+    }
+    
+    if (formData.type === 'percentage' && formData.value > 100) {
+      toast.error('O percentual não pode ser maior que 100%');
+      return;
+    }
+
+    setSaving(true);
     try {
       const couponData = {
         ...formData,
@@ -125,28 +169,62 @@ const CouponManagement = () => {
 
       if (editingCoupon) {
         await updateCoupon(editingCoupon.id, couponData);
+        toast.success('Cupom atualizado com sucesso!');
       } else {
         await createCoupon(couponData as any);
+        toast.success(`Cupom ${couponData.code} criado com sucesso!`);
       }
 
       setIsDialogOpen(false);
       resetForm();
       loadStats();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao salvar cupom:', error);
+      if (error.message?.includes('duplicate') || error.message?.includes('unique')) {
+        toast.error('Já existe um cupom com este código');
+      } else {
+        toast.error('Erro ao salvar cupom. Tente novamente.');
+      }
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm('Tem certeza que deseja excluir este cupom?')) {
-      await deleteCoupon(id);
+  const handleDelete = async () => {
+    if (!deleteDialog.coupon) return;
+    
+    try {
+      await deleteCoupon(deleteDialog.coupon.id);
+      toast.success('Cupom excluído com sucesso!');
       loadStats();
+    } catch (error) {
+      toast.error('Erro ao excluir cupom');
+    } finally {
+      setDeleteDialog({ open: false, coupon: null });
     }
+  };
+
+  const handleCopyCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+    setCopiedCode(code);
+    toast.success('Código copiado!');
+    setTimeout(() => setCopiedCode(null), 2000);
   };
 
   const handleToggleStatus = async (id: string, currentStatus: boolean) => {
-    await toggleCouponStatus(id, !currentStatus);
-    loadStats();
+    try {
+      await toggleCouponStatus(id, !currentStatus);
+      toast.success(currentStatus ? 'Cupom desativado' : 'Cupom ativado');
+      loadStats();
+    } catch (error) {
+      toast.error('Erro ao alterar status');
+    }
+  };
+
+  const handleGenerateCode = () => {
+    const newCode = generateCouponCode();
+    setFormData({ ...formData, code: newCode });
+    toast.success(`Código gerado: ${newCode}`);
   };
 
   const getStatusBadge = (coupon: Coupon) => {
@@ -278,7 +356,23 @@ const CouponManagement = () => {
                   ) : (
                     coupons.filter(c => c.is_active).map((coupon) => (
                       <TableRow key={coupon.id}>
-                        <TableCell className="font-mono font-bold">{coupon.code}</TableCell>
+                        <TableCell className="font-mono font-bold">
+                          <div className="flex items-center gap-2">
+                            <span>{coupon.code}</span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() => handleCopyCode(coupon.code)}
+                            >
+                              {copiedCode === coupon.code ? (
+                                <Check className="h-3 w-3 text-green-500" />
+                              ) : (
+                                <Copy className="h-3 w-3 text-muted-foreground" />
+                              )}
+                            </Button>
+                          </div>
+                        </TableCell>
                         <TableCell>
                           {coupon.type === 'fixed' ? 'Fixo (R$)' : 'Percentual (%)'}
                         </TableCell>
@@ -319,7 +413,7 @@ const CouponManagement = () => {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => handleDelete(coupon.id)}
+                              onClick={() => setDeleteDialog({ open: true, coupon })}
                             >
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
@@ -357,7 +451,23 @@ const CouponManagement = () => {
                 <TableBody>
                   {coupons.map((coupon) => (
                     <TableRow key={coupon.id}>
-                      <TableCell className="font-mono font-bold">{coupon.code}</TableCell>
+                      <TableCell className="font-mono font-bold">
+                        <div className="flex items-center gap-2">
+                          <span>{coupon.code}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() => handleCopyCode(coupon.code)}
+                          >
+                            {copiedCode === coupon.code ? (
+                              <Check className="h-3 w-3 text-green-500" />
+                            ) : (
+                              <Copy className="h-3 w-3 text-muted-foreground" />
+                            )}
+                          </Button>
+                        </div>
+                      </TableCell>
                       <TableCell>
                         {coupon.type === 'fixed' ? 'Fixo (R$)' : 'Percentual (%)'}
                       </TableCell>
@@ -398,7 +508,7 @@ const CouponManagement = () => {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleDelete(coupon.id)}
+                            onClick={() => setDeleteDialog({ open: true, coupon })}
                           >
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
@@ -485,16 +595,31 @@ const CouponManagement = () => {
             {/* Código */}
             <div className="space-y-2">
               <Label htmlFor="code">Código do Cupom *</Label>
-              <Input
-                id="code"
-                placeholder="EX: PROMO2025"
-                value={formData.code}
-                onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
-                className="font-mono"
-              />
+              <div className="flex gap-2">
+                <Input
+                  id="code"
+                  placeholder="EX: PROMO2025"
+                  value={formData.code}
+                  onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase().replace(/\s/g, '') })}
+                  className="font-mono flex-1"
+                  maxLength={20}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleGenerateCode}
+                  className="gap-2"
+                >
+                  <Wand2 className="h-4 w-4" />
+                  Gerar
+                </Button>
+              </div>
               <p className="text-xs text-muted-foreground">
-                Mínimo 3 caracteres. Será convertido para maiúsculas.
+                Mínimo 3 caracteres, máximo 20. Sem espaços.
               </p>
+              {formData.code && formData.code.length < 3 && (
+                <p className="text-xs text-destructive">Código muito curto</p>
+              )}
             </div>
 
             {/* Tipo e Valor */}
@@ -617,18 +742,71 @@ const CouponManagement = () => {
                 </AlertDescription>
               </Alert>
             )}
+            
+            {formData.value > 0 && (
+              <div className="bg-muted/50 rounded-lg p-4">
+                <p className="text-sm font-medium mb-1">Prévia do desconto:</p>
+                <p className="text-lg font-bold text-primary">
+                  {formData.type === 'percentage' 
+                    ? `${formData.value}% de desconto`
+                    : `R$ ${formData.value.toFixed(2)} de desconto`}
+                </p>
+                {formData.min_purchase_amount > 0 && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Compra mínima: R$ {formData.min_purchase_amount.toFixed(2)}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button 
+              variant="outline" 
+              onClick={() => setIsDialogOpen(false)}
+              disabled={saving}
+            >
               Cancelar
             </Button>
-            <Button onClick={handleSave}>
-              {editingCoupon ? 'Salvar Alterações' : 'Criar Cupom'}
+            <Button 
+              onClick={handleSave} 
+              disabled={saving || !formData.code || formData.code.length < 3 || formData.value <= 0}
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                editingCoupon ? 'Salvar Alterações' : 'Criar Cupom'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog de Confirmação de Exclusão */}
+      <AlertDialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog({ open, coupon: null })}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Cupom</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o cupom <strong className="font-mono">{deleteDialog.coupon?.code}</strong>?
+              <br />
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
