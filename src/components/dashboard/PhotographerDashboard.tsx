@@ -143,6 +143,7 @@ const PhotographerDashboard = () => {
   }
 
   return (
+    <>
       <div className="space-y-6 sm:space-y-8">
         {/* PIX Required Alert */}
         <PixRequiredAlert variant="banner" />
@@ -359,7 +360,7 @@ const PhotographerDashboard = () => {
           </DialogContent>
         </Dialog>
       )}
-      </div>
+    </>
   );
 };
 

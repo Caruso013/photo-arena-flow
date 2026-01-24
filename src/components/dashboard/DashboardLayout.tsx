@@ -23,16 +23,39 @@ interface DashboardLayoutProps {
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const { profile, signOut } = useAuth();
   const location = useLocation();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  
+  // Estado do sidebar - iniciar expandido no desktop, fechado no mobile
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    // Verificar se é desktop (largura > 768px)
+    if (typeof window !== 'undefined') {
+      // Tentar recuperar preferência salva
+      const saved = localStorage.getItem('sidebar-open');
+      if (saved !== null) {
+        return saved === 'true';
+      }
+      // Default: expandido no desktop
+      return window.innerWidth >= 768;
+    }
+    return false;
+  });
 
-  // Fechar sidebar ao navegar (mobile)
+  // Salvar preferência do sidebar
+  const handleToggleSidebar = () => {
+    const newState = !sidebarOpen;
+    setSidebarOpen(newState);
+    localStorage.setItem('sidebar-open', String(newState));
+  };
+
+  // Fechar sidebar ao navegar apenas no mobile
   useEffect(() => {
-    setSidebarOpen(false);
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setSidebarOpen(false);
+    }
   }, [location.pathname]);
 
   return (
     <div className="min-h-screen flex w-full bg-background overflow-x-hidden">
-      <DashboardSidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
+      <DashboardSidebar isOpen={sidebarOpen} onToggle={handleToggleSidebar} />
       
       <div className="flex-1 flex flex-col min-w-0 w-full">
         {/* Header - Compacto no mobile */}
@@ -42,7 +65,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
               <Button 
                 variant="ghost" 
                 size="icon"
-                onClick={() => setSidebarOpen(!sidebarOpen)}
+                onClick={handleToggleSidebar}
                 className="md:hidden h-9 w-9 flex-shrink-0"
               >
                 {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}

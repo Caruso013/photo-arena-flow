@@ -20,8 +20,12 @@ import {
   Gift,
   Star,
   KeyRound,
+  ChevronLeft,
+  ChevronRight,
+  Menu,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 
 interface DashboardSidebarProps {
   isOpen: boolean;
@@ -105,11 +109,11 @@ const DashboardSidebar = ({ isOpen, onToggle }: DashboardSidebarProps) => {
   const items = getMenuItems();
 
   return (
-    <>
+    <TooltipProvider delayDuration={0}>
       {/* Overlay para mobile - tap to close */}
       {isOpen && (
         <div 
-          className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-sm"
+          className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-sm transition-opacity duration-300"
           onClick={onToggle}
         />
       )}
@@ -118,80 +122,161 @@ const DashboardSidebar = ({ isOpen, onToggle }: DashboardSidebarProps) => {
       <aside
         {...swipeHandlers}
         className={cn(
-          'fixed md:sticky top-0 left-0 h-screen bg-card border-r z-50 transition-transform duration-300 ease-out flex flex-col',
-          // Mobile: slide in/out, Desktop: sempre visível mas colapsado
+          'fixed md:sticky top-0 left-0 h-screen bg-card border-r z-50 flex flex-col',
+          'transition-all duration-300 ease-in-out',
+          // Mobile: slide in/out
           isOpen 
             ? 'translate-x-0 w-64 shadow-2xl' 
-            : '-translate-x-full md:translate-x-0 md:w-14'
+            : '-translate-x-full md:translate-x-0 md:w-16'
         )}
       >
-        {/* Header da Sidebar - mais compacto */}
-        <div className="flex items-center justify-between p-3 border-b min-h-[52px]">
-          {isOpen && (
-            <span className="font-semibold text-sm truncate">
-              {profile?.role === 'admin' ? 'Admin' :
-               profile?.role === 'photographer' ? 'Fotógrafo' : 
-               profile?.role === 'organization' ? 'Organização' : 'Menu'}
-            </span>
+        {/* Header da Sidebar */}
+        <div className="flex items-center justify-between p-3 border-b min-h-[56px]">
+          {isOpen ? (
+            <>
+              <span className="font-semibold text-sm truncate">
+                {profile?.role === 'admin' ? 'Admin' :
+                 profile?.role === 'photographer' ? 'Fotógrafo' : 
+                 profile?.role === 'organization' ? 'Organização' : 'Menu'}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onToggle}
+                className="h-8 w-8 ml-auto hover:bg-muted"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+            </>
+          ) : (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onToggle}
+              className="h-8 w-8 mx-auto hover:bg-muted hidden md:flex"
+            >
+              <Menu className="h-4 w-4" />
+            </Button>
           )}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onToggle}
-            className={cn("h-8 w-8", isOpen ? "ml-auto" : "mx-auto")}
-          >
-            <X className="h-4 w-4" />
-          </Button>
         </div>
 
         {/* Menu Items - scroll suave */}
         <nav className="flex-1 overflow-y-auto overscroll-contain p-2 space-y-1">
           {/* Link para voltar ao site */}
-          <NavLink
-            to="/"
-            onClick={onToggle}
-            className={({ isActive }) =>
-              cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors',
-                isActive
-                  ? 'bg-primary text-primary-foreground'
-                  : 'hover:bg-muted active:bg-muted/80'
-              )
-            }
-          >
-            <Home className="h-5 w-5 shrink-0" />
-            {isOpen && <span>Voltar ao Site</span>}
-          </NavLink>
-
-          <div className="border-t my-2" />
-
-          {/* Menu principal - itens maiores para touch */}
-          {items.map((item) => (
+          {isOpen ? (
             <NavLink
-              key={item.title}
-              to={item.url}
-              end
+              to="/"
               onClick={onToggle}
               className={({ isActive }) =>
                 cn(
                   'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors',
                   isActive
-                    ? profile?.role === 'admin'
-                      ? 'bg-amber-500 text-white font-medium shadow-md'
-                      : 'bg-primary text-primary-foreground font-medium'
-                    : profile?.role === 'admin'
-                    ? 'bg-amber-400/20 text-amber-700 dark:text-amber-300 hover:bg-amber-500 hover:text-white'
+                    ? 'bg-primary text-primary-foreground'
                     : 'hover:bg-muted active:bg-muted/80'
                 )
               }
             >
-              <item.icon className="h-5 w-5 shrink-0" />
-              {isOpen && <span className="truncate">{item.title}</span>}
+              <Home className="h-5 w-5 shrink-0" />
+              <span>Voltar ao Site</span>
             </NavLink>
+          ) : (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <NavLink
+                  to="/"
+                  className={({ isActive }) =>
+                    cn(
+                      'flex items-center justify-center p-2.5 rounded-lg text-sm transition-colors',
+                      isActive
+                        ? 'bg-primary text-primary-foreground'
+                        : 'hover:bg-muted active:bg-muted/80'
+                    )
+                  }
+                >
+                  <Home className="h-5 w-5" />
+                </NavLink>
+              </TooltipTrigger>
+              <TooltipContent side="right">Voltar ao Site</TooltipContent>
+            </Tooltip>
+          )}
+
+          <div className="border-t my-2" />
+
+          {/* Menu principal - itens maiores para touch */}
+          {items.map((item) => (
+            isOpen ? (
+              <NavLink
+                key={item.title}
+                to={item.url}
+                end
+                onClick={onToggle}
+                className={({ isActive }) =>
+                  cn(
+                    'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors',
+                    isActive
+                      ? profile?.role === 'admin'
+                        ? 'bg-amber-500 text-white font-medium shadow-md'
+                        : 'bg-primary text-primary-foreground font-medium'
+                      : profile?.role === 'admin'
+                      ? 'bg-amber-400/20 text-amber-700 dark:text-amber-300 hover:bg-amber-500 hover:text-white'
+                      : 'hover:bg-muted active:bg-muted/80'
+                  )
+                }
+              >
+                <item.icon className="h-5 w-5 shrink-0" />
+                <span className="truncate">{item.title}</span>
+              </NavLink>
+            ) : (
+              <Tooltip key={item.title}>
+                <TooltipTrigger asChild>
+                  <NavLink
+                    to={item.url}
+                    end
+                    className={({ isActive }) =>
+                      cn(
+                        'flex items-center justify-center p-2.5 rounded-lg text-sm transition-colors',
+                        isActive
+                          ? profile?.role === 'admin'
+                            ? 'bg-amber-500 text-white font-medium shadow-md'
+                            : 'bg-primary text-primary-foreground font-medium'
+                          : profile?.role === 'admin'
+                          ? 'bg-amber-400/20 text-amber-700 dark:text-amber-300 hover:bg-amber-500 hover:text-white'
+                          : 'hover:bg-muted active:bg-muted/80'
+                      )
+                    }
+                  >
+                    <item.icon className="h-5 w-5" />
+                  </NavLink>
+                </TooltipTrigger>
+                <TooltipContent side="right">{item.title}</TooltipContent>
+              </Tooltip>
+            )
           ))}
         </nav>
+        
+        {/* Footer com botão de expandir/colapsar no desktop */}
+        <div className="hidden md:flex border-t p-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onToggle}
+            className={cn(
+              "w-full justify-center gap-2 text-xs text-muted-foreground hover:text-foreground",
+              isOpen && "justify-start px-3"
+            )}
+          >
+            {isOpen ? (
+              <>
+                <ChevronLeft className="h-4 w-4" />
+                <span>Recolher</span>
+              </>
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
       </aside>
-    </>
+    </TooltipProvider>
   );
 };
 
