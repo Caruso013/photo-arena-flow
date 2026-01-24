@@ -51,6 +51,7 @@ serve(async (req) => {
       paymentMethodId, // Tipo de cartão (visa, mastercard, etc)
       issuerId,        // Banco emissor
       installments,    // Parcelas
+      deviceId,        // Device Session ID do MP (anti-fraude / PolicyAgent)
       photos,          // Fotos a comprar
       buyerInfo,       // Dados do comprador
       progressiveDiscount, // Desconto aplicado
@@ -61,6 +62,7 @@ serve(async (req) => {
       action,
       paymentMethod,
       paymentId,
+      hasDeviceId: !!deviceId,
       hasPhotos: !!photos,
       photosCount: photos?.length,
       hasBuyerInfo: !!buyerInfo,
@@ -73,10 +75,13 @@ serve(async (req) => {
     if (action === 'check_pix_status' && paymentId) {
       console.log('🔍 Verificando status do PIX:', paymentId);
       
+      const statusHeaders: Record<string, string> = {
+        'Authorization': `Bearer ${mpAccessToken}`,
+      };
+      if (deviceId) statusHeaders['X-meli-session-id'] = String(deviceId);
+
       const mpResponse = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
-        headers: {
-          'Authorization': `Bearer ${mpAccessToken}`,
-        },
+        headers: statusHeaders,
       });
 
       const mpResult = await mpResponse.json();
@@ -389,6 +394,7 @@ serve(async (req) => {
           'Authorization': `Bearer ${mpAccessToken}`,
           'Content-Type': 'application/json',
           'X-Idempotency-Key': `pix-${externalReference}`,
+          ...(deviceId ? { 'X-meli-session-id': String(deviceId) } : {}),
         },
         body: JSON.stringify(pixPaymentData),
       });
