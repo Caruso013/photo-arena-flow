@@ -141,52 +141,75 @@ export default function CheckoutProcessing() {
   }, [user, externalRef, purchaseIdsFromRef.join(','), isBatchFormat, navigate, checkPurchaseStatus]);
 
   return (
-    <main className="container mx-auto px-4 py-12 flex items-center justify-center min-h-screen">
-      <Card className="max-w-md w-full">
+    <main className="container mx-auto px-4 py-12 flex items-center justify-center min-h-screen bg-gradient-to-b from-background to-muted/30">
+      <Card className="max-w-md w-full shadow-xl border-2">
         <CardContent className="py-12 text-center space-y-6">
           {status === 'processing' ? (
             <>
-              <Loader2 className="h-16 w-16 text-primary mx-auto animate-spin" />
-              <div className="space-y-2">
+              <div className="relative">
+                <div className="absolute inset-0 bg-primary/20 rounded-full blur-xl animate-pulse" />
+                <Loader2 className="h-20 w-20 text-primary mx-auto animate-spin relative z-10" />
+              </div>
+              <div className="space-y-3">
                 <h1 className="text-2xl font-bold">Processando seu pagamento</h1>
                 <p className="text-muted-foreground">
                   Aguarde enquanto confirmamos sua compra...
                 </p>
               </div>
               {totalCount > 0 && (
-                <div className="bg-muted p-3 rounded-lg">
-                  <p className="text-sm text-muted-foreground">
+                <div className="bg-primary/10 border border-primary/20 p-4 rounded-lg">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <div className="h-2 w-2 bg-primary rounded-full animate-pulse" />
+                    <span className="text-sm font-medium">Verificando pagamento</span>
+                  </div>
+                  <p className="text-lg font-bold text-primary">
                     {completedCount}/{totalCount} {totalCount === 1 ? 'foto confirmada' : 'fotos confirmadas'}
                   </p>
                 </div>
               )}
               <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                <Clock className="h-4 w-4" />
+                <Clock className="h-4 w-4 animate-pulse" />
                 <span>{timeElapsed}s</span>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Isso pode levar até 2 minutos. Não feche esta página.
-              </p>
+              <div className="bg-muted/50 p-3 rounded-lg">
+                <p className="text-xs text-muted-foreground">
+                  ⏳ Isso pode levar até 2 minutos. <strong>Não feche esta página.</strong>
+                </p>
+              </div>
             </>
           ) : status === 'success' ? (
             <>
-              <CheckCircle className="h-16 w-16 text-green-500 mx-auto animate-bounce" />
-              <div className="space-y-2">
-                <h1 className="text-2xl font-bold text-green-600">Pagamento confirmado!</h1>
-                <p className="text-muted-foreground">
-                  Redirecionando para suas fotos...
+              <div className="relative">
+                <div className="absolute inset-0 bg-green-500/30 rounded-full blur-xl" />
+                <CheckCircle className="h-24 w-24 text-green-500 mx-auto animate-bounce relative z-10" />
+              </div>
+              <div className="space-y-3">
+                <h1 className="text-3xl font-bold text-green-600">🎉 Pagamento Aprovado!</h1>
+                <p className="text-lg text-muted-foreground">
+                  Sua compra foi confirmada com sucesso.
+                </p>
+              </div>
+              <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 p-4 rounded-lg">
+                <p className="text-green-700 dark:text-green-400 font-medium">
+                  ✅ Redirecionando para suas fotos...
                 </p>
               </div>
             </>
           ) : (
             <>
-              <Clock className="h-16 w-16 text-orange-500 mx-auto" />
-              <div className="space-y-2">
-                <h1 className="text-2xl font-bold">Tempo limite atingido</h1>
+              <div className="relative">
+                <div className="absolute inset-0 bg-orange-500/20 rounded-full blur-xl" />
+                <Clock className="h-20 w-20 text-orange-500 mx-auto relative z-10" />
+              </div>
+              <div className="space-y-3">
+                <h1 className="text-2xl font-bold text-orange-600">Tempo limite atingido</h1>
                 <p className="text-muted-foreground">
-                  Redirecionando...
+                  Não se preocupe! Verifique "Minhas Compras" em alguns minutos.
                 </p>
               </div>
+              <p className="text-sm text-muted-foreground">
+                Redirecionando...
+              </p>
             </>
           )}
         </CardContent>
