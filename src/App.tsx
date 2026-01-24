@@ -12,6 +12,10 @@ import UploadManager from "@/components/UploadManager";
 import { useServiceWorker } from "@/hooks/useServiceWorker";
 import { useWebVitals } from "@/hooks/useWebVitals";
 import { lazy, Suspense } from "react";
+import MaintenanceMode from "@/components/MaintenanceMode";
+
+// 🔧 MODO MANUTENÇÃO - Altere para false quando resolver o problema
+const MAINTENANCE_MODE = true;
 
 // Páginas principais (carregamento imediato)
 import Home from "./pages/Home";
@@ -194,27 +198,38 @@ const AppContent = () => {
   );
 };
 
-const App = () => (
-  <ErrorBoundary>
-    <QueryClientProvider client={queryClient}>
+const App = () => {
+  // 🔧 Se modo manutenção estiver ativo, exibir página de manutenção
+  if (MAINTENANCE_MODE) {
+    return (
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-        <TooltipProvider>
-          <AuthProvider>
-            <SearchProvider>
-              <CartProvider>
-                <Toaster />
-                <Sonner />
-                <AppContent />
-                
-                {/* Upload Manager - sempre visível quando há uploads */}
-                <UploadManager />
-              </CartProvider>
-            </SearchProvider>
-          </AuthProvider>
-        </TooltipProvider>
+        <MaintenanceMode />
       </ThemeProvider>
-    </QueryClientProvider>
-  </ErrorBoundary>
-);
+    );
+  }
+
+  return (
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <TooltipProvider>
+            <AuthProvider>
+              <SearchProvider>
+                <CartProvider>
+                  <Toaster />
+                  <Sonner />
+                  <AppContent />
+                  
+                  {/* Upload Manager - sempre visível quando há uploads */}
+                  <UploadManager />
+                </CartProvider>
+              </SearchProvider>
+            </AuthProvider>
+          </TooltipProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
+  );
+};
 
 export default App;
