@@ -3,9 +3,12 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-signature, x-request-id',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+/**
+ * Webhook do Mercado Pago para receber notificações de pagamento
+ */
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -13,573 +16,123 @@ serve(async (req) => {
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-  const webhookSecret = Deno.env.get('MERCADO_PAGO_WEBHOOK_SECRET');
   const mpAccessToken = Deno.env.get('MERCADO_PAGO_ACCESS_TOKEN')!;
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-  // Obter headers e query params
-  const xSignature = req.headers.get('x-signature') || '';
-  const xRequestId = req.headers.get('x-request-id') || '';
-  const userAgent = req.headers.get('user-agent') || '';
-  const ipAddress = req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip') || 'unknown';
-  const url = new URL(req.url);
-  
-  // data.id pode vir como query param (novo formato) ou no body (antigo formato)
-  const dataIdFromQuery = url.searchParams.get('data.id') || url.searchParams.get('id') || '';
-
-  // Ler o body uma única vez
-  const rawBody = await req.text();
-  let payload: any = {};
   try {
-    payload = rawBody ? JSON.parse(rawBody) : {};
-  } catch {
-    console.warn('Body não é JSON válido, tentando parse de form data');
-  }
+    const body = await req.json();
+    console.log('📥 Webhook recebido:', JSON.stringify(body));
 
-  // Obter data.id de múltiplas fontes
-  const dataId = dataIdFromQuery || payload?.data?.id?.toString() || payload?.id?.toString() || '';
+    // Mercado Pago envia: { action: 'payment.updated', data: { id: 'payment_id' } }
+    const paymentId = body.data?.id;
+    const action = body.action || body.type;
 
-  console.log('=== Webhook Mercado Pago Recebido ===');
-  console.log('User-Agent:', userAgent);
-  console.log('dataId final:', dataId);
-  console.log('Payload:', JSON.stringify(payload).substring(0, 500));
+    if (!paymentId) {
+      console.log('⚠️ Webhook sem payment_id, ignorando');
+      return new Response('OK', { status: 200 });
+    }
 
-  // Helper para registrar log de webhook
-  const logWebhook = async (
-    eventType: string,
-    signatureValid: boolean,
-    responseStatus: number,
-    errorMessage?: string,
-    paymentId?: string,
-    merchantOrderId?: string
-  ) => {
+    // Logar webhook
+    await supabase.from('webhook_logs').insert({
+      event_type: action || 'unknown',
+      payment_id: String(paymentId),
+      request_body: body,
+      request_headers: Object.fromEntries(req.headers.entries()),
+    });
+
+    // Buscar detalhes do pagamento no Mercado Pago
+    console.log('🔍 Buscando pagamento:', paymentId);
+    
+    const mpResponse = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+      headers: { 'Authorization': `Bearer ${mpAccessToken}` },
+    });
+
+    if (!mpResponse.ok) {
+      console.error('❌ Erro ao buscar pagamento no MP:', mpResponse.status);
+      return new Response('OK', { status: 200 });
+    }
+
+    const payment = await mpResponse.json();
+    console.log('💰 Status do pagamento:', payment.status, payment.status_detail);
+
+    // Processar apenas pagamentos aprovados
+    if (payment.status !== 'approved') {
+      console.log('⏭️ Pagamento não aprovado, ignorando:', payment.status);
+      return new Response('OK', { status: 200 });
+    }
+
+    // Buscar purchases pelo external_reference
+    const externalRef = payment.external_reference;
+    if (!externalRef) {
+      console.warn('⚠️ Pagamento sem external_reference');
+      return new Response('OK', { status: 200 });
+    }
+
+    console.log('📋 External reference:', externalRef);
+
+    // Buscar purchases que correspondem
+    const { data: purchases, error: searchError } = await supabase
+      .from('purchases')
+      .select('id, status')
+      .or(`stripe_payment_intent_id.like.%${externalRef}%,id.eq.${externalRef}`);
+
+    if (searchError || !purchases || purchases.length === 0) {
+      console.warn('⚠️ Nenhuma purchase encontrada para:', externalRef);
+      return new Response('OK', { status: 200 });
+    }
+
+    // Filtrar apenas pending
+    const pendingPurchases = purchases.filter(p => p.status !== 'completed');
+    
+    if (pendingPurchases.length === 0) {
+      console.log('✅ Todas purchases já estão completed');
+      return new Response('OK', { status: 200 });
+    }
+
+    const purchaseIds = pendingPurchases.map(p => p.id);
+    console.log(`📝 Atualizando ${purchaseIds.length} purchases para completed`);
+
+    // Atualizar status para completed
+    const { error: updateError } = await supabase
+      .from('purchases')
+      .update({ status: 'completed' })
+      .in('id', purchaseIds);
+
+    if (updateError) {
+      console.error('❌ Erro ao atualizar purchases:', updateError);
+    } else {
+      console.log('✅ Purchases atualizadas com sucesso!');
+    }
+
+    // Atualizar log do webhook
+    await supabase
+      .from('webhook_logs')
+      .update({
+        processed_at: new Date().toISOString(),
+        response_status: 200,
+      })
+      .eq('payment_id', String(paymentId))
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    // Tentar enviar email de confirmação
     try {
-      await supabase.from('webhook_logs').insert({
-        event_type: eventType,
-        payment_id: paymentId || dataId || null,
-        merchant_order_id: merchantOrderId || null,
-        signature_valid: signatureValid,
-        ip_address: ipAddress,
-        user_agent: userAgent,
-        request_headers: {
-          'x-signature': xSignature ? xSignature.substring(0, 80) + '...' : null,
-          'x-request-id': xRequestId
+      await fetch(`${supabaseUrl}/functions/v1/send-purchase-confirmation`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseServiceKey}`,
         },
-        request_body: {
-          topic: payload?.topic,
-          type: payload?.type,
-          action: payload?.action,
-          data_id: dataId || payload?.data_id
-        },
-        response_status: responseStatus,
-        error_message: errorMessage || null
+        body: JSON.stringify({ purchaseIds }),
       });
-    } catch (logError) {
-      console.error('Erro ao registrar log de webhook:', logError);
-    }
-  };
-
-  try {
-    console.log('Headers:', { xSignature: xSignature ? 'present' : 'missing', xRequestId });
-    console.log('Query params dataId:', dataIdFromQuery);
-    console.log('IP:', ipAddress);
-
-    // Validar assinatura - flexível para diferentes formatos do MP
-    let signatureValid = false;
-    const isProduction = mpAccessToken && !mpAccessToken.startsWith('TEST-');
-    
-    // Verificar se é um IP conhecido do Mercado Pago (opcional, como fallback)
-    const knownMPIps = ['18.213.114.129', '18.206.34.84', '54.88.218.97', '3.2.51.16', '3.2.51.17', '3.2.51.18', '3.2.51.19', '3.2.51.22', '99.82.165.72', '99.82.165.74', '99.82.165.75'];
-    const ipFromRequest = ipAddress.split(',')[0].trim();
-    const isKnownMPIp = knownMPIps.some(ip => ipAddress.includes(ip));
-    
-    // Tentar validar assinatura se temos todos os dados
-    if (xSignature && xRequestId && webhookSecret && dataId) {
-      try {
-        // Separar o x-signature em ts e v1
-        const parts = xSignature.split(',');
-        let ts = '';
-        let hash = '';
-        
-        parts.forEach(part => {
-          const [key, value] = part.split('=');
-          if (key?.trim() === 'ts') ts = value?.trim() || '';
-          if (key?.trim() === 'v1') hash = value?.trim() || '';
-        });
-
-        if (ts && hash) {
-          // Verificar timestamp não muito antigo (máximo 10 minutos para dar margem)
-          const timestampSeconds = parseInt(ts, 10);
-          const nowSeconds = Math.floor(Date.now() / 1000);
-          const timeDiff = Math.abs(nowSeconds - timestampSeconds);
-          
-          if (timeDiff > 600) { // 10 minutos
-            console.warn('⚠️ Timestamp antigo mas processando mesmo assim:', { timeDiff, ts });
-          }
-          
-          // Criar o manifest conforme documentação MP
-          // Formato: id:{data_id};request-id:{x-request-id};ts:{ts};
-          const manifest = `id:${dataId};request-id:${xRequestId};ts:${ts};`;
-          
-          console.log('Manifest para validação:', manifest);
-
-          // Calcular HMAC SHA256
-          const encoder = new TextEncoder();
-          const key = await crypto.subtle.importKey(
-            'raw',
-            encoder.encode(webhookSecret),
-            { name: 'HMAC', hash: 'SHA-256' },
-            false,
-            ['sign']
-          );
-          
-          const signature = await crypto.subtle.sign(
-            'HMAC',
-            key,
-            encoder.encode(manifest)
-          );
-          
-          const calculatedHash = Array.from(new Uint8Array(signature))
-            .map(b => b.toString(16).padStart(2, '0'))
-            .join('');
-
-          console.log('Hash calculado:', calculatedHash.substring(0, 20) + '...');
-          console.log('Hash recebido:', hash.substring(0, 20) + '...');
-
-          if (calculatedHash === hash) {
-            signatureValid = true;
-            console.log('✅ Assinatura válida!');
-          } else {
-            console.warn('⚠️ Assinatura não bateu, mas vamos verificar IP');
-            // Se o hash não bate mas é um IP conhecido do MP, aceitar com log
-            if (isKnownMPIp) {
-              console.log('✅ IP conhecido do MP, aceitando webhook');
-              signatureValid = true;
-              await logWebhook('signature_ip_fallback', true, 200, 'Hash mismatch but known MP IP');
-            }
-          }
-        } else {
-          console.warn('⚠️ Formato de assinatura incompleto');
-        }
-      } catch (e) {
-        console.error('❌ Erro ao validar assinatura:', e);
-      }
-    } else if (!dataId && xSignature) {
-      // Webhook tipo Feed v2.0 pode não ter data.id no query string
-      // Vamos aceitar se for de um IP conhecido do MP
-      console.warn('⚠️ Webhook sem data.id, verificando IP');
-      if (isKnownMPIp) {
-        console.log('✅ IP conhecido do MP, aceitando webhook sem data.id');
-        signatureValid = true;
-      }
-    }
-    
-    // DECISÃO DE SEGURANÇA:
-    // Em vez de rejeitar webhooks, vamos aceitar se:
-    // 1. Assinatura válida, OU
-    // 2. IP conhecido do Mercado Pago
-    // Isso garante que pagamentos sejam processados mesmo se a validação de assinatura falhar
-    
-    if (!signatureValid && isProduction) {
-      if (isKnownMPIp) {
-        console.log('⚠️ Assinatura inválida mas IP conhecido do MP, aceitando');
-        signatureValid = true;
-      } else {
-        console.error('🚫 Webhook rejeitado: assinatura inválida e IP desconhecido');
-        await logWebhook('rejected_unknown_source', false, 401, `Unknown IP: ${ipFromRequest}`);
-        return new Response(JSON.stringify({ error: 'Invalid signature and unknown IP' }), {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      }
+    } catch (emailError) {
+      console.warn('⚠️ Erro ao enviar email:', emailError);
     }
 
-    // Helper: Resolver purchase IDs a partir do external_reference
-    // Suporta: batch_xxx, UUID único, UUIDs separados por vírgula
-    const resolvePurchaseIds = async (externalReference: string, paymentId?: string): Promise<string[]> => {
-      console.log('🔍 Resolvendo external_reference:', externalReference, '| paymentId:', paymentId);
-      
-      // Novo formato: batch_shortid_count_timestamp
-      if (externalReference.startsWith('batch_')) {
-        console.log('📦 Detectado formato batch:', externalReference);
-        // Buscar purchases que têm esse batch no stripe_payment_intent_id (usando like para maior flexibilidade)
-        // Formato pode ser: batch:batch_xxx ou batch:batch_xxx|mp:12345
-        const { data: purchases, error } = await supabase
-          .from('purchases')
-          .select('id')
-          .like('stripe_payment_intent_id', `%${externalReference}%`);
-        
-        if (error) {
-          console.error('❌ Erro ao buscar batch:', error);
-        }
-        
-        let ids = purchases?.map(p => p.id) || [];
-        console.log(`📦 Batch resolvido para ${ids.length} purchases`);
-        
-        // Se não encontrou pelo batch, tentar pelo payment_id
-        if (ids.length === 0 && paymentId) {
-          console.log('🔍 Tentando buscar pelo payment_id:', paymentId);
-          const { data: purchasesByPayment } = await supabase
-            .from('purchases')
-            .select('id')
-            .like('stripe_payment_intent_id', `%${paymentId}%`);
-          
-          ids = purchasesByPayment?.map(p => p.id) || [];
-          console.log(`💳 Payment ID resolvido para ${ids.length} purchases`);
-        }
-        
-        return ids;
-      }
-      
-      // Verificar se é um UUID válido (36 chars com hífens)
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      
-      // Formato: UUIDs separados por vírgula ou único UUID
-      const potentialIds = externalReference.split(',').map(id => id.trim()).filter(Boolean);
-      
-      // Verificar quais IDs realmente existem no banco
-      const validIds: string[] = [];
-      for (const id of potentialIds) {
-        if (uuidRegex.test(id)) {
-          const { data: purchase } = await supabase
-            .from('purchases')
-            .select('id')
-            .eq('id', id)
-            .single();
-          
-          if (purchase) {
-            validIds.push(id);
-          } else {
-            console.warn(`⚠️ Purchase ${id} não encontrado no banco`);
-          }
-        } else {
-          console.warn(`⚠️ ID inválido (não é UUID): ${id}`);
-        }
-      }
-      
-      console.log(`✅ ${validIds.length} purchases válidos encontrados`);
-      return validIds;
-    };
+    return new Response('OK', { status: 200 });
 
-    // Helper: Atualizar purchases no banco
-    const updatePurchases = async (externalReference: string, status: string, paymentIdForLog?: string) => {
-      let purchaseStatus = 'pending';
-      if (status === 'approved' || status === 'paid') purchaseStatus = 'completed';
-      else if (status === 'rejected' || status === 'cancelled' || status === 'expired') purchaseStatus = 'failed';
-
-      const purchaseIds = await resolvePurchaseIds(externalReference, paymentIdForLog);
-      console.log(`📦 Atualizando ${purchaseIds.length} purchases para ${purchaseStatus}`);
-      
-      if (purchaseIds.length === 0) {
-        console.error('❌ Nenhum purchase encontrado para:', externalReference, '| paymentId:', paymentIdForLog);
-        return purchaseStatus;
-      }
-      
-      for (const pid of purchaseIds) {
-        // IDEMPOTÊNCIA: Verificar status atual antes de atualizar
-        const { data: currentPurchase } = await supabase
-          .from('purchases')
-          .select('status, stripe_payment_intent_id')
-          .eq('id', pid)
-          .single();
-        
-        if (!currentPurchase) {
-          console.warn(`⚠️ Purchase ${pid} não encontrado`);
-          continue;
-        }
-        
-        // Se já está no status final, pular (webhook duplicado)
-        if (currentPurchase.status === purchaseStatus) {
-          console.log(`⏭️ Purchase ${pid} já está ${purchaseStatus}, skip`);
-          continue;
-        }
-        
-        // Não permitir voltar de 'completed' para outro status
-        if (currentPurchase.status === 'completed' && purchaseStatus !== 'completed') {
-          console.warn(`⚠️ Purchase ${pid} já completed, ignorando mudança para ${purchaseStatus}`);
-          continue;
-        }
-        
-        // IMPORTANTE: Não sobrescrever stripe_payment_intent_id se já tem valor batch:
-        // Salvar apenas o status. O payment_id do MP já está logado no webhook_logs
-        const { error: updateError } = await supabase
-          .from('purchases')
-          .update({ 
-            status: purchaseStatus,
-            // Salvar payment_id apenas se não tinha valor ou não era batch
-            ...(paymentIdForLog && !currentPurchase.stripe_payment_intent_id?.startsWith('batch:') 
-              ? { stripe_payment_intent_id: paymentIdForLog.toString() } 
-              : {})
-          })
-          .eq('id', pid);
-          
-        if (updateError) {
-          console.error(`❌ Erro ao atualizar purchase ${pid}:`, updateError);
-          throw updateError;
-        } else {
-          console.log(`✅ Purchase ${pid}: ${currentPurchase.status} → ${purchaseStatus}`);
-        }
-      }
-      
-      return purchaseStatus;
-    };
-
-    // Helper: Criar revenue_share para uma purchase (backup do trigger do banco)
-    const ensureRevenueShare = async (purchaseId: string) => {
-      try {
-        // Verificar se já existe
-        const { data: existing } = await supabase
-          .from('revenue_shares')
-          .select('id')
-          .eq('purchase_id', purchaseId)
-          .maybeSingle();
-
-        if (existing) {
-          console.log(`✅ Revenue share já existe para purchase ${purchaseId}`);
-          return;
-        }
-
-        // Buscar dados da purchase com foto e campanha
-        const { data: purchase, error: purchaseError } = await supabase
-          .from('purchases')
-          .select('*, photos(*, campaigns(*))')
-          .eq('id', purchaseId)
-          .single();
-
-        if (purchaseError || !purchase || !purchase.photos || !purchase.photos.campaigns) {
-          console.warn(`⚠️ Dados incompletos para revenue share: ${purchaseId}`);
-          return;
-        }
-
-        const campaign = purchase.photos.campaigns;
-        const amount = Number(purchase.amount);
-        
-        // Usar porcentagens da campanha (padrão: 9% plataforma, 91% fotógrafo)
-        const platformPercent = campaign.platform_percentage || 9;
-        const photographerPercent = campaign.photographer_percentage || 91;
-        const orgPercent = campaign.organization_percentage || 0;
-
-        const platformAmount = (amount * platformPercent) / 100;
-        const organizationAmount = (amount * orgPercent) / 100;
-        const photographerAmount = (amount * photographerPercent) / 100;
-
-        const { error: insertError } = await supabase
-          .from('revenue_shares')
-          .insert({
-            purchase_id: purchaseId,
-            photographer_id: purchase.photographer_id,
-            organization_id: campaign.organization_id || null,
-            platform_amount: platformAmount,
-            organization_amount: organizationAmount,
-            photographer_amount: photographerAmount,
-          });
-
-        if (insertError) {
-          // Pode falhar por constraint unique (já existe) - isso é OK
-          if (!insertError.message?.includes('duplicate') && !insertError.message?.includes('unique')) {
-            console.error(`❌ Erro ao criar revenue share para ${purchaseId}:`, insertError);
-          }
-        } else {
-          console.log(`✅ Revenue share criado para purchase ${purchaseId}`);
-        }
-      } catch (err) {
-        console.error(`❌ Erro ao garantir revenue share para ${purchaseId}:`, err);
-      }
-    };
-
-    // Helper: Enviar email de confirmação (fire-and-forget, não bloqueia o fluxo)
-    const sendConfirmationEmail = async (purchaseIds: string[]) => {
-      console.log('📧 Tentando enviar email de confirmação (não bloqueante)...');
-      // Usar setTimeout para não bloquear a resposta do webhook
-      // O email é enviado em background e qualquer erro é apenas logado
-      setTimeout(async () => {
-        try {
-          const emailResp = await fetch(`${supabaseUrl}/functions/v1/send-purchase-confirmation`, {
-            method: 'POST',
-            headers: { 
-              'Content-Type': 'application/json', 
-              'Authorization': `Bearer ${supabaseServiceKey}` 
-            },
-            body: JSON.stringify({ purchaseIds }),
-          });
-          
-          const result = await emailResp.json().catch(() => ({}));
-          console.log('📧 Resultado do email:', result);
-        } catch (err) {
-          // Apenas logar - NUNCA falhar o webhook por causa de email
-          console.warn('📧 Email não enviado (não crítico):', err);
-        }
-      }, 100);
-      
-      // Retornar imediatamente - não esperar o email
-      console.log('📧 Email agendado em background');
-    };
-
-    // Helper: Processar Payment
-    const processPayment = async (paymentId: string) => {
-      console.log(`🔄 Processando payment ${paymentId}`);
-      
-      const paymentRes = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
-        headers: { 'Authorization': `Bearer ${mpAccessToken}` },
-      });
-      
-      if (!paymentRes.ok) {
-        const errText = await paymentRes.text();
-        console.error('❌ Falha ao buscar payment:', errText);
-        await logWebhook('payment_fetch_error', signatureValid, 500, errText, paymentId);
-        return new Response(JSON.stringify({ error: 'Failed to fetch payment' }), { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        });
-      }
-      
-      const paymentData = await paymentRes.json();
-      console.log('💰 Payment status:', paymentData.status);
-      console.log('💰 External reference:', paymentData.external_reference);
-      
-      const externalReference = paymentData.external_reference as string | undefined;
-      if (!externalReference) {
-        console.error('❌ Payment sem external_reference');
-        await logWebhook('payment_no_reference', signatureValid, 400, 'No external reference', paymentId);
-        return new Response(JSON.stringify({ error: 'No external reference' }), { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        });
-      }
-      
-      const finalStatus = await updatePurchases(externalReference, paymentData.status, paymentId);
-      
-      // Registrar sucesso
-      await logWebhook(`payment_${paymentData.status}`, signatureValid, 200, undefined, paymentId);
-
-      // Se pagamento foi APROVADO, garantir revenue_shares e enviar email
-      if (finalStatus === 'completed') {
-        const purchaseIds = await resolvePurchaseIds(externalReference, paymentId);
-        
-        // Garantir que revenue_shares existam para todas as purchases
-        console.log(`💰 Garantindo revenue_shares para ${purchaseIds.length} purchases...`);
-        for (const pid of purchaseIds) {
-          await ensureRevenueShare(pid);
-        }
-        
-        await sendConfirmationEmail(purchaseIds);
-      }
-      
-      return new Response(JSON.stringify({ success: true, status: finalStatus }), { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      });
-    };
-
-    // Helper: Processar Merchant Order
-    const processMerchantOrder = async (merchantOrderId: string) => {
-      console.log(`🔄 Processando merchant_order ${merchantOrderId}`);
-      
-      const moRes = await fetch(`https://api.mercadopago.com/merchant_orders/${merchantOrderId}`, {
-        headers: { 'Authorization': `Bearer ${mpAccessToken}` },
-      });
-      
-      if (!moRes.ok) {
-        const errText = await moRes.text();
-        console.error('❌ Falha ao buscar merchant_order:', errText);
-        await logWebhook('merchant_order_fetch_error', signatureValid, 500, errText, undefined, merchantOrderId);
-        return new Response(JSON.stringify({ error: 'Failed to fetch merchant order' }), { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        });
-      }
-      
-      const mo = await moRes.json();
-      console.log('📦 Merchant order status:', mo.order_status);
-      console.log('📦 External reference:', mo.external_reference);
-
-      const externalReference: string | undefined = mo.external_reference;
-      const approvedPayment = (mo.payments || []).find((p: any) => p.status === 'approved');
-      const anyRejected = (mo.payments || []).some((p: any) => 
-        p.status === 'rejected' || p.status === 'cancelled' || p.status === 'expired'
-      );
-
-      if (!externalReference) {
-        console.error('❌ Merchant order sem external_reference');
-        await logWebhook('merchant_order_no_reference', signatureValid, 400, 'No external reference', undefined, merchantOrderId);
-        return new Response(JSON.stringify({ error: 'No external reference' }), { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        });
-      }
-
-      let statusForRef = 'pending';
-      if (approvedPayment) statusForRef = 'approved';
-      else if (anyRejected) statusForRef = 'rejected';
-
-      const finalStatus = await updatePurchases(externalReference, statusForRef, approvedPayment?.id?.toString());
-      
-      // Registrar sucesso
-      await logWebhook(`merchant_order_${statusForRef}`, signatureValid, 200, undefined, approvedPayment?.id?.toString(), merchantOrderId);
-
-      // Se pagamento foi APROVADO, garantir revenue_shares e enviar email
-      if (finalStatus === 'completed') {
-        const purchaseIds = await resolvePurchaseIds(externalReference, approvedPayment?.id?.toString());
-        
-        // Garantir que revenue_shares existam para todas as purchases
-        console.log(`💰 Garantindo revenue_shares para ${purchaseIds.length} purchases...`);
-        for (const pid of purchaseIds) {
-          await ensureRevenueShare(pid);
-        }
-        
-        await sendConfirmationEmail(purchaseIds);
-      }
-      
-      return new Response(JSON.stringify({ success: true, status: finalStatus }), { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      });
-    };
-
-    // Detectar tipo de notificação
-    const topic = payload?.topic || payload?.type || (payload?.action?.includes('payment') ? 'payment' : undefined);
-    const resource: string | undefined = payload?.resource;
-    
-    // Obter IDs de payment ou merchant_order de múltiplas fontes
-    const paymentIdFromPayload = dataId || payload?.data?.id?.toString() || payload?.data_id?.toString() || (resource?.match(/payments\/(\d+)/)?.[1]);
-    const merchantOrderIdFromResource = resource?.match(/merchant_orders\/(\d+)/)?.[1];
-
-    console.log('📋 Tipo de notificação:', { topic, paymentIdFromPayload, merchantOrderIdFromResource });
-
-    // Processar conforme o tipo
-    if ((topic === 'payment' || payload?.action?.includes('payment')) && paymentIdFromPayload) {
-      return await processPayment(paymentIdFromPayload.toString());
-    }
-
-    if ((topic === 'merchant_order' || resource?.includes('merchant_orders')) && merchantOrderIdFromResource) {
-      return await processMerchantOrder(merchantOrderIdFromResource.toString());
-    }
-
-    // Fallback: tentar processar por payment se temos um ID
-    if (paymentIdFromPayload) {
-      return await processPayment(paymentIdFromPayload.toString());
-    }
-
-    // Se chegou aqui sem processar, mas temos topic, tentar extrair ID do resource
-    if (topic === 'merchant_order' && resource) {
-      const moIdMatch = resource.match(/\/(\d+)$/);
-      if (moIdMatch) {
-        return await processMerchantOrder(moIdMatch[1]);
-      }
-    }
-
-    // Evento não reconhecido
-    console.log('⚠️ Evento não reconhecido, retornando 200');
-    await logWebhook('unknown_event', signatureValid, 200, `Topic: ${topic}, Resource: ${resource}`);
-    return new Response(JSON.stringify({ message: 'Webhook received' }), { 
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-    });
-
-  } catch (error: unknown) {
+  } catch (error) {
     console.error('❌ Erro no webhook:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
-    await logWebhook('error', false, 500, errorMessage);
-    return new Response(JSON.stringify({ error: errorMessage }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return new Response('OK', { status: 200 }); // Sempre retorna 200 para MP não retentar
   }
 });

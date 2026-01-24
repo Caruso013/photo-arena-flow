@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CreditCard, Lock, AlertCircle, Loader2, CheckCircle, QrCode, Copy, Clock } from 'lucide-react';
+import { CreditCard, Lock, AlertCircle, Loader2, QrCode, Copy, CheckCircle } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,12 +17,10 @@ declare global {
   }
 }
 
-interface CardData {
-  cardNumber: string;
-  cardholderName: string;
-  expirationMonth: string;
-  expirationYear: string;
-  securityCode: string;
+interface Photo {
+  id: string;
+  title?: string;
+  price?: number;
 }
 
 interface BuyerInfo {
@@ -31,12 +29,6 @@ interface BuyerInfo {
   email: string;
   phone: string;
   document: string;
-}
-
-interface Photo {
-  id: string;
-  title?: string;
-  price?: number;
 }
 
 interface ProgressiveDiscount {
@@ -57,7 +49,7 @@ interface TransparentCheckoutProps {
   onCancel: () => void;
 }
 
-// Public Key do Mercado Pago (pode ser exposta no frontend)
+// ⚠️ SUBSTITUA pela sua Public Key de PRODUÇÃO do Mercado Pago
 const MP_PUBLIC_KEY = 'APP_USR-af4e8472-4521-43e3-ac3c-5454853c0964';
 
 export default function TransparentCheckout({
@@ -72,174 +64,122 @@ export default function TransparentCheckout({
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [mpReady, setMpReady] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'card' | 'pix'>('pix');
-  const [deviceSessionId, setDeviceSessionId] = useState<string | null>(null);
-  
-  // Estados do cartão
-  const [cardBrand, setCardBrand] = useState<string | null>(null);
-  const [installmentOptions, setInstallmentOptions] = useState<any[]>([]);
-  const [selectedInstallment, setSelectedInstallment] = useState(1);
-  const [issuers, setIssuers] = useState<any[]>([]);
-  const [selectedIssuer, setSelectedIssuer] = useState<string>('');
-  const [cardData, setCardData] = useState<CardData>({
-    cardNumber: '',
-    cardholderName: buyerInfo.name + ' ' + buyerInfo.surname,
-    expirationMonth: '',
-    expirationYear: '',
-    securityCode: '',
-  });
-  const [cardErrors, setCardErrors] = useState<Record<string, string>>({});
-  
-  // Estados do PIX
+  const [paymentMethod, setPaymentMethod] = useState<'pix' | 'card'>('pix');
+
+  // Estado PIX
   const [pixData, setPixData] = useState<{
     qrCode: string;
     qrCodeBase64: string;
-    expirationDate: string;
     paymentId: string;
   } | null>(null);
   const [pixCopied, setPixCopied] = useState(false);
-  const [checkingPixPayment, setCheckingPixPayment] = useState(false);
-  
+  const [checkingPix, setCheckingPix] = useState(false);
+  const pixIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Estado Cartão
+  const [cardNumber, setCardNumber] = useState('');
+  const [cardholderName, setCardholderName] = useState(buyerInfo.name + ' ' + buyerInfo.surname);
+  const [expirationMonth, setExpirationMonth] = useState('');
+  const [expirationYear, setExpirationYear] = useState('');
+  const [securityCode, setSecurityCode] = useState('');
+  const [cardBrand, setCardBrand] = useState<string | null>(null);
+  const [installments, setInstallments] = useState<any[]>([]);
+  const [selectedInstallment, setSelectedInstallment] = useState(1);
+  const [issuers, setIssuers] = useState<any[]>([]);
+  const [selectedIssuer, setSelectedIssuer] = useState('');
+
   const mpRef = useRef<any>(null);
-  const pixCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Inicializar SDK do Mercado Pago
   useEffect(() => {
-    const initMP = async () => {
+    const initMP = () => {
       if (window.MercadoPago) {
         try {
-          mpRef.current = new window.MercadoPago(MP_PUBLIC_KEY, {
-            locale: 'pt-BR',
-          });
-
-          // Device Session ID (anti-fraude / PolicyAgent)
-          // Alguns cenários retornam 403 "PA_UNAUTHORIZED_RESULT_FROM_POLICIES" sem esse identificador.
-          const dsid =
-            (typeof mpRef.current?.getDeviceSessionId === 'function'
-              ? mpRef.current.getDeviceSessionId()
-              : null) ?? null;
-          setDeviceSessionId(dsid);
-
+          mpRef.current = new window.MercadoPago(MP_PUBLIC_KEY, { locale: 'pt-BR' });
           setMpReady(true);
           console.log('✅ Mercado Pago SDK inicializado');
         } catch (error) {
           console.error('❌ Erro ao inicializar MP:', error);
-          onError('Erro ao inicializar sistema de pagamento');
+          onError('Erro ao carregar sistema de pagamento');
         }
       } else {
-        console.error('❌ SDK do Mercado Pago não encontrado');
+        console.error('❌ SDK do Mercado Pago não carregado');
         onError('Sistema de pagamento não disponível');
       }
     };
 
     initMP();
-    
-    // Cleanup: parar verificação de PIX
+
     return () => {
-      if (pixCheckIntervalRef.current) {
-        clearInterval(pixCheckIntervalRef.current);
+      if (pixIntervalRef.current) {
+        clearInterval(pixIntervalRef.current);
       }
     };
   }, []);
 
   // Detectar bandeira do cartão
   const handleCardNumberChange = async (value: string) => {
-    const cleanValue = value.replace(/\D/g, '');
-    const formatted = cleanValue.replace(/(\d{4})(?=\d)/g, '$1 ').trim();
-    
-    setCardData(prev => ({ ...prev, cardNumber: formatted }));
-    
-    if (cleanValue.length >= 6 && mpRef.current) {
+    const clean = value.replace(/\D/g, '');
+    const formatted = clean.replace(/(\d{4})(?=\d)/g, '$1 ').trim();
+    setCardNumber(formatted);
+
+    if (clean.length >= 6 && mpRef.current) {
       try {
-        const bin = cleanValue.substring(0, 6);
-        const paymentMethods = await mpRef.current.getPaymentMethods({ bin });
-        
-        if (paymentMethods.results && paymentMethods.results.length > 0) {
-          const method = paymentMethods.results[0];
+        const bin = clean.substring(0, 6);
+        const methods = await mpRef.current.getPaymentMethods({ bin });
+
+        if (methods.results?.length > 0) {
+          const method = methods.results[0];
           setCardBrand(method.id);
-          
-          const issuersData = await mpRef.current.getIssuers({ 
-            paymentMethodId: method.id,
-            bin: bin 
-          });
-          setIssuers(issuersData);
-          if (issuersData.length > 0) {
-            setSelectedIssuer(issuersData[0].id.toString());
+
+          // Buscar bancos emissores
+          const issuerData = await mpRef.current.getIssuers({ paymentMethodId: method.id, bin });
+          setIssuers(issuerData);
+          if (issuerData.length > 0) {
+            setSelectedIssuer(issuerData[0].id.toString());
           }
-          
-          await getInstallments(method.id, bin);
+
+          // Buscar parcelas
+          const installmentData = await mpRef.current.getInstallments({
+            amount: totalAmount.toString(),
+            bin,
+            paymentTypeId: 'credit_card',
+          });
+
+          if (installmentData?.length > 0) {
+            setInstallments(installmentData[0].payer_costs || []);
+          }
         }
       } catch (error) {
         console.error('Erro ao detectar bandeira:', error);
       }
     } else {
       setCardBrand(null);
-      setInstallmentOptions([]);
-    }
-  };
-
-  // Buscar opções de parcelamento
-  const getInstallments = async (paymentMethodId: string, bin: string) => {
-    if (!mpRef.current) return;
-    
-    try {
-      const installments = await mpRef.current.getInstallments({
-        amount: totalAmount.toString(),
-        bin: bin,
-        paymentTypeId: 'credit_card',
-      });
-      
-      if (installments && installments.length > 0) {
-        const options = installments[0].payer_costs || [];
-        setInstallmentOptions(options);
-        setSelectedInstallment(1);
-      }
-    } catch (error) {
-      console.error('Erro ao buscar parcelas:', error);
+      setInstallments([]);
     }
   };
 
   // Copiar código PIX
   const handleCopyPix = async () => {
     if (pixData?.qrCode) {
-      try {
-        await navigator.clipboard.writeText(pixData.qrCode);
-        setPixCopied(true);
-        toast({
-          title: "Código copiado!",
-          description: "Cole no app do seu banco para pagar.",
-        });
-        setTimeout(() => setPixCopied(false), 3000);
-      } catch (error) {
-        toast({
-          title: "Erro ao copiar",
-          description: "Selecione o código manualmente.",
-          variant: "destructive",
-        });
-      }
+      await navigator.clipboard.writeText(pixData.qrCode);
+      setPixCopied(true);
+      toast({ title: "Código copiado!", description: "Cole no app do seu banco." });
+      setTimeout(() => setPixCopied(false), 3000);
     }
   };
 
-  // Verificar status do pagamento PIX
-  const checkPixPaymentStatus = async (paymentId: string) => {
+  // Verificar status do PIX
+  const checkPixStatus = async (paymentId: string) => {
     try {
-      const { data, error } = await supabase.functions.invoke('process-transparent-payment', {
-        body: {
-          action: 'check_pix_status',
-          paymentId: paymentId,
-          deviceId: deviceSessionId,
-        },
+      const { data } = await supabase.functions.invoke('mercadopago-checkout', {
+        body: { action: 'check_status', paymentId },
       });
 
       if (data?.status === 'approved') {
-        if (pixCheckIntervalRef.current) {
-          clearInterval(pixCheckIntervalRef.current);
-        }
-        setCheckingPixPayment(false);
-        toast({
-          title: "Pagamento confirmado!",
-          description: "Seu PIX foi aprovado.",
-        });
+        if (pixIntervalRef.current) clearInterval(pixIntervalRef.current);
+        setCheckingPix(false);
+        toast({ title: "✅ Pagamento confirmado!", description: "PIX aprovado com sucesso." });
         onSuccess(data);
       }
     } catch (error) {
@@ -253,258 +193,141 @@ export default function TransparentCheckout({
     setPixData(null);
 
     try {
-      const { data, error } = await supabase.functions.invoke('process-transparent-payment', {
+      const { data, error } = await supabase.functions.invoke('mercadopago-checkout', {
         body: {
-          paymentMethod: 'pix',
-          deviceId: deviceSessionId,
-          photos: photos.map(p => ({
-            id: p.id,
-            title: p.title || 'Foto',
-            price: p.price || 0,
-          })),
-          buyerInfo: {
+          action: 'create_pix',
+          photos: photos.map(p => ({ id: p.id, title: p.title || 'Foto', price: p.price || 0 })),
+          buyer: {
             name: buyerInfo.name,
             surname: buyerInfo.surname,
             email: buyerInfo.email,
             phone: buyerInfo.phone,
-            document: buyerInfo.document,
+            cpf: buyerInfo.document,
           },
-          progressiveDiscount: progressiveDiscount,
+          discount: progressiveDiscount ? {
+            percentage: progressiveDiscount.percentage,
+            amount: progressiveDiscount.amount,
+          } : null,
         },
       });
 
       if (error) throw error;
 
-      if (data.success && data.pixData) {
+      if (data.success && data.pix) {
         setPixData({
-          qrCode: data.pixData.qr_code,
-          qrCodeBase64: data.pixData.qr_code_base64,
-          expirationDate: data.pixData.expiration_date,
-          paymentId: data.payment_id,
+          qrCode: data.pix.qrCode,
+          qrCodeBase64: data.pix.qrCodeBase64,
+          paymentId: data.paymentId,
         });
-        
-        // Iniciar verificação automática do status
-        setCheckingPixPayment(true);
-        pixCheckIntervalRef.current = setInterval(() => {
-          checkPixPaymentStatus(data.payment_id);
-        }, 3000); // Verificar a cada 3 segundos para UX mais responsiva
-        
-        toast({
-          title: "✅ PIX gerado!",
-          description: "Escaneie o QR Code ou copie o código para pagar.",
-        });
+
+        // Iniciar verificação automática
+        setCheckingPix(true);
+        pixIntervalRef.current = setInterval(() => {
+          checkPixStatus(data.paymentId);
+        }, 3000);
+
+        toast({ title: "✅ PIX gerado!", description: "Escaneie o QR Code ou copie o código." });
       } else {
-        // Verificar se é erro de credenciais
-        const isCredentialError = data.error?.includes('credentials') || 
-                                  data.error?.includes('Invalid');
-        
-        if (isCredentialError) {
-          toast({
-            title: "⚙️ Erro de configuração",
-            description: "Sistema de pagamento indisponível. Tente novamente em alguns minutos.",
-            variant: "destructive",
-          });
-        } else {
-          throw new Error(data.error || 'Erro ao gerar PIX');
-        }
-        onError(data.error || 'Erro ao gerar PIX');
+        throw new Error(data.error || 'Erro ao gerar PIX');
       }
     } catch (error: any) {
-      console.error('❌ Erro ao gerar PIX:', error);
-      toast({
-        title: "❌ Erro ao gerar PIX",
-        description: error.message || "Tente novamente.",
-        variant: "destructive",
-      });
-      onError(error.message || 'Erro ao gerar PIX');
+      console.error('Erro PIX:', error);
+      toast({ title: "Erro ao gerar PIX", description: error.message, variant: "destructive" });
+      onError(error.message);
     } finally {
       setLoading(false);
     }
   };
 
-  // Processar pagamento com cartão
-  const handleCardSubmit = async (e: React.FormEvent) => {
+  // Pagar com Cartão
+  const handleCardPayment = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!mpRef.current || !cardBrand) {
-      toast({
-        title: "Erro",
-        description: "Por favor, preencha os dados do cartão corretamente.",
-        variant: "destructive",
-      });
+      toast({ title: "Preencha os dados do cartão", variant: "destructive" });
       return;
     }
 
     setLoading(true);
-    setCardErrors({});
 
     try {
-      const cardNumberClean = cardData.cardNumber.replace(/\s/g, '');
-      
+      const cleanCardNumber = cardNumber.replace(/\s/g, '');
+      const fullYear = expirationYear.length === 2 ? '20' + expirationYear : expirationYear;
+
+      // Gerar token do cartão
       const tokenData = await mpRef.current.createCardToken({
-        cardNumber: cardNumberClean,
-        cardholderName: cardData.cardholderName,
-        cardExpirationMonth: cardData.expirationMonth,
-        cardExpirationYear: cardData.expirationYear.length === 2 ? '20' + cardData.expirationYear : cardData.expirationYear,
-        securityCode: cardData.securityCode,
+        cardNumber: cleanCardNumber,
+        cardholderName,
+        cardExpirationMonth: expirationMonth,
+        cardExpirationYear: fullYear,
+        securityCode,
         identificationType: 'CPF',
         identificationNumber: buyerInfo.document.replace(/\D/g, ''),
       });
 
-      if (tokenData.error) {
-        throw new Error(tokenData.error);
-      }
+      if (tokenData.error) throw new Error(tokenData.error);
 
-      const { data, error } = await supabase.functions.invoke('process-transparent-payment', {
+      // Enviar para backend
+      const { data, error } = await supabase.functions.invoke('mercadopago-checkout', {
         body: {
-          paymentMethod: 'card',
-          deviceId: deviceSessionId,
-          token: tokenData.id,
-          paymentMethodId: cardBrand,
-          issuerId: selectedIssuer,
+          action: 'create_card',
+          cardToken: tokenData.id,
+          cardPaymentMethodId: cardBrand,
+          cardIssuerId: selectedIssuer,
           installments: selectedInstallment,
-          photos: photos.map(p => ({
-            id: p.id,
-            title: p.title || 'Foto',
-            price: p.price || 0,
-          })),
-          buyerInfo: {
+          photos: photos.map(p => ({ id: p.id, title: p.title || 'Foto', price: p.price || 0 })),
+          buyer: {
             name: buyerInfo.name,
             surname: buyerInfo.surname,
             email: buyerInfo.email,
             phone: buyerInfo.phone,
-            document: buyerInfo.document,
+            cpf: buyerInfo.document,
           },
-          progressiveDiscount: progressiveDiscount,
+          discount: progressiveDiscount ? {
+            percentage: progressiveDiscount.percentage,
+            amount: progressiveDiscount.amount,
+          } : null,
         },
       });
 
       if (error) throw error;
 
       if (data.success) {
-        toast({
-          title: "✅ Pagamento aprovado!",
-          description: data.message || "Sua compra foi realizada com sucesso. Redirecionando...",
-        });
-        onSuccess(data);
-      } else if (data.status === 'pending' || data.status === 'in_process') {
-        toast({
-          title: "⏳ Pagamento em análise",
-          description: "Seu pagamento está sendo processado. Você será notificado quando for aprovado.",
-        });
+        toast({ title: "✅ Pagamento aprovado!", description: "Compra realizada com sucesso." });
         onSuccess(data);
       } else if (data.status === 'rejected') {
-        // Mapear motivos de rejeição para mensagens claras
-        let rejectMessage = "Tente outro cartão ou use PIX.";
-        const statusDetail = data.status_detail || '';
-        
-        if (statusDetail.includes('insufficient_amount')) {
-          rejectMessage = "Saldo insuficiente. Tente outro cartão ou use PIX.";
-        } else if (statusDetail.includes('cc_rejected_bad_filled')) {
-          rejectMessage = "Dados do cartão incorretos. Verifique e tente novamente.";
-        } else if (statusDetail.includes('cc_rejected_high_risk')) {
-          rejectMessage = "Transação não autorizada pelo banco. Tente PIX.";
-        } else if (statusDetail.includes('cc_rejected_call_for_authorize')) {
-          rejectMessage = "Entre em contato com seu banco para autorizar.";
-        }
-        
-        toast({
-          title: "❌ Pagamento recusado",
-          description: rejectMessage,
-          variant: "destructive",
-        });
-        onError(data.error || rejectMessage);
-      } else if (data.error) {
-        // Verificar se é erro de credenciais
-        const isCredentialError = data.error?.includes('credentials') || 
-                                  data.error?.includes('Invalid');
-        
-        toast({
-          title: isCredentialError ? "⚙️ Erro de configuração" : "❌ Erro no pagamento",
-          description: isCredentialError 
-            ? "Sistema de pagamento indisponível. Tente novamente em alguns minutos."
-            : (data.error || "Tente novamente."),
-          variant: "destructive",
-        });
-        onError(data.error);
+        toast({ title: "Pagamento recusado", description: "Tente outro cartão ou use PIX.", variant: "destructive" });
+        onError('Pagamento recusado');
+      } else if (data.status === 'pending' || data.status === 'in_process') {
+        toast({ title: "Pagamento em análise", description: "Você será notificado quando for aprovado." });
+        onSuccess(data);
+      } else {
+        throw new Error(data.error || 'Erro no pagamento');
       }
     } catch (error: any) {
-      console.error('❌ Erro no pagamento:', error);
-      
-      // Verificar se é erro de limite/valor
-      const errorMsg = error.message || '';
-      const isHighValueError = errorMsg.includes('valor') || 
-                               errorMsg.includes('limite') || 
-                               errorMsg.includes('amount');
-      
-      if (error.cause) {
-        const causes = error.cause;
-        const newErrors: Record<string, string> = {};
-        
-        causes.forEach((cause: any) => {
-          if (cause.code === '205' || cause.code === 'E301') {
-            newErrors.cardNumber = 'Número do cartão inválido';
-          } else if (cause.code === '208' || cause.code === 'E302') {
-            newErrors.expirationMonth = 'Mês de validade inválido';
-          } else if (cause.code === '209' || cause.code === 'E302') {
-            newErrors.expirationYear = 'Ano de validade inválido';
-          } else if (cause.code === '224' || cause.code === 'E303') {
-            newErrors.securityCode = 'Código de segurança inválido';
-          } else if (cause.code === '221') {
-            newErrors.cardholderName = 'Nome do titular inválido';
-          } else if (cause.code === '214' || cause.code === '324') {
-            newErrors.document = 'CPF inválido';
-          }
-        });
-        
-        setCardErrors(newErrors);
-      }
-      
-      toast({
-        title: isHighValueError ? "Valor muito alto para cartão" : "Erro no pagamento",
-        description: isHighValueError 
-          ? "Para compras de valor alto, recomendamos usar PIX." 
-          : (error.message || "Verifique os dados e tente novamente."),
-        variant: "destructive",
-      });
+      console.error('Erro cartão:', error);
+      toast({ title: "Erro no pagamento", description: error.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
-  };
-
-  const getCardBrandIcon = () => {
-    if (!cardBrand) return null;
-    
-    const brandIcons: Record<string, string> = {
-      visa: '💳 Visa',
-      master: '💳 Mastercard',
-      amex: '💳 American Express',
-      elo: '💳 Elo',
-      hipercard: '💳 Hipercard',
-      diners: '💳 Diners',
-    };
-    
-    return brandIcons[cardBrand] || `💳 ${cardBrand}`;
   };
 
   if (!mpReady) {
     return (
       <div className="flex items-center justify-center p-8">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <span className="ml-2">Carregando sistema de pagamento...</span>
+        <span className="ml-2">Carregando...</span>
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      {/* Resumo do pedido */}
+      {/* Resumo */}
       <Card className="bg-muted/50">
         <CardContent className="p-4">
           <div className="flex justify-between items-center">
-            <span className="text-sm text-muted-foreground">
-              {photos.length} {photos.length === 1 ? 'foto' : 'fotos'}
-            </span>
+            <span className="text-sm text-muted-foreground">{photos.length} foto(s)</span>
             <span className="text-lg font-bold">{formatCurrency(totalAmount)}</span>
           </div>
           {progressiveDiscount && progressiveDiscount.percentage > 0 && (
@@ -515,260 +338,139 @@ export default function TransparentCheckout({
         </CardContent>
       </Card>
 
-      {/* Tabs de método de pagamento */}
-      <Tabs value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as 'card' | 'pix')}>
+      {/* Tabs de Pagamento */}
+      <Tabs value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as 'pix' | 'card')}>
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="pix" className="flex items-center gap-2">
-            <QrCode className="h-4 w-4" />
-            PIX
+            <QrCode className="h-4 w-4" /> PIX
           </TabsTrigger>
           <TabsTrigger value="card" className="flex items-center gap-2">
-            <CreditCard className="h-4 w-4" />
-            Cartão
+            <CreditCard className="h-4 w-4" /> Cartão
           </TabsTrigger>
         </TabsList>
 
-        {/* TAB PIX */}
-        <TabsContent value="pix" className="space-y-4 mt-4">
+        {/* PIX */}
+        <TabsContent value="pix" className="space-y-4">
           {!pixData ? (
-            <div className="space-y-4">
-              <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-4">
-                <div className="flex items-center gap-2 text-green-700 dark:text-green-400 mb-2">
-                  <QrCode className="h-5 w-5" />
-                  <span className="font-medium">Pagamento instantâneo via PIX</span>
+            <>
+              <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-4 text-sm">
+                <div className="flex items-center gap-2 font-medium text-green-700 dark:text-green-400 mb-2">
+                  <QrCode className="h-4 w-4" /> Pagamento instantâneo via PIX
                 </div>
-                <ul className="text-sm text-green-600 dark:text-green-500 space-y-1">
+                <ul className="text-green-600 dark:text-green-500 space-y-1 text-xs">
                   <li>✓ Aprovação em segundos</li>
                   <li>✓ Disponível 24h</li>
                   <li>✓ Sem taxas adicionais</li>
                 </ul>
               </div>
 
-              <Button 
-                onClick={handleGeneratePix} 
-                disabled={loading}
-                className="w-full"
-                size="lg"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Gerando PIX...
-                  </>
-                ) : (
-                  <>
-                    <QrCode className="h-4 w-4 mr-2" />
-                    Gerar QR Code PIX
-                  </>
-                )}
+              <Button onClick={handleGeneratePix} disabled={loading} className="w-full bg-[#32BCAD] hover:bg-[#2aa89b]">
+                {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <QrCode className="h-4 w-4 mr-2" />}
+                Gerar QR Code PIX
               </Button>
-            </div>
+            </>
           ) : (
             <div className="space-y-4">
-              {/* QR Code */}
-              <div className="flex flex-col items-center p-4 bg-white rounded-lg border">
-                {pixData.qrCodeBase64 && (
-                  <img 
-                    src={`data:image/png;base64,${pixData.qrCodeBase64}`}
-                    alt="QR Code PIX"
-                    className="w-48 h-48 mb-4"
-                  />
-                )}
-                
-                {checkingPixPayment && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Aguardando pagamento...
-                  </div>
-                )}
-                
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Clock className="h-4 w-4" />
-                  Válido por 30 minutos
-                </div>
+              <div className="text-center">
+                <img
+                  src={`data:image/png;base64,${pixData.qrCodeBase64}`}
+                  alt="QR Code PIX"
+                  className="mx-auto w-48 h-48 border rounded-lg"
+                />
               </div>
 
-              {/* Código Copia e Cola */}
-              <div className="space-y-2">
-                <Label>Código PIX (Copia e Cola)</Label>
-                <div className="flex gap-2">
-                  <Input 
-                    value={pixData.qrCode} 
-                    readOnly 
-                    className="font-mono text-xs"
-                  />
-                  <Button 
-                    variant="outline" 
-                    size="icon"
-                    onClick={handleCopyPix}
-                  >
-                    {pixCopied ? (
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                    ) : (
-                      <Copy className="h-4 w-4" />
-                    )}
+              <div className="bg-muted p-3 rounded-lg">
+                <Label className="text-xs text-muted-foreground">Código PIX (copiar e colar)</Label>
+                <div className="flex gap-2 mt-1">
+                  <Input value={pixData.qrCode} readOnly className="text-xs font-mono" />
+                  <Button variant="outline" size="icon" onClick={handleCopyPix}>
+                    {pixCopied ? <CheckCircle className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
                   </Button>
                 </div>
               </div>
 
-              <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3 text-sm">
-                <p className="text-blue-700 dark:text-blue-400">
-                  <strong>Como pagar:</strong>
-                </p>
-                <ol className="text-blue-600 dark:text-blue-500 mt-1 space-y-1 list-decimal list-inside">
-                  <li>Abra o app do seu banco</li>
-                  <li>Escolha pagar com PIX</li>
-                  <li>Escaneie o QR Code ou cole o código</li>
-                  <li>Confirme o pagamento</li>
-                </ol>
-              </div>
-
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  if (pixCheckIntervalRef.current) {
-                    clearInterval(pixCheckIntervalRef.current);
-                  }
-                  setPixData(null);
-                  setCheckingPixPayment(false);
-                }}
-                className="w-full"
-              >
-                Gerar novo PIX
-              </Button>
+              {checkingPix && (
+                <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Aguardando confirmação do pagamento...
+                </div>
+              )}
             </div>
           )}
         </TabsContent>
 
-        {/* TAB CARTÃO */}
-        <TabsContent value="card" className="space-y-4 mt-4">
-          <form onSubmit={handleCardSubmit} className="space-y-4">
-            {/* Número do Cartão */}
+        {/* Cartão */}
+        <TabsContent value="card">
+          <form onSubmit={handleCardPayment} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="cardNumber" className="flex items-center gap-2">
-                <CreditCard className="h-4 w-4" />
-                Número do Cartão
+              <Label>Número do Cartão</Label>
+              <div className="relative">
+                <Input
+                  value={cardNumber}
+                  onChange={(e) => handleCardNumberChange(e.target.value)}
+                  placeholder="0000 0000 0000 0000"
+                  maxLength={19}
+                />
                 {cardBrand && (
-                  <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">
-                    {getCardBrandIcon()}
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs bg-primary/10 px-2 py-1 rounded">
+                    {cardBrand.toUpperCase()}
                   </span>
                 )}
-              </Label>
-              <Input
-                id="cardNumber"
-                type="text"
-                placeholder="0000 0000 0000 0000"
-                value={cardData.cardNumber}
-                onChange={(e) => handleCardNumberChange(e.target.value)}
-                maxLength={19}
-                className={cardErrors.cardNumber ? 'border-red-500' : ''}
-              />
-              {cardErrors.cardNumber && (
-                <p className="text-sm text-red-500 flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3" />
-                  {cardErrors.cardNumber}
-                </p>
-              )}
+              </div>
             </div>
 
-            {/* Nome do Titular */}
             <div className="space-y-2">
-              <Label htmlFor="cardholderName">Nome no Cartão</Label>
+              <Label>Nome no Cartão</Label>
               <Input
-                id="cardholderName"
-                type="text"
+                value={cardholderName}
+                onChange={(e) => setCardholderName(e.target.value.toUpperCase())}
                 placeholder="NOME COMO ESTÁ NO CARTÃO"
-                value={cardData.cardholderName}
-                onChange={(e) => setCardData(prev => ({ ...prev, cardholderName: e.target.value.toUpperCase() }))}
-                className={cardErrors.cardholderName ? 'border-red-500' : ''}
               />
-              {cardErrors.cardholderName && (
-                <p className="text-sm text-red-500 flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3" />
-                  {cardErrors.cardholderName}
-                </p>
-              )}
             </div>
 
-            {/* Validade e CVV */}
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="expirationMonth">Mês</Label>
-                <Select 
-                  value={cardData.expirationMonth} 
-                  onValueChange={(value) => setCardData(prev => ({ ...prev, expirationMonth: value }))}
-                >
-                  <SelectTrigger className={cardErrors.expirationMonth ? 'border-red-500' : ''}>
-                    <SelectValue placeholder="MM" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: 12 }, (_, i) => {
-                      const month = (i + 1).toString().padStart(2, '0');
-                      return <SelectItem key={month} value={month}>{month}</SelectItem>;
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="expirationYear">Ano</Label>
-                <Select 
-                  value={cardData.expirationYear} 
-                  onValueChange={(value) => setCardData(prev => ({ ...prev, expirationYear: value }))}
-                >
-                  <SelectTrigger className={cardErrors.expirationYear ? 'border-red-500' : ''}>
-                    <SelectValue placeholder="AA" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: 15 }, (_, i) => {
-                      const year = (new Date().getFullYear() + i).toString().slice(-2);
-                      return <SelectItem key={year} value={year}>{year}</SelectItem>;
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="securityCode" className="flex items-center gap-1">
-                  CVV
-                  <Lock className="h-3 w-3 text-muted-foreground" />
-                </Label>
+                <Label>Mês</Label>
                 <Input
-                  id="securityCode"
-                  type="text"
-                  placeholder="123"
-                  value={cardData.securityCode}
-                  onChange={(e) => setCardData(prev => ({ ...prev, securityCode: e.target.value.replace(/\D/g, '').slice(0, 4) }))}
+                  value={expirationMonth}
+                  onChange={(e) => setExpirationMonth(e.target.value.replace(/\D/g, '').slice(0, 2))}
+                  placeholder="MM"
+                  maxLength={2}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Ano</Label>
+                <Input
+                  value={expirationYear}
+                  onChange={(e) => setExpirationYear(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                  placeholder="AA"
                   maxLength={4}
-                  className={cardErrors.securityCode ? 'border-red-500' : ''}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>CVV</Label>
+                <Input
+                  value={securityCode}
+                  onChange={(e) => setSecurityCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                  placeholder="123"
+                  maxLength={4}
+                  type="password"
                 />
               </div>
             </div>
-            {(cardErrors.expirationMonth || cardErrors.expirationYear || cardErrors.securityCode) && (
-              <p className="text-sm text-red-500 flex items-center gap-1">
-                <AlertCircle className="h-3 w-3" />
-                {cardErrors.expirationMonth || cardErrors.expirationYear || cardErrors.securityCode}
-              </p>
-            )}
 
-            {/* Parcelas */}
-            {installmentOptions.length > 0 && (
+            {installments.length > 0 && (
               <div className="space-y-2">
                 <Label>Parcelas</Label>
-                <Select 
-                  value={selectedInstallment.toString()} 
-                  onValueChange={(value) => setSelectedInstallment(Number(value))}
-                >
+                <Select value={selectedInstallment.toString()} onValueChange={(v) => setSelectedInstallment(Number(v))}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione as parcelas" />
+                    <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
-                    {installmentOptions.map((option: any) => (
-                      <SelectItem key={option.installments} value={option.installments.toString()}>
-                        {option.installments}x de {formatCurrency(option.installment_amount)}
-                        {option.installments === 1 ? ' (sem juros)' : 
-                         option.installment_rate === 0 ? ' (sem juros)' : 
-                         ` (total ${formatCurrency(option.total_amount)})`}
+                    {installments.map((inst: any) => (
+                      <SelectItem key={inst.installments} value={inst.installments.toString()}>
+                        {inst.installments}x de {formatCurrency(inst.installment_amount)}
+                        {inst.installment_rate > 0 && ` (${inst.installment_rate}% juros)`}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -776,44 +478,24 @@ export default function TransparentCheckout({
               </div>
             )}
 
-            {/* Botão de pagamento */}
-            <Button 
-              type="submit" 
-              disabled={loading || !cardBrand || !cardData.expirationMonth || !cardData.expirationYear || !cardData.securityCode}
-              className="w-full"
-              size="lg"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Processando...
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  Pagar {formatCurrency(totalAmount)}
-                </>
-              )}
+            <Button type="submit" disabled={loading || !cardBrand} className="w-full">
+              {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CreditCard className="h-4 w-4 mr-2" />}
+              Pagar {formatCurrency(totalAmount)}
             </Button>
           </form>
         </TabsContent>
       </Tabs>
 
-      {/* Segurança */}
+      {/* Botão Cancelar */}
+      <Button variant="ghost" onClick={onCancel} className="w-full">
+        Voltar
+      </Button>
+
+      {/* Rodapé */}
       <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground pt-2">
         <Lock className="h-3 w-3" />
         <span>Pagamento seguro processado pelo Mercado Pago</span>
       </div>
-
-      {/* Botão Voltar */}
-      <Button 
-        variant="ghost" 
-        onClick={onCancel}
-        disabled={loading}
-        className="w-full"
-      >
-        Voltar
-      </Button>
     </div>
   );
 }
