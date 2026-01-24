@@ -73,6 +73,7 @@ export default function TransparentCheckout({
   const [loading, setLoading] = useState(false);
   const [mpReady, setMpReady] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'pix'>('pix');
+  const [deviceSessionId, setDeviceSessionId] = useState<string | null>(null);
   
   // Estados do cartão
   const [cardBrand, setCardBrand] = useState<string | null>(null);
@@ -110,6 +111,15 @@ export default function TransparentCheckout({
           mpRef.current = new window.MercadoPago(MP_PUBLIC_KEY, {
             locale: 'pt-BR',
           });
+
+          // Device Session ID (anti-fraude / PolicyAgent)
+          // Alguns cenários retornam 403 "PA_UNAUTHORIZED_RESULT_FROM_POLICIES" sem esse identificador.
+          const dsid =
+            (typeof mpRef.current?.getDeviceSessionId === 'function'
+              ? mpRef.current.getDeviceSessionId()
+              : null) ?? null;
+          setDeviceSessionId(dsid);
+
           setMpReady(true);
           console.log('✅ Mercado Pago SDK inicializado');
         } catch (error) {
@@ -217,6 +227,7 @@ export default function TransparentCheckout({
         body: {
           action: 'check_pix_status',
           paymentId: paymentId,
+          deviceId: deviceSessionId,
         },
       });
 
@@ -245,6 +256,7 @@ export default function TransparentCheckout({
       const { data, error } = await supabase.functions.invoke('process-transparent-payment', {
         body: {
           paymentMethod: 'pix',
+          deviceId: deviceSessionId,
           photos: photos.map(p => ({
             id: p.id,
             title: p.title || 'Foto',
@@ -346,6 +358,7 @@ export default function TransparentCheckout({
       const { data, error } = await supabase.functions.invoke('process-transparent-payment', {
         body: {
           paymentMethod: 'card',
+          deviceId: deviceSessionId,
           token: tokenData.id,
           paymentMethodId: cardBrand,
           issuerId: selectedIssuer,
