@@ -1,95 +1,144 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
-import { Loader2, Clock } from 'lucide-react';
+import { Loader2, Clock, CheckCircle } from 'lucide-react';
 
 export default function CheckoutProcessing() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [status, setStatus] = useState<'processing' | 'timeout'>('processing');
+  const [status, setStatus] = useState<'processing' | 'timeout' | 'success'>('processing');
   const [timeElapsed, setTimeElapsed] = useState(0);
+  const [completedCount, setCompletedCount] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
 
   const externalRef = searchParams.get('ref') || searchParams.get('external_reference') || '';
-  const purchaseIds = externalRef ? externalRef.split(',') : [];
+  
+  // Suporta tanto IDs separados por vírgula quanto formato batch
+  const isBatchFormat = externalRef.startsWith('batch_');
+  const purchaseIdsFromRef = !isBatchFormat && externalRef ? externalRef.split(',').filter(id => id.length > 0) : [];
 
   useEffect(() => {
     document.title = 'Processando pagamento | STA Fotos';
   }, []);
 
+  const checkPurchaseStatus = useCallback(async () => {
+    if (!user) return false;
+    
+    try {
+      let data: any[] = [];
+      
+      if (isBatchFormat) {
+        // Buscar purchases pelo batch ID armazenado no stripe_payment_intent_id
+        const { data: batchData, error: batchError } = await supabase
+          .from('purchases')
+          .select('id, status')
+          .eq('buyer_id', user.id)
+          .like('stripe_payment_intent_id', `batch:${externalRef}%`);
+        
+        if (batchError) throw batchError;
+        data = batchData || [];
+      } else if (purchaseIdsFromRef.length > 0) {
+        // Buscar por IDs diretos
+        const { data: directData, error: directError } = await supabase
+          .from('purchases')
+          .select('id, status')
+          .in('id', purchaseIdsFromRef)
+          .eq('buyer_id', user.id);
+        
+        if (directError) throw directError;
+        data = directData || [];
+      } else {
+        // Fallback: buscar purchases recentes do usuário pendentes ou recém-completadas
+        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+        const { data: recentData, error: recentError } = await supabase
+          .from('purchases')
+          .select('id, status')
+          .eq('buyer_id', user.id)
+          .gte('created_at', fiveMinutesAgo)
+          .order('created_at', { ascending: false });
+        
+        if (recentError) throw recentError;
+        data = recentData || [];
+      }
+
+      if (data && data.length > 0) {
+        const completed = data.filter(p => p.status === 'completed');
+        const failed = data.filter(p => p.status === 'failed');
+        const pending = data.filter(p => p.status === 'pending');
+        
+        setCompletedCount(completed.length);
+        setTotalCount(data.length);
+
+        if (completed.length === data.length) {
+          // Todas completas! Redirecionar para página de sucesso
+          setStatus('success');
+          const allIds = data.map(p => p.id).join(',');
+          setTimeout(() => {
+            navigate(`/checkout/sucesso?ref=${allIds}`);
+          }, 1000);
+          return true;
+        } else if (failed.length > 0 && pending.length === 0) {
+          // Falha confirmada, nenhuma pendente
+          const allIds = data.map(p => p.id).join(',');
+          navigate(`/checkout/falha?ref=${allIds}`);
+          return true;
+        }
+      }
+
+      return false;
+    } catch (err) {
+      console.error('Erro ao verificar status:', err);
+      return false;
+    }
+  }, [user, externalRef, isBatchFormat, purchaseIdsFromRef, navigate]);
+
   useEffect(() => {
-    if (!user || purchaseIds.length === 0) {
-      navigate('/dashboard');
-      return;
+    if (!user || (!purchaseIdsFromRef.length && !isBatchFormat && !externalRef)) {
+      // Se não temos referência, aguardar um pouco para o externalRef carregar
+      const timeout = setTimeout(() => {
+        if (!externalRef) {
+          navigate('/dashboard');
+        }
+      }, 2000);
+      return () => clearTimeout(timeout);
     }
 
     let attempts = 0;
-    const maxAttempts = 40; // 40 x 3s = 2 minutos
-    
-    const checkPurchaseStatus = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('purchases')
-          .select('id, status')
-          .in('id', purchaseIds)
-          .eq('buyer_id', user.id);
-
-        if (error) throw error;
-
-        if (data && data.length > 0) {
-          const allCompleted = data.every(p => p.status === 'completed');
-          const anyFailed = data.some(p => p.status === 'failed');
-          const stillPending = data.some(p => p.status === 'pending');
-
-          if (allCompleted) {
-            // Sucesso! Redirecionar para página de sucesso
-            navigate(`/checkout/sucesso?ref=${purchaseIds.join(',')}`);
-            return true;
-          } else if (anyFailed && !stillPending) {
-            // Falha confirmada, nenhuma pendente
-            navigate(`/checkout/falha?ref=${purchaseIds.join(',')}`);
-            return true;
-          }
-        }
-
-        attempts++;
-        setTimeElapsed(attempts * 3);
-
-        if (attempts >= maxAttempts) {
-          // Timeout - considerar como falha
-          setStatus('timeout');
-          setTimeout(() => {
-            navigate(`/checkout/falha?ref=${purchaseIds.join(',')}&timeout=true`);
-          }, 2000);
-          return true;
-        }
-
-        return false;
-      } catch (err) {
-        console.error('Erro ao verificar status:', err);
-        attempts++;
-        return false;
-      }
-    };
+    const maxAttempts = 60; // 60 x 2s = 2 minutos (polling mais frequente)
+    let intervalId: NodeJS.Timeout;
 
     // Primeira verificação imediata
     checkPurchaseStatus().then(done => {
       if (done) return;
 
-      // Polling a cada 3 segundos
-      const interval = setInterval(async () => {
+      // Polling a cada 2 segundos (mais frequente para melhor UX)
+      intervalId = setInterval(async () => {
+        attempts++;
+        setTimeElapsed(attempts * 2);
+        
         const done = await checkPurchaseStatus();
         if (done) {
-          clearInterval(interval);
+          clearInterval(intervalId);
+          return;
         }
-      }, 3000);
 
-      return () => clearInterval(interval);
+        if (attempts >= maxAttempts) {
+          clearInterval(intervalId);
+          setStatus('timeout');
+          setTimeout(() => {
+            navigate(`/checkout/falha?ref=${externalRef}&timeout=true`);
+          }, 2000);
+        }
+      }, 2000);
     });
 
-  }, [user, purchaseIds.join(','), navigate]);
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [user, externalRef, purchaseIdsFromRef.join(','), isBatchFormat, navigate, checkPurchaseStatus]);
 
   return (
     <main className="container mx-auto px-4 py-12 flex items-center justify-center min-h-screen">
@@ -104,13 +153,30 @@ export default function CheckoutProcessing() {
                   Aguarde enquanto confirmamos sua compra...
                 </p>
               </div>
+              {totalCount > 0 && (
+                <div className="bg-muted p-3 rounded-lg">
+                  <p className="text-sm text-muted-foreground">
+                    {completedCount}/{totalCount} {totalCount === 1 ? 'foto confirmada' : 'fotos confirmadas'}
+                  </p>
+                </div>
+              )}
               <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
                 <Clock className="h-4 w-4" />
                 <span>{timeElapsed}s</span>
               </div>
               <p className="text-xs text-muted-foreground">
-                Isso pode levar até 2 minutos
+                Isso pode levar até 2 minutos. Não feche esta página.
               </p>
+            </>
+          ) : status === 'success' ? (
+            <>
+              <CheckCircle className="h-16 w-16 text-green-500 mx-auto animate-bounce" />
+              <div className="space-y-2">
+                <h1 className="text-2xl font-bold text-green-600">Pagamento confirmado!</h1>
+                <p className="text-muted-foreground">
+                  Redirecionando para suas fotos...
+                </p>
+              </div>
             </>
           ) : (
             <>

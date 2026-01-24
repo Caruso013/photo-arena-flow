@@ -509,17 +509,36 @@ export default function PaymentModal({
                 } : null}
                 onSuccess={(paymentData) => {
                   toast({
-                    title: "✅ Compra realizada com sucesso!",
-                    description: "Redirecionando para suas fotos...",
+                    title: "✅ Pagamento processado!",
+                    description: paymentData.status === 'pending' 
+                      ? "Aguardando confirmação do pagamento..." 
+                      : "Redirecionando para suas fotos...",
                   });
                   if (onPaymentSuccess) {
                     onPaymentSuccess(paymentData);
                   }
                   handleModalClose();
-                  // Redirecionar para Minhas Compras após 1.5 segundos
-                  setTimeout(() => {
-                    navigate('/dashboard/my-purchases');
-                  }, 1500);
+                  
+                  // Se temos purchase_ids, ir para página de processamento para garantir
+                  // que o webhook processou tudo corretamente antes de mostrar as fotos
+                  const purchaseIds = paymentData.purchase_ids || [];
+                  
+                  if (purchaseIds.length > 0) {
+                    // PIX pendente ou cartão aprovado - ir para processamento para confirmar
+                    if (paymentData.status === 'pending' || paymentData.status === 'approved') {
+                      navigate(`/checkout/processando?ref=${purchaseIds.join(',')}`);
+                    } else {
+                      // Status já final (completed pelo backend) - ir direto para compras
+                      setTimeout(() => {
+                        navigate('/dashboard/my-purchases');
+                      }, 1000);
+                    }
+                  } else {
+                    // Fallback: ir para minhas compras
+                    setTimeout(() => {
+                      navigate('/dashboard/my-purchases');
+                    }, 1500);
+                  }
                 }}
                 onError={(error) => {
                   // Determinar tipo de erro para mensagem mais clara

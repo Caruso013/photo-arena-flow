@@ -80,32 +80,73 @@ serve(async (req) => {
       });
 
       const mpResult = await mpResponse.json();
+      console.log('💰 Status do PIX:', mpResult.status, mpResult.status_detail);
+      
+      let purchaseIds: string[] = [];
       
       if (mpResult.status === 'approved') {
         // Atualizar purchases para completed
         const externalReference = mpResult.external_reference;
+        console.log('📋 External reference do PIX:', externalReference);
+        
         if (externalReference) {
-          // Resolver purchaseIds - suporta formato batch e formato antigo
-          let purchaseIds: string[];
+          // Resolver purchaseIds - múltiplas estratégias de busca
+          
+          // Estratégia 1: Buscar pelo batch ID no formato batch:xxx ou batch:xxx|mp:yyy
           if (externalReference.startsWith('batch_')) {
-            // Novo formato: buscar pelo batch ID
+            console.log('📦 Buscando por batch:', externalReference);
             const { data: purchases } = await supabaseAdmin
               .from('purchases')
               .select('id')
-              .eq('stripe_payment_intent_id', `batch:${externalReference}`);
+              .like('stripe_payment_intent_id', `%${externalReference}%`);
             purchaseIds = purchases?.map(p => p.id) || [];
-          } else {
-            // Formato antigo: IDs separados por vírgula
-            purchaseIds = externalReference.split(',').map((id: string) => id.trim()).filter(Boolean);
+            console.log(`📦 Batch encontrou ${purchaseIds.length} purchases`);
           }
           
-          await supabaseAdmin
-            .from('purchases')
-            .update({ 
-              status: 'completed',
-              stripe_payment_intent_id: paymentId.toString(),
-            })
-            .in('id', purchaseIds);
+          // Estratégia 2: Se não encontrou pelo batch, buscar pelo payment_id do MP
+          if (purchaseIds.length === 0) {
+            console.log('💳 Buscando por payment_id:', paymentId);
+            const { data: purchasesByMpId } = await supabaseAdmin
+              .from('purchases')
+              .select('id')
+              .like('stripe_payment_intent_id', `%${paymentId}%`);
+            purchaseIds = purchasesByMpId?.map(p => p.id) || [];
+            console.log(`💳 Payment ID encontrou ${purchaseIds.length} purchases`);
+          }
+          
+          // Estratégia 3: Se ainda não encontrou e external_reference é UUID, buscar direto
+          if (purchaseIds.length === 0 && !externalReference.startsWith('batch_')) {
+            console.log('🔑 Buscando por UUID direto:', externalReference);
+            const uuids = externalReference.split(',').map((id: string) => id.trim()).filter(Boolean);
+            const { data: purchasesByUuid } = await supabaseAdmin
+              .from('purchases')
+              .select('id')
+              .in('id', uuids);
+            purchaseIds = purchasesByUuid?.map(p => p.id) || [];
+            console.log(`🔑 UUID encontrou ${purchaseIds.length} purchases`);
+          }
+          
+          console.log(`✅ PIX aprovado! Total: ${purchaseIds.length} purchases para atualizar`);
+          
+          // Atualizar status para completed
+          for (const pid of purchaseIds) {
+            const { data: currentPurchase } = await supabaseAdmin
+              .from('purchases')
+              .select('status, stripe_payment_intent_id')
+              .eq('id', pid)
+              .single();
+            
+            // Só atualizar se ainda não está completed
+            if (currentPurchase && currentPurchase.status !== 'completed') {
+              console.log(`📝 Atualizando purchase ${pid}: ${currentPurchase.status} → completed`);
+              await supabaseAdmin
+                .from('purchases')
+                .update({ status: 'completed' })
+                .eq('id', pid);
+            } else {
+              console.log(`⏭️ Purchase ${pid} já está ${currentPurchase?.status || 'N/A'}`);
+            }
+          }
 
           // Criar revenue_shares
           for (const purchaseId of purchaseIds) {
@@ -113,17 +154,19 @@ serve(async (req) => {
           }
 
           // Enviar email de confirmação
-          try {
-            await fetch(`${supabaseUrl}/functions/v1/send-purchase-confirmation`, {
-              method: 'POST',
-              headers: { 
-                'Content-Type': 'application/json', 
-                'Authorization': `Bearer ${supabaseServiceKey}` 
-              },
-              body: JSON.stringify({ purchaseIds }),
-            });
-          } catch (e) {
-            console.warn('⚠️ Erro ao enviar email:', e);
+          if (purchaseIds.length > 0) {
+            try {
+              await fetch(`${supabaseUrl}/functions/v1/send-purchase-confirmation`, {
+                method: 'POST',
+                headers: { 
+                  'Content-Type': 'application/json', 
+                  'Authorization': `Bearer ${supabaseServiceKey}` 
+                },
+                body: JSON.stringify({ purchaseIds }),
+              });
+            } catch (e) {
+              console.warn('⚠️ Erro ao enviar email:', e);
+            }
           }
         }
       }
@@ -132,6 +175,7 @@ serve(async (req) => {
         success: mpResult.status === 'approved',
         status: mpResult.status,
         status_detail: mpResult.status_detail,
+        purchase_ids: purchaseIds, // Retornar IDs para o frontend redirecionar
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -380,11 +424,25 @@ serve(async (req) => {
         });
       }
 
-      // Atualizar purchases com payment_id (usando stripe_payment_intent_id para compatibilidade)
-      await supabaseAdmin
-        .from('purchases')
-        .update({ stripe_payment_intent_id: mpResult.id?.toString() })
-        .in('id', purchaseIds);
+      // Atualizar purchases com payment_id 
+      // IMPORTANTE: Não sobrescrever batch ID, salvar payment_id de forma que preserve a referência
+      const paymentIdStr = mpResult.id?.toString();
+      
+      if (purchaseIds.length > 1) {
+        // Para batch: manter o batch ID e adicionar payment_id no formato batch:xxx|mp:yyy
+        await supabaseAdmin
+          .from('purchases')
+          .update({ 
+            stripe_payment_intent_id: `batch:${externalReference}|mp:${paymentIdStr}`
+          })
+          .in('id', purchaseIds);
+      } else {
+        // Para single purchase: apenas o payment_id
+        await supabaseAdmin
+          .from('purchases')
+          .update({ stripe_payment_intent_id: paymentIdStr })
+          .in('id', purchaseIds);
+      }
 
       // Retornar dados do PIX
       const pixInfo = mpResult.point_of_interaction?.transaction_data;

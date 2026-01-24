@@ -196,25 +196,38 @@ serve(async (req) => {
 
     // Helper: Resolver purchase IDs a partir do external_reference
     // Suporta: batch_xxx, UUID único, UUIDs separados por vírgula
-    const resolvePurchaseIds = async (externalReference: string): Promise<string[]> => {
-      console.log('🔍 Resolvendo external_reference:', externalReference);
+    const resolvePurchaseIds = async (externalReference: string, paymentId?: string): Promise<string[]> => {
+      console.log('🔍 Resolvendo external_reference:', externalReference, '| paymentId:', paymentId);
       
       // Novo formato: batch_shortid_count_timestamp
       if (externalReference.startsWith('batch_')) {
         console.log('📦 Detectado formato batch:', externalReference);
-        // Buscar purchases que têm esse batch no stripe_payment_intent_id
+        // Buscar purchases que têm esse batch no stripe_payment_intent_id (usando like para maior flexibilidade)
+        // Formato pode ser: batch:batch_xxx ou batch:batch_xxx|mp:12345
         const { data: purchases, error } = await supabase
           .from('purchases')
           .select('id')
-          .eq('stripe_payment_intent_id', `batch:${externalReference}`);
+          .like('stripe_payment_intent_id', `%${externalReference}%`);
         
         if (error) {
           console.error('❌ Erro ao buscar batch:', error);
-          return [];
         }
         
-        const ids = purchases?.map(p => p.id) || [];
+        let ids = purchases?.map(p => p.id) || [];
         console.log(`📦 Batch resolvido para ${ids.length} purchases`);
+        
+        // Se não encontrou pelo batch, tentar pelo payment_id
+        if (ids.length === 0 && paymentId) {
+          console.log('🔍 Tentando buscar pelo payment_id:', paymentId);
+          const { data: purchasesByPayment } = await supabase
+            .from('purchases')
+            .select('id')
+            .like('stripe_payment_intent_id', `%${paymentId}%`);
+          
+          ids = purchasesByPayment?.map(p => p.id) || [];
+          console.log(`💳 Payment ID resolvido para ${ids.length} purchases`);
+        }
+        
         return ids;
       }
       
@@ -254,11 +267,11 @@ serve(async (req) => {
       if (status === 'approved' || status === 'paid') purchaseStatus = 'completed';
       else if (status === 'rejected' || status === 'cancelled' || status === 'expired') purchaseStatus = 'failed';
 
-      const purchaseIds = await resolvePurchaseIds(externalReference);
+      const purchaseIds = await resolvePurchaseIds(externalReference, paymentIdForLog);
       console.log(`📦 Atualizando ${purchaseIds.length} purchases para ${purchaseStatus}`);
       
       if (purchaseIds.length === 0) {
-        console.error('❌ Nenhum purchase encontrado para:', externalReference);
+        console.error('❌ Nenhum purchase encontrado para:', externalReference, '| paymentId:', paymentIdForLog);
         return purchaseStatus;
       }
       
@@ -309,6 +322,69 @@ serve(async (req) => {
       }
       
       return purchaseStatus;
+    };
+
+    // Helper: Criar revenue_share para uma purchase (backup do trigger do banco)
+    const ensureRevenueShare = async (purchaseId: string) => {
+      try {
+        // Verificar se já existe
+        const { data: existing } = await supabase
+          .from('revenue_shares')
+          .select('id')
+          .eq('purchase_id', purchaseId)
+          .maybeSingle();
+
+        if (existing) {
+          console.log(`✅ Revenue share já existe para purchase ${purchaseId}`);
+          return;
+        }
+
+        // Buscar dados da purchase com foto e campanha
+        const { data: purchase, error: purchaseError } = await supabase
+          .from('purchases')
+          .select('*, photos(*, campaigns(*))')
+          .eq('id', purchaseId)
+          .single();
+
+        if (purchaseError || !purchase || !purchase.photos || !purchase.photos.campaigns) {
+          console.warn(`⚠️ Dados incompletos para revenue share: ${purchaseId}`);
+          return;
+        }
+
+        const campaign = purchase.photos.campaigns;
+        const amount = Number(purchase.amount);
+        
+        // Usar porcentagens da campanha (padrão: 9% plataforma, 91% fotógrafo)
+        const platformPercent = campaign.platform_percentage || 9;
+        const photographerPercent = campaign.photographer_percentage || 91;
+        const orgPercent = campaign.organization_percentage || 0;
+
+        const platformAmount = (amount * platformPercent) / 100;
+        const organizationAmount = (amount * orgPercent) / 100;
+        const photographerAmount = (amount * photographerPercent) / 100;
+
+        const { error: insertError } = await supabase
+          .from('revenue_shares')
+          .insert({
+            purchase_id: purchaseId,
+            photographer_id: purchase.photographer_id,
+            organization_id: campaign.organization_id || null,
+            platform_amount: platformAmount,
+            organization_amount: organizationAmount,
+            photographer_amount: photographerAmount,
+          });
+
+        if (insertError) {
+          // Pode falhar por constraint unique (já existe) - isso é OK
+          if (!insertError.message?.includes('duplicate') && !insertError.message?.includes('unique')) {
+            console.error(`❌ Erro ao criar revenue share para ${purchaseId}:`, insertError);
+          }
+        } else {
+          console.log(`✅ Revenue share criado para purchase ${purchaseId}`);
+        }
+      } catch (err) {
+        console.error(`❌ Erro ao garantir revenue share para ${purchaseId}:`, err);
+      }
     };
 
     // Helper: Enviar email de confirmação (fire-and-forget, não bloqueia o fluxo)
@@ -376,9 +452,16 @@ serve(async (req) => {
       // Registrar sucesso
       await logWebhook(`payment_${paymentData.status}`, signatureValid, 200, undefined, paymentId);
 
-      // Enviar email SOMENTE se o pagamento foi APROVADO
+      // Se pagamento foi APROVADO, garantir revenue_shares e enviar email
       if (finalStatus === 'completed') {
-        const purchaseIds = await resolvePurchaseIds(externalReference);
+        const purchaseIds = await resolvePurchaseIds(externalReference, paymentId);
+        
+        // Garantir que revenue_shares existam para todas as purchases
+        console.log(`💰 Garantindo revenue_shares para ${purchaseIds.length} purchases...`);
+        for (const pid of purchaseIds) {
+          await ensureRevenueShare(pid);
+        }
+        
         await sendConfirmationEmail(purchaseIds);
       }
       
@@ -433,9 +516,16 @@ serve(async (req) => {
       // Registrar sucesso
       await logWebhook(`merchant_order_${statusForRef}`, signatureValid, 200, undefined, approvedPayment?.id?.toString(), merchantOrderId);
 
-      // Enviar email SOMENTE se o pagamento foi APROVADO
+      // Se pagamento foi APROVADO, garantir revenue_shares e enviar email
       if (finalStatus === 'completed') {
-        const purchaseIds = await resolvePurchaseIds(externalReference);
+        const purchaseIds = await resolvePurchaseIds(externalReference, approvedPayment?.id?.toString());
+        
+        // Garantir que revenue_shares existam para todas as purchases
+        console.log(`💰 Garantindo revenue_shares para ${purchaseIds.length} purchases...`);
+        for (const pid of purchaseIds) {
+          await ensureRevenueShare(pid);
+        }
+        
         await sendConfirmationEmail(purchaseIds);
       }
       
