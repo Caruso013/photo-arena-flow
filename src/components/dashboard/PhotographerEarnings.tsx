@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { formatCurrency } from '@/lib/utils';
+import { getOptimizedImageUrl } from '@/lib/imageOptimization';
 import { Camera, Calendar, TrendingUp, AlertCircle, User, ImageIcon, ChevronDown, ChevronUp, Download, Mail, DollarSign, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { downloadOriginalPhoto, downloadMultiplePhotos } from '@/lib/photoDownload';
@@ -438,11 +439,23 @@ export const PhotographerEarnings = () => {
                                       key={photo.photo_id}
                                       className="flex items-center gap-2 p-2 bg-background rounded border"
                                     >
-                                      <div className="w-12 h-12 rounded overflow-hidden bg-muted flex-shrink-0">
+                                      <div className="w-12 h-12 rounded overflow-hidden bg-muted flex-shrink-0 flex items-center justify-center">
                                         <img
-                                          src={photo.photo_url}
+                                          src={getOptimizedImageUrl(photo.photo_url, 'thumbnail')}
                                           alt={photo.photo_title}
                                           className="w-full h-full object-cover"
+                                          loading="lazy"
+                                          onError={(e) => {
+                                            // Fallback para ícone quando imagem não carrega
+                                            e.currentTarget.style.display = 'none';
+                                            const parent = e.currentTarget.parentElement;
+                                            if (parent && !parent.querySelector('.fallback-icon')) {
+                                              const fallback = document.createElement('div');
+                                              fallback.className = 'fallback-icon flex items-center justify-center w-full h-full';
+                                              fallback.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-muted-foreground"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>';
+                                              parent.appendChild(fallback);
+                                            }
+                                          }}
                                         />
                                       </div>
                                       <div className="flex-1 min-w-0">
