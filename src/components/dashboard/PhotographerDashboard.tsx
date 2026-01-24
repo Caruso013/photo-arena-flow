@@ -21,7 +21,6 @@ import {
 import { Link } from 'react-router-dom';
 import { PixRequiredAlert } from '@/components/photographer/PixRequiredAlert';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import AntiScreenshotProtection from '@/components/security/AntiScreenshotProtection';
 import UploadPhotoModal from '@/components/modals/UploadPhotoModal';
 import CreateCampaignModal from '@/components/modals/CreateCampaignModal';
 import PhotographerGoals from './PhotographerGoals';
@@ -144,7 +143,6 @@ const PhotographerDashboard = () => {
   }
 
   return (
-    <AntiScreenshotProtection>
       <div className="space-y-6 sm:space-y-8">
         {/* PIX Required Alert */}
         <PixRequiredAlert variant="banner" />
@@ -361,7 +359,7 @@ const PhotographerDashboard = () => {
           </DialogContent>
         </Dialog>
       )}
-    </AntiScreenshotProtection>
+      </div>
   );
 };
 

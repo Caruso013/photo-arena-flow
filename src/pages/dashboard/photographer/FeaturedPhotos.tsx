@@ -8,7 +8,6 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { Star, Trash2, CheckSquare, Square, Info } from 'lucide-react';
 import WatermarkedPhoto from '@/components/WatermarkedPhoto';
-import AntiScreenshotProtection from '@/components/security/AntiScreenshotProtection';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   AlertDialog,
@@ -266,13 +265,11 @@ const FeaturedPhotos = () => {
 
               {/* Photo */}
               <div className="aspect-square bg-muted relative">
-                <AntiScreenshotProtection>
                   <WatermarkedPhoto
                     src={photo.thumbnail_url || photo.watermarked_url}
                     alt={photo.title || 'Foto'}
                     imgClassName="w-full h-full object-cover"
                   />
-                </AntiScreenshotProtection>
               </div>
 
               {/* Info */}
