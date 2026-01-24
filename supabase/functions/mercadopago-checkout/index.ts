@@ -63,9 +63,10 @@ serve(async (req) => {
       cardIssuerId,     // Banco emissor
       installments,     // Número de parcelas
       discount,         // {percentage, amount} opcional
+      deviceId,         // Device Session ID para anti-fraude (obrigatório)
     } = body;
 
-    console.log('📥 Request:', JSON.stringify({ action, paymentId, photosCount: photos?.length, buyerEmail: buyer?.email }));
+    console.log('📥 Request:', JSON.stringify({ action, paymentId, photosCount: photos?.length, buyerEmail: buyer?.email, hasDeviceId: !!deviceId }));
 
     // ===== AÇÃO: VERIFICAR STATUS DO PAGAMENTO =====
     if (action === 'check_status' && paymentId) {
@@ -204,13 +205,24 @@ serve(async (req) => {
         notification_url: `${supabaseUrl}/functions/v1/mercadopago-webhook`,
       };
 
+      // Headers com Device Session ID para anti-fraude
+      const mpHeaders: Record<string, string> = {
+        'Authorization': `Bearer ${mpAccessToken}`,
+        'Content-Type': 'application/json',
+        'X-Idempotency-Key': `pix-${externalReference}`,
+      };
+
+      // Adicionar Device Session ID se disponível (obrigatório para evitar bloqueio)
+      if (deviceId) {
+        mpHeaders['X-meli-session-id'] = deviceId;
+        console.log('🔐 Device Session ID adicionado ao request PIX');
+      } else {
+        console.warn('⚠️ Device Session ID não fornecido - pode causar bloqueio');
+      }
+
       const mpResponse = await fetch('https://api.mercadopago.com/v1/payments', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${mpAccessToken}`,
-          'Content-Type': 'application/json',
-          'X-Idempotency-Key': `pix-${externalReference}`,
-        },
+        headers: mpHeaders,
         body: JSON.stringify(pixPayload),
       });
 
@@ -279,13 +291,21 @@ serve(async (req) => {
         cardPayload.issuer_id = Number(cardIssuerId);
       }
 
+      // Headers com Device Session ID para anti-fraude
+      const mpCardHeaders: Record<string, string> = {
+        'Authorization': `Bearer ${mpAccessToken}`,
+        'Content-Type': 'application/json',
+        'X-Idempotency-Key': `card-${externalReference}`,
+      };
+
+      if (deviceId) {
+        mpCardHeaders['X-meli-session-id'] = deviceId;
+        console.log('🔐 Device Session ID adicionado ao request Cartão');
+      }
+
       const mpResponse = await fetch('https://api.mercadopago.com/v1/payments', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${mpAccessToken}`,
-          'Content-Type': 'application/json',
-          'X-Idempotency-Key': `card-${externalReference}`,
-        },
+        headers: mpCardHeaders,
         body: JSON.stringify(cardPayload),
       });
 
