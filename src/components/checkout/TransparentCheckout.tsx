@@ -49,8 +49,8 @@ interface TransparentCheckoutProps {
   onCancel: () => void;
 }
 
-// ⚠️ SUBSTITUA pela sua Public Key de PRODUÇÃO do Mercado Pago
-const MP_PUBLIC_KEY = 'APP_USR-af4e8472-4521-43e3-ac3c-5454853c0964';
+// Public Key de PRODUÇÃO do Mercado Pago
+const MP_PUBLIC_KEY = 'APP_USR-26c10e70-0b3a-444f-8db6-ae325fcd3da4';
 
 export default function TransparentCheckout({
   photos,
