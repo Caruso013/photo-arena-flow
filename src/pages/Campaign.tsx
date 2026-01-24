@@ -1442,6 +1442,7 @@ const Campaign = () => {
                       position="full"
                       opacity={0.85}
                       imgClassName="w-full max-h-[55vh] sm:max-h-[70vh] object-contain rounded-lg"
+                      loading="eager"
                     />
                   </div>
                 </AntiScreenshotProtection>
