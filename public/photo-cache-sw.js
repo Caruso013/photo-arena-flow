@@ -49,12 +49,45 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // IMPORTANTE: Não interceptar requisições cross-origin sem parâmetros de transformação
+  // Isso causa o erro "opaque response" no Supabase Storage
+  const isSupabaseStorage = url.hostname.includes('supabase.co') && url.pathname.includes('/storage/');
+  const hasTransformParams = url.search.includes('width=') || url.search.includes('height=');
+  
+  // Se for Supabase Storage sem transformação, deixar passar direto (não cachear)
+  if (isSupabaseStorage && !hasTransformParams) {
+    return; // Não interceptar, deixar o browser fazer a requisição normal
+  }
+
   // Estratégia AGRESSIVA baseada no tamanho da imagem
   const params = new URLSearchParams(url.search);
   const width = parseInt(params.get('width') || '0');
   const isThumbnail = width <= 300; // Thumbnails até 300px
   const isMedium = width > 300 && width <= 600; // Medium até 600px
   const isLarge = width > 600; // Large acima de 600px
+  
+  // Se não tem width definido e não é Supabase, tentar cache normal
+  if (width === 0 && !isSupabaseStorage) {
+    event.respondWith(
+      caches.match(request).then((cachedResponse) => {
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+        return fetch(request).then((response) => {
+          if (response.ok) {
+            const responseToCache = response.clone();
+            caches.open(IMAGE_CACHE_NAME).then((cache) => {
+              cache.put(request, responseToCache);
+            });
+          }
+          return response;
+        }).catch(() => {
+          return caches.match(request);
+        });
+      })
+    );
+    return;
+  }
 
   // Cache-first para thumbnails e medium (economiza MUITO Cached Egress)
   if (isThumbnail || isMedium) {
