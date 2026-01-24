@@ -68,6 +68,44 @@ serve(async (req) => {
 
     console.log('📥 Request:', JSON.stringify({ action, paymentId, photosCount: photos?.length, buyerEmail: buyer?.email, hasDeviceId: !!deviceId }));
 
+    // ===== AÇÃO: VERIFICAR CREDENCIAIS DO MERCADO PAGO =====
+    if (action === 'check_credentials') {
+      console.log('🔍 Verificando credenciais do Mercado Pago...');
+
+      // Testar se o Access Token é válido
+      const testResponse = await fetch('https://api.mercadopago.com/users/me', {
+        headers: { 'Authorization': `Bearer ${mpAccessToken}` },
+      });
+
+      const testResult = await testResponse.json();
+
+      if (!testResponse.ok) {
+        console.error('❌ Access Token inválido:', testResult);
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Access Token inválido ou expirado',
+          details: testResult
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      console.log('✅ Credenciais válidas:', { id: testResult.id, email: testResult.email, site_id: testResult.site_id });
+
+      return new Response(JSON.stringify({
+        success: true,
+        account: {
+          id: testResult.id,
+          email: testResult.email,
+          site_id: testResult.site_id,
+          nickname: testResult.nickname,
+        }
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // ===== AÇÃO: VERIFICAR STATUS DO PAGAMENTO =====
     if (action === 'check_status' && paymentId) {
       console.log('🔍 Verificando status do pagamento:', paymentId);
