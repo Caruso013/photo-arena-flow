@@ -193,9 +193,20 @@ export default function TransparentCheckout({
     setPixData(null);
 
     try {
+      // Capturar Device Session ID para anti-fraude (obrigatório pelo MP)
+      let deviceId = '';
+      try {
+        if (mpRef.current?.getDeviceSessionId) {
+          deviceId = await mpRef.current.getDeviceSessionId();
+        }
+      } catch (e) {
+        console.warn('Device ID não disponível:', e);
+      }
+
       const { data, error } = await supabase.functions.invoke('mercadopago-checkout', {
         body: {
           action: 'create_pix',
+          deviceId, // ID do dispositivo para anti-fraude
           photos: photos.map(p => ({ id: p.id, title: p.title || 'Foto', price: p.price || 0 })),
           buyer: {
             name: buyerInfo.name,
@@ -254,6 +265,16 @@ export default function TransparentCheckout({
       const cleanCardNumber = cardNumber.replace(/\s/g, '');
       const fullYear = expirationYear.length === 2 ? '20' + expirationYear : expirationYear;
 
+      // Capturar Device Session ID para anti-fraude
+      let deviceId = '';
+      try {
+        if (mpRef.current?.getDeviceSessionId) {
+          deviceId = await mpRef.current.getDeviceSessionId();
+        }
+      } catch (e) {
+        console.warn('Device ID não disponível:', e);
+      }
+
       // Gerar token do cartão
       const tokenData = await mpRef.current.createCardToken({
         cardNumber: cleanCardNumber,
@@ -271,6 +292,7 @@ export default function TransparentCheckout({
       const { data, error } = await supabase.functions.invoke('mercadopago-checkout', {
         body: {
           action: 'create_card',
+          deviceId, // ID do dispositivo para anti-fraude
           cardToken: tokenData.id,
           cardPaymentMethodId: cardBrand,
           cardIssuerId: selectedIssuer,
