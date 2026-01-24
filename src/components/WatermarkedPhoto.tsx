@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 
 interface WatermarkedPhotoProps {
   src: string;
@@ -27,6 +27,13 @@ const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const longPressTimer = useRef<number | null>(null);
+  
+  // PROTEÇÃO: Controle de carregamento - foto só aparece quando marca d'água está pronta
+  const [watermarkLoaded, setWatermarkLoaded] = useState(false);
+  const [photoLoaded, setPhotoLoaded] = useState(false);
+  
+  // A foto só fica visível quando AMBAS as imagens estão carregadas
+  const isReady = watermarkLoaded && photoLoaded;
 
   const watermarkPositionClass =
     position === 'center'
@@ -34,6 +41,35 @@ const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = ({
       : position === 'corner'
       ? 'right-2 bottom-2 w-16 h-16'
       : 'inset-0 w-full h-full'; // position === 'full'
+
+  // Pré-carregar a marca d'água ANTES de mostrar qualquer coisa
+  useEffect(() => {
+    if (isPurchased) {
+      setWatermarkLoaded(true);
+      return;
+    }
+    
+    // Reset quando src muda
+    setWatermarkLoaded(false);
+    setPhotoLoaded(false);
+    
+    const watermark = new Image();
+    watermark.onload = () => {
+      setWatermarkLoaded(true);
+    };
+    watermark.onerror = () => {
+      // Se a marca d'água falhar, carregar de qualquer jeito (melhor que não mostrar nada)
+      console.error('Erro ao carregar marca d\'água');
+      setWatermarkLoaded(true);
+    };
+    watermark.src = watermarkSrc;
+    
+    // Cleanup
+    return () => {
+      watermark.onload = null;
+      watermark.onerror = null;
+    };
+  }, [watermarkSrc, isPurchased, src]);
 
   // Proteção contra 3D Touch e long press no iOS
   useEffect(() => {
@@ -124,10 +160,11 @@ const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = ({
   }
 
   // Fotos não compradas: marca d'água forte e visível
+  // PROTEÇÃO: A foto só fica visível quando a marca d'água já carregou
   return (
     <div 
       ref={containerRef}
-      className="relative w-full h-full select-none"
+      className="relative w-full h-full select-none bg-muted"
       style={{
         WebkitUserSelect: 'none',
         WebkitTouchCallout: 'none',
@@ -136,6 +173,14 @@ const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = ({
       onContextMenu={(e) => e.preventDefault()}
       onDragStart={(e) => e.preventDefault()}
     >
+      {/* Skeleton/placeholder enquanto carrega */}
+      {!isReady && (
+        <div className="absolute inset-0 bg-muted animate-pulse flex items-center justify-center">
+          <div className="w-8 h-8 border-2 border-muted-foreground/30 border-t-primary rounded-full animate-spin" />
+        </div>
+      )}
+      
+      {/* A foto só aparece quando a marca d'água está carregada */}
       <img 
         src={src} 
         alt={alt} 
@@ -144,32 +189,40 @@ const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = ({
         decoding="async"
         crossOrigin="anonymous"
         draggable={false}
+        onLoad={() => setPhotoLoaded(true)}
         style={{
           WebkitUserSelect: 'none',
           WebkitTouchCallout: 'none',
           userSelect: 'none',
-          pointerEvents: 'none'
+          pointerEvents: 'none',
+          // PROTEÇÃO: Foto invisível até marca d'água carregar
+          opacity: isReady ? 1 : 0,
+          transition: 'opacity 0.2s ease-in-out'
         }}
       />
 
       {/* watermark overlay in front - FORTE para fotos não compradas */}
-      <img
-        src={watermarkSrc}
-        alt="Marca d'água"
-        className={`pointer-events-none absolute z-10 ${watermarkPositionClass} ${watermarkClassName}`}
-        style={{ 
-          opacity,
-          objectFit: position === 'full' ? 'cover' : 'contain',
-          WebkitUserSelect: 'none',
-          WebkitTouchCallout: 'none',
-          userSelect: 'none'
-        }}
-        loading={loading}
-        decoding="async"
-        aria-hidden
-        crossOrigin="anonymous"
-        draggable={false}
-      />
+      {/* Só renderiza após a marca d'água estar pré-carregada */}
+      {watermarkLoaded && (
+        <img
+          src={watermarkSrc}
+          alt="Marca d'água"
+          className={`pointer-events-none absolute z-10 ${watermarkPositionClass} ${watermarkClassName}`}
+          style={{ 
+            opacity: isReady ? opacity : 0,
+            objectFit: position === 'full' ? 'cover' : 'contain',
+            WebkitUserSelect: 'none',
+            WebkitTouchCallout: 'none',
+            userSelect: 'none',
+            transition: 'opacity 0.2s ease-in-out'
+          }}
+          loading="eager"
+          decoding="async"
+          aria-hidden
+          crossOrigin="anonymous"
+          draggable={false}
+        />
+      )}
 
       {/* Overlay transparente para bloquear acesso direto à imagem no iOS */}
       <div 
