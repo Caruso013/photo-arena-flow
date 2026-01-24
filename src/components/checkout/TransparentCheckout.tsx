@@ -275,19 +275,32 @@ export default function TransparentCheckout({
         setCheckingPixPayment(true);
         pixCheckIntervalRef.current = setInterval(() => {
           checkPixPaymentStatus(data.payment_id);
-        }, 5000); // Verificar a cada 5 segundos
+        }, 3000); // Verificar a cada 3 segundos para UX mais responsiva
         
         toast({
-          title: "PIX gerado!",
+          title: "✅ PIX gerado!",
           description: "Escaneie o QR Code ou copie o código para pagar.",
         });
       } else {
-        throw new Error(data.error || 'Erro ao gerar PIX');
+        // Verificar se é erro de credenciais
+        const isCredentialError = data.error?.includes('credentials') || 
+                                  data.error?.includes('Invalid');
+        
+        if (isCredentialError) {
+          toast({
+            title: "⚙️ Erro de configuração",
+            description: "Sistema de pagamento indisponível. Tente novamente em alguns minutos.",
+            variant: "destructive",
+          });
+        } else {
+          throw new Error(data.error || 'Erro ao gerar PIX');
+        }
+        onError(data.error || 'Erro ao gerar PIX');
       }
     } catch (error: any) {
       console.error('❌ Erro ao gerar PIX:', error);
       toast({
-        title: "Erro ao gerar PIX",
+        title: "❌ Erro ao gerar PIX",
         description: error.message || "Tente novamente.",
         variant: "destructive",
       });
@@ -357,33 +370,50 @@ export default function TransparentCheckout({
 
       if (data.success) {
         toast({
-          title: "Pagamento aprovado!",
-          description: data.message || "Sua compra foi realizada com sucesso.",
+          title: "✅ Pagamento aprovado!",
+          description: data.message || "Sua compra foi realizada com sucesso. Redirecionando...",
         });
         onSuccess(data);
-      } else {
-        // Verificar se é erro de valor alto
-        const isHighValueError = data.error?.includes('valor') || 
-                                 data.error?.includes('limite') || 
-                                 data.error?.includes('PIX');
+      } else if (data.status === 'pending' || data.status === 'in_process') {
+        toast({
+          title: "⏳ Pagamento em análise",
+          description: "Seu pagamento está sendo processado. Você será notificado quando for aprovado.",
+        });
+        onSuccess(data);
+      } else if (data.status === 'rejected') {
+        // Mapear motivos de rejeição para mensagens claras
+        let rejectMessage = "Tente outro cartão ou use PIX.";
+        const statusDetail = data.status_detail || '';
+        
+        if (statusDetail.includes('insufficient_amount')) {
+          rejectMessage = "Saldo insuficiente. Tente outro cartão ou use PIX.";
+        } else if (statusDetail.includes('cc_rejected_bad_filled')) {
+          rejectMessage = "Dados do cartão incorretos. Verifique e tente novamente.";
+        } else if (statusDetail.includes('cc_rejected_high_risk')) {
+          rejectMessage = "Transação não autorizada pelo banco. Tente PIX.";
+        } else if (statusDetail.includes('cc_rejected_call_for_authorize')) {
+          rejectMessage = "Entre em contato com seu banco para autorizar.";
+        }
         
         toast({
-          title: isHighValueError ? "Valor muito alto" : "Pagamento não aprovado",
-          description: data.error || data.message || "Tente novamente ou use outro cartão.",
+          title: "❌ Pagamento recusado",
+          description: rejectMessage,
           variant: "destructive",
         });
+        onError(data.error || rejectMessage);
+      } else if (data.error) {
+        // Verificar se é erro de credenciais
+        const isCredentialError = data.error?.includes('credentials') || 
+                                  data.error?.includes('Invalid');
         
-        if (data.status === 'rejected') {
-          onError(data.error || data.message || 'Pagamento recusado');
-        } else if (data.status === 'pending') {
-          toast({
-            title: "Pagamento em análise",
-            description: "Você receberá um email quando o pagamento for confirmado.",
-          });
-          onSuccess(data);
-        } else if (data.error) {
-          onError(data.error);
-        }
+        toast({
+          title: isCredentialError ? "⚙️ Erro de configuração" : "❌ Erro no pagamento",
+          description: isCredentialError 
+            ? "Sistema de pagamento indisponível. Tente novamente em alguns minutos."
+            : (data.error || "Tente novamente."),
+          variant: "destructive",
+        });
+        onError(data.error);
       }
     } catch (error: any) {
       console.error('❌ Erro no pagamento:', error);
