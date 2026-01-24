@@ -56,6 +56,19 @@ serve(async (req) => {
       progressiveDiscount, // Desconto aplicado
     } = requestBody;
 
+    // Log detalhado para debug
+    console.log('📥 Request recebido:', JSON.stringify({
+      action,
+      paymentMethod,
+      paymentId,
+      hasPhotos: !!photos,
+      photosCount: photos?.length,
+      hasBuyerInfo: !!buyerInfo,
+      buyerEmail: buyerInfo?.email,
+      hasDocument: !!buyerInfo?.document,
+      progressiveDiscount,
+    }));
+
     // ============ VERIFICAR STATUS DO PIX ============
     if (action === 'check_pix_status' && paymentId) {
       console.log('🔍 Verificando status do PIX:', paymentId);
@@ -72,7 +85,19 @@ serve(async (req) => {
         // Atualizar purchases para completed
         const externalReference = mpResult.external_reference;
         if (externalReference) {
-          const purchaseIds = externalReference.split(',');
+          // Resolver purchaseIds - suporta formato batch e formato antigo
+          let purchaseIds: string[];
+          if (externalReference.startsWith('batch_')) {
+            // Novo formato: buscar pelo batch ID
+            const { data: purchases } = await supabaseAdmin
+              .from('purchases')
+              .select('id')
+              .eq('stripe_payment_intent_id', `batch:${externalReference}`);
+            purchaseIds = purchases?.map(p => p.id) || [];
+          } else {
+            // Formato antigo: IDs separados por vírgula
+            purchaseIds = externalReference.split(',').map((id: string) => id.trim()).filter(Boolean);
+          }
           
           await supabaseAdmin
             .from('purchases')
@@ -232,11 +257,60 @@ serve(async (req) => {
       });
     }
 
-    const externalReference = purchaseIds.join(',');
+    // Criar external_reference curto (max 64 chars para MP)
+    // Se for apenas 1 purchase, usar o ID diretamente
+    // Se forem múltiplas, criar um código baseado no primeiro ID + timestamp
+    let externalReference: string;
+    if (purchaseIds.length === 1) {
+      externalReference = purchaseIds[0];
+    } else {
+      // Usar formato: primeiro_id_curto:count:timestamp
+      const shortId = purchaseIds[0].substring(0, 8);
+      const timestamp = Date.now().toString(36); // Base36 para ser mais curto
+      externalReference = `batch_${shortId}_${purchaseIds.length}_${timestamp}`;
+    }
+    
+    // Salvar mapeamento do batch para os purchase_ids (usando o primeiro purchase como referência)
+    if (purchaseIds.length > 1) {
+      // Atualizar todos os purchases com um batch_id comum
+      const batchId = externalReference;
+      await supabaseAdmin
+        .from('purchases')
+        .update({ 
+          // Usar um campo existente ou metadata para armazenar o batch
+          stripe_payment_intent_id: `batch:${batchId}`,
+        })
+        .in('id', purchaseIds);
+    }
+
+    console.log('📋 External Reference:', externalReference, '| Purchases:', purchaseIds.length);
 
     // ============ PAGAMENTO PIX ============
     if (paymentMethod === 'pix') {
       console.log('🔄 Gerando pagamento PIX...');
+      console.log('📋 Valor final:', finalTotal);
+      console.log('📋 Comprador:', JSON.stringify({
+        email: buyerInfo.email,
+        name: buyerInfo.name,
+        surname: buyerInfo.surname,
+        document: buyerInfo.document?.replace(/\D/g, '').substring(0, 3) + '***',
+      }));
+      
+      // Limpar CPF (apenas números)
+      const cleanDocument = buyerInfo.document?.replace(/\D/g, '') || '';
+      
+      // Validar CPF
+      if (cleanDocument.length !== 11) {
+        console.error('❌ CPF inválido:', cleanDocument.length, 'dígitos');
+        await supabaseAdmin.from('purchases').delete().in('id', purchaseIds);
+        return new Response(JSON.stringify({ 
+          success: false, 
+          error: 'CPF inválido. Deve ter 11 dígitos.' 
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
       
       const pixPaymentData = {
         transaction_amount: Number(finalTotal.toFixed(2)),
@@ -245,12 +319,12 @@ serve(async (req) => {
           ? `Compra de ${photos.length} fotos - STA Fotos` 
           : `Compra de foto - STA Fotos`,
         payer: {
-          email: buyerInfo.email.toLowerCase(),
-          first_name: buyerInfo.name,
-          last_name: buyerInfo.surname,
+          email: buyerInfo.email.toLowerCase().trim(),
+          first_name: (buyerInfo.name || 'Cliente').trim(),
+          last_name: (buyerInfo.surname || 'STA').trim(),
           identification: {
             type: 'CPF',
-            number: buyerInfo.document.replace(/\D/g, ''),
+            number: cleanDocument,
           },
         },
         external_reference: externalReference,
@@ -274,20 +348,29 @@ serve(async (req) => {
 
       const mpResult = await mpResponse.json();
       
-      console.log('📦 Resposta MP PIX:', JSON.stringify({
-        id: mpResult.id,
-        status: mpResult.status,
-        point_of_interaction: mpResult.point_of_interaction ? 'present' : 'missing',
-      }));
+      console.log('📦 Resposta MP PIX completa:', JSON.stringify(mpResult));
 
-      if (mpResult.error) {
-        console.error('❌ Erro MP:', mpResult);
+      // Verificar se houve erro de API
+      if (mpResult.error || !mpResponse.ok) {
+        console.error('❌ Erro MP PIX:', JSON.stringify({
+          error: mpResult.error,
+          message: mpResult.message,
+          cause: mpResult.cause,
+          status: mpResponse.status,
+        }));
         // Deletar purchases criadas
         await supabaseAdmin.from('purchases').delete().in('id', purchaseIds);
         
+        // Extrair mensagem de erro mais detalhada
+        let errorMessage = mpResult.message || 'Erro ao gerar PIX';
+        if (mpResult.cause && Array.isArray(mpResult.cause) && mpResult.cause.length > 0) {
+          errorMessage = mpResult.cause[0].description || errorMessage;
+        }
+        
         return new Response(JSON.stringify({ 
           success: false, 
-          error: mpResult.message || 'Erro ao gerar PIX' 
+          error: errorMessage,
+          details: mpResult.cause || mpResult.error,
         }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },

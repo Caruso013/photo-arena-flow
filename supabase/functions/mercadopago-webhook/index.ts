@@ -194,14 +194,45 @@ serve(async (req) => {
       }
     }
 
+    // Helper: Resolver purchase IDs a partir do external_reference
+    // Suporta formato antigo (UUIDs separados por vírgula) e novo (batch_xxx)
+    const resolvePurchaseIds = async (externalReference: string): Promise<string[]> => {
+      // Novo formato: batch_shortid_count_timestamp
+      if (externalReference.startsWith('batch_')) {
+        console.log('📦 Detectado formato batch:', externalReference);
+        // Buscar purchases que têm esse batch no stripe_payment_intent_id
+        const { data: purchases, error } = await supabase
+          .from('purchases')
+          .select('id')
+          .eq('stripe_payment_intent_id', `batch:${externalReference}`);
+        
+        if (error) {
+          console.error('❌ Erro ao buscar batch:', error);
+          return [];
+        }
+        
+        const ids = purchases?.map(p => p.id) || [];
+        console.log(`📦 Batch resolvido para ${ids.length} purchases`);
+        return ids;
+      }
+      
+      // Formato antigo: UUIDs separados por vírgula ou único UUID
+      return externalReference.split(',').map(id => id.trim()).filter(Boolean);
+    };
+
     // Helper: Atualizar purchases no banco
     const updatePurchases = async (externalReference: string, status: string, paymentIdForLog?: string) => {
       let purchaseStatus = 'pending';
       if (status === 'approved' || status === 'paid') purchaseStatus = 'completed';
       else if (status === 'rejected' || status === 'cancelled' || status === 'expired') purchaseStatus = 'failed';
 
-      const purchaseIds = externalReference.split(',').map(id => id.trim()).filter(Boolean);
+      const purchaseIds = await resolvePurchaseIds(externalReference);
       console.log(`📦 Atualizando ${purchaseIds.length} purchases para ${purchaseStatus}`);
+      
+      if (purchaseIds.length === 0) {
+        console.error('❌ Nenhum purchase encontrado para:', externalReference);
+        return purchaseStatus;
+      }
       
       for (const pid of purchaseIds) {
         // IDEMPOTÊNCIA: Verificar status atual antes de atualizar
@@ -314,7 +345,7 @@ serve(async (req) => {
 
       // Enviar email SOMENTE se o pagamento foi APROVADO
       if (finalStatus === 'completed') {
-        const purchaseIds = externalReference.split(',').map(id => id.trim()).filter(Boolean);
+        const purchaseIds = await resolvePurchaseIds(externalReference);
         await sendConfirmationEmail(purchaseIds);
       }
       
@@ -371,7 +402,7 @@ serve(async (req) => {
 
       // Enviar email SOMENTE se o pagamento foi APROVADO
       if (finalStatus === 'completed') {
-        const purchaseIds = externalReference.split(',').map(id => id.trim()).filter(Boolean);
+        const purchaseIds = await resolvePurchaseIds(externalReference);
         await sendConfirmationEmail(purchaseIds);
       }
       
