@@ -195,8 +195,10 @@ serve(async (req) => {
     }
 
     // Helper: Resolver purchase IDs a partir do external_reference
-    // Suporta formato antigo (UUIDs separados por vírgula) e novo (batch_xxx)
+    // Suporta: batch_xxx, UUID único, UUIDs separados por vírgula
     const resolvePurchaseIds = async (externalReference: string): Promise<string[]> => {
+      console.log('🔍 Resolvendo external_reference:', externalReference);
+      
       // Novo formato: batch_shortid_count_timestamp
       if (externalReference.startsWith('batch_')) {
         console.log('📦 Detectado formato batch:', externalReference);
@@ -216,8 +218,34 @@ serve(async (req) => {
         return ids;
       }
       
-      // Formato antigo: UUIDs separados por vírgula ou único UUID
-      return externalReference.split(',').map(id => id.trim()).filter(Boolean);
+      // Verificar se é um UUID válido (36 chars com hífens)
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      
+      // Formato: UUIDs separados por vírgula ou único UUID
+      const potentialIds = externalReference.split(',').map(id => id.trim()).filter(Boolean);
+      
+      // Verificar quais IDs realmente existem no banco
+      const validIds: string[] = [];
+      for (const id of potentialIds) {
+        if (uuidRegex.test(id)) {
+          const { data: purchase } = await supabase
+            .from('purchases')
+            .select('id')
+            .eq('id', id)
+            .single();
+          
+          if (purchase) {
+            validIds.push(id);
+          } else {
+            console.warn(`⚠️ Purchase ${id} não encontrado no banco`);
+          }
+        } else {
+          console.warn(`⚠️ ID inválido (não é UUID): ${id}`);
+        }
+      }
+      
+      console.log(`✅ ${validIds.length} purchases válidos encontrados`);
+      return validIds;
     };
 
     // Helper: Atualizar purchases no banco
@@ -238,7 +266,7 @@ serve(async (req) => {
         // IDEMPOTÊNCIA: Verificar status atual antes de atualizar
         const { data: currentPurchase } = await supabase
           .from('purchases')
-          .select('status')
+          .select('status, stripe_payment_intent_id')
           .eq('id', pid)
           .single();
         
@@ -259,11 +287,16 @@ serve(async (req) => {
           continue;
         }
         
+        // IMPORTANTE: Não sobrescrever stripe_payment_intent_id se já tem valor batch:
+        // Salvar apenas o status. O payment_id do MP já está logado no webhook_logs
         const { error: updateError } = await supabase
           .from('purchases')
           .update({ 
-            status: purchaseStatus, 
-            stripe_payment_intent_id: paymentIdForLog?.toString() 
+            status: purchaseStatus,
+            // Salvar payment_id apenas se não tinha valor ou não era batch
+            ...(paymentIdForLog && !currentPurchase.stripe_payment_intent_id?.startsWith('batch:') 
+              ? { stripe_payment_intent_id: paymentIdForLog.toString() } 
+              : {})
           })
           .eq('id', pid);
           
