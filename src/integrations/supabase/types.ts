@@ -277,6 +277,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "coupon_uses_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "purchases_missing_revenue_shares"
+            referencedColumns: ["purchase_id"]
+          },
+          {
             foreignKeyName: "coupon_uses_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
@@ -1261,6 +1268,13 @@ export type Database = {
             referencedRelation: "purchases"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "revenue_shares_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "purchases_missing_revenue_shares"
+            referencedColumns: ["purchase_id"]
+          },
         ]
       }
       sub_events: {
@@ -1741,6 +1755,34 @@ export type Database = {
         }
         Relationships: []
       }
+      purchases_missing_revenue_shares: {
+        Row: {
+          amount: number | null
+          campaign_title: string | null
+          created_at: string | null
+          photo_title: string | null
+          photographer_id: string | null
+          purchase_id: string | null
+          revenue_share_status: string | null
+          status: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchases_photographer_id_fkey"
+            columns: ["photographer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchases_photographer_id_fkey"
+            columns: ["photographer_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       revenue_shares_with_correct_photographer: {
         Row: {
           created_at: string | null
@@ -1788,6 +1830,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "purchases"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "revenue_shares_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "purchases_missing_revenue_shares"
+            referencedColumns: ["purchase_id"]
           },
         ]
       }
@@ -1908,6 +1957,13 @@ export type Database = {
       is_organization_owner: {
         Args: { _org_id: string; _user_id: string }
         Returns: boolean
+      }
+      repair_missing_revenue_shares: {
+        Args: never
+        Returns: {
+          purchase_id: string
+          status: string
+        }[]
       }
       toggle_cleanup_job: {
         Args: { enable_job: boolean; job_name_param: string }
