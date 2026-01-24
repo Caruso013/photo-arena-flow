@@ -186,15 +186,18 @@ serve(async (req) => {
     let discountAmount = 0;
     let discountPercentage = 0;
     
-    if (progressiveDiscount?.enabled) {
-      discountPercentage = progressiveDiscount.percentage;
-      discountAmount = progressiveDiscount.amount;
+    // SOMENTE aplicar desconto se explicitamente habilitado pelo frontend
+    if (progressiveDiscount?.enabled === true) {
+      discountPercentage = progressiveDiscount.percentage || 0;
+      discountAmount = progressiveDiscount.amount || 0;
+      console.log('📊 Desconto progressivo aplicado:', discountPercentage, '%', '=', discountAmount);
     } else {
-      discountPercentage = calculateProgressiveDiscount(photos.length);
-      discountAmount = (subtotal * discountPercentage) / 100;
+      console.log('📊 Sem desconto progressivo (enabled:', progressiveDiscount?.enabled, ')');
     }
     
     const finalTotal = subtotal - discountAmount;
+    
+    console.log('💰 Valores: subtotal=', subtotal, 'desconto=', discountAmount, 'final=', finalTotal);
     
     if (finalTotal < 1) {
       return new Response(JSON.stringify({ 
