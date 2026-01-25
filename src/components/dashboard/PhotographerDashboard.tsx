@@ -105,7 +105,14 @@ const PhotographerDashboard = () => {
     try {
       const { data } = await supabase
         .from('purchases')
-        .select('id, amount, created_at, buyer_id, buyer:profiles!purchases_buyer_id_fkey(full_name, email), photo:photos(id, title, original_url)')
+        .select(`
+          id, 
+          amount, 
+          created_at, 
+          buyer_id, 
+          buyer:profiles!purchases_buyer_id_fkey(full_name, email), 
+          photo:photos(id, title, thumbnail_url, watermarked_url)
+        `)
         .eq('photographer_id', profile?.id)
         .eq('status', 'completed')
         .order('created_at', { ascending: false })
@@ -121,7 +128,7 @@ const PhotographerDashboard = () => {
         buyerId: sale.buyer_id,
         buyerEmail: sale.buyer?.email,
         photoId: sale.photo?.id,
-        photoUrl: sale.photo?.original_url,
+        photoUrl: sale.photo?.thumbnail_url || sale.photo?.watermarked_url,
       }));
 
       setRecentSales(activities);

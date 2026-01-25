@@ -160,10 +160,17 @@ const AdminDashboard = () => {
         pendingApplications: pendingApplications || 0,
       });
 
-      // Fetch recent activities
+      // Fetch recent activities with buyer email and photo thumbnail
       const { data: recentSales } = await supabase
         .from('purchases')
-        .select('id, amount, created_at, photo:photos(title)')
+        .select(`
+          id, 
+          amount, 
+          created_at,
+          buyer_id,
+          buyer:profiles!purchases_buyer_id_fkey(full_name, email),
+          photo:photos(id, title, thumbnail_url, watermarked_url)
+        `)
         .eq('status', 'completed')
         .order('created_at', { ascending: false })
         .limit(5);
@@ -171,10 +178,14 @@ const AdminDashboard = () => {
       const activities: ActivityItem[] = (recentSales || []).map((sale: any) => ({
         id: sale.id,
         type: 'sale' as const,
-        title: 'Nova venda',
+        title: sale.buyer?.full_name || 'Cliente',
         description: sale.photo?.title || 'Foto vendida',
         timestamp: sale.created_at,
         amount: Number(sale.amount),
+        buyerId: sale.buyer_id,
+        buyerEmail: sale.buyer?.email,
+        photoId: sale.photo?.id,
+        photoUrl: sale.photo?.thumbnail_url || sale.photo?.watermarked_url,
       }));
 
       setRecentActivities(activities);
