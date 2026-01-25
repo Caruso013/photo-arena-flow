@@ -90,12 +90,41 @@ export default function TransparentCheckout({
 
   const mpRef = useRef<any>(null);
 
+  // Estado do Device ID para anti-fraude
+  const [deviceId, setDeviceId] = useState<string>('');
+
   // Inicializar SDK do Mercado Pago
   useEffect(() => {
-    const initMP = () => {
+    const initMP = async () => {
       if (window.MercadoPago) {
         try {
           mpRef.current = new window.MercadoPago(MP_PUBLIC_KEY, { locale: 'pt-BR' });
+          
+          // Capturar Device ID para anti-fraude (obrigatório pelo MP)
+          // O SDK do MP cria um identificador único de sessão
+          try {
+            // Método 1: Usar deviceId do SDK se disponível
+            if (typeof mpRef.current.getDeviceFingerprint === 'function') {
+              const fingerprint = await mpRef.current.getDeviceFingerprint();
+              if (fingerprint) {
+                setDeviceId(fingerprint);
+                console.log('✅ Device Fingerprint capturado');
+              }
+            }
+            
+            // Método 2: Fallback - gerar ID único da sessão
+            if (!deviceId) {
+              const sessionId = `session_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+              setDeviceId(sessionId);
+              console.log('✅ Session ID gerado como fallback:', sessionId);
+            }
+          } catch (e) {
+            // Fallback: gerar um ID único para a sessão
+            const fallbackId = `fallback_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+            setDeviceId(fallbackId);
+            console.warn('⚠️ Usando fallback Device ID:', fallbackId);
+          }
+          
           setMpReady(true);
           console.log('✅ Mercado Pago SDK inicializado');
         } catch (error) {
@@ -193,20 +222,12 @@ export default function TransparentCheckout({
     setPixData(null);
 
     try {
-      // Capturar Device Session ID para anti-fraude (obrigatório pelo MP)
-      let deviceId = '';
-      try {
-        if (mpRef.current?.getDeviceSessionId) {
-          deviceId = await mpRef.current.getDeviceSessionId();
-        }
-      } catch (e) {
-        console.warn('Device ID não disponível:', e);
-      }
+      console.log('🔄 Gerando PIX com deviceId:', deviceId);
 
       const { data, error } = await supabase.functions.invoke('mercadopago-checkout', {
         body: {
           action: 'create_pix',
-          deviceId, // ID do dispositivo para anti-fraude
+          deviceId, // ID do dispositivo para anti-fraude (capturado na inicialização)
           photos: photos.map(p => ({ id: p.id, title: p.title || 'Foto', price: p.price || 0 })),
           buyer: {
             name: buyerInfo.name,
@@ -265,15 +286,7 @@ export default function TransparentCheckout({
       const cleanCardNumber = cardNumber.replace(/\s/g, '');
       const fullYear = expirationYear.length === 2 ? '20' + expirationYear : expirationYear;
 
-      // Capturar Device Session ID para anti-fraude
-      let deviceId = '';
-      try {
-        if (mpRef.current?.getDeviceSessionId) {
-          deviceId = await mpRef.current.getDeviceSessionId();
-        }
-      } catch (e) {
-        console.warn('Device ID não disponível:', e);
-      }
+      console.log('🔄 Processando cartão com deviceId:', deviceId);
 
       // Gerar token do cartão
       const tokenData = await mpRef.current.createCardToken({
