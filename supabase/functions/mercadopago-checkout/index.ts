@@ -34,6 +34,10 @@ serve(async (req) => {
       });
     }
 
+    // Log para debug - mostrar prefixo do token (sem expor o token completo)
+    const tokenPrefix = mpAccessToken.substring(0, 20);
+    console.log('🔑 Access Token prefix:', tokenPrefix + '...');
+
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
     // ===== AUTENTICAÇÃO DO USUÁRIO =====
