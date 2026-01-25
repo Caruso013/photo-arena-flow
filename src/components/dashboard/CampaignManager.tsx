@@ -3,16 +3,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/components/ui/use-toast';
-import { Camera, Edit, Power, PowerOff, MapPin, Calendar, Plus, Trash2 } from 'lucide-react';
+import { Camera, Edit, Power, PowerOff, MapPin, Calendar, Trash2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import CreateCampaignModal from '../modals/CreateCampaignModal';
+import EditEventModal from '../modals/EditEventModal';
 import { CampaignPhotographersManager } from './CampaignPhotographersManager';
-import { usePlatformPercentage } from '@/hooks/usePlatformPercentage';
 
 interface Campaign {
   id: string;
@@ -26,6 +22,10 @@ interface Campaign {
   platform_percentage: number;
   photographer_percentage: number;
   organization_percentage: number;
+  cover_image_url?: string | null;
+  progressive_discount_enabled?: boolean;
+  event_terms?: string | null;
+  event_terms_pdf_url?: string | null;
 }
 
 interface CampaignManagerProps {
@@ -34,39 +34,14 @@ interface CampaignManagerProps {
 }
 
 export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onRefresh }) => {
-  const { percentage: platformPercentage, loading: loadingPercentage } = usePlatformPercentage();
-  const availablePercentage = 100 - platformPercentage;
-  
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
   const [organizations, setOrganizations] = useState<Array<{ id: string; name: string }>>([]);
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    location: '',
-    event_date: '',
-    organization_id: '',
-    platform_percentage: platformPercentage,
-    photographer_percentage: availablePercentage,
-    organization_percentage: 0
-  });
 
   useEffect(() => {
     fetchOrganizations();
   }, []);
-
-  // Atualizar formData quando a taxa da plataforma carregar
-  useEffect(() => {
-    if (!loadingPercentage) {
-      setFormData(prev => ({
-        ...prev,
-        platform_percentage: platformPercentage,
-        photographer_percentage: availablePercentage,
-        organization_percentage: 0
-      }));
-    }
-  }, [platformPercentage, loadingPercentage, availablePercentage]);
 
   const fetchOrganizations = async () => {
     const { data } = await supabase
@@ -88,7 +63,6 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
 
       toast({
         title: campaign.is_active ? "Evento desativado!" : "Evento ativado!",
-        description: `O evento foi ${campaign.is_active ? 'desativado' : 'ativado'} com sucesso.`,
       });
 
       onRefresh();
@@ -96,99 +70,14 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
       console.error('Error toggling campaign:', error);
       toast({
         title: "Erro ao atualizar",
-        description: "Não foi possível atualizar o status do evento.",
         variant: "destructive",
       });
     }
   };
 
-  const openEditDialog = (campaign: Campaign) => {
+  const openEditModal = (campaign: Campaign) => {
     setSelectedCampaign(campaign);
-    setFormData({
-      title: campaign.title,
-      description: campaign.description || '',
-      location: campaign.location || '',
-      event_date: campaign.event_date || '',
-      organization_id: campaign.organization_id || '',
-      platform_percentage: platformPercentage, // Usar taxa do sistema
-      photographer_percentage: campaign.photographer_percentage,
-      organization_percentage: campaign.organization_percentage
-    });
-    setEditDialogOpen(true);
-  };
-
-  // Ajusta automaticamente quando mudar porcentagem do fotógrafo
-  const handlePhotographerPercentageChange = (value: number) => {
-    const photographerPct = Math.max(0, Math.min(availablePercentage, value));
-    const organizationPct = availablePercentage - photographerPct;
-    
-    setFormData(prev => ({
-      ...prev,
-      photographer_percentage: photographerPct,
-      organization_percentage: organizationPct
-    }));
-  };
-
-  // Ajusta automaticamente quando mudar porcentagem da organização
-  const handleOrganizationPercentageChange = (value: number) => {
-    const organizationPct = Math.max(0, Math.min(availablePercentage, value));
-    const photographerPct = availablePercentage - organizationPct;
-    
-    setFormData(prev => ({
-      ...prev,
-      photographer_percentage: photographerPct,
-      organization_percentage: organizationPct
-    }));
-  };
-
-  const handleEdit = async () => {
-    if (!selectedCampaign) return;
-
-    // Validação: plataforma deve usar taxa do sistema
-    if (formData.platform_percentage !== platformPercentage) {
-      toast({
-        title: "Erro na validação",
-        description: `A plataforma deve ter exatamente ${platformPercentage}% (configurado no sistema).`,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Validação: fotógrafo + organização deve somar o disponível
-    const sum = formData.photographer_percentage + formData.organization_percentage;
-    if (sum !== availablePercentage) {
-      toast({
-        title: "Erro na divisão de receita",
-        description: `Fotógrafo + Organização deve somar ${availablePercentage}% (atualmente: ${sum}%)`,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from('campaigns')
-        .update(formData)
-        .eq('id', selectedCampaign.id);
-
-      if (error) throw error;
-
-      toast({
-        title: "Evento atualizado!",
-        description: "As informações e porcentagens foram atualizadas com sucesso.",
-      });
-
-      setEditDialogOpen(false);
-      setSelectedCampaign(null);
-      onRefresh();
-    } catch (error) {
-      console.error('Error updating campaign:', error);
-      toast({
-        title: "Erro ao atualizar",
-        description: "Não foi possível atualizar o evento.",
-        variant: "destructive",
-      });
-    }
+    setEditModalOpen(true);
   };
 
   const openDeleteDialog = (campaign: Campaign) => {
@@ -207,11 +96,7 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
 
       if (error) throw error;
 
-      toast({
-        title: "Evento excluído!",
-        description: "O evento foi removido com sucesso.",
-      });
-
+      toast({ title: "Evento excluído!" });
       setDeleteDialogOpen(false);
       setSelectedCampaign(null);
       onRefresh();
@@ -219,7 +104,6 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
       console.error('Error deleting campaign:', error);
       toast({
         title: "Erro ao excluir",
-        description: "Não foi possível excluir o evento.",
         variant: "destructive",
       });
     }
@@ -262,6 +146,9 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
                         <Badge variant={campaign.is_active ? 'default' : 'secondary'}>
                           {campaign.is_active ? 'Ativa' : 'Inativa'}
                         </Badge>
+                        {!campaign.organization_id && (
+                          <Badge variant="outline" className="text-xs">Plataforma</Badge>
+                        )}
                       </div>
                       {campaign.description && (
                         <p className="text-sm text-muted-foreground mb-2">{campaign.description}</p>
@@ -298,7 +185,7 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => openEditDialog(campaign)}
+                          onClick={() => openEditModal(campaign)}
                           className="gap-1"
                         >
                           <Edit className="h-4 w-4" />
@@ -313,15 +200,9 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
                           className="gap-1"
                         >
                           {campaign.is_active ? (
-                            <>
-                              <PowerOff className="h-4 w-4" />
-                              Desativar
-                            </>
+                            <><PowerOff className="h-4 w-4" />Desativar</>
                           ) : (
-                            <>
-                              <Power className="h-4 w-4" />
-                              Ativar
-                            </>
+                            <><Power className="h-4 w-4" />Ativar</>
                           )}
                         </Button>
                         <Button
@@ -343,169 +224,36 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
         )}
       </CardContent>
 
-      {/* Edit Dialog */}
-      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Editar Evento</DialogTitle>
-            <DialogDescription>
-              Atualize as informações do evento
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="edit-title">Título</Label>
-              <Input
-                id="edit-title"
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label htmlFor="edit-description">Descrição</Label>
-              <Textarea
-                id="edit-description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                rows={3}
-              />
-            </div>
-            <div>
-              <Label htmlFor="edit-location">Localização</Label>
-              <Input
-                id="edit-location"
-                value={formData.location}
-                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label htmlFor="edit-event-date">Data do Evento</Label>
-              <Input
-                id="edit-event-date"
-                type="date"
-                value={formData.event_date}
-                onChange={(e) => setFormData({ ...formData, event_date: e.target.value })}
-              />
-            </div>
-            
-            <div className="space-y-4 pt-2 border-t">
-              <div className="flex items-center justify-between">
-                <h4 className="font-medium text-sm">Divisão de Receita</h4>
-                <Badge variant="secondary" className="text-xs">
-                  Total: {formData.platform_percentage + formData.photographer_percentage + formData.organization_percentage}%
-                </Badge>
-              </div>
-              
-              {/* Plataforma - Taxa do Sistema */}
-              <div className="p-3 bg-primary/5 rounded-lg border border-primary/20">
-                <div className="flex items-center justify-between mb-2">
-                  <Label className="text-sm font-medium">🏢 Plataforma (Sistema)</Label>
-                  <Badge variant="default">{platformPercentage}%</Badge>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Taxa configurada no sistema (não editável por evento)
-                </p>
-              </div>
+      {/* Edit Modal */}
+      {selectedCampaign && (
+        <EditEventModal
+          campaignId={selectedCampaign.id}
+          campaignData={{
+            title: selectedCampaign.title,
+            description: selectedCampaign.description || undefined,
+            location: selectedCampaign.location || undefined,
+            event_date: selectedCampaign.event_date || undefined,
+            is_active: selectedCampaign.is_active,
+            cover_image_url: selectedCampaign.cover_image_url || undefined,
+            progressive_discount_enabled: selectedCampaign.progressive_discount_enabled,
+            event_terms: selectedCampaign.event_terms,
+            event_terms_pdf_url: selectedCampaign.event_terms_pdf_url,
+            organization_id: selectedCampaign.organization_id,
+            photographer_percentage: selectedCampaign.photographer_percentage,
+            organization_percentage: selectedCampaign.organization_percentage,
+            platform_percentage: selectedCampaign.platform_percentage,
+          }}
+          organizations={organizations}
+          open={editModalOpen}
+          onClose={() => {
+            setEditModalOpen(false);
+            setSelectedCampaign(null);
+          }}
+          onEventUpdated={onRefresh}
+        />
+      )}
 
-              {/* Fotógrafo - Slider */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="edit-photographer-percentage" className="text-sm">
-                    📸 Fotógrafo
-                  </Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      id="edit-photographer-percentage"
-                      type="number"
-                      min="0"
-                      max={availablePercentage}
-                      value={formData.photographer_percentage}
-                      onChange={(e) => handlePhotographerPercentageChange(Number(e.target.value))}
-                      className="w-20 h-8 text-center"
-                    />
-                    <span className="text-sm">%</span>
-                  </div>
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max={availablePercentage}
-                  value={formData.photographer_percentage}
-                  onChange={(e) => handlePhotographerPercentageChange(Number(e.target.value))}
-                  className="w-full"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Receita do fotógrafo: R$ {(formData.photographer_percentage * 10 / 10).toFixed(2)} em uma venda de R$ 100,00
-                </p>
-              </div>
-
-              {/* Organização - Slider */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="edit-organization-percentage" className="text-sm">
-                    🏛️ Organização
-                  </Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      id="edit-organization-percentage"
-                      type="number"
-                      min="0"
-                      max={availablePercentage}
-                      value={formData.organization_percentage}
-                      onChange={(e) => handleOrganizationPercentageChange(Number(e.target.value))}
-                      className="w-20 h-8 text-center"
-                    />
-                    <span className="text-sm">%</span>
-                  </div>
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max={availablePercentage}
-                  value={formData.organization_percentage}
-                  onChange={(e) => handleOrganizationPercentageChange(Number(e.target.value))}
-                  className="w-full"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Receita da organização: R$ {(formData.organization_percentage * 10 / 10).toFixed(2)} em uma venda de R$ 100,00
-                </p>
-              </div>
-
-              {/* Alerta de validação */}
-              {(formData.photographer_percentage + formData.organization_percentage) !== availablePercentage && (
-                <div className="p-2 bg-destructive/10 border border-destructive/20 rounded-md">
-                  <p className="text-xs text-destructive">
-                    ⚠️ Fotógrafo + Organização deve somar {availablePercentage}% (atual: {formData.photographer_percentage + formData.organization_percentage}%)
-                  </p>
-                </div>
-              )}
-
-              <div>
-                <Label htmlFor="edit-organization">Organização do Evento</Label>
-                <select
-                  id="edit-organization"
-                  value={formData.organization_id}
-                  onChange={(e) => setFormData({ ...formData, organization_id: e.target.value })}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                >
-                  <option value="">Nenhuma (Evento da Plataforma)</option>
-                  {organizations.map((org) => (
-                    <option key={org.id} value={org.id}>
-                      {org.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <Button onClick={handleEdit} className="w-full">
-              Salvar Alterações
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Alert Dialog */}
+      {/* Delete Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -516,7 +264,7 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
               Excluir
             </AlertDialogAction>
           </AlertDialogFooter>
