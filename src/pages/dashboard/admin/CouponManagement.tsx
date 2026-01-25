@@ -260,9 +260,9 @@ const CouponManagement = () => {
   // Estatísticas gerais
   const totalStats = couponStats.reduce(
     (acc, stat) => ({
-      uses: acc.uses + stat.total_uses,
-      discounts: acc.discounts + stat.total_discount_given,
-      users: acc.users + stat.unique_users,
+      uses: acc.uses + (stat.total_uses ?? 0),
+      discounts: acc.discounts + (stat.total_discount_given ?? 0),
+      users: acc.users + (stat.unique_users ?? 0),
     }),
     { uses: 0, discounts: 0, users: 0 }
   );
@@ -553,14 +553,14 @@ const CouponManagement = () => {
                     couponStats.map((stat) => (
                       <TableRow key={stat.id}>
                         <TableCell className="font-mono font-bold">{stat.code}</TableCell>
-                        <TableCell>{stat.total_uses}</TableCell>
-                        <TableCell>{stat.unique_users}</TableCell>
+                        <TableCell>{stat.total_uses ?? 0}</TableCell>
+                        <TableCell>{stat.unique_users ?? 0}</TableCell>
                         <TableCell className="text-red-600 dark:text-red-400">
-                          -R$ {stat.total_discount_given.toFixed(2)}
+                          -R$ {(stat.total_discount_given ?? 0).toFixed(2)}
                         </TableCell>
-                        <TableCell>R$ {stat.total_original_value.toFixed(2)}</TableCell>
+                        <TableCell>R$ {(stat.total_original_value ?? 0).toFixed(2)}</TableCell>
                         <TableCell className="font-bold">
-                          R$ {stat.total_final_value.toFixed(2)}
+                          R$ {(stat.total_final_value ?? 0).toFixed(2)}
                         </TableCell>
                         <TableCell>
                           <Badge variant={stat.is_active ? 'default' : 'secondary'}>
