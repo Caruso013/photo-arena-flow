@@ -21,6 +21,7 @@ import {
   KeyRound,
   ChevronLeft,
   Menu,
+  Ticket,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
@@ -76,6 +77,7 @@ const DashboardSidebar = ({ isOpen, onToggle }: DashboardSidebarProps) => {
     { title: 'Usuários', url: '/dashboard/admin/users', icon: Users },
     { title: 'Eventos', url: '/dashboard/admin/events', icon: Calendar },
     { title: 'Eventos em Destaque', url: '/dashboard/admin/featured-events', icon: Star },
+    { title: 'Cupons', url: '/dashboard/admin/coupons', icon: Ticket },
     { title: 'Descontos Progressivos', url: '/dashboard/admin/progressive-discounts', icon: Gift },
     { title: 'Organizações', url: '/dashboard/admin/organizations', icon: Building2 },
     { title: 'Financeiro', url: '/dashboard/admin/financial', icon: DollarSign },

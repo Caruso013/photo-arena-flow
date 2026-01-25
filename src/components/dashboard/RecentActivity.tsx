@@ -154,18 +154,24 @@ const RecentActivity = ({
                               src={activity.photoUrl}
                               alt={activity.description}
                               className="w-full h-full object-cover"
+                              loading="lazy"
                               onError={(e) => {
-                                (e.target as HTMLImageElement).style.display = 'none';
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                                const parent = target.parentElement;
+                                if (parent) {
+                                  parent.innerHTML = '<div class="w-full h-full flex items-center justify-center"><svg class="h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg></div>';
+                                }
                               }}
                             />
                           </div>
-                          <div className="flex-1">
+                          <div className="flex-1 min-w-0">
                             <p className="text-xs font-medium truncate">{activity.description}</p>
                           </div>
                           <Button
                             size="sm"
                             variant="outline"
-                            className="gap-1 h-7 text-xs"
+                            className="gap-1 h-7 text-xs flex-shrink-0"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleDownloadPhoto(
@@ -175,7 +181,7 @@ const RecentActivity = ({
                             }}
                           >
                             <Download className="h-3 w-3" />
-                            Download
+                            <span className="hidden sm:inline">Download</span>
                           </Button>
                         </div>
                       )}
