@@ -4,11 +4,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Calendar, MapPin, Users, Camera, Clock } from 'lucide-react';
+import { Calendar, MapPin, Camera } from 'lucide-react';
 import { Navigate } from 'react-router-dom';
+import EventApplicationForm, { ApplicationFormData } from '@/components/events/EventApplicationForm';
 
 interface Campaign {
   id: string;
@@ -22,6 +22,8 @@ interface Campaign {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  event_terms?: string | null;
+  event_terms_pdf_url?: string | null;
   organization?: {
     name: string;
   };
@@ -70,7 +72,7 @@ const EventosProximos = () => {
         `)
         .eq('is_active', true)
         .gte('event_date', minDateStr)
-        .order('event_date', { ascending: true });
+        .order('event_date', { ascending: true }) as { data: any[] | null; error: any };
 
       if (campaignsError) throw campaignsError;
 
@@ -104,7 +106,7 @@ const EventosProximos = () => {
     }
   };
 
-  const handleApply = async () => {
+  const handleApply = async (formData: ApplicationFormData) => {
     if (!selectedCampaign || !user) return;
 
     try {
@@ -115,7 +117,14 @@ const EventosProximos = () => {
         .insert({
           campaign_id: selectedCampaign.id,
           photographer_id: user.id,
-          message: message.trim() || null,
+          message: formData.message.trim() || null,
+          city: formData.city,
+          state: formData.state,
+          has_vehicle: formData.has_vehicle,
+          has_night_equipment: formData.has_night_equipment,
+          whatsapp: formData.whatsapp.replace(/\D/g, ''), // Salvar apenas números
+          accepted_terms: formData.accepted_terms,
+          accepted_terms_at: formData.accepted_terms ? new Date().toISOString() : null,
           status: 'pending'
         });
 
@@ -254,7 +263,10 @@ const EventosProximos = () => {
                           {application.status === 'rejected' && 'Rejeitado'}
                         </Button>
                       ) : (
-                        <Dialog>
+                        <Dialog 
+                          open={selectedCampaign?.id === campaign.id}
+                          onOpenChange={(open) => !open && setSelectedCampaign(null)}
+                        >
                           <DialogTrigger asChild>
                             <Button 
                               className="w-full" 
@@ -264,36 +276,25 @@ const EventosProximos = () => {
                               Candidatar-se
                             </Button>
                           </DialogTrigger>
-                          <DialogContent>
+                          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
                             <DialogHeader>
                               <DialogTitle>Candidatar-se para {campaign.title}</DialogTitle>
                               <DialogDescription>
-                                Envie sua candidatura para fotografar este evento
+                                Preencha o formulário para enviar sua candidatura
                               </DialogDescription>
                             </DialogHeader>
                             
-                            <div className="space-y-4">
-                              <div>
-                                <label className="text-sm font-medium mb-2 block">
-                                  Mensagem (opcional)
-                                </label>
-                                <Textarea
-                                  value={message}
-                                  onChange={(e) => setMessage(e.target.value)}
-                                  placeholder="Conte sobre sua experiência..."
-                                  rows={4}
-                                />
-                              </div>
-                              
-                              <div className="flex justify-end gap-3">
-                                <Button variant="outline" onClick={() => setSelectedCampaign(null)}>
-                                  Cancelar
-                                </Button>
-                                <Button onClick={handleApply} disabled={applying}>
-                                  {applying ? "Enviando..." : "Enviar Candidatura"}
-                                </Button>
-                              </div>
-                            </div>
+                            <EventApplicationForm
+                              campaign={campaign}
+                              message={message}
+                              onMessageChange={setMessage}
+                              onSubmit={handleApply}
+                              isSubmitting={applying}
+                              onCancel={() => {
+                                setSelectedCampaign(null);
+                                setMessage('');
+                              }}
+                            />
                           </DialogContent>
                         </Dialog>
                       )}

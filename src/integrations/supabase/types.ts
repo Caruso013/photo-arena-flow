@@ -147,6 +147,8 @@ export type Database = {
           created_at: string
           description: string | null
           event_date: string | null
+          event_terms: string | null
+          event_terms_pdf_url: string | null
           id: string
           is_active: boolean
           is_featured: boolean | null
@@ -166,6 +168,8 @@ export type Database = {
           created_at?: string
           description?: string | null
           event_date?: string | null
+          event_terms?: string | null
+          event_terms_pdf_url?: string | null
           id?: string
           is_active?: boolean
           is_featured?: boolean | null
@@ -185,6 +189,8 @@ export type Database = {
           created_at?: string
           description?: string | null
           event_date?: string | null
+          event_terms?: string | null
+          event_terms_pdf_url?: string | null
           id?: string
           is_active?: boolean
           is_featured?: boolean | null
@@ -367,40 +373,61 @@ export type Database = {
       }
       event_applications: {
         Row: {
+          accepted_terms: boolean | null
+          accepted_terms_at: string | null
           applied_at: string
           campaign_id: string
+          city: string | null
           created_at: string
+          has_night_equipment: boolean | null
+          has_vehicle: boolean | null
           id: string
           message: string | null
           photographer_id: string
           processed_at: string | null
           processed_by: string | null
+          state: string | null
           status: string
           updated_at: string
+          whatsapp: string | null
         }
         Insert: {
+          accepted_terms?: boolean | null
+          accepted_terms_at?: string | null
           applied_at?: string
           campaign_id: string
+          city?: string | null
           created_at?: string
+          has_night_equipment?: boolean | null
+          has_vehicle?: boolean | null
           id?: string
           message?: string | null
           photographer_id: string
           processed_at?: string | null
           processed_by?: string | null
+          state?: string | null
           status?: string
           updated_at?: string
+          whatsapp?: string | null
         }
         Update: {
+          accepted_terms?: boolean | null
+          accepted_terms_at?: string | null
           applied_at?: string
           campaign_id?: string
+          city?: string | null
           created_at?: string
+          has_night_equipment?: boolean | null
+          has_vehicle?: boolean | null
           id?: string
           message?: string | null
           photographer_id?: string
           processed_at?: string | null
           processed_by?: string | null
+          state?: string | null
           status?: string
           updated_at?: string
+          whatsapp?: string | null
         }
         Relationships: []
       }

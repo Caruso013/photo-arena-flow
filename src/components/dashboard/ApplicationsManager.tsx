@@ -4,7 +4,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/components/ui/use-toast';
-import { CheckCircle2, XCircle, Calendar, User, Mail, MessageSquare, Clock, Camera } from 'lucide-react';
+import { 
+  CheckCircle2, 
+  XCircle, 
+  Calendar, 
+  User, 
+  Mail, 
+  MessageSquare, 
+  Clock, 
+  Camera,
+  MapPin,
+  Car,
+  Moon,
+  Phone
+} from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface Organization {
@@ -21,6 +34,12 @@ interface Application {
   status: string;
   message: string | null;
   applied_at: string;
+  city?: string | null;
+  state?: string | null;
+  has_vehicle?: boolean | null;
+  has_night_equipment?: boolean | null;
+  whatsapp?: string | null;
+  accepted_terms?: boolean | null;
   campaigns?: {
     id: string;
     title: string;
@@ -318,14 +337,48 @@ export const ApplicationsManager = () => {
                             <div className="flex items-start gap-2">
                               <MessageSquare className="h-4 w-4 text-muted-foreground mt-0.5" />
                               <div>
-                                <p className="text-sm font-medium mb-1">Mensagem do fotógrafo:</p>
+                                <p className="text-sm font-medium mb-1">Mensagem:</p>
                                 <p className="text-sm text-muted-foreground">{app.message}</p>
                               </div>
                             </div>
                           </div>
                         )}
 
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        {/* Novos campos do formulário */}
+                        <div className="mt-3 grid grid-cols-2 gap-3 p-3 bg-primary/5 rounded-lg border border-primary/10">
+                          {app.city && app.state && (
+                            <div className="flex items-center gap-2 text-sm">
+                              <MapPin className="h-4 w-4 text-primary" />
+                              <span>{app.city}, {app.state}</span>
+                            </div>
+                          )}
+                          
+                          {app.whatsapp && (
+                            <div className="flex items-center gap-2 text-sm">
+                              <Phone className="h-4 w-4 text-primary" />
+                              <a 
+                                href={`https://wa.me/55${app.whatsapp}`} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-primary hover:underline"
+                              >
+                                {app.whatsapp.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3')}
+                              </a>
+                            </div>
+                          )}
+                          
+                          <div className="flex items-center gap-2 text-sm">
+                            <Car className="h-4 w-4 text-muted-foreground" />
+                            <span>Veículo: {app.has_vehicle ? '✅ Sim' : '❌ Não'}</span>
+                          </div>
+                          
+                          <div className="flex items-center gap-2 text-sm">
+                            <Moon className="h-4 w-4 text-muted-foreground" />
+                            <span>Equip. noturno: {app.has_night_equipment ? '✅ Sim' : '❌ Não'}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-3">
                           <Clock className="h-3 w-3" />
                           <span>
                             Candidatura enviada em {new Date(app.applied_at).toLocaleDateString('pt-BR')} às{' '}
