@@ -1,6 +1,8 @@
 // 🔐 Email de Recuperação de Senha - STA Fotos
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { sendEmail } from '../_shared/resend.ts';
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { Resend } from "npm:resend@2.0.0";
+
+const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -77,12 +79,14 @@ serve(async (req) => {
       </html>
     `;
 
-    await sendEmail({
-      to: userEmail,
+    const emailResponse = await resend.emails.send({
+      from: 'STA Fotos <noreply@stafotos.com>',
+      to: [userEmail],
       subject: '🔐 Recuperação de Senha - STA Fotos',
       html,
-      from: 'STA Fotos <noreply@stafotos.com>'
     });
+
+    console.log('Email de reset enviado:', emailResponse);
 
     return new Response(
       JSON.stringify({ success: true }),

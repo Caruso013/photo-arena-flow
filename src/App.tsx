@@ -25,6 +25,7 @@ import NotFound from "./pages/NotFound";
 
 // Organization auth
 const OrganizationAuth = lazy(() => import("./pages/OrganizationAuth"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 
 // Lazy loading para páginas secundárias
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -135,6 +136,7 @@ const AppContent = () => {
           <Route path="/events" element={<Events />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/auth/organization" element={<OrganizationAuth />} />
+          <Route path="/auth/reset-password" element={<ResetPassword />} />
           <Route path="/dashboard" element={<Dashboard />}>
             <Route index element={<Overview />} />
             <Route path="events" element={<MyEvents />} />
