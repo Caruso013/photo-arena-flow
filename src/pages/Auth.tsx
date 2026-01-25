@@ -204,20 +204,36 @@ const Auth = () => {
     setIsLoading(true);
     
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(forgotPasswordEmail, {
-        redirectTo: `${window.location.origin}/auth/reset-password`,
-      });
-      
-      if (error) throw error;
+      // Usar nossa Edge Function com Resend em vez do email padrão do Supabase
+      const response = await fetch(
+        'https://gtpqppvyjrnnuhlsbpqd.supabase.co/functions/v1/send-password-reset-email',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: forgotPasswordEmail.trim(),
+            redirectUrl: `${window.location.origin}/auth/reset-password`,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erro ao enviar email');
+      }
       
       toast({
-        title: "Email enviado!",
+        title: "Email enviado! 📧",
         description: "Verifique sua caixa de entrada para redefinir sua senha.",
       });
       
       setShowForgotPassword(false);
       setForgotPasswordEmail('');
     } catch (error: any) {
+      console.error('Erro ao enviar email de reset:', error);
       toast({
         title: "Erro ao enviar email",
         description: error.message || "Não foi possível enviar o email de recuperação.",
