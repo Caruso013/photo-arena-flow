@@ -70,10 +70,17 @@ serve(async (req) => {
 
     console.log('📋 External reference:', externalRef);
 
-    // Buscar purchases que correspondem
+    // Buscar purchases que correspondem com detalhes completos
     const { data: purchases, error: searchError } = await supabase
       .from('purchases')
-      .select('id, status')
+      .select(`
+        id, 
+        status, 
+        amount,
+        buyer_id,
+        photo_id,
+        photographer_id
+      `)
       .or(`stripe_payment_intent_id.like.%${externalRef}%,id.eq.${externalRef}`);
 
     if (searchError || !purchases || purchases.length === 0) {
@@ -104,29 +111,75 @@ serve(async (req) => {
       console.log('✅ Purchases atualizadas com sucesso!');
     }
 
-    // Atualizar log do webhook
-    await supabase
-      .from('webhook_logs')
-      .update({
-        processed_at: new Date().toISOString(),
-        response_status: 200,
-      })
-      .eq('payment_id', String(paymentId))
-      .order('created_at', { ascending: false })
-      .limit(1);
+    // Buscar detalhes do comprador para enviar email
+    const firstPurchase = pendingPurchases[0];
+    if (firstPurchase) {
+      try {
+        // Buscar dados do comprador
+        const { data: buyer } = await supabase
+          .from('profiles')
+          .select('email, full_name')
+          .eq('id', firstPurchase.buyer_id)
+          .single();
 
-    // Tentar enviar email de confirmação
-    try {
-      await fetch(`${supabaseUrl}/functions/v1/send-purchase-confirmation`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseServiceKey}`,
-        },
-        body: JSON.stringify({ purchaseIds }),
-      });
-    } catch (emailError) {
-      console.warn('⚠️ Erro ao enviar email:', emailError);
+        // Buscar dados da foto e campanha
+        const { data: photo } = await supabase
+          .from('photos')
+          .select('title, campaign_id')
+          .eq('id', firstPurchase.photo_id)
+          .single();
+
+        let campaignTitle = '';
+        let photographerName = '';
+
+        if (photo?.campaign_id) {
+          const { data: campaign } = await supabase
+            .from('campaigns')
+            .select('title, photographer_id')
+            .eq('id', photo.campaign_id)
+            .single();
+          
+          campaignTitle = campaign?.title || '';
+          
+          if (campaign?.photographer_id) {
+            const { data: photographer } = await supabase
+              .from('profiles')
+              .select('full_name')
+              .eq('id', campaign.photographer_id)
+              .single();
+            photographerName = photographer?.full_name || '';
+          }
+        }
+
+        // Calcular valor total (pode ter várias fotos)
+        const totalAmount = pendingPurchases.reduce((sum, p) => sum + Number(p.amount), 0);
+
+        if (buyer?.email) {
+          console.log('📧 Enviando email de confirmação para:', buyer.email);
+          
+          await fetch(`${supabaseUrl}/functions/v1/send-purchase-confirmation-email`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${supabaseServiceKey}`,
+            },
+            body: JSON.stringify({
+              buyerEmail: buyer.email,
+              buyerName: buyer.full_name,
+              photoTitle: pendingPurchases.length > 1 
+                ? `${pendingPurchases.length} fotos` 
+                : (photo?.title || 'Foto do evento'),
+              campaignTitle: campaignTitle,
+              amount: totalAmount,
+              photographerName: photographerName,
+            }),
+          });
+          
+          console.log('✅ Email de confirmação enviado!');
+        }
+      } catch (emailError) {
+        console.warn('⚠️ Erro ao enviar email (não crítico):', emailError);
+      }
     }
 
     return new Response('OK', { status: 200 });
