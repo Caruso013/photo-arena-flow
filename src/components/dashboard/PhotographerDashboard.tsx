@@ -103,6 +103,7 @@ const PhotographerDashboard = () => {
 
   const fetchRecentSales = async () => {
     try {
+      // Buscar vendas COM o photographer_amount da revenue_shares
       const { data } = await supabase
         .from('purchases')
         .select(`
@@ -110,31 +111,64 @@ const PhotographerDashboard = () => {
           amount, 
           created_at, 
           buyer_id, 
-          buyer:profiles!purchases_buyer_id_fkey(full_name, email), 
-          photo:photos(id, title, thumbnail_url, watermarked_url)
+          buyer:profiles!purchases_buyer_id_fkey(full_name), 
+          photo:photos(id, title, thumbnail_url, watermarked_url),
+          revenue_shares(photographer_amount)
         `)
         .eq('photographer_id', profile?.id)
         .eq('status', 'completed')
         .order('created_at', { ascending: false })
-        .limit(10);
+        .limit(50); // Buscar mais para permitir agrupamento
 
-      const activities: ActivityItem[] = (data || []).map((sale: any) => ({
-        id: sale.id,
-        type: 'sale' as const,
-        title: sale.buyer?.full_name || 'Cliente',
-        description: sale.photo?.title || 'Foto vendida',
-        timestamp: sale.created_at,
-        amount: Number(sale.amount),
-        buyerId: sale.buyer_id,
-        buyerEmail: sale.buyer?.email,
-        photoId: sale.photo?.id,
-        photoUrl: sale.photo?.thumbnail_url || sale.photo?.watermarked_url,
-      }));
-
-      setRecentSales(activities);
+      // Agrupar vendas do mesmo comprador em janela de 5 minutos
+      const groupedSales = groupSalesByBuyer(data || []);
+      
+      setRecentSales(groupedSales.slice(0, 10));
     } catch (error) {
       console.error('Error fetching recent sales:', error);
     }
+  };
+
+  // Função para agrupar vendas do mesmo comprador em intervalo de 5 minutos
+  const groupSalesByBuyer = (sales: any[]): ActivityItem[] => {
+    const groups: Map<string, any[]> = new Map();
+    
+    sales.forEach(sale => {
+      const timestamp = new Date(sale.created_at).getTime();
+      // Agrupar por comprador + janela de 5 minutos
+      const windowKey = `${sale.buyer_id}-${Math.floor(timestamp / (5 * 60 * 1000))}`;
+      
+      if (!groups.has(windowKey)) {
+        groups.set(windowKey, []);
+      }
+      groups.get(windowKey)!.push(sale);
+    });
+    
+    // Converter grupos em ActivityItems
+    return Array.from(groups.values()).map(group => {
+      const first = group[0];
+      // Somar os ganhos do fotógrafo (não o valor bruto da venda)
+      const totalEarnings = group.reduce((sum, s) => 
+        sum + Number(s.revenue_shares?.[0]?.photographer_amount || 0), 0
+      );
+      const photoCount = group.length;
+      
+      return {
+        id: first.id,
+        type: 'sale' as const,
+        title: first.buyer?.full_name || 'Cliente',
+        description: photoCount > 1 
+          ? `${photoCount} fotos` 
+          : (first.photo?.title || 'Foto vendida'),
+        timestamp: first.created_at,
+        amount: totalEarnings, // Ganho do fotógrafo, NÃO valor da venda
+        photoCount,
+        photoUrl: first.photo?.thumbnail_url || first.photo?.watermarked_url,
+        photoId: first.photo?.id,
+      };
+    }).sort((a, b) => 
+      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    );
   };
 
 

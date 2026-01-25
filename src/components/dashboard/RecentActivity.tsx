@@ -24,6 +24,7 @@ export interface ActivityItem {
   buyerEmail?: string;
   photoId?: string;
   photoUrl?: string;
+  photoCount?: number; // Quantidade de fotos na venda agrupada
 }
 
 interface RecentActivityProps {
@@ -125,7 +126,11 @@ const RecentActivity = ({
                             </CollapsibleTrigger>
                           )}
                         </div>
-                        <p className="text-xs text-muted-foreground truncate">{activity.description}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {activity.photoCount && activity.photoCount > 1 
+                            ? `${activity.photoCount} fotos compradas` 
+                            : activity.description}
+                        </p>
                       </div>
                       <div className="text-right shrink-0">
                         {activity.amount !== undefined && (
