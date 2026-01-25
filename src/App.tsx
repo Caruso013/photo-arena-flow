@@ -15,7 +15,7 @@ import { lazy, Suspense } from "react";
 import MaintenanceMode from "@/components/MaintenanceMode";
 
 // 🔧 MODO MANUTENÇÃO - Altere para true para ativar
-const MAINTENANCE_MODE = true;
+const MAINTENANCE_MODE = false;
 
 // Páginas principais (carregamento imediato)
 import Home from "./pages/Home";
