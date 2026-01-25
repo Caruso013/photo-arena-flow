@@ -7,9 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { toast } from '@/components/ui/use-toast';
-import { Save, Calendar, MapPin, AlignLeft, Upload, X, Image as ImageIcon, Gift } from 'lucide-react';
+import { Save, Calendar, MapPin, AlignLeft, Upload, X, Image as ImageIcon, Gift, FileText } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { EventTermsEditor } from '@/components/events/EventTermsEditor';
 
 interface EditEventModalProps {
   campaignId: string;
@@ -21,6 +22,8 @@ interface EditEventModalProps {
     is_active: boolean;
     cover_image_url?: string;
     progressive_discount_enabled?: boolean;
+    event_terms?: string | null;
+    event_terms_pdf_url?: string | null;
   };
   open: boolean;
   onClose: () => void;
@@ -39,7 +42,9 @@ const EditEventModal: React.FC<EditEventModalProps> = ({
   const [location, setLocation] = useState(campaignData.location || '');
   const [eventDate, setEventDate] = useState(campaignData.event_date || '');
   const [isActive, setIsActive] = useState(campaignData.is_active);
-  const [progressiveDiscountEnabled, setProgressiveDiscountEnabled] = useState(campaignData.progressive_discount_enabled ?? true); // Habilitado por padrão
+  const [progressiveDiscountEnabled, setProgressiveDiscountEnabled] = useState(campaignData.progressive_discount_enabled ?? true);
+  const [eventTerms, setEventTerms] = useState(campaignData.event_terms || null);
+  const [eventTermsPdfUrl, setEventTermsPdfUrl] = useState(campaignData.event_terms_pdf_url || null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>(campaignData.cover_image_url || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -107,9 +112,10 @@ const EditEventModal: React.FC<EditEventModalProps> = ({
           <DialogTitle>Editar Evento</DialogTitle>
         </DialogHeader>
         <Tabs defaultValue="info">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="info">Informações</TabsTrigger>
             <TabsTrigger value="cover">Capa</TabsTrigger>
+            <TabsTrigger value="terms">Termos</TabsTrigger>
           </TabsList>
           <TabsContent value="info" className="space-y-4">
             <div>
@@ -175,6 +181,18 @@ const EditEventModal: React.FC<EditEventModalProps> = ({
           <TabsContent value="cover" className="space-y-4">
             {previewUrl && <img src={previewUrl} className="w-full aspect-video object-cover rounded" />}
             <Input type="file" accept="image/*" onChange={handleFileSelect} />
+          </TabsContent>
+          
+          <TabsContent value="terms" className="space-y-4">
+            <EventTermsEditor
+              campaignId={campaignId}
+              eventTerms={eventTerms}
+              eventTermsPdfUrl={eventTermsPdfUrl}
+              onUpdate={(terms, pdfUrl) => {
+                setEventTerms(terms);
+                setEventTermsPdfUrl(pdfUrl);
+              }}
+            />
           </TabsContent>
         </Tabs>
         <div className="flex justify-end gap-2">
