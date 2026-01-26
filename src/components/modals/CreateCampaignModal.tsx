@@ -252,23 +252,27 @@ export default function CreateCampaignModal({
         
         <form onSubmit={handleSubmit}>
           <Tabs value={currentTab} onValueChange={setCurrentTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-5 mb-4">
+            <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-5' : 'grid-cols-3'} mb-4`}>
               <TabsTrigger value="info" className="text-xs sm:text-sm">
                 <span className="hidden sm:inline">Informações</span>
                 <span className="sm:hidden">Info</span>
               </TabsTrigger>
-              <TabsTrigger value="organizer" className="text-xs sm:text-sm">
-                <Building2 className="h-4 w-4 sm:mr-1" />
-                <span className="hidden sm:inline">Organizador</span>
-              </TabsTrigger>
+              {isAdmin && (
+                <TabsTrigger value="organizer" className="text-xs sm:text-sm">
+                  <Building2 className="h-4 w-4 sm:mr-1" />
+                  <span className="hidden sm:inline">Organizador</span>
+                </TabsTrigger>
+              )}
               <TabsTrigger value="cover" className="text-xs sm:text-sm">
                 <ImageIcon className="h-4 w-4 sm:mr-1" />
                 <span className="hidden sm:inline">Capa</span>
               </TabsTrigger>
-              <TabsTrigger value="terms" className="text-xs sm:text-sm">
-                <FileText className="h-4 w-4 sm:mr-1" />
-                <span className="hidden sm:inline">Termos</span>
-              </TabsTrigger>
+              {isAdmin && (
+                <TabsTrigger value="terms" className="text-xs sm:text-sm">
+                  <FileText className="h-4 w-4 sm:mr-1" />
+                  <span className="hidden sm:inline">Termos</span>
+                </TabsTrigger>
+              )}
               <TabsTrigger value="albums" className="text-xs sm:text-sm">
                 <FolderPlus className="h-4 w-4 sm:mr-1" />
                 <span className="hidden sm:inline">Álbuns</span>
