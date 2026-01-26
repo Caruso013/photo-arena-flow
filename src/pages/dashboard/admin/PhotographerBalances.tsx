@@ -36,18 +36,33 @@ const PhotographerBalances = () => {
     try {
       setLoading(true);
 
-      // Buscar revenue_shares com INNER JOIN em purchases completed
-      // Usando a sintaxe !inner para garantir que só retorna registros com purchase completed
-      const { data: revenueData, error: revenueError } = await supabase
-        .from('revenue_shares')
-        .select(`
-          photographer_id,
-          photographer_amount,
-          purchase:purchases!inner(status)
-        `)
-        .eq('purchase.status', 'completed');
+      // Buscar TODOS os revenue_shares com paginação para evitar limite de 1000 registros
+      let allRevenueData: any[] = [];
+      let page = 0;
+      const pageSize = 1000;
+      let hasMore = true;
 
-      if (revenueError) throw revenueError;
+      while (hasMore) {
+        const { data: revenueData, error: revenueError } = await supabase
+          .from('revenue_shares')
+          .select(`
+            photographer_id,
+            photographer_amount,
+            purchase:purchases!inner(status)
+          `)
+          .eq('purchase.status', 'completed')
+          .range(page * pageSize, (page + 1) * pageSize - 1);
+
+        if (revenueError) throw revenueError;
+
+        if (revenueData && revenueData.length > 0) {
+          allRevenueData = [...allRevenueData, ...revenueData];
+          page++;
+          hasMore = revenueData.length === pageSize;
+        } else {
+          hasMore = false;
+        }
+      }
 
       // Buscar payouts
       const { data: payoutsData, error: payoutsError } = await supabase
@@ -57,7 +72,7 @@ const PhotographerBalances = () => {
       if (payoutsError) throw payoutsError;
 
       // Buscar perfis dos fotógrafos
-      const photographerIds = [...new Set(revenueData?.map(r => r.photographer_id) || [])];
+      const photographerIds = [...new Set(allRevenueData?.map(r => r.photographer_id) || [])];
       
       // Evitar query vazia
       if (photographerIds.length === 0) {
@@ -75,7 +90,7 @@ const PhotographerBalances = () => {
       // Agregar dados - agora todos os registros já são de compras completed
       const balanceMap = new Map<string, PhotographerBalance>();
 
-      revenueData?.forEach(revenue => {
+      allRevenueData?.forEach(revenue => {
         const id = revenue.photographer_id;
         if (!balanceMap.has(id)) {
           const profile = profileMap.get(id);
