@@ -73,6 +73,7 @@ interface Stats {
   photosSold: number;
   pendingPayouts: number;
   pendingApplications: number;
+  photographerCount: number;
 }
 
 // Função para agrupar vendas do mesmo comprador em intervalo de 1 hora (clone do fotógrafo)
@@ -138,6 +139,7 @@ const AdminDashboard = () => {
     photosSold: 0,
     pendingPayouts: 0,
     pendingApplications: 0,
+    photographerCount: 0,
   });
   const [loading, setLoading] = useState(true);
 
@@ -174,14 +176,30 @@ const AdminDashboard = () => {
         .limit(20);
       setCampaigns(campaignsData || []);
 
-      // Fetch revenue stats
-      const { data: revenueData } = await supabase
-        .from('revenue_shares')
-        .select('platform_amount, photographer_amount, organization_amount, created_at');
+      // Fetch ALL revenue stats with pagination (Supabase has 1000 record limit)
+      let allRevenueData: any[] = [];
+      let page = 0;
+      const pageSize = 1000;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data: revenueData } = await supabase
+          .from('revenue_shares')
+          .select('platform_amount, photographer_amount, organization_amount')
+          .range(page * pageSize, (page + 1) * pageSize - 1);
+        
+        if (revenueData && revenueData.length > 0) {
+          allRevenueData = [...allRevenueData, ...revenueData];
+          page++;
+          hasMore = revenueData.length === pageSize;
+        } else {
+          hasMore = false;
+        }
+      }
       
-      const totalRevenue = revenueData?.reduce((sum, r) => 
-        sum + Number(r.platform_amount) + Number(r.photographer_amount) + Number(r.organization_amount), 0) || 0;
-      const platformRevenue = revenueData?.reduce((sum, r) => sum + Number(r.platform_amount), 0) || 0;
+      const totalRevenue = allRevenueData.reduce((sum, r) => 
+        sum + Number(r.platform_amount) + Number(r.photographer_amount) + Number(r.organization_amount), 0);
+      const platformRevenue = allRevenueData.reduce((sum, r) => sum + Number(r.platform_amount), 0);
 
       // Fetch photo sales count
       const { count: photosSold } = await supabase
@@ -202,12 +220,19 @@ const AdminDashboard = () => {
         .select('*', { count: 'exact', head: true })
         .eq('status', 'pending');
 
+      // Fetch photographer count directly (not from limited users list)
+      const { count: photographerCount } = await supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true })
+        .eq('role', 'photographer');
+
       setStats({
         totalRevenue,
         platformRevenue,
         photosSold: photosSold || 0,
         pendingPayouts: pendingPayoutsTotal,
         pendingApplications: pendingApplications || 0,
+        photographerCount: photographerCount || 0,
       });
 
       // Fetch recent activities with buyer email, photo thumbnail and revenue_shares
@@ -334,7 +359,7 @@ const AdminDashboard = () => {
           />
           <MetricCard
             title="Fotógrafos"
-            value={users.filter(u => u.role === 'photographer').length}
+            value={stats.photographerCount}
             subtitle={stats.pendingApplications > 0 ? `${stats.pendingApplications} pendentes` : 'Ativos'}
             icon={Camera}
             variant="warning"
