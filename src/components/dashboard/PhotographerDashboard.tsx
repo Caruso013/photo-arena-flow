@@ -111,14 +111,14 @@ const PhotographerDashboard = () => {
           amount, 
           created_at, 
           buyer_id, 
-          buyer:profiles!purchases_buyer_id_fkey(full_name), 
+          buyer:profiles!purchases_buyer_id_fkey(full_name, email), 
           photo:photos(id, title, thumbnail_url, watermarked_url, original_url),
           revenue_shares(photographer_amount)
         `)
         .eq('photographer_id', profile?.id)
         .eq('status', 'completed')
         .order('created_at', { ascending: false })
-        .limit(50); // Buscar mais para permitir agrupamento
+        .limit(100); // Buscar mais para permitir agrupamento
 
       // Agrupar vendas do mesmo comprador em janela de 5 minutos
       const groupedSales = groupSalesByBuyer(data || []);
@@ -129,14 +129,14 @@ const PhotographerDashboard = () => {
     }
   };
 
-  // Função para agrupar vendas do mesmo comprador em intervalo de 5 minutos
+  // Função para agrupar vendas do mesmo comprador em intervalo de 1 hora
   const groupSalesByBuyer = (sales: any[]): ActivityItem[] => {
     const groups: Map<string, any[]> = new Map();
     
     sales.forEach(sale => {
       const timestamp = new Date(sale.created_at).getTime();
-      // Agrupar por comprador + janela de 5 minutos
-      const windowKey = `${sale.buyer_id}-${Math.floor(timestamp / (5 * 60 * 1000))}`;
+      // Agrupar por comprador + janela de 1 hora (mais flexível para compras juntas)
+      const windowKey = `${sale.buyer_id}-${Math.floor(timestamp / (60 * 60 * 1000))}`;
       
       if (!groups.has(windowKey)) {
         groups.set(windowKey, []);
@@ -162,6 +162,9 @@ const PhotographerDashboard = () => {
         original_url: sale.photo?.original_url,
       })).filter(p => p.id);
       
+      // Buscar email do comprador através do profile
+      const buyerEmail = first.buyer?.email;
+      
       return {
         id: first.id,
         type: 'sale' as const,
@@ -175,6 +178,7 @@ const PhotographerDashboard = () => {
         photoUrl: first.photo?.thumbnail_url || first.photo?.watermarked_url,
         photoId: first.photo?.id,
         photos: allPhotos, // Todas as fotos para exibição
+        buyerEmail,
       };
     }).sort((a, b) => 
       new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
