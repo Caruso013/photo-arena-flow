@@ -1,145 +1,128 @@
 
-# Plano de Implementação - 4 Mudanças Rápidas
+# Plano de Correção - Erros Financeiros no Dashboard Admin
 
-## Resumo das Mudanças Solicitadas
+## Problemas Identificados
 
-1. **Print 1**: Remover as abas "Organizador" e "Termos" do modal de criação de evento para fotógrafos (manter apenas para admin)
-2. **Print 2**: Corrigir layout cortado e erros de download no dashboard do fotógrafo no celular
-3. **Print 3**: Remover os cards "Vendas do Mês" e "Fotos Publicadas" para que as Ações Rápidas fiquem mais visíveis
-4. **Print 4**: Permitir que o admin libere fotos para clientes (funcionalidade já existe, mas precisa permitir acesso admin)
+Através da análise do banco de dados e código, identifiquei **3 problemas críticos**:
+
+| Métrica | Valor Exibido | Valor Real | Problema |
+|---------|--------------|------------|----------|
+| Receita Total Bruta | R$ 10.797,17 | R$ 14.254,17 | Limite de 1000 registros do Supabase |
+| Receita Plataforma | R$ 957,20 | R$ 1.268,33 | Mesmo problema acima |
+| Fotógrafos | 0 | 50 | Query pega apenas 50 usuários recentes |
 
 ---
 
-## Mudança 1: Remover abas "Organizador" e "Termos" para fotógrafos
+## Causa Raiz
 
-**Arquivo**: `src/components/modals/CreateCampaignModal.tsx`
-
-**Problema**: O modal de criação de evento mostra 5 abas (Info, Organizador, Capa, Termos, Álbuns) para todos os usuários. Fotógrafos não devem ver "Organizador" e "Termos".
-
-**Solução**: 
-- Verificar se o usuário é admin (`isAdmin`)
-- Renderizar condicionalmente as abas "Organizador" e "Termos" apenas para admins
-- Atualizar o grid do TabsList para ajustar o número de colunas (3 para fotógrafos, 5 para admin)
-
-**Alterações**:
+### 1. Limite de Registros no Supabase
 ```typescript
-// Linha ~255: Mudar grid-cols-5 para condicional
-<TabsList className={`grid w-full ${isAdmin ? 'grid-cols-5' : 'grid-cols-3'} mb-4`}>
-  <TabsTrigger value="info">Info</TabsTrigger>
-  {isAdmin && <TabsTrigger value="organizer">Organizador</TabsTrigger>}
-  <TabsTrigger value="cover">Capa</TabsTrigger>
-  {isAdmin && <TabsTrigger value="terms">Termos</TabsTrigger>}
-  <TabsTrigger value="albums">Álbuns</TabsTrigger>
-</TabsList>
+// Código atual (linha 178-180)
+const { data: revenueData } = await supabase
+  .from('revenue_shares')
+  .select('platform_amount, photographer_amount, organization_amount, created_at');
 ```
+**Problema**: O Supabase tem limite padrão de **1000 registros**. Com 1288 registros, ~288 vendas estão sendo ignoradas!
 
----
-
-## Mudança 2: Corrigir layout mobile do dashboard do fotógrafo
-
-**Arquivo**: `src/components/dashboard/PhotographerDashboard.tsx`
-
-**Problemas identificados**:
-- O título "Ações Rápidas" e os cards estão sendo cortados no topo
-- Possível problema com padding/margin no container principal
-
-**Solução**:
-- Remover os 2 cards "Vendas do Mês" e "Fotos Publicadas" (já solicitado no Print 3)
-- Manter apenas 2 MetricCards (Saldo Disponível e A Liberar) em grid 2 colunas
-- Isso resolverá o problema de layout cortado automaticamente
-
----
-
-## Mudança 3: Remover cards "Vendas do Mês" e "Fotos Publicadas"
-
-**Arquivo**: `src/components/dashboard/PhotographerDashboard.tsx`
-
-**Problema**: Os cards de métricas ocupam muito espaço, empurrando as Ações Rápidas para baixo.
-
-**Solução**:
-- Remover os MetricCards de "Vendas do Mês" e "Fotos Publicadas"
-- Manter apenas 2 cards essenciais: "Saldo Disponível" e "A Liberar"
-- Mudar o grid de 4 colunas para 2 colunas (`grid-cols-2`)
-
-**Código a modificar** (linhas 211-241):
+### 2. Contagem de Fotógrafos Incorreta
 ```typescript
-{/* Metric Cards - Apenas 2 essenciais */}
-<div className="grid grid-cols-2 gap-3 sm:gap-4">
-  <MetricCard
-    title="Saldo Disponível"
-    value={formatCurrency(balance.availableAmount)}
-    subtitle="Pronto para saque"
-    icon={DollarSign}
-    variant="success"
-  />
-  <MetricCard
-    title="A Liberar"
-    value={formatCurrency(balance.pendingAmount)}
-    subtitle="Aguardando 12h"
-    icon={CreditCard}
-    variant="warning"
-  />
-</div>
-```
-
----
-
-## Mudança 4: Permitir admin liberar fotos para clientes
-
-**Arquivos a modificar**:
-- `src/pages/dashboard/photographer/ManageEvent.tsx`
-- `src/pages/Campaign.tsx` (já funciona corretamente)
-
-**Problema**: O `ManageEvent.tsx` verifica se `photographer_id === user.id`, não permitindo que admins acessem a página para liberar fotos.
-
-**Solução em ManageEvent.tsx**:
-1. Importar o profile do AuthContext para verificar role
-2. Modificar a query `fetchEventData` para permitir admin
-3. Adicionar verificação `isAdmin` nas operações
-
-**Alterações no fetchEventData** (linha 136-141):
-```typescript
-const { profile } = useAuth();
-const isAdmin = profile?.role === 'admin';
-
-// Na query:
-let query = supabase
-  .from('campaigns')
+// Código atual (linha 162-167)
+const { data: usersData } = await supabase
+  .from('profiles')
   .select('*')
-  .eq('id', id);
+  .order('created_at', { ascending: false })
+  .limit(50);
 
-// Se não for admin, filtrar por photographer_id
-if (!isAdmin) {
-  query = query.eq('photographer_id', user.id);
+// Linha 337 - filtra localmente
+users.filter(u => u.role === 'photographer').length
+```
+**Problema**: Busca apenas 50 usuários mais recentes e filtra localmente. Usuários recentes são geralmente `user`, não `photographer`.
+
+---
+
+## Solução
+
+### Correção 1: Paginação para Revenue Shares
+Implementar paginação com `while` loop igual ao que foi feito em `PhotographerBalances.tsx`:
+
+```typescript
+// Buscar TODOS os revenue_shares com paginação
+let allRevenueData: any[] = [];
+let page = 0;
+const pageSize = 1000;
+let hasMore = true;
+
+while (hasMore) {
+  const { data: revenueData } = await supabase
+    .from('revenue_shares')
+    .select('platform_amount, photographer_amount, organization_amount')
+    .range(page * pageSize, (page + 1) * pageSize - 1);
+  
+  if (revenueData && revenueData.length > 0) {
+    allRevenueData = [...allRevenueData, ...revenueData];
+    page++;
+    hasMore = revenueData.length === pageSize;
+  } else {
+    hasMore = false;
+  }
 }
 
-const { data: campaignData, error: campaignError } = await query.single();
+const totalRevenue = allRevenueData.reduce((sum, r) => 
+  sum + Number(r.platform_amount) + Number(r.photographer_amount) + Number(r.organization_amount), 0);
+const platformRevenue = allRevenueData.reduce((sum, r) => sum + Number(r.platform_amount), 0);
+```
+
+### Correção 2: Contagem Direta de Fotógrafos
+Usar query específica com `count` ao invés de filtrar localmente:
+
+```typescript
+// Buscar contagem de fotógrafos diretamente
+const { count: photographerCount } = await supabase
+  .from('profiles')
+  .select('*', { count: 'exact', head: true })
+  .eq('role', 'photographer');
+```
+
+E armazenar no state para exibir:
+```typescript
+// No MetricCard de Fotógrafos
+<MetricCard
+  title="Fotógrafos"
+  value={stats.photographerCount}  // Usar valor do stats ao invés de filtro
+  ...
+/>
 ```
 
 ---
 
-## Resumo dos Arquivos a Modificar
+## Arquivo a Modificar
 
-| Arquivo | Mudança |
-|---------|---------|
-| `src/components/modals/CreateCampaignModal.tsx` | Ocultar abas Organizador/Termos para não-admin |
-| `src/components/dashboard/PhotographerDashboard.tsx` | Remover 2 MetricCards e ajustar grid |
-| `src/pages/dashboard/photographer/ManageEvent.tsx` | Permitir admin acessar qualquer evento |
+`src/components/dashboard/AdminDashboard.tsx`
+
+---
+
+## Alterações Específicas
+
+1. **Linhas 78-79**: Adicionar `photographerCount` ao interface `Stats`
+2. **Linhas 135-141**: Inicializar `photographerCount: 0` no state
+3. **Linhas 177-184**: Substituir query de revenue_shares por versão com paginação
+4. **Após linha 200**: Adicionar query para contar fotógrafos com `count: 'exact'`
+5. **Linha 337**: Usar `stats.photographerCount` ao invés de `users.filter(...).length`
+
+---
+
+## Resultado Esperado
+
+Após as correções:
+- **Receita Total Bruta**: R$ 14.254,17 ✓
+- **Receita Plataforma**: R$ 1.268,33 ✓
+- **Fotógrafos**: 50 ✓
 
 ---
 
 ## Benefícios
 
-- **UX Simplificada**: Fotógrafos têm interface limpa com apenas o necessário
-- **Mobile Otimizado**: Ações Rápidas visíveis logo no início da tela
-- **Admin Funcional**: Administradores podem liberar fotos em qualquer evento
-- **Código Limpo**: Lógica condicional baseada em role
-
----
-
-## Ordem de Implementação
-
-1. Modificar `PhotographerDashboard.tsx` - Remover cards extras
-2. Modificar `CreateCampaignModal.tsx` - Ocultar abas para fotógrafos
-3. Modificar `ManageEvent.tsx` - Permitir acesso admin
-
+- Dados financeiros 100% precisos
+- Performance otimizada com queries específicas
+- Escalável para qualquer volume de vendas
+- Padrão consistente com outras páginas (PhotographerBalances)
