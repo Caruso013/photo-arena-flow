@@ -11,7 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Calendar, MapPin, Loader2, Gift, Image as ImageIcon, FileText, FolderPlus } from 'lucide-react';
+import { Calendar, MapPin, Loader2, Gift, Image as ImageIcon, FolderPlus } from 'lucide-react';
 
 interface CreateEventDialogProps {
   isOpen: boolean;
@@ -211,7 +211,7 @@ export default function CreateEventDialog({ isOpen, onClose, onEventCreated }: C
         
         <form onSubmit={handleSubmit}>
           <Tabs value={currentTab} onValueChange={setCurrentTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-4 mb-4">
+            <TabsList className="grid w-full grid-cols-3 mb-4">
               <TabsTrigger value="info" className="text-xs sm:text-sm">
                 <span className="hidden sm:inline">Informações</span>
                 <span className="sm:hidden">Info</span>
@@ -219,10 +219,6 @@ export default function CreateEventDialog({ isOpen, onClose, onEventCreated }: C
               <TabsTrigger value="cover" className="text-xs sm:text-sm">
                 <ImageIcon className="h-4 w-4 sm:mr-1" />
                 <span className="hidden sm:inline">Capa</span>
-              </TabsTrigger>
-              <TabsTrigger value="terms" className="text-xs sm:text-sm">
-                <FileText className="h-4 w-4 sm:mr-1" />
-                <span className="hidden sm:inline">Termos</span>
               </TabsTrigger>
               <TabsTrigger value="albums" className="text-xs sm:text-sm">
                 <FolderPlus className="h-4 w-4 sm:mr-1" />
@@ -384,23 +380,6 @@ export default function CreateEventDialog({ isOpen, onClose, onEventCreated }: C
               </div>
             </TabsContent>
 
-            {/* Tab: Termos */}
-            <TabsContent value="terms" className="space-y-4">
-              <div className="space-y-2">
-                <Label className="text-base font-semibold">Termos do Evento (Opcional)</Label>
-                <p className="text-sm text-muted-foreground">
-                  Defina termos para fotógrafos que queiram participar do evento
-                </p>
-              </div>
-              
-              <Textarea
-                value={eventTerms}
-                onChange={(e) => setEventTerms(e.target.value)}
-                placeholder="Ex: Horário de chegada, dress code, equipamentos necessários..."
-                rows={6}
-                className="bg-background text-foreground border-input"
-              />
-            </TabsContent>
 
             {/* Tab: Álbuns */}
             <TabsContent value="albums" className="space-y-4">

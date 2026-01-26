@@ -266,11 +266,17 @@ export const PhotographerApplicationStatus = ({ onShowApplicationForm }: Photogr
           <div className={`p-4 rounded-lg ${statusInfo.bgColor} ${statusInfo.borderColor} border`}>
             <div className="flex items-center gap-2 text-sm font-medium text-green-700 mb-2">
               <CheckCircle className="h-4 w-4" />
-              Parabéns! Sua candidatura foi aprovada
+              Parabéns! Você foi aprovado!
             </div>
-            <p className="text-sm text-green-600">
-              Você agora é um fotógrafo credenciado! Seu perfil será atualizado automaticamente e você poderá começar a aceitar trabalhos em eventos.
+            <p className="text-sm text-green-600 mb-3">
+              Sua conta foi atualizada para fotógrafo. Recarregue a página para ver as novas funcionalidades.
             </p>
+            <Button
+              onClick={() => window.location.reload()}
+              className="w-full sm:w-auto bg-green-600 hover:bg-green-700"
+            >
+              Recarregar Página
+            </Button>
           </div>
         )}
 
