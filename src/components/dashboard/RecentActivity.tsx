@@ -10,7 +10,17 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { downloadOriginalPhoto } from '@/lib/photoDownload';
+import { downloadOriginalPhoto, downloadMultiplePhotos } from '@/lib/photoDownload';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+
+interface PhotoItem {
+  id: string;
+  title?: string;
+  thumbnail_url?: string;
+  watermarked_url?: string;
+  original_url?: string;
+}
 
 export interface ActivityItem {
   id: string;
@@ -24,7 +34,8 @@ export interface ActivityItem {
   buyerEmail?: string;
   photoId?: string;
   photoUrl?: string;
-  photoCount?: number; // Quantidade de fotos na venda agrupada
+  photoCount?: number;
+  photos?: PhotoItem[]; // Todas as fotos da venda agrupada
 }
 
 interface RecentActivityProps {
@@ -75,9 +86,61 @@ const RecentActivity = ({
     });
   };
 
-  const handleDownloadPhoto = async (photoUrl: string, photoId: string) => {
-    const fileName = `foto_${photoId?.slice(0, 8) || 'download'}.jpg`;
-    await downloadOriginalPhoto(photoUrl, fileName);
+  const handleDownloadSinglePhoto = async (photoId: string, buyerName: string) => {
+    try {
+      // Buscar original_url da foto
+      const { data: photo, error } = await supabase
+        .from('photos')
+        .select('original_url, title')
+        .eq('id', photoId)
+        .single();
+      
+      if (error || !photo?.original_url) {
+        toast.error('Erro ao buscar foto original');
+        return;
+      }
+      
+      const fileName = `${buyerName.replace(/\s+/g, '_')}_${photoId.slice(0, 8)}.jpg`;
+      await downloadOriginalPhoto(photo.original_url, fileName);
+    } catch (error) {
+      console.error('Erro no download:', error);
+      toast.error('Erro ao baixar foto');
+    }
+  };
+
+  const handleDownloadAllPhotos = async (photos: PhotoItem[], buyerName: string) => {
+    if (!photos || photos.length === 0) {
+      toast.error('Nenhuma foto para baixar');
+      return;
+    }
+    
+    try {
+      // Buscar original_url de todas as fotos
+      const photoIds = photos.map(p => p.id);
+      const { data: photosData, error } = await supabase
+        .from('photos')
+        .select('id, original_url')
+        .in('id', photoIds);
+      
+      if (error || !photosData) {
+        toast.error('Erro ao buscar fotos originais');
+        return;
+      }
+      
+      const photosToDownload = photosData
+        .filter(p => p.original_url)
+        .map(p => ({ photo_url: p.original_url!, photo_id: p.id }));
+      
+      if (photosToDownload.length === 0) {
+        toast.error('Nenhuma foto original disponível');
+        return;
+      }
+      
+      await downloadMultiplePhotos(photosToDownload, buyerName);
+    } catch (error) {
+      console.error('Erro no download:', error);
+      toast.error('Erro ao baixar fotos');
+    }
   };
 
   return (
@@ -97,8 +160,9 @@ const RecentActivity = ({
         ) : (
           <div className="space-y-3">
             {displayedActivities.map((activity) => {
-              const hasDetails = activity.type === 'sale' && (activity.buyerEmail || activity.photoUrl);
+              const hasDetails = activity.type === 'sale' && (activity.buyerEmail || activity.photoUrl || (activity.photos && activity.photos.length > 0));
               const isExpanded = expandedItems.has(activity.id);
+              const hasMultiplePhotos = activity.photoCount && activity.photoCount > 1;
 
               return (
                 <Collapsible
@@ -145,14 +209,48 @@ const RecentActivity = ({
                     </div>
 
                     {/* Expanded content */}
-                    <CollapsibleContent className="mt-3 pt-3 border-t space-y-2">
+                    <CollapsibleContent className="mt-3 pt-3 border-t space-y-3">
                       {activity.buyerEmail && (
                         <div className="flex items-center gap-1 text-xs text-muted-foreground">
                           <Mail className="h-3 w-3" />
                           <span>{activity.buyerEmail}</span>
                         </div>
                       )}
-                      {activity.photoUrl && (
+                      
+                      {/* Mostrar todas as fotos quando há múltiplas */}
+                      {hasMultiplePhotos && activity.photos && activity.photos.length > 0 ? (
+                        <div className="space-y-2">
+                          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                            {activity.photos.map((photo, idx) => (
+                              <div key={photo.id || idx} className="relative aspect-square rounded overflow-hidden bg-muted">
+                                <img
+                                  src={photo.thumbnail_url || photo.watermarked_url}
+                                  alt={photo.title || `Foto ${idx + 1}`}
+                                  className="w-full h-full object-cover"
+                                  loading="lazy"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = 'none';
+                                  }}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="w-full gap-2"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDownloadAllPhotos(activity.photos!, activity.title);
+                            }}
+                          >
+                            <Download className="h-4 w-4" />
+                            Baixar {activity.photoCount} fotos
+                          </Button>
+                        </div>
+                      ) : activity.photoUrl ? (
+                        // Foto única
                         <div className="flex items-center gap-3">
                           <div className="w-12 h-12 rounded overflow-hidden bg-muted flex-shrink-0">
                             <img
@@ -179,17 +277,16 @@ const RecentActivity = ({
                             className="gap-1 h-7 text-xs flex-shrink-0"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleDownloadPhoto(
-                                activity.photoUrl!, 
-                                activity.photoId || activity.id
-                              );
+                              if (activity.photoId) {
+                                handleDownloadSinglePhoto(activity.photoId, activity.title);
+                              }
                             }}
                           >
                             <Download className="h-3 w-3" />
                             <span className="hidden sm:inline">Download</span>
                           </Button>
                         </div>
-                      )}
+                      ) : null}
                     </CollapsibleContent>
                   </div>
                 </Collapsible>
