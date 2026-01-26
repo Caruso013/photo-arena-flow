@@ -36,14 +36,16 @@ const PhotographerBalances = () => {
     try {
       setLoading(true);
 
-      // Buscar revenue_shares agrupado por fotógrafo
+      // Buscar revenue_shares com INNER JOIN em purchases completed
+      // Usando a sintaxe !inner para garantir que só retorna registros com purchase completed
       const { data: revenueData, error: revenueError } = await supabase
         .from('revenue_shares')
         .select(`
           photographer_id,
           photographer_amount,
-          purchases!revenue_shares_purchase_id_fkey(status)
-        `);
+          purchase:purchases!inner(status)
+        `)
+        .eq('purchase.status', 'completed');
 
       if (revenueError) throw revenueError;
 
@@ -55,7 +57,14 @@ const PhotographerBalances = () => {
       if (payoutsError) throw payoutsError;
 
       // Buscar perfis dos fotógrafos
-      const photographerIds = [...new Set(revenueData?.map(r => r.photographer_id))];
+      const photographerIds = [...new Set(revenueData?.map(r => r.photographer_id) || [])];
+      
+      // Evitar query vazia
+      if (photographerIds.length === 0) {
+        setBalances([]);
+        return;
+      }
+
       const { data: profilesData } = await supabase
         .from('profiles')
         .select('id, full_name, email')
@@ -63,13 +72,10 @@ const PhotographerBalances = () => {
 
       const profileMap = new Map(profilesData?.map(p => [p.id, p]) || []);
 
-      // Agregar dados
+      // Agregar dados - agora todos os registros já são de compras completed
       const balanceMap = new Map<string, PhotographerBalance>();
 
       revenueData?.forEach(revenue => {
-        const purchaseStatus = (revenue.purchases as any)?.status;
-        if (purchaseStatus !== 'completed') return;
-
         const id = revenue.photographer_id;
         if (!balanceMap.has(id)) {
           const profile = profileMap.get(id);
