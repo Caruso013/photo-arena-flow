@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -36,9 +36,6 @@ export default function CreateEventDialog({ isOpen, onClose, onEventCreated }: C
   // Cover image
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>('');
-  
-  // Terms
-  const [eventTerms, setEventTerms] = useState<string>('');
   
   // Albums
   const [albums, setAlbums] = useState<Array<{ title: string; description: string }>>([{ title: '', description: '' }]);
@@ -114,7 +111,7 @@ export default function CreateEventDialog({ isOpen, onClose, onEventCreated }: C
           progressive_discount_enabled: formData.progressive_discount_enabled,
           photographer_id: profile?.id,
           cover_image_url: coverImageUrl,
-          event_terms: eventTerms || null,
+          event_terms: null,
         })
         .select()
         .single();
@@ -176,7 +173,6 @@ export default function CreateEventDialog({ isOpen, onClose, onEventCreated }: C
     });
     setSelectedFile(null);
     setPreviewUrl('');
-    setEventTerms('');
     setAlbums([{ title: '', description: '' }]);
     setCurrentTab('info');
   };
