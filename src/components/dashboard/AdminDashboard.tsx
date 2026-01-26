@@ -16,8 +16,7 @@ import {
   Activity,
   DollarSign,
   Image,
-  Clock,
-  CheckCircle2
+  Clock
 } from 'lucide-react';
 import AdminNavbar from './AdminNavbar';
 import WelcomeHeader from './WelcomeHeader';
@@ -75,6 +74,57 @@ interface Stats {
   pendingPayouts: number;
   pendingApplications: number;
 }
+
+// Função para agrupar vendas do mesmo comprador em intervalo de 1 hora (clone do fotógrafo)
+const groupSalesByBuyer = (sales: any[]): ActivityItem[] => {
+  const groups: Map<string, any[]> = new Map();
+  
+  sales.forEach(sale => {
+    const timestamp = new Date(sale.created_at).getTime();
+    // Agrupar por comprador + janela de 1 hora
+    const windowKey = `${sale.buyer_id}-${Math.floor(timestamp / (60 * 60 * 1000))}`;
+    
+    if (!groups.has(windowKey)) {
+      groups.set(windowKey, []);
+    }
+    groups.get(windowKey)!.push(sale);
+  });
+  
+  // Converter grupos em ActivityItems
+  return Array.from(groups.values()).map(group => {
+    const first = group[0];
+    // Somar os valores totais das vendas
+    const totalAmount = group.reduce((sum, s) => sum + Number(s.amount), 0);
+    const photoCount = group.length;
+    
+    // Coletar todas as fotos do grupo para download
+    const allPhotos = group.map(sale => ({
+      id: sale.photo?.id,
+      title: sale.photo?.title,
+      thumbnail_url: sale.photo?.thumbnail_url,
+      watermarked_url: sale.photo?.watermarked_url,
+      original_url: sale.photo?.original_url,
+    })).filter(p => p.id);
+    
+    return {
+      id: first.id,
+      type: 'sale' as const,
+      title: first.buyer?.full_name || 'Cliente',
+      description: photoCount > 1 
+        ? `${photoCount} fotos` 
+        : (first.photo?.title || 'Foto vendida'),
+      timestamp: first.created_at,
+      amount: totalAmount,
+      photoCount,
+      photoUrl: first.photo?.thumbnail_url || first.photo?.watermarked_url,
+      photoId: first.photo?.id,
+      photos: allPhotos,
+      buyerEmail: first.buyer?.email,
+    };
+  }).sort((a, b) => 
+    new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+  );
+};
 
 const AdminDashboard = () => {
   const { user, profile } = useAuth();
@@ -160,7 +210,7 @@ const AdminDashboard = () => {
         pendingApplications: pendingApplications || 0,
       });
 
-      // Fetch recent activities with buyer email and photo thumbnail
+      // Fetch recent activities with buyer email, photo thumbnail and revenue_shares
       const { data: recentSales } = await supabase
         .from('purchases')
         .select(`
@@ -169,26 +219,16 @@ const AdminDashboard = () => {
           created_at,
           buyer_id,
           buyer:profiles!purchases_buyer_id_fkey(full_name, email),
-          photo:photos(id, title, thumbnail_url, watermarked_url)
+          photo:photos(id, title, thumbnail_url, watermarked_url, original_url),
+          revenue_shares(platform_amount, photographer_amount, organization_amount)
         `)
         .eq('status', 'completed')
         .order('created_at', { ascending: false })
-        .limit(5);
+        .limit(100); // Buscar mais para permitir agrupamento
 
-      const activities: ActivityItem[] = (recentSales || []).map((sale: any) => ({
-        id: sale.id,
-        type: 'sale' as const,
-        title: sale.buyer?.full_name || 'Cliente',
-        description: sale.photo?.title || 'Foto vendida',
-        timestamp: sale.created_at,
-        amount: Number(sale.amount),
-        buyerId: sale.buyer_id,
-        buyerEmail: sale.buyer?.email,
-        photoId: sale.photo?.id,
-        photoUrl: sale.photo?.thumbnail_url || sale.photo?.watermarked_url,
-      }));
-
-      setRecentActivities(activities);
+      // Agrupar vendas do mesmo comprador em janela de 1 hora (igual ao fotógrafo)
+      const groupedActivities = groupSalesByBuyer(recentSales || []);
+      setRecentActivities(groupedActivities.slice(0, 10));
 
     } catch (error) {
       console.error('Error fetching admin data:', error);
