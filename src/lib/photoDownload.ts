@@ -157,19 +157,22 @@ function openImageDirectly(signedUrl: string): void {
  * @param originalUrl - URL da foto original
  * @param fileName - Nome do arquivo para download
  */
-export async function downloadOriginalPhoto(originalUrl: string, fileName: string): Promise<void> {
+export async function downloadOriginalPhoto(originalUrl: string, fileName: string, toastId?: string): Promise<void> {
+  const currentToastId = toastId || `download-${Date.now()}`;
+  
   try {
-    toast.loading('Preparando download...', { id: 'download-toast' });
+    toast.loading('Preparando download...', { id: currentToastId });
     
     const signedUrl = await getSignedPhotoUrl(originalUrl);
     
     if (!signedUrl) {
-      toast.error('Erro ao gerar link de download', { id: 'download-toast' });
+      toast.error('Erro ao gerar link de download', { id: currentToastId });
       return;
     }
 
     const isIOSDevice = isIOS();
     const isSafariBrowser = isSafari();
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
     // Baixar como blob primeiro (necessário para todos os métodos)
     const blob = await urlToBlob(signedUrl);
@@ -177,53 +180,59 @@ export async function downloadOriginalPhoto(originalUrl: string, fileName: strin
     if (!blob) {
       // Se não conseguiu baixar blob, abrir URL direta
       openImageDirectly(signedUrl);
-      toast.success('Foto aberta! Toque e segure para salvar.', { id: 'download-toast', duration: 5000 });
+      toast.success('Foto aberta! Toque e segure para salvar.', { id: currentToastId, duration: 5000 });
       return;
     }
 
     // MÉTODO 1: Para iOS/Safari - tentar Web Share API primeiro (salva direto na galeria)
     if (isIOSDevice || isSafariBrowser) {
-      toast.loading('Abrindo opções de salvamento...', { id: 'download-toast' });
-      
       const shared = await shareToSaveGallery(blob, fileName);
       
       if (shared) {
-        toast.success('Escolha "Salvar Imagem" para adicionar à galeria!', { id: 'download-toast', duration: 5000 });
+        toast.success('Escolha "Salvar Imagem" na galeria!', { id: currentToastId, duration: 4000 });
         return;
       }
       
-      // MÉTODO 2: Tentar download via anchor (funciona em alguns casos no Safari)
-      toast.loading('Tentando download alternativo...', { id: 'download-toast' });
-      
+      // MÉTODO 2: Tentar download via anchor
       const downloaded = await forceDownloadViaAnchor(blob, fileName);
       
       if (downloaded) {
-        toast.success('Download iniciado! Verifique seus arquivos.', { id: 'download-toast' });
+        toast.success('Download iniciado!', { id: currentToastId });
         return;
       }
       
       // MÉTODO 3: Último recurso - abrir imagem para salvar manualmente
       openImageDirectly(signedUrl);
-      toast.info('Toque e segure na foto, depois escolha "Salvar Imagem"', { 
-        id: 'download-toast', 
-        duration: 8000 
+      toast.info('Toque e segure na foto para salvar', { 
+        id: currentToastId, 
+        duration: 6000 
       });
       return;
+    }
+
+    // Para Android mobile - também tentar Web Share API primeiro
+    if (isMobile) {
+      const shared = await shareToSaveGallery(blob, fileName);
+      
+      if (shared) {
+        toast.success('Foto salva!', { id: currentToastId });
+        return;
+      }
     }
 
     // Para outros navegadores (Chrome, Firefox, Edge): download padrão via blob
     const downloaded = await forceDownloadViaAnchor(blob, fileName);
     
     if (downloaded) {
-      toast.success('Download concluído!', { id: 'download-toast' });
+      toast.success('Download concluído!', { id: currentToastId });
     } else {
       // Fallback: abrir diretamente
       openImageDirectly(signedUrl);
-      toast.success('Foto aberta! Clique com botão direito para salvar.', { id: 'download-toast' });
+      toast.success('Foto aberta! Clique direito para salvar.', { id: currentToastId });
     }
   } catch (error) {
     console.error('Erro no download:', error);
-    toast.error('Erro ao baixar foto. Tente novamente.', { id: 'download-toast' });
+    toast.error('Erro ao baixar foto. Tente novamente.', { id: currentToastId });
   }
 }
 
@@ -237,25 +246,39 @@ export async function downloadMultiplePhotos(
   buyerName: string
 ): Promise<void> {
   const isIOSDevice = isIOS();
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   
-  // Para iOS com múltiplas fotos, avisar sobre o processo
-  if (isIOSDevice && photos.length > 1) {
-    toast.info(`Baixando ${photos.length} fotos. O menu de compartilhamento abrirá para cada foto.`, { duration: 5000 });
+  // Para mobile com múltiplas fotos, avisar sobre o processo
+  if (isMobile && photos.length > 1) {
+    toast.info(`Baixando ${photos.length} fotos...`, { duration: 4000 });
   } else {
     toast.info(`Iniciando download de ${photos.length} fotos...`);
   }
   
+  let successCount = 0;
+  
   for (let i = 0; i < photos.length; i++) {
     const photo = photos[i];
     const fileName = `${buyerName.replace(/\s+/g, '_')}_foto_${i + 1}.jpg`;
+    const toastId = `download-${photo.photo_id}`;
     
-    // Delay maior para iOS para dar tempo ao usuário interagir com cada foto
-    const delay = isIOSDevice ? 3000 : 800;
-    await new Promise(resolve => setTimeout(resolve, i === 0 ? 0 : delay));
-    await downloadOriginalPhoto(photo.photo_url, fileName);
+    // Delay maior para mobile para dar tempo ao usuário interagir
+    const delay = isMobile ? 2500 : 600;
+    if (i > 0) {
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+    
+    try {
+      await downloadOriginalPhoto(photo.photo_url, fileName, toastId);
+      successCount++;
+    } catch (error) {
+      console.error(`Erro ao baixar foto ${i + 1}:`, error);
+    }
   }
   
-  if (!isIOSDevice) {
-    toast.success(`Download de ${photos.length} fotos concluído!`);
+  if (successCount === photos.length) {
+    toast.success(`${photos.length} fotos baixadas!`, { duration: 3000 });
+  } else if (successCount > 0) {
+    toast.success(`${successCount}/${photos.length} fotos baixadas`, { duration: 3000 });
   }
 }
