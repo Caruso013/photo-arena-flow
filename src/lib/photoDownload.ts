@@ -76,16 +76,20 @@ async function urlToBlob(url: string): Promise<Blob | null> {
 
 /**
  * Tenta usar Web Share API para salvar na galeria (iOS 15+)
+ * Retorna true se compartilhou com sucesso, false se falhou
  */
 async function shareToSaveGallery(blob: Blob, fileName: string): Promise<boolean> {
   try {
-    if (!canShareFiles()) return false;
+    if (!canShareFiles()) {
+      console.log('Web Share API não disponível');
+      return false;
+    }
 
     const file = new File([blob], fileName, { type: blob.type || 'image/jpeg' });
     
     // Verificar se pode compartilhar este arquivo
     if (!navigator.canShare({ files: [file] })) {
-      console.log('Web Share API não suporta este tipo de arquivo');
+      console.log('Navegador não suporta compartilhar este tipo de arquivo');
       return false;
     }
 
@@ -96,10 +100,10 @@ async function shareToSaveGallery(blob: Blob, fileName: string): Promise<boolean
 
     return true;
   } catch (error: any) {
-    // Se o usuário cancelou, não é erro
+    // Se o usuário cancelou, não é erro técnico
     if (error.name === 'AbortError') {
       console.log('Compartilhamento cancelado pelo usuário');
-      return true; // Retorna true porque não é um erro técnico
+      return true;
     }
     console.error('Erro no Web Share:', error);
     return false;
@@ -107,98 +111,49 @@ async function shareToSaveGallery(blob: Blob, fileName: string): Promise<boolean
 }
 
 /**
- * Abre imagem em nova aba otimizada para iOS (fullscreen para facilitar salvamento)
+ * Força download via anchor tag com blob (fallback para Safari)
  */
-function openImageForIOSSave(signedUrl: string, fileName: string): void {
-  // Criar página HTML otimizada para iOS
-  const htmlContent = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0, user-scalable=yes">
-      <title>Salvar Foto - ${fileName}</title>
-      <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-          background: #000; 
-          min-height: 100vh; 
-          display: flex; 
-          flex-direction: column;
-          align-items: center; 
-          justify-content: center;
-          font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-          padding: 20px;
-          padding-top: env(safe-area-inset-top);
-          padding-bottom: env(safe-area-inset-bottom);
-        }
-        .instructions {
-          color: white;
-          text-align: center;
-          padding: 15px 20px;
-          background: rgba(255,255,255,0.15);
-          border-radius: 12px;
-          margin-bottom: 20px;
-          backdrop-filter: blur(10px);
-          -webkit-backdrop-filter: blur(10px);
-        }
-        .instructions h2 { font-size: 18px; margin-bottom: 8px; }
-        .instructions p { font-size: 14px; opacity: 0.9; line-height: 1.4; }
-        .icon { font-size: 24px; margin-bottom: 5px; }
-        img { 
-          max-width: 100%; 
-          max-height: 70vh; 
-          object-fit: contain;
-          border-radius: 8px;
-          -webkit-touch-callout: default !important;
-          -webkit-user-select: auto !important;
-        }
-        .close-btn {
-          position: fixed;
-          top: max(20px, env(safe-area-inset-top));
-          right: 20px;
-          background: rgba(255,255,255,0.2);
-          border: none;
-          color: white;
-          width: 40px;
-          height: 40px;
-          border-radius: 50%;
-          font-size: 20px;
-          cursor: pointer;
-          backdrop-filter: blur(10px);
-          -webkit-backdrop-filter: blur(10px);
-        }
-      </style>
-    </head>
-    <body>
-      <button class="close-btn" onclick="window.close()">✕</button>
-      <div class="instructions">
-        <div class="icon">📲</div>
-        <h2>Salvar na Galeria</h2>
-        <p><strong>Toque e segure</strong> na foto abaixo, depois escolha <strong>"Salvar Imagem"</strong> ou <strong>"Adicionar às Fotos"</strong></p>
-      </div>
-      <img src="${signedUrl}" alt="${fileName}" />
-    </body>
-    </html>
-  `;
-
-  const blob = new Blob([htmlContent], { type: 'text/html' });
-  const blobUrl = URL.createObjectURL(blob);
-  
-  const newWindow = window.open(blobUrl, '_blank');
-  
-  // Limpar blob URL após um tempo
-  setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
-  
-  if (!newWindow) {
-    // Fallback: abrir direto a imagem
-    window.open(signedUrl, '_blank');
+async function forceDownloadViaAnchor(blob: Blob, fileName: string): Promise<boolean> {
+  try {
+    const blobUrl = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = fileName;
+    link.style.display = 'none';
+    
+    // Para Safari: precisa adicionar ao DOM e simular clique
+    document.body.appendChild(link);
+    
+    // Usar timeout para garantir que o DOM processou
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    link.click();
+    
+    // Cleanup após delay
+    setTimeout(() => {
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+    }, 1000);
+    
+    return true;
+  } catch (error) {
+    console.error('Erro no download via anchor:', error);
+    return false;
   }
 }
 
 /**
+ * Abre imagem diretamente para o usuário salvar manualmente (último fallback)
+ */
+function openImageDirectly(signedUrl: string): void {
+  // Abrir imagem diretamente - usuário pode tocar e segurar para salvar
+  window.open(signedUrl, '_blank');
+}
+
+/**
  * Baixa uma foto do bucket privado usando URL assinada
- * Compatível com iOS/Safari - usa Web Share API ou abre página otimizada
+ * Compatível com iOS/Safari - tenta múltiplos métodos
  * @param originalUrl - URL da foto original
  * @param fileName - Nome do arquivo para download
  */
@@ -216,53 +171,56 @@ export async function downloadOriginalPhoto(originalUrl: string, fileName: strin
     const isIOSDevice = isIOS();
     const isSafariBrowser = isSafari();
 
-    // Para iOS/Safari: tentar Web Share API primeiro (permite salvar na galeria diretamente)
-    if (isIOSDevice || isSafariBrowser) {
-      toast.loading('Preparando para salvar...', { id: 'download-toast' });
-      
-      // Baixar como blob primeiro
-      const blob = await urlToBlob(signedUrl);
-      
-      if (blob) {
-        // Tentar Web Share API (iOS 15+ permite salvar direto na galeria)
-        const shared = await shareToSaveGallery(blob, fileName);
-        
-        if (shared) {
-          toast.success('Use "Salvar Imagem" para adicionar à galeria!', { id: 'download-toast' });
-          return;
-        }
-      }
-      
-      // Fallback: abrir página otimizada com instruções
-      openImageForIOSSave(signedUrl, fileName);
-      toast.success('Toque e segure na foto para salvar!', { id: 'download-toast', duration: 5000 });
+    // Baixar como blob primeiro (necessário para todos os métodos)
+    const blob = await urlToBlob(signedUrl);
+    
+    if (!blob) {
+      // Se não conseguiu baixar blob, abrir URL direta
+      openImageDirectly(signedUrl);
+      toast.success('Foto aberta! Toque e segure para salvar.', { id: 'download-toast', duration: 5000 });
       return;
     }
 
-    // Para outros navegadores: baixar como blob (método padrão)
-    const response = await fetch(signedUrl);
-    if (!response.ok) {
-      throw new Error('Falha ao baixar imagem');
+    // MÉTODO 1: Para iOS/Safari - tentar Web Share API primeiro (salva direto na galeria)
+    if (isIOSDevice || isSafariBrowser) {
+      toast.loading('Abrindo opções de salvamento...', { id: 'download-toast' });
+      
+      const shared = await shareToSaveGallery(blob, fileName);
+      
+      if (shared) {
+        toast.success('Escolha "Salvar Imagem" para adicionar à galeria!', { id: 'download-toast', duration: 5000 });
+        return;
+      }
+      
+      // MÉTODO 2: Tentar download via anchor (funciona em alguns casos no Safari)
+      toast.loading('Tentando download alternativo...', { id: 'download-toast' });
+      
+      const downloaded = await forceDownloadViaAnchor(blob, fileName);
+      
+      if (downloaded) {
+        toast.success('Download iniciado! Verifique seus arquivos.', { id: 'download-toast' });
+        return;
+      }
+      
+      // MÉTODO 3: Último recurso - abrir imagem para salvar manualmente
+      openImageDirectly(signedUrl);
+      toast.info('Toque e segure na foto, depois escolha "Salvar Imagem"', { 
+        id: 'download-toast', 
+        duration: 8000 
+      });
+      return;
     }
+
+    // Para outros navegadores (Chrome, Firefox, Edge): download padrão via blob
+    const downloaded = await forceDownloadViaAnchor(blob, fileName);
     
-    const blob = await response.blob();
-    const blobUrl = URL.createObjectURL(blob);
-    
-    // Criar link de download com blob URL
-    const link = document.createElement('a');
-    link.href = blobUrl;
-    link.download = fileName;
-    link.style.display = 'none';
-    document.body.appendChild(link);
-    link.click();
-    
-    // Cleanup
-    setTimeout(() => {
-      document.body.removeChild(link);
-      URL.revokeObjectURL(blobUrl);
-    }, 100);
-    
-    toast.success('Download concluído!', { id: 'download-toast' });
+    if (downloaded) {
+      toast.success('Download concluído!', { id: 'download-toast' });
+    } else {
+      // Fallback: abrir diretamente
+      openImageDirectly(signedUrl);
+      toast.success('Foto aberta! Clique com botão direito para salvar.', { id: 'download-toast' });
+    }
   } catch (error) {
     console.error('Erro no download:', error);
     toast.error('Erro ao baixar foto. Tente novamente.', { id: 'download-toast' });
@@ -280,19 +238,19 @@ export async function downloadMultiplePhotos(
 ): Promise<void> {
   const isIOSDevice = isIOS();
   
-  // Para iOS com múltiplas fotos, mostrar instrução especial
+  // Para iOS com múltiplas fotos, avisar sobre o processo
   if (isIOSDevice && photos.length > 1) {
-    toast.info(`Baixando ${photos.length} fotos. Cada uma será aberta para você salvar.`, { duration: 5000 });
+    toast.info(`Baixando ${photos.length} fotos. O menu de compartilhamento abrirá para cada foto.`, { duration: 5000 });
   } else {
     toast.info(`Iniciando download de ${photos.length} fotos...`);
   }
   
   for (let i = 0; i < photos.length; i++) {
     const photo = photos[i];
-    const fileName = `${buyerName.replace(/\s+/g, '_')}_${photo.photo_id.slice(0, 8)}.jpg`;
+    const fileName = `${buyerName.replace(/\s+/g, '_')}_foto_${i + 1}.jpg`;
     
-    // Delay maior para iOS para dar tempo ao usuário salvar cada foto
-    const delay = isIOSDevice ? 2500 : 800;
+    // Delay maior para iOS para dar tempo ao usuário interagir com cada foto
+    const delay = isIOSDevice ? 3000 : 800;
     await new Promise(resolve => setTimeout(resolve, i === 0 ? 0 : delay));
     await downloadOriginalPhoto(photo.photo_url, fileName);
   }
