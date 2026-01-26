@@ -84,9 +84,10 @@ interface Photo {
 
 const ManageEvent = () => {
   const { id } = useParams();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const isAdmin = profile?.role === 'admin';
 
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [albums, setAlbums] = useState<Album[]>([]);
@@ -132,13 +133,18 @@ const ManageEvent = () => {
     try {
       setLoading(true);
 
-      // Buscar campanha
-      const { data: campaignData, error: campaignError } = await supabase
+      // Buscar campanha - Admin pode ver qualquer evento
+      let query = supabase
         .from('campaigns')
         .select('*')
-        .eq('id', id)
-        .eq('photographer_id', user.id)
-        .single();
+        .eq('id', id);
+      
+      // Se não for admin, filtrar pelo photographer_id
+      if (!isAdmin) {
+        query = query.eq('photographer_id', user.id);
+      }
+      
+      const { data: campaignData, error: campaignError } = await query.single();
 
       if (campaignError) {
         throw new Error('Evento não encontrado ou você não tem permissão');

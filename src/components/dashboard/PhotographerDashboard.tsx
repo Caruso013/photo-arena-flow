@@ -209,7 +209,7 @@ const PhotographerDashboard = () => {
         />
 
         {/* Metric Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4">
           <MetricCard
             title="Saldo Disponível"
             value={formatCurrency(balance.availableAmount)}
@@ -223,20 +223,6 @@ const PhotographerDashboard = () => {
             subtitle="Aguardando 12h"
             icon={CreditCard}
             variant="warning"
-          />
-          <MetricCard
-            title="Vendas do Mês"
-            value={balance.monthlySales}
-            subtitle={`${balance.totalSales} total`}
-            icon={TrendingUp}
-            variant="primary"
-          />
-          <MetricCard
-            title="Fotos Publicadas"
-            value={balance.totalPhotos}
-            subtitle={`${balance.conversionRate.toFixed(1)}% conversão`}
-            icon={Image}
-            variant="default"
           />
         </div>
 
