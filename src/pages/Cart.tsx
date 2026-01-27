@@ -351,10 +351,11 @@ const Cart = () => {
         isOpen={showPayment}
         onClose={() => setShowPayment(false)}
         photos={items}
-        onPaymentSuccess={() => {
+        onPaymentSuccess={(paymentData) => {
           clearCart();
           setShowPayment(false);
-          navigate("/checkout/processando");
+          // O PaymentModal já lida com o redirecionamento internamente
+          // Não precisamos fazer nada aqui - o modal navega para /checkout/processando com ref
         }}
         appliedCoupon={appliedCoupon}
       />
