@@ -2,12 +2,12 @@ import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
-import { ShoppingCart, Download, CheckCircle2, Loader2 } from 'lucide-react';
+import { ShoppingCart, Download, Loader2 } from 'lucide-react';
 import { SkeletonCard } from '@/components/ui/skeleton-card';
 import { Button } from '@/components/ui/button';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from 'sonner';
 import { Progress } from '@/components/ui/progress';
-
+import { downloadOriginalPhoto, downloadMultiplePhotos } from '@/lib/photoDownload';
 interface Purchase {
   id: string;
   amount: number;
@@ -114,55 +114,16 @@ const MyPurchases = () => {
       if (purchaseId) setDownloadingId(purchaseId);
       
       if (!url) {
-        toast({
-          title: "Erro",
-          description: "URL da foto não encontrada",
-          variant: "destructive",
-        });
+        toast.error('URL da foto não encontrada');
         return;
       }
 
-      // Extrair o caminho do bucket
-      const urlParts = url.split('/storage/v1/object/public/');
-      let filePath = '';
+      // Usar a função de download otimizada que baixa direto para o dispositivo
+      await downloadOriginalPhoto(url, fileName);
       
-      if (urlParts.length > 1) {
-        const pathParts = urlParts[1].split('/');
-        filePath = pathParts.slice(1).join('/');
-      } else {
-        filePath = url.split('photos-original/')[1] || url;
-      }
-
-      // Gerar URL assinada de curta duração (60 segundos)
-      const { data: signedData, error: signedError } = await supabase
-        .storage
-        .from('photos-original')
-        .createSignedUrl(filePath, 60);
-
-      if (signedError) {
-        console.error('Erro ao gerar URL assinada:', signedError);
-        throw signedError;
-      }
-
-      const link = document.createElement('a');
-      link.href = signedData.signedUrl;
-      link.download = fileName;
-      link.target = '_blank';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      toast({
-        title: "Download iniciado",
-        description: "Sua foto está sendo baixada",
-      });
     } catch (error) {
       console.error('Erro ao baixar foto:', error);
-      toast({
-        title: "Erro ao baixar",
-        description: "Não foi possível baixar a foto. Tente novamente.",
-        variant: "destructive",
-      });
+      toast.error('Não foi possível baixar a foto. Tente novamente.');
     } finally {
       if (purchaseId) setDownloadingId(null);
     }
@@ -177,35 +138,30 @@ const MyPurchases = () => {
     try {
       const completedPurchases = purchases.filter(p => p.status === 'completed');
       
-      for (let i = 0; i < completedPurchases.length; i++) {
-        const purchase = completedPurchases[i];
-        await handleDownload(
-          purchase.photo.original_url, 
-          `foto-${purchase.photo.id}.jpg`
-        );
-        setDownloadProgress(Math.round(((i + 1) / completedPurchases.length) * 100));
-        // Pequeno delay entre downloads para não sobrecarregar
-        if (i < completedPurchases.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 500));
-        }
-      }
+      // Usar a função otimizada para múltiplos downloads
+      const photosToDownload = completedPurchases.map((p, index) => ({
+        photo_url: p.photo.original_url,
+        photo_id: p.photo.id,
+      }));
       
-      toast({
-        title: "Downloads concluídos!",
-        description: `${completedPurchases.length} foto(s) baixada(s) com sucesso.`,
-      });
+      // Atualizar progresso durante o download
+      const updateProgress = setInterval(() => {
+        setDownloadProgress(prev => Math.min(prev + 10, 90));
+      }, 500);
+      
+      await downloadMultiplePhotos(photosToDownload, user?.email?.split('@')[0] || 'foto');
+      
+      clearInterval(updateProgress);
+      setDownloadProgress(100);
+      
     } catch (error) {
       console.error('Erro no download em lote:', error);
-      toast({
-        title: "Erro no download",
-        description: "Algumas fotos podem não ter sido baixadas. Tente novamente.",
-        variant: "destructive",
-      });
+      toast.error('Algumas fotos podem não ter sido baixadas. Tente novamente.');
     } finally {
       setDownloadingAll(false);
       setDownloadProgress(0);
     }
-  }, [purchases, handleDownload]);
+  }, [purchases, user]);
 
   useEffect(() => {
     const buildSigned = async () => {
