@@ -499,13 +499,19 @@ export default function PaymentModal({
                   phone: buyerData.phone,
                   document: buyerData.document,
                 }}
-                totalAmount={totalPrice}
+                totalAmount={totalPrice - (appliedCoupon?.discount_amount || 0)}
                 progressiveDiscount={progressiveDiscountEnabled && progressiveDiscount.discountPercentage > 0 ? {
                   enabled: true,
                   percentage: progressiveDiscount.discountPercentage,
                   amount: progressiveDiscount.discountAmount,
                   subtotal: subtotal,
                   total: totalPrice,
+                } : null}
+                appliedCoupon={appliedCoupon ? {
+                  couponId: appliedCoupon.coupon_id || appliedCoupon.id,
+                  code: appliedCoupon.code,
+                  discountAmount: appliedCoupon.discount_amount || 0,
+                  discountPercentage: appliedCoupon.discount_percentage,
                 } : null}
                 onSuccess={(paymentData) => {
                   toast({

@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/components/ui/use-toast';
+import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/lib/utils';
 import { 
   Settings, 
@@ -16,7 +17,10 @@ import {
   Activity,
   DollarSign,
   Image,
-  Clock
+  Clock,
+  RefreshCw,
+  CheckCircle,
+  Loader2
 } from 'lucide-react';
 import AdminNavbar from './AdminNavbar';
 import WelcomeHeader from './WelcomeHeader';
@@ -142,10 +146,72 @@ const AdminDashboard = () => {
     photographerCount: 0,
   });
   const [loading, setLoading] = useState(true);
+  
+  // Estado de reconciliação
+  const [reconciling, setReconciling] = useState(false);
+  const [lastReconciliation, setLastReconciliation] = useState<{
+    reconciled: number;
+    failed: number;
+    skipped: number;
+    timestamp: Date;
+  } | null>(null);
+  const hasRunAutoReconciliation = useRef(false);
+
+  // Função de reconciliação de pagamentos
+  const runReconciliation = async () => {
+    setReconciling(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('reconcile-pending-purchases');
+      
+      if (error) throw error;
+      
+      if (data?.success) {
+        const results = data.results;
+        setLastReconciliation({
+          reconciled: results.reconciled,
+          failed: results.failed,
+          skipped: results.skipped,
+          timestamp: new Date(),
+        });
+        
+        if (results.reconciled > 0) {
+          toast({
+            title: "✅ Reconciliação concluída",
+            description: `${results.reconciled} compra(s) liberada(s) automaticamente.`,
+          });
+          // Recarregar dados para refletir mudanças
+          fetchAdminData();
+        } else {
+          toast({
+            title: "Reconciliação concluída",
+            description: "Nenhuma compra pendente para liberar.",
+          });
+        }
+      }
+    } catch (error: any) {
+      console.error('Erro na reconciliação:', error);
+      toast({
+        title: "Erro na reconciliação",
+        description: error.message || "Falha ao verificar pagamentos pendentes.",
+        variant: "destructive",
+      });
+    } finally {
+      setReconciling(false);
+    }
+  };
 
   useEffect(() => {
     if (user && profile?.role === 'admin') {
       fetchAdminData();
+      
+      // Auto-reconciliação ao carregar (1x por sessão)
+      if (!hasRunAutoReconciliation.current) {
+        hasRunAutoReconciliation.current = true;
+        // Aguardar 2s após carregar dados para rodar reconciliação
+        setTimeout(() => {
+          runReconciliation();
+        }, 2000);
+      }
     }
   }, [user, profile]);
 
@@ -382,10 +448,49 @@ const AdminDashboard = () => {
           columns={4}
         />
 
-        {/* Recent Activity and Management Tabs */}
+        {/* Recent Activity and Reconciliation */}
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Recent Activity */}
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 space-y-4">
+            {/* Botão de Reconciliação */}
+            <Card className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border-blue-500/20">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-medium text-sm flex items-center gap-2">
+                      <RefreshCw className={`h-4 w-4 ${reconciling ? 'animate-spin' : ''}`} />
+                      Reconciliar Pagamentos
+                    </h4>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Verifica pagamentos aprovados no MP e libera fotos
+                    </p>
+                    {lastReconciliation && (
+                      <div className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                        <CheckCircle className="h-3 w-3 text-green-500" />
+                        Última: {lastReconciliation.reconciled} liberada(s)
+                        {lastReconciliation.timestamp && (
+                          <span>às {lastReconciliation.timestamp.toLocaleTimeString('pt-BR')}</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={runReconciliation}
+                    disabled={reconciling}
+                    className="shrink-0"
+                  >
+                    {reconciling ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      'Executar'
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+            
             <RecentActivity 
               activities={recentActivities}
               title="Últimas Vendas"

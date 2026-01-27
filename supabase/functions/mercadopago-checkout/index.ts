@@ -66,11 +66,20 @@ serve(async (req) => {
       cardPaymentMethodId, // visa, master, etc
       cardIssuerId,     // Banco emissor
       installments,     // Número de parcelas
-      discount,         // {percentage, amount} opcional
+      discount,         // {percentage, amount} opcional (desconto progressivo)
+      coupon,           // {coupon_id, code, amount} opcional (cupom)
       deviceId,         // Device Session ID para anti-fraude (obrigatório)
     } = body;
 
-    console.log('📥 Request:', JSON.stringify({ action, paymentId, photosCount: photos?.length, buyerEmail: buyer?.email, hasDeviceId: !!deviceId }));
+    console.log('📥 Request:', JSON.stringify({ 
+      action, 
+      paymentId, 
+      photosCount: photos?.length, 
+      buyerEmail: buyer?.email, 
+      hasDeviceId: !!deviceId,
+      hasProgressiveDiscount: !!discount,
+      hasCoupon: !!coupon 
+    }));
 
     // ===== AÇÃO: VERIFICAR CREDENCIAIS DO MERCADO PAGO =====
     if (action === 'check_credentials') {
@@ -169,10 +178,19 @@ serve(async (req) => {
 
     // ===== CALCULAR VALORES =====
     const subtotal = photos.reduce((sum: number, p: any) => sum + (Number(p.price) || 0), 0);
-    const discountAmount = discount?.amount || 0;
-    const finalTotal = Math.max(subtotal - discountAmount, 1); // Mínimo R$ 1
+    const progressiveDiscountAmount = discount?.amount || 0;
+    const couponDiscountAmount = coupon?.amount || 0;
+    const totalDiscount = progressiveDiscountAmount + couponDiscountAmount;
+    const finalTotal = Math.max(subtotal - totalDiscount, 1); // Mínimo R$ 1
 
-    console.log('💰 Valores:', { subtotal, discountAmount, finalTotal });
+    console.log('💰 Valores:', { 
+      subtotal, 
+      progressiveDiscountAmount, 
+      couponDiscountAmount,
+      totalDiscount,
+      finalTotal,
+      couponCode: coupon?.code || null
+    });
 
     // ===== CRIAR REGISTROS DE PURCHASE =====
     const purchaseIds: string[] = [];
