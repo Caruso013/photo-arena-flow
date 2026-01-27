@@ -39,11 +39,19 @@ interface ProgressiveDiscount {
   total: number;
 }
 
+interface AppliedCoupon {
+  couponId: string;
+  code: string;
+  discountAmount: number;
+  discountPercentage?: number;
+}
+
 interface TransparentCheckoutProps {
   photos: Photo[];
   buyerInfo: BuyerInfo;
   totalAmount: number;
   progressiveDiscount?: ProgressiveDiscount | null;
+  appliedCoupon?: AppliedCoupon | null;
   onSuccess: (paymentData: any) => void;
   onError: (error: string) => void;
   onCancel: () => void;
@@ -57,6 +65,7 @@ export default function TransparentCheckout({
   buyerInfo,
   totalAmount,
   progressiveDiscount,
+  appliedCoupon,
   onSuccess,
   onError,
   onCancel,
@@ -240,6 +249,12 @@ export default function TransparentCheckout({
             percentage: progressiveDiscount.percentage,
             amount: progressiveDiscount.amount,
           } : null,
+          // Adicionar cupom se aplicado
+          coupon: appliedCoupon ? {
+            coupon_id: appliedCoupon.couponId,
+            code: appliedCoupon.code,
+            amount: appliedCoupon.discountAmount,
+          } : null,
         },
       });
 
@@ -321,6 +336,12 @@ export default function TransparentCheckout({
           discount: progressiveDiscount ? {
             percentage: progressiveDiscount.percentage,
             amount: progressiveDiscount.amount,
+          } : null,
+          // Adicionar cupom se aplicado
+          coupon: appliedCoupon ? {
+            coupon_id: appliedCoupon.couponId,
+            code: appliedCoupon.code,
+            amount: appliedCoupon.discountAmount,
           } : null,
         },
       });
