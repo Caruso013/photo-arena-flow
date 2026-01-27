@@ -43,38 +43,57 @@ serve(async (req) => {
 
     // ===== VALIDAÇÃO DE ADMIN =====
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
+    if (!authHeader?.startsWith('Bearer ')) {
+      console.error('❌ Authorization header missing or invalid');
       return new Response(JSON.stringify({ success: false, error: 'Não autorizado' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
+    // Usar getClaims para validar o token
     const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } }
     });
     
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (!user) {
-      return new Response(JSON.stringify({ success: false, error: 'Usuário não autenticado' }), {
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await supabaseClient.auth.getClaims(token);
+    
+    if (claimsError || !claimsData?.claims) {
+      console.error('❌ Token inválido:', claimsError);
+      return new Response(JSON.stringify({ success: false, error: 'Token inválido' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Verificar se é admin
-    const { data: profile } = await supabaseAdmin
+    const userId = claimsData.claims.sub;
+    console.log('🔐 User ID:', userId);
+
+    // Verificar se é admin usando supabaseAdmin
+    const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('role')
-      .eq('id', user.id)
+      .eq('id', userId)
       .single();
 
-    if (profile?.role !== 'admin') {
+    if (profileError || !profile) {
+      console.error('❌ Erro ao buscar perfil:', profileError);
+      return new Response(JSON.stringify({ success: false, error: 'Perfil não encontrado' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (profile.role !== 'admin') {
+      console.error('❌ Usuário não é admin:', profile.role);
       return new Response(JSON.stringify({ success: false, error: 'Apenas administradores podem reconciliar' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+    
+    console.log('✅ Admin autorizado, iniciando reconciliação...');
 
     // ===== BUSCAR PURCHASES PENDENTES =====
     const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
