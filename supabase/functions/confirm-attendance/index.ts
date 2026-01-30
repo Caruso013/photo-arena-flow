@@ -53,16 +53,51 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Verificar se fotógrafo está aprovado para o evento
-    const { data: application } = await supabase
-      .from('event_applications')
-      .select('id, status')
-      .eq('campaign_id', campaign_id)
-      .eq('photographer_id', photographer_id)
-      .eq('status', 'approved')
+    // Verificar aprovação por múltiplas fontes
+    let isApproved = false;
+
+    // 1. Verificar se é o criador do evento
+    const { data: campaign } = await supabase
+      .from('campaigns')
+      .select('photographer_id')
+      .eq('id', campaign_id)
       .single();
 
-    if (!application) {
+    if (campaign?.photographer_id === photographer_id) {
+      isApproved = true;
+    }
+
+    // 2. Verificar se está atribuído via campaign_photographers
+    if (!isApproved) {
+      const { data: assignment } = await supabase
+        .from('campaign_photographers')
+        .select('id')
+        .eq('campaign_id', campaign_id)
+        .eq('photographer_id', photographer_id)
+        .eq('is_active', true)
+        .single();
+
+      if (assignment) {
+        isApproved = true;
+      }
+    }
+
+    // 3. Verificar candidatura aprovada (mantém compatibilidade)
+    if (!isApproved) {
+      const { data: application } = await supabase
+        .from('event_applications')
+        .select('id, status')
+        .eq('campaign_id', campaign_id)
+        .eq('photographer_id', photographer_id)
+        .eq('status', 'approved')
+        .single();
+        
+      if (application) {
+        isApproved = true;
+      }
+    }
+
+    if (!isApproved) {
       return new Response(
         JSON.stringify({ 
           success: false, 
