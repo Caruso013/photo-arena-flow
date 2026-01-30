@@ -87,7 +87,7 @@ const services: Service[] = [
   }
 ];
 
-const STA_WHATSAPP = '5511999999999'; // Substituir pelo número real da STA
+const STA_WHATSAPP = '5511957719467';
 
 const Servicos = () => {
   const handleContactService = (serviceId: string) => {

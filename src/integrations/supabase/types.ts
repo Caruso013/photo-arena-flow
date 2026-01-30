@@ -2126,6 +2126,7 @@ export type Database = {
         Args: { p_quantity: number }
         Returns: number
       }
+      cleanup_expired_mesario_sessions: { Args: never; Returns: undefined }
       cleanup_old_audit_logs: {
         Args: { days_to_keep?: number }
         Returns: number

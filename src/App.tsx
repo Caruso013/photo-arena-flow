@@ -86,6 +86,7 @@ const CacheManagement = lazy(() => import("./pages/dashboard/admin/CacheManageme
 const AdminFeaturedEvents = lazy(() => import("./pages/dashboard/admin/FeaturedEvents"));
 const PhotographerBalances = lazy(() => import("./pages/dashboard/admin/PhotographerBalances"));
 const EventAttendance = lazy(() => import("./pages/dashboard/admin/EventAttendance"));
+const MesarioManager = lazy(() => import("./pages/dashboard/admin/MesarioManager"));
 
 // Mesario pages (lazy)
 const MesarioLogin = lazy(() => import("./pages/MesarioLogin"));
@@ -182,6 +183,7 @@ const AppContent = () => {
             <Route path="photographer/qrcode" element={<MyQRCode />} />
             <Route path="organization/revenue" element={<OrganizationRevenue />} />
             <Route path="admin/events/:id/attendance" element={<EventAttendance />} />
+            <Route path="admin/mesarios" element={<MesarioManager />} />
           </Route>
           <Route path="/highlights" element={<PhotoHighlights />} />
           <Route path="/cart" element={<Cart />} />
