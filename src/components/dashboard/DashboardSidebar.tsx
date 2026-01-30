@@ -23,6 +23,7 @@ import {
   Menu,
   Ticket,
   QrCode,
+  UserCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
@@ -84,6 +85,7 @@ const DashboardSidebar = ({ isOpen, onToggle }: DashboardSidebarProps) => {
     { title: 'Organizações', url: '/dashboard/admin/organizations', icon: Building2 },
     { title: 'Financeiro', url: '/dashboard/admin/financial', icon: DollarSign },
     { title: 'Relatórios', url: '/dashboard/admin/reports', icon: FileText },
+    { title: 'Mesários', url: '/dashboard/admin/mesarios', icon: UserCheck },
     { title: 'Cache', url: '/dashboard/admin/cache-management', icon: Database },
   ];
 
