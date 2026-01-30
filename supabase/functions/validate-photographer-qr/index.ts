@@ -119,16 +119,55 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Verificar se está aprovado para este evento
-    const { data: application } = await supabase
-      .from('event_applications')
-      .select('id, status, applied_at, processed_at')
-      .eq('campaign_id', campaign_id)
-      .eq('photographer_id', qrToken.photographer_id)
-      .eq('status', 'approved')
+    // Verificar aprovação por múltiplas fontes
+    let isApproved = false;
+    let approvalSource: string | null = null;
+    let application: { applied_at: string; processed_at: string | null } | null = null;
+
+    // 1. Verificar se é o criador do evento
+    const { data: campaign } = await supabase
+      .from('campaigns')
+      .select('photographer_id')
+      .eq('id', campaign_id)
       .single();
 
-    const isApproved = !!application;
+    if (campaign?.photographer_id === qrToken.photographer_id) {
+      isApproved = true;
+      approvalSource = 'event_creator';
+    }
+
+    // 2. Verificar se está atribuído via campaign_photographers
+    if (!isApproved) {
+      const { data: assignment } = await supabase
+        .from('campaign_photographers')
+        .select('id, assigned_at')
+        .eq('campaign_id', campaign_id)
+        .eq('photographer_id', qrToken.photographer_id)
+        .eq('is_active', true)
+        .single();
+
+      if (assignment) {
+        isApproved = true;
+        approvalSource = 'assigned';
+      }
+    }
+
+    // 3. Verificar candidatura aprovada (mantém compatibilidade)
+    if (!isApproved) {
+      const { data: appData } = await supabase
+        .from('event_applications')
+        .select('id, status, applied_at, processed_at')
+        .eq('campaign_id', campaign_id)
+        .eq('photographer_id', qrToken.photographer_id)
+        .eq('status', 'approved')
+        .single();
+        
+      if (appData) {
+        isApproved = true;
+        approvalSource = 'application';
+        application = appData;
+      }
+    }
 
     // Verificar se já confirmou presença
     const { data: existingAttendance } = await supabase
