@@ -431,6 +431,90 @@ export type Database = {
         }
         Relationships: []
       }
+      event_attendance: {
+        Row: {
+          campaign_id: string
+          confirmed_at: string
+          confirmed_by: string | null
+          created_at: string
+          id: string
+          photographer_id: string
+        }
+        Insert: {
+          campaign_id: string
+          confirmed_at?: string
+          confirmed_by?: string | null
+          created_at?: string
+          id?: string
+          photographer_id: string
+        }
+        Update: {
+          campaign_id?: string
+          confirmed_at?: string
+          confirmed_by?: string | null
+          created_at?: string
+          id?: string
+          photographer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_attendance_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_revenue_distribution"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_attendance_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_revenue_split_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_attendance_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_attendance_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns_for_home"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_attendance_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns_percentage_diagnosis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_attendance_confirmed_by_fkey"
+            columns: ["confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "mesario_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_attendance_photographer_id_fkey"
+            columns: ["photographer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_attendance_photographer_id_fkey"
+            columns: ["photographer_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       face_descriptor_backups: {
         Row: {
           backup_path: string
@@ -492,6 +576,85 @@ export type Database = {
             columns: ["photo_id"]
             isOneToOne: false
             referencedRelation: "photos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mesario_sessions: {
+        Row: {
+          access_code: string
+          campaign_id: string
+          created_at: string
+          created_by: string | null
+          expires_at: string
+          id: string
+          is_active: boolean
+          mesario_name: string
+          organization_id: string | null
+        }
+        Insert: {
+          access_code: string
+          campaign_id: string
+          created_at?: string
+          created_by?: string | null
+          expires_at: string
+          id?: string
+          is_active?: boolean
+          mesario_name: string
+          organization_id?: string | null
+        }
+        Update: {
+          access_code?: string
+          campaign_id?: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          is_active?: boolean
+          mesario_name?: string
+          organization_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mesario_sessions_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_revenue_distribution"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mesario_sessions_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_revenue_split_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mesario_sessions_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mesario_sessions_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns_for_home"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mesario_sessions_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns_percentage_diagnosis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mesario_sessions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -997,6 +1160,45 @@ export type Database = {
             foreignKeyName: "photographer_goals_photographer_id_fkey"
             columns: ["photographer_id"]
             isOneToOne: false
+            referencedRelation: "public_profiles_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      photographer_qr_tokens: {
+        Row: {
+          created_at: string
+          id: string
+          photographer_id: string
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          photographer_id: string
+          token: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          photographer_id?: string
+          token?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "photographer_qr_tokens_photographer_id_fkey"
+            columns: ["photographer_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "photographer_qr_tokens_photographer_id_fkey"
+            columns: ["photographer_id"]
+            isOneToOne: true
             referencedRelation: "public_profiles_safe"
             referencedColumns: ["id"]
           },
@@ -1935,6 +2137,7 @@ export type Database = {
       }
       cleanup_old_webhook_logs: { Args: never; Returns: undefined }
       current_user_is_admin: { Args: never; Returns: boolean }
+      generate_mesario_access_code: { Args: never; Returns: string }
       generate_short_code: { Args: never; Returns: string }
       get_buyer_name_for_photographer: {
         Args: { p_buyer_id: string; p_photographer_id: string }

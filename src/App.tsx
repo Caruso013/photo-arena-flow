@@ -66,6 +66,7 @@ const Goals = lazy(() => import("./pages/dashboard/photographer/Goals"));
 const PayoutRequest = lazy(() => import("./pages/dashboard/photographer/PayoutRequest"));
 const FeaturedPhotos = lazy(() => import("./pages/dashboard/photographer/FeaturedPhotos"));
 const PixSettings = lazy(() => import("./pages/dashboard/photographer/PixSettings"));
+const MyQRCode = lazy(() => import("./pages/dashboard/photographer/MyQRCode"));
 
 // Admin routes (lazy)
 const AdminOverview = lazy(() => import("./pages/dashboard/admin/Overview"));
@@ -84,6 +85,11 @@ const AdminCouponManagement = lazy(() => import("./pages/dashboard/admin/CouponM
 const CacheManagement = lazy(() => import("./pages/dashboard/admin/CacheManagement"));
 const AdminFeaturedEvents = lazy(() => import("./pages/dashboard/admin/FeaturedEvents"));
 const PhotographerBalances = lazy(() => import("./pages/dashboard/admin/PhotographerBalances"));
+const EventAttendance = lazy(() => import("./pages/dashboard/admin/EventAttendance"));
+
+// Mesario pages (lazy)
+const MesarioLogin = lazy(() => import("./pages/MesarioLogin"));
+const MesarioScanner = lazy(() => import("./pages/MesarioScanner"));
 
 // Organization routes
 const OrganizationRevenue = lazy(() => import("./pages/dashboard/OrganizationRevenue"));
@@ -173,7 +179,9 @@ const AppContent = () => {
             <Route path="photographer/goals" element={<Goals />} />
             <Route path="photographer/settings" element={<PhotographerSettings />} />
             <Route path="photographer/pix" element={<PixSettings />} />
+            <Route path="photographer/qrcode" element={<MyQRCode />} />
             <Route path="organization/revenue" element={<OrganizationRevenue />} />
+            <Route path="admin/events/:id/attendance" element={<EventAttendance />} />
           </Route>
           <Route path="/highlights" element={<PhotoHighlights />} />
           <Route path="/cart" element={<Cart />} />
@@ -189,6 +197,8 @@ const AppContent = () => {
           <Route path="/sobre" element={<Sobre />} />
           <Route path="/tutorial" element={<Tutorial />} />
           <Route path="/payment-test" element={<PaymentTest />} />
+          <Route path="/mesario" element={<MesarioLogin />} />
+          <Route path="/mesario/scanner" element={<MesarioScanner />} />
           <Route path="/checkout/processando" element={<CheckoutProcessing />} />
           <Route path="/checkout/sucesso" element={<CheckoutSuccess />} />
           <Route path="/checkout/falha" element={<CheckoutFailure />} />
