@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/components/ui/use-toast';
-import { Camera, Edit, Power, PowerOff, MapPin, Calendar, Trash2 } from 'lucide-react';
+import { Camera, Edit, Power, PowerOff, MapPin, Calendar, Trash2, ClipboardList } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import CreateCampaignModal from '../modals/CreateCampaignModal';
 import EditEventModal from '../modals/EditEventModal';
@@ -34,6 +35,7 @@ interface CampaignManagerProps {
 }
 
 export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onRefresh }) => {
+  const navigate = useNavigate();
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
@@ -178,6 +180,15 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
                     
                     <div className="flex flex-col gap-2">
                       <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => navigate(`/dashboard/admin/events/${campaign.id}/attendance`)}
+                          className="gap-1"
+                        >
+                          <ClipboardList className="h-4 w-4" />
+                          Presença
+                        </Button>
                         <CampaignPhotographersManager
                           campaignId={campaign.id}
                           campaignTitle={campaign.title}
