@@ -78,25 +78,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    let mounted = true;
+    let isMounted = true;
 
-    // Set up auth state listener FIRST
+    // Listener para mudanças de auth ONGOING (NÃO controla isLoading)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (!mounted) return;
+      (event, session) => {
+        if (!isMounted) return;
         
         // Ignorar eventos durante logout
         if (localStorage.getItem('logout_in_progress') === 'true') {
           return;
         }
         
-        
         // Handle token refresh errors
         if (event === 'TOKEN_REFRESHED' && !session) {
           setSession(null);
           setUser(null);
           setProfile(null);
-          setLoading(false);
           return;
         }
         
@@ -105,69 +103,72 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setSession(null);
           setUser(null);
           setProfile(null);
-          setLoading(false);
           return;
         }
         
         setSession(session);
         setUser(session?.user ?? null);
 
-        // Defer profile fetching to avoid blocking
+        // Fire and forget - não await, não controla loading
         if (session?.user) {
-          setTimeout(async () => {
-            if (!mounted) return;
-            try {
-              const profileData = await fetchProfile(session.user.id);
-              if (mounted) {
-                setProfile(profileData);
-                setLoading(false);
-              }
-            } catch (error) {
-              logger.error('Error fetching profile:', error);
-              if (mounted) {
-                setProfile(null);
-                setLoading(false);
-              }
+          fetchProfile(session.user.id).then(profileData => {
+            if (isMounted) {
+              setProfile(profileData);
             }
-          }, 0);
+          }).catch(() => {
+            if (isMounted) {
+              setProfile(null);
+            }
+          });
         } else {
           setProfile(null);
-          setLoading(false);
         }
       }
     );
 
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
-      if (!mounted) return;
-      
-      if (error) {
-        logger.error('Error getting session:', error);
-        // If there's an error getting session, clear everything
-        setSession(null);
-        setUser(null);
-        setProfile(null);
-        setLoading(false);
-        return;
-      }
-      
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        fetchProfile(session.user.id).then(profileData => {
-          if (mounted) {
+    // INITIAL load - controla isLoading
+    const initializeAuth = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (!isMounted) return;
+        
+        if (error) {
+          logger.error('Error getting session:', error);
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+          return;
+        }
+        
+        setSession(session);
+        setUser(session?.user ?? null);
+
+        // Buscar profile ANTES de setar loading false
+        if (session?.user) {
+          const profileData = await fetchProfile(session.user.id);
+          if (isMounted) {
             setProfile(profileData);
-            setLoading(false);
           }
-        });
-      } else {
-        setLoading(false);
+        }
+      } catch (error) {
+        logger.error('Error initializing auth:', error);
+        if (isMounted) {
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
       }
-    });
+    };
+
+    initializeAuth();
 
     return () => {
-      mounted = false;
+      isMounted = false;
       subscription.unsubscribe();
     };
   }, []);
