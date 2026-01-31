@@ -29,6 +29,7 @@ interface PurchasedPhoto {
   amount: number;
   created_at: string;
   status: string;
+  signedUrl?: string;
   photo: {
     id: string;
     title: string;
@@ -55,6 +56,39 @@ const UserDashboard = () => {
     }
   }, [user]);
 
+  // Função para gerar URL assinada para imagens privadas
+  const getSignedUrl = async (url: string): Promise<string> => {
+    if (!url) return '';
+    
+    try {
+      const marker = '/storage/v1/object/';
+      const idx = url.indexOf(marker);
+      if (idx === -1) return url;
+      
+      let rest = url.slice(idx + marker.length);
+      if (rest.startsWith('public/')) return url; // já é pública
+      
+      const firstSlash = rest.indexOf('/');
+      if (firstSlash === -1) return url;
+      
+      const bucket = rest.slice(0, firstSlash);
+      const path = rest.slice(firstSlash + 1);
+      
+      const { data, error } = await supabase.storage
+        .from(bucket)
+        .createSignedUrl(path, 3600);
+      
+      if (error) {
+        console.error('Erro ao gerar URL assinada:', error);
+        return url;
+      }
+      
+      return data?.signedUrl || url;
+    } catch {
+      return url;
+    }
+  };
+
   const fetchPurchasedPhotos = async () => {
     if (!user) return;
 
@@ -80,7 +114,18 @@ const UserDashboard = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setPurchasedPhotos(data || []);
+      
+      // Gerar URLs assinadas para fotos originais (bucket privado)
+      const photosWithSignedUrls = await Promise.all(
+        (data || []).map(async (purchase) => {
+          const signedUrl = await getSignedUrl(
+            purchase.photo?.thumbnail_url || purchase.photo?.original_url || ''
+          );
+          return { ...purchase, signedUrl };
+        })
+      );
+      
+      setPurchasedPhotos(photosWithSignedUrls);
     } catch (error) {
       console.error('Error fetching purchased photos:', error);
     } finally {
@@ -263,13 +308,16 @@ const UserDashboard = () => {
                   </CardContent>
                 </Card>
                 
-                <Card>
+              <Card>
                   <CardContent className="p-3 sm:p-4">
                     <div className="flex items-center justify-between">
                       <div className="min-w-0">
-                        <p className="text-xs sm:text-sm text-muted-foreground">Total Gasto</p>
+                        <p className="text-xs sm:text-sm text-muted-foreground">Última Compra</p>
                         <p className="text-xl sm:text-2xl font-bold truncate">
-                          {formatCurrency(purchasedPhotos.reduce((sum, p) => sum + Number(p.amount), 0))}
+                          {purchasedPhotos.length > 0 
+                            ? new Date(purchasedPhotos[0].created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+                            : '-'
+                          }
                         </p>
                       </div>
                       <ShoppingCart className="h-6 w-6 sm:h-8 sm:w-8 text-purple-500 flex-shrink-0" />
@@ -295,15 +343,17 @@ const UserDashboard = () => {
                   <Card key={purchase.id} className="overflow-hidden hover:shadow-lg transition-all group border border-green-200 dark:border-green-800">
                     <div className="relative">
                       <div className="aspect-square relative bg-muted overflow-hidden">
-                        {/* ✅ FOTO COMPRADA: mostra original SEM marca d'água */}
+                        {/* ✅ FOTO COMPRADA: mostra com URL assinada (bucket privado) */}
                         <img
-                          src={purchase.photo.original_url || purchase.photo.thumbnail_url}
+                          src={purchase.signedUrl || purchase.photo.thumbnail_url || purchase.photo.watermarked_url}
                           alt="Foto comprada - sem marca d'água"
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                          loading="lazy"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
-                            if (purchase.photo.thumbnail_url && target.src !== purchase.photo.thumbnail_url) {
-                              target.src = purchase.photo.thumbnail_url;
+                            // Fallback para thumbnail público se a URL assinada falhar
+                            if (purchase.photo.watermarked_url && target.src !== purchase.photo.watermarked_url) {
+                              target.src = purchase.photo.watermarked_url;
                             }
                           }}
                         />
