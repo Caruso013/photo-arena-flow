@@ -125,9 +125,13 @@ export const CampaignPhotographersManager: React.FC<CampaignPhotographersManager
         is_active: true
       }));
 
+      // Usar upsert para lidar com constraint única (evitar erro se fotógrafo já foi atribuído)
       const { error } = await supabase
         .from('campaign_photographers')
-        .insert(assignments);
+        .upsert(assignments, { 
+          onConflict: 'campaign_id,photographer_id',
+          ignoreDuplicates: false 
+        });
 
       if (error) throw error;
 
