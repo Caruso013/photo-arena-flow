@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from '@/components/ui/use-toast';
-import { UserPlus, X, Camera } from 'lucide-react';
+import { UserPlus, X, Camera, RefreshCw } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface Photographer {
   id: string;
@@ -35,6 +36,14 @@ export const CampaignPhotographersManager: React.FC<CampaignPhotographersManager
   const [assignedPhotographers, setAssignedPhotographers] = useState<AssignedPhotographer[]>([]);
   const [availablePhotographers, setAvailablePhotographers] = useState<Photographer[]>([]);
   const [selectedPhotographers, setSelectedPhotographers] = useState<string[]>([]);
+  const queryClient = useQueryClient();
+
+  // Função para invalidar cache relacionado
+  const invalidateRelatedCaches = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+    queryClient.invalidateQueries({ queryKey: ['campaign-photographers', campaignId] });
+    queryClient.invalidateQueries({ queryKey: ['photographer-events'] });
+  }, [queryClient, campaignId]);
 
   useEffect(() => {
     if (open) {
@@ -141,7 +150,8 @@ export const CampaignPhotographersManager: React.FC<CampaignPhotographersManager
       });
 
       setSelectedPhotographers([]);
-      fetchPhotographers();
+      await fetchPhotographers();
+      invalidateRelatedCaches();
     } catch (error) {
       console.error('Error assigning photographers:', error);
       toast({
@@ -168,7 +178,8 @@ export const CampaignPhotographersManager: React.FC<CampaignPhotographersManager
         description: `${photographerName} foi removido do evento.`,
       });
 
-      fetchPhotographers();
+      await fetchPhotographers();
+      invalidateRelatedCaches();
     } catch (error) {
       console.error('Error removing photographer:', error);
       toast({
@@ -207,6 +218,20 @@ export const CampaignPhotographersManager: React.FC<CampaignPhotographersManager
         </DialogHeader>
 
         <div className="space-y-6">
+          {/* Botão Atualizar */}
+          <div className="flex justify-end">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => fetchPhotographers()}
+              disabled={loading}
+              className="gap-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              Atualizar Lista
+            </Button>
+          </div>
+
           {/* Fotógrafos Atribuídos */}
           <div>
             <h4 className="font-medium mb-3 flex items-center gap-2">
