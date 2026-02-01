@@ -133,21 +133,36 @@ const ManageEvent = () => {
     try {
       setLoading(true);
 
-      // Buscar campanha - Admin pode ver qualquer evento
-      let query = supabase
+      // Buscar campanha
+      const { data: campaignData, error: campaignError } = await supabase
         .from('campaigns')
         .select('*')
-        .eq('id', id);
-      
-      // Se não for admin, filtrar pelo photographer_id
-      if (!isAdmin) {
-        query = query.eq('photographer_id', user.id);
-      }
-      
-      const { data: campaignData, error: campaignError } = await query.single();
+        .eq('id', id)
+        .single();
 
       if (campaignError) {
-        throw new Error('Evento não encontrado ou você não tem permissão');
+        throw new Error('Evento não encontrado');
+      }
+
+      // Verificar permissão: Admin pode ver qualquer evento
+      // Fotógrafo pode ver se é dono OU está atribuído
+      if (!isAdmin) {
+        const isOwner = campaignData.photographer_id === user.id;
+        
+        if (!isOwner) {
+          // Verificar se está atribuído na campaign_photographers
+          const { data: assignment } = await supabase
+            .from('campaign_photographers')
+            .select('id')
+            .eq('campaign_id', id)
+            .eq('photographer_id', user.id)
+            .eq('is_active', true)
+            .maybeSingle();
+          
+          if (!assignment) {
+            throw new Error('Você não tem permissão para gerenciar este evento');
+          }
+        }
       }
 
       setCampaign(campaignData);
