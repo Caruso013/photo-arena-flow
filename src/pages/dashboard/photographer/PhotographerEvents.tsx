@@ -49,7 +49,8 @@ const PhotographerEvents = () => {
     if (!user?.id) return;
     
     try {
-      const { data, error } = await supabase
+      // Buscar eventos onde o fotógrafo é dono
+      const { data: ownedCampaigns, error: ownedError } = await supabase
         .from('campaigns')
         .select(`
           *,
@@ -57,11 +58,44 @@ const PhotographerEvents = () => {
         `)
         .eq('photographer_id', user.id)
         .order('created_at', { ascending: false })
-        .range(0, 49); // Limitar a 50 campanhas mais recentes
+        .range(0, 49);
 
-      if (error) throw error;
+      if (ownedError) throw ownedError;
+
+      // Buscar eventos onde o fotógrafo está atribuído (via campaign_photographers)
+      const { data: assignedCampaignIds, error: assignedError } = await supabase
+        .from('campaign_photographers')
+        .select('campaign_id')
+        .eq('photographer_id', user.id)
+        .eq('is_active', true);
+
+      if (assignedError) throw assignedError;
+
+      // IDs de campanhas atribuídas que não são de propriedade
+      const assignedIds = (assignedCampaignIds || [])
+        .map(a => a.campaign_id)
+        .filter(id => !ownedCampaigns?.some(c => c.id === id));
+
+      let assignedCampaigns: any[] = [];
+      if (assignedIds.length > 0) {
+        const { data, error } = await supabase
+          .from('campaigns')
+          .select(`
+            *,
+            photos(count)
+          `)
+          .in('id', assignedIds)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        assignedCampaigns = data || [];
+      }
+
+      // Combinar e ordenar
+      const allCampaigns = [...(ownedCampaigns || []), ...assignedCampaigns]
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       
-      const campaignsWithCount = (data || []).map(campaign => ({
+      const campaignsWithCount = allCampaigns.map(campaign => ({
         ...campaign,
         photo_count: campaign.photos?.[0]?.count || 0
       }));
