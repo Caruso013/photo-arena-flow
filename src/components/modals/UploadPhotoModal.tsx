@@ -35,6 +35,7 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
   const { hasPixKey, canUploadPhotos, loading: pixLoading } = usePhotographerPix();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [subEvents, setSubEvents] = useState<SubEvent[]>([]);
+  const [loadingCampaigns, setLoadingCampaigns] = useState(true);
   const [selectedCampaign, setSelectedCampaign] = useState('');
   const [selectedSubEvent, setSelectedSubEvent] = useState('');
   const [title, setTitle] = useState('');
@@ -61,6 +62,7 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
   }, [selectedCampaign]);
 
   const fetchCampaigns = async () => {
+    setLoadingCampaigns(true);
     try {
       if (!profile?.id) {
         toast({
@@ -68,6 +70,7 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
           description: "Você precisa estar logado.",
           variant: "destructive",
         });
+        setCampaigns([]);
         return;
       }
 
@@ -110,35 +113,28 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
         return;
       }
 
-      // Filtrar campanhas ativas e validar data (mesmo mês)
-      const currentDate = new Date();
-      const currentMonth = currentDate.getMonth();
-      const currentYear = currentDate.getFullYear();
+      // Filtrar campanhas ativas e validar janela de upload
+      // Regra antiga: somente no mesmo mês do evento (muito restritiva e quebra o fluxo).
+      // Nova regra (mais segura e prática): permite upload para eventos futuros e eventos recentes.
+      // Se não tiver data, permite.
+      const now = new Date();
+      const MAX_PAST_DAYS = 180; // 6 meses de tolerância para eventos passados
 
-      const validCampaigns = allCampaigns
-        .filter(c => {
-          if (!c || !c.is_active) return false;
-          
-          // Validar data do evento: deve estar no mesmo mês
-          if (c.event_date) {
-            const eventDate = new Date(c.event_date);
-            const eventMonth = eventDate.getMonth();
-            const eventYear = eventDate.getFullYear();
-            
-            // Permitir upload apenas no mês do evento
-            return (eventYear === currentYear && eventMonth === currentMonth);
-          }
-          
-          return true; // Se não tem data, permitir
-        });
+      const validCampaigns = allCampaigns.filter((c: any) => {
+        if (!c || !c.is_active) return false;
+        if (!c.event_date) return true;
 
-      if (validCampaigns.length === 0) {
-        toast({
-          title: "Nenhum evento disponível para upload",
-          description: "Seus eventos atribuídos não estão no período de upload válido (mesmo mês do evento).",
-          variant: "destructive",
-        });
-      }
+        const eventDate = new Date(c.event_date);
+        if (Number.isNaN(eventDate.getTime())) return true;
+
+        // Eventos futuros sempre OK
+        if (eventDate.getTime() >= now.getTime()) return true;
+
+        // Eventos passados: permitir por um período (ex.: pós-evento / curadoria)
+        const diffMs = now.getTime() - eventDate.getTime();
+        const diffDays = diffMs / (1000 * 60 * 60 * 24);
+        return diffDays <= MAX_PAST_DAYS;
+      });
 
       setCampaigns(validCampaigns as Campaign[]);
     } catch (error) {
@@ -148,6 +144,9 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
         description: "Não foi possível carregar seus eventos atribuídos.",
         variant: "destructive",
       });
+      setCampaigns([]);
+    } finally {
+      setLoadingCampaigns(false);
     }
   };
 
@@ -389,7 +388,20 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
                 </Button>
               </div>
             </div>
-          ) : campaigns.length === 0 ? (
+           ) : loadingCampaigns ? (
+             <div className="p-8 text-center border-2 border-dashed rounded-xl bg-muted/30">
+               <div className="h-16 w-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
+                 <RefreshCw className="h-8 w-8 text-muted-foreground animate-spin" />
+               </div>
+               <h3 className="text-lg font-bold mb-2">Carregando eventos…</h3>
+               <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
+                 Aguarde um momento.
+               </p>
+               <Button onClick={onClose} variant="outline">
+                 Fechar
+               </Button>
+             </div>
+           ) : campaigns.length === 0 ? (
             <div className="p-8 text-center border-2 border-dashed rounded-xl bg-muted/30">
               <div className="h-16 w-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
                 <Camera className="h-8 w-8 text-muted-foreground" />
@@ -398,9 +410,15 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
               <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
                 Você ainda não foi atribuído a eventos. Candidate-se na página 'Eventos Próximos'.
               </p>
-              <Button onClick={onClose} variant="outline">
-                Fechar
-              </Button>
+               <div className="flex flex-col gap-2">
+                 <Button onClick={fetchCampaigns} variant="default">
+                   <RefreshCw className="h-4 w-4 mr-2" />
+                   Recarregar eventos
+                 </Button>
+                 <Button onClick={onClose} variant="outline">
+                   Fechar
+                 </Button>
+               </div>
             </div>
           ) : (
             <>
