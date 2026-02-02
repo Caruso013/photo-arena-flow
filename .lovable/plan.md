@@ -1,143 +1,133 @@
 
 
-# Correção: Fotógrafos Atribuídos Devem Ser Reconhecidos como Aprovados
+## Plano: Melhoria do Modal de Upload com Pesquisa e Regras Formalizadas
 
-## Problema Identificado
+### Resumo
+Vamos aprimorar o modal de upload de fotos para facilitar a vida de fotógrafos com muitos eventos, adicionando:
+1. **Campo de pesquisa** para filtrar eventos rapidamente
+2. **Exibição de informações extras** (data, local) para diferenciar eventos
+3. **Regras de upload formalizadas** e mais claras
 
-O scanner do mesário está mostrando "ACESSO NEGADO" para o fotógrafo **Kauan castao** mesmo estando atribuído ao evento "S15 - Gthree x Alfa". Isso acontece porque:
+---
 
-- A validação atual verifica **somente** `event_applications.status = 'approved'`
-- Fotógrafos atribuídos diretamente via `campaign_photographers` não são considerados
-- O fotógrafo criador do evento (`campaigns.photographer_id`) também não é verificado
+### O que será melhorado
 
-## Solução
+#### Para o Fotógrafo
+- Barra de busca integrada ao seletor de eventos
+- Filtrar eventos por nome, local ou data digitando
+- Ver data e localização de cada evento na lista
+- Contador de eventos disponíveis
+- Eventos ordenados por data (mais recentes primeiro)
 
-Modificar as edge functions para considerar um fotógrafo como "aprovado" se ele atender a **qualquer uma** das condições:
+#### Regras de Upload (Atualizadas)
+- Eventos futuros: sempre disponíveis
+- **Eventos passados: até 60 dias após a data** (alterado de 180 para 60)
+- Limite por arquivo: 2.5MB
+- Formatos aceitos: JPEG, PNG, WebP
+- Chave PIX obrigatória para upload
 
-1. Tem candidatura aprovada em `event_applications` com `status = 'approved'`
-2. Está atribuído ao evento em `campaign_photographers` com `is_active = true`
-3. É o fotógrafo criador do evento (`campaigns.photographer_id`)
+---
 
-## Arquivos a Modificar
+### Detalhes Técnicos
 
-| Arquivo | Alteração |
-|---------|-----------|
-| `supabase/functions/validate-photographer-qr/index.ts` | Adicionar verificação em `campaign_photographers` e `campaigns.photographer_id` |
-| `supabase/functions/confirm-attendance/index.ts` | Mesma lógica de verificação |
+#### 1. Criar Componente de Select com Pesquisa
 
-## Mudanças Técnicas
-
-### 1. validate-photographer-qr/index.ts
-
-**Antes:**
-```typescript
-// Verificar se está aprovado para este evento
-const { data: application } = await supabase
-  .from('event_applications')
-  .select('id, status, applied_at, processed_at')
-  .eq('campaign_id', campaign_id)
-  .eq('photographer_id', qrToken.photographer_id)
-  .eq('status', 'approved')
-  .single();
-
-const isApproved = !!application;
-```
-
-**Depois:**
-```typescript
-// Verificar aprovação por múltiplas fontes
-let isApproved = false;
-let approvalSource = null;
-
-// 1. Verificar se é o criador do evento
-const { data: campaign } = await supabase
-  .from('campaigns')
-  .select('photographer_id')
-  .eq('id', campaign_id)
-  .single();
-
-if (campaign?.photographer_id === qrToken.photographer_id) {
-  isApproved = true;
-  approvalSource = 'event_creator';
-}
-
-// 2. Verificar se está atribuído via campaign_photographers
-if (!isApproved) {
-  const { data: assignment } = await supabase
-    .from('campaign_photographers')
-    .select('id, assigned_at')
-    .eq('campaign_id', campaign_id)
-    .eq('photographer_id', qrToken.photographer_id)
-    .eq('is_active', true)
-    .single();
-
-  if (assignment) {
-    isApproved = true;
-    approvalSource = 'assigned';
-  }
-}
-
-// 3. Verificar candidatura aprovada (mantém compatibilidade)
-let application = null;
-if (!isApproved) {
-  const { data: appData } = await supabase
-    .from('event_applications')
-    .select('id, status, applied_at, processed_at')
-    .eq('campaign_id', campaign_id)
-    .eq('photographer_id', qrToken.photographer_id)
-    .eq('status', 'approved')
-    .single();
-    
-  if (appData) {
-    isApproved = true;
-    approvalSource = 'application';
-    application = appData;
-  }
-}
-```
-
-### 2. confirm-attendance/index.ts
-
-Aplicar a mesma lógica de verificação múltipla antes de registrar a presença.
-
-## Fluxo Após Correção
+Novo componente `SearchableEventSelect` que combina um campo de busca com a lista de eventos:
 
 ```text
-Mesário escaneia QR Code
-        │
-        ▼
-Verificar aprovação:
-   ┌─────────────────────────────────────────────────┐
-   │ 1. É criador do evento (campaigns.photographer_id)?  │
-   │    SIM → Aprovado (fonte: "event_creator")           │
-   │                                                       │
-   │ 2. Está em campaign_photographers (is_active=true)?  │
-   │    SIM → Aprovado (fonte: "assigned")                │
-   │                                                       │
-   │ 3. Tem event_applications status='approved'?         │
-   │    SIM → Aprovado (fonte: "application")             │
-   │                                                       │
-   │ Nenhum? → Acesso Negado                              │
-   └─────────────────────────────────────────────────┘
-        │
-        ▼
-   [Tela de confirmação com nome/foto]
-        │
-        ▼
-   [Confirmar Presença]
++----------------------------------------------+
+|  Buscar evento...                            |
++----------------------------------------------+
+|  GOAL CUP | Campo do Mec                     |
+|     31/01/2026 - Campo do Mec                |
++----------------------------------------------+
+|  Campeonato Regional                         |
+|     15/02/2026 - Ginasio Municipal           |
++----------------------------------------------+
+|  Copa das Estrelas                           |
+|     28/02/2026 - Estadio Central             |
++----------------------------------------------+
 ```
 
-## Resultado Esperado
+**Arquivo:** `src/components/modals/SearchableEventSelect.tsx`
 
-- **Kauan castao** (atribuído ao evento) será reconhecido como **APROVADO**
-- Fotógrafos que criaram o evento também serão aprovados automaticamente
-- Candidaturas aprovadas continuam funcionando normalmente
-- A lista de chamada do admin continuará mostrando apenas os de `event_applications` (conforme solicitado)
+#### 2. Atualizar Interface Campaign
 
-## Ordem de Implementação
+Adicionar campos `event_date` e `location` a interface:
 
-1. Atualizar `validate-photographer-qr/index.ts`
-2. Atualizar `confirm-attendance/index.ts`
-3. Deploy das edge functions
-4. Testar com o QR Code do Kauan castao
+```typescript
+interface Campaign {
+  id: string;
+  title: string;
+  event_date?: string;
+  location?: string;
+}
+```
+
+#### 3. Atualizar Query de Campanhas
+
+Modificar a busca para incluir `location`:
+
+```typescript
+.select('id, title, event_date, is_active, location')
+```
+
+#### 4. Logica de Filtragem (60 dias)
+
+```typescript
+const MAX_PAST_DAYS = 60; // Limite de 60 dias para eventos passados
+
+const validCampaigns = allCampaigns.filter((c) => {
+  if (!c || !c.is_active) return false;
+  if (!c.event_date) return true; // Sem data = disponivel
+  
+  const eventDate = new Date(c.event_date);
+  const now = new Date();
+  const isFuture = eventDate >= now;
+  const daysPassed = (now.getTime() - eventDate.getTime()) / (1000 * 60 * 60 * 24);
+  
+  return isFuture || daysPassed <= MAX_PAST_DAYS;
+});
+```
+
+#### 5. Ordenacao de Eventos
+
+Eventos serao ordenados por:
+1. Eventos futuros primeiro (por data ascendente)
+2. Eventos passados depois (por data descendente - mais recentes primeiro)
+
+#### 6. Painel de Regras (Info Box)
+
+Secao informativa visivel no modal:
+
+```text
++----------------------------------------+
+| Regras de Upload                       |
+|                                        |
+| - Eventos futuros: sempre disponiveis  |
+| - Eventos passados: ate 60 dias        |
+| - Maximo por foto: 2.5MB               |
+| - Formatos: JPEG, PNG, WebP            |
+| - Chave PIX obrigatoria                |
++----------------------------------------+
+```
+
+---
+
+### Arquivos a Serem Modificados
+
+| Arquivo | Alteracao |
+|---------|-----------|
+| `src/components/modals/SearchableEventSelect.tsx` | **NOVO** - Componente de selecao com busca |
+| `src/components/modals/UploadPhotoModal.tsx` | Substituir Select por SearchableEventSelect, adicionar painel de regras, alterar limite para 60 dias |
+
+---
+
+### Beneficios
+
+1. **Rapidez**: Fotografos encontram eventos em segundos
+2. **Clareza**: Informacoes de data/local evitam confusao
+3. **Organizacao**: Eventos ordenados logicamente
+4. **Transparencia**: Regras de upload visiveis e claras
+5. **Limite razoavel**: 60 dias para uploads em eventos passados
 
