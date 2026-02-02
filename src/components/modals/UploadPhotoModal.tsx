@@ -9,14 +9,17 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
-import { Upload, X, Camera, CheckCircle2, FolderOpen, Image as ImageIcon, Info, RefreshCw, DollarSign, KeyRound } from 'lucide-react';
+import { Upload, X, Camera, CheckCircle2, FolderOpen, Image as ImageIcon, Info, RefreshCw, DollarSign, KeyRound, Clock, FileImage, Key } from 'lucide-react';
 import { backgroundUploadService } from '@/lib/backgroundUploadService';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { usePhotographerPix } from '@/hooks/usePhotographerPix';
+import { SearchableEventSelect, EventOption } from '@/components/modals/SearchableEventSelect';
 
 interface Campaign {
   id: string;
   title: string;
+  event_date?: string | null;
+  location?: string | null;
 }
 
 interface SubEvent {
@@ -77,7 +80,7 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
       // Buscar eventos criados pelo fotógrafo OU onde está atribuído via campaign_photographers
       const { data: ownCampaigns, error: ownError } = await supabase
         .from('campaigns')
-        .select('id, title, event_date, is_active')
+        .select('id, title, event_date, is_active, location')
         .eq('photographer_id', profile.id)
         .eq('is_active', true);
 
@@ -91,7 +94,8 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
             id,
             title,
             event_date,
-            is_active
+            is_active,
+            location
           )
         `)
         .eq('photographer_id', profile.id)
@@ -114,11 +118,11 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
       }
 
       // Filtrar campanhas ativas e validar janela de upload
-      // Regra antiga: somente no mesmo mês do evento (muito restritiva e quebra o fluxo).
-      // Nova regra (mais segura e prática): permite upload para eventos futuros e eventos recentes.
+      // Regra: permite upload para eventos futuros e eventos passados até 60 dias.
       // Se não tiver data, permite.
       const now = new Date();
-      const MAX_PAST_DAYS = 180; // 6 meses de tolerância para eventos passados
+      now.setHours(0, 0, 0, 0);
+      const MAX_PAST_DAYS = 60; // 60 dias de tolerância para eventos passados
 
       const validCampaigns = allCampaigns.filter((c: any) => {
         if (!c || !c.is_active) return false;
@@ -130,7 +134,7 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
         // Eventos futuros sempre OK
         if (eventDate.getTime() >= now.getTime()) return true;
 
-        // Eventos passados: permitir por um período (ex.: pós-evento / curadoria)
+        // Eventos passados: permitir por até 60 dias após o evento
         const diffMs = now.getTime() - eventDate.getTime();
         const diffDays = diffMs / (1000 * 60 * 60 * 24);
         return diffDays <= MAX_PAST_DAYS;
@@ -422,7 +426,43 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
             </div>
           ) : (
             <>
-          {/* Seleção de Evento */}
+          {/* Painel de Regras de Upload */}
+          <div className="p-4 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20">
+            <div className="flex items-start gap-3">
+              <div className="h-8 w-8 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
+                <Info className="h-4 w-4 text-amber-700 dark:text-amber-400" />
+              </div>
+              <div className="flex-1">
+                <h4 className="font-semibold text-sm text-amber-900 dark:text-amber-100 mb-2">
+                  Regras de Upload
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
+                    <Clock className="h-3.5 w-3.5 flex-shrink-0" />
+                    <span>Eventos futuros: sempre disponíveis</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
+                    <Clock className="h-3.5 w-3.5 flex-shrink-0" />
+                    <span>Eventos passados: até 60 dias</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
+                    <FileImage className="h-3.5 w-3.5 flex-shrink-0" />
+                    <span>Máximo por foto: 2.5MB</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
+                    <FileImage className="h-3.5 w-3.5 flex-shrink-0" />
+                    <span>Formatos: JPEG, PNG, WebP</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200 sm:col-span-2">
+                    <Key className="h-3.5 w-3.5 flex-shrink-0" />
+                    <span>Chave PIX obrigatória para recebimentos</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Seleção de Evento com Pesquisa */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -431,22 +471,16 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
               <Label htmlFor="campaign" className="font-semibold text-base">
                 Selecione o Evento
               </Label>
+              <span className="text-xs text-muted-foreground">
+                ({campaigns.length} disponíveis)
+              </span>
             </div>
-            <Select value={selectedCampaign} onValueChange={setSelectedCampaign}>
-              <SelectTrigger className="h-12">
-                <SelectValue placeholder="Escolha o evento" />
-              </SelectTrigger>
-              <SelectContent>
-                {campaigns.map((campaign) => (
-                  <SelectItem key={campaign.id} value={campaign.id}>
-                    <div className="flex items-center gap-2">
-                      <Camera className="h-4 w-4" />
-                      {campaign.title}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchableEventSelect
+              events={campaigns as EventOption[]}
+              value={selectedCampaign}
+              onValueChange={setSelectedCampaign}
+              placeholder="Buscar e selecionar evento..."
+            />
             
             {/* Info sobre Visibilidade */}
             {selectedCampaign && (
