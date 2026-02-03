@@ -1,17 +1,17 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { DollarSign, Clock, CheckCircle, XCircle, AlertCircle, Banknote } from 'lucide-react';
+import { DollarSign, Clock, CheckCircle, XCircle, AlertCircle, Banknote, Key } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { usePhotographerBalance } from '@/hooks/usePhotographerBalance';
+import { usePhotographerPix } from '@/hooks/usePhotographerPix';
 
 interface PayoutRequest {
   id: string;
@@ -28,15 +28,10 @@ interface PayoutRequest {
 const PayoutRequestPage = () => {
   const { user } = useAuth();
   const balance = usePhotographerBalance();
+  const pixStatus = usePhotographerPix();
   const [submitting, setSubmitting] = useState(false);
   const [requests, setRequests] = useState<PayoutRequest[]>([]);
   const [loadingRequests, setLoadingRequests] = useState(true);
-
-  // Form
-  const [pixKey, setPixKey] = useState('');
-  const [recipientName, setRecipientName] = useState('');
-  const [institution, setInstitution] = useState('');
-  const [pixKeyType, setPixKeyType] = useState<'cpf' | 'phone' | 'email' | 'random'>('cpf');
 
   useEffect(() => {
     if (user) {
@@ -68,37 +63,6 @@ const PayoutRequestPage = () => {
 
   const hasPendingRequest = requests.some(r => r.status === 'pending' || r.status === 'approved');
 
-  const validatePixKey = (key: string, type: typeof pixKeyType): boolean => {
-    switch (type) {
-      case 'cpf':
-        return /^\d{11}$/.test(key.replace(/\D/g, ''));
-      case 'phone':
-        return /^\d{10,11}$/.test(key.replace(/\D/g, ''));
-      case 'email':
-        // Validação mais permissiva para emails - aceita números, letras, pontos, hífens, etc.
-        return /^[a-zA-Z0-9._+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(key.trim());
-      case 'random':
-        return key.length >= 32;
-      default:
-        return false;
-    }
-  };
-
-  const formatPixKey = (key: string, type: typeof pixKeyType): string => {
-    const clean = key.replace(/\D/g, '');
-    
-    switch (type) {
-      case 'cpf':
-        return clean.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
-      case 'phone':
-        return clean.length === 11 
-          ? clean.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3')
-          : clean.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
-      default:
-        return key;
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -107,40 +71,45 @@ const PayoutRequestPage = () => {
       return;
     }
 
+    if (!pixStatus.hasPixKey) {
+      toast.error('Você precisa cadastrar uma chave PIX antes de solicitar saque');
+      return;
+    }
+
     if (balance.availableAmount < 50) {
       toast.error('Valor mínimo para saque é R$ 50,00. Você tem apenas ' + formatCurrency(balance.availableAmount) + ' disponível.');
-      return;
-    }
-
-    if (!pixKey || !recipientName) {
-      toast.error('Preencha todos os campos obrigatórios');
-      return;
-    }
-
-    if (!validatePixKey(pixKey, pixKeyType)) {
-      toast.error('Chave PIX inválida para o tipo selecionado');
       return;
     }
 
     try {
       setSubmitting(true);
 
-      console.log('📤 Criando solicitação de repasse...', {
+      // Buscar a chave PIX completa do perfil (não a mascarada)
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('pix_key, pix_recipient_name, pix_institution')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError || !profile?.pix_key) {
+        toast.error('Erro ao buscar dados do PIX. Verifique seu cadastro.');
+        return;
+      }
+
+      console.log('📤 Criando solicitação de repasse com PIX cadastrado...', {
         photographer_id: user.id,
         amount: balance.availableAmount,
-        pix_key_length: pixKey.length,
-        recipient_name: recipientName,
+        recipient_name: profile.pix_recipient_name,
       });
 
-      // Inserir direto - a trigger validate_payout_pix_data vai validar
       const { data: insertedData, error: insertError } = await supabase
         .from('payout_requests')
         .insert({
           photographer_id: user.id,
           amount: balance.availableAmount,
-          pix_key: pixKey,
-          recipient_name: recipientName,
-          institution: institution || null,
+          pix_key: profile.pix_key,
+          recipient_name: profile.pix_recipient_name || '',
+          institution: profile.pix_institution || null,
           status: 'pending'
         })
         .select('id, amount, status')
@@ -157,27 +126,18 @@ const PayoutRequestPage = () => {
         description: `${formatCurrency(balance.availableAmount)} será processado em até 2 dias úteis`
       });
       
-      // Limpar formulário
-      setPixKey('');
-      setRecipientName('');
-      setInstitution('');
-      setPixKeyType('cpf');
-      
       // Recarregar dados
       await Promise.all([fetchRequests(), balance.refetch()]);
 
     } catch (error: any) {
       console.error('❌ Erro ao solicitar repasse:', error);
       
-      // Mensagens de erro mais específicas
       let errorMessage = 'Erro ao solicitar saque. Tente novamente.';
       
       if (error.message?.includes('recipient_name')) {
-        errorMessage = 'Nome do beneficiário é obrigatório';
+        errorMessage = 'Nome do beneficiário é obrigatório. Verifique seu cadastro de PIX.';
       } else if (error.message?.includes('pix_key')) {
-        errorMessage = 'Chave PIX inválida';
-      } else if (error.message?.includes('amount')) {
-        errorMessage = 'Valor inválido';
+        errorMessage = 'Chave PIX inválida. Verifique seu cadastro.';
       } else if (error.code === '23505') {
         errorMessage = 'Você já possui uma solicitação pendente';
       } else if (error.message) {
@@ -343,118 +303,107 @@ const PayoutRequestPage = () => {
         </TabsList>
 
         <TabsContent value="solicitar" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg sm:text-xl">Solicitar Repasse via PIX</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Tipo de Chave PIX */}
-                <div className="space-y-2">
-                  <Label>Tipo de Chave PIX</Label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    {[
-                      { value: 'cpf', label: 'CPF' },
-                      { value: 'phone', label: 'Telefone' },
-                      { value: 'email', label: 'E-mail' },
-                      { value: 'random', label: 'Aleatória' },
-                    ].map((type) => (
-                      <Button
-                        key={type.value}
-                        type="button"
-                        variant={pixKeyType === type.value ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => setPixKeyType(type.value as any)}
-                        className="w-full"
+          {!pixStatus.hasPixKey ? (
+            <Card className="border-2 border-amber-200 bg-amber-50/50 dark:border-amber-900 dark:bg-amber-950/20">
+              <CardContent className="pt-6">
+                <div className="flex flex-col items-center text-center gap-4">
+                  <div className="rounded-full bg-amber-100 dark:bg-amber-900/30 p-4">
+                    <Key className="h-8 w-8 text-amber-600 dark:text-amber-400" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg mb-2">Chave PIX não cadastrada</h3>
+                    <p className="text-muted-foreground text-sm mb-4">
+                      Você precisa cadastrar uma chave PIX antes de solicitar saques.
+                    </p>
+                    <Link to="/dashboard/photographer/pix-settings">
+                      <Button>Cadastrar Chave PIX</Button>
+                    </Link>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg sm:text-xl">Solicitar Repasse via PIX</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  {/* Dados do PIX Cadastrado */}
+                  <div className="p-4 bg-muted/50 rounded-lg border space-y-3">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Key className="h-4 w-4 text-primary" />
+                      <span className="font-medium text-sm">Chave PIX Cadastrada</span>
+                      <Link 
+                        to="/dashboard/photographer/pix-settings" 
+                        className="ml-auto text-xs text-primary hover:underline"
                       >
-                        {type.label}
-                      </Button>
-                    ))}
+                        Alterar
+                      </Link>
+                    </div>
+                    
+                    <div className="grid gap-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Tipo:</span>
+                        <span className="font-medium capitalize">{pixStatus.pixKeyType}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Chave:</span>
+                        <span className="font-medium">{pixStatus.pixKeyMasked}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Beneficiário:</span>
+                        <span className="font-medium">{pixStatus.recipientName}</span>
+                      </div>
+                      {pixStatus.institution && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Instituição:</span>
+                          <span className="font-medium">{pixStatus.institution}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
 
-                {/* Chave PIX */}
-                <div className="space-y-2">
-                  <Label htmlFor="pixKey">Chave PIX *</Label>
-                  <Input
-                    id="pixKey"
-                    value={pixKey}
-                    onChange={(e) => setPixKey(e.target.value)}
-                    placeholder={
-                      pixKeyType === 'cpf' ? '000.000.000-00' :
-                      pixKeyType === 'phone' ? '(00) 00000-0000' :
-                      pixKeyType === 'email' ? 'seu@email.com' :
-                      'Chave aleatória'
-                    }
-                    className="h-11 sm:h-12 text-base"
-                    required
-                  />
-                </div>
-
-                {/* Nome do Beneficiário */}
-                <div className="space-y-2">
-                  <Label htmlFor="recipientName">Nome Completo do Beneficiário *</Label>
-                  <Input
-                    id="recipientName"
-                    value={recipientName}
-                    onChange={(e) => setRecipientName(e.target.value)}
-                    placeholder="Nome como está no banco"
-                    className="h-11 sm:h-12 text-base"
-                    required
-                  />
-                </div>
-
-                {/* Instituição */}
-                <div className="space-y-2">
-                  <Label htmlFor="institution">Banco/Instituição (Opcional)</Label>
-                  <Input
-                    id="institution"
-                    value={institution}
-                    onChange={(e) => setInstitution(e.target.value)}
-                    placeholder="Ex: Nubank, Banco do Brasil"
-                    className="h-11 sm:h-12 text-base"
-                  />
-                </div>
-
-                {/* Valor */}
-                <div className="space-y-2">
-                  <Label>Valor a Receber</Label>
-                  <div className="text-3xl sm:text-4xl font-bold text-green-600 dark:text-green-400">
-                    {formatCurrency(balance.availableAmount)}
-                  </div>
-                  <p className="text-xs sm:text-sm text-muted-foreground">
-                    Este é o valor total disponível para saque
-                  </p>
-                </div>
-
-                {/* Alertas */}
-                {balance.availableAmount < 50 && (
-                  <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-lg">
-                    <p className="text-sm text-amber-800 dark:text-amber-200">
-                      ⚠️ Valor mínimo para saque: R$ 50,00
+                  {/* Valor */}
+                  <div className="space-y-2">
+                    <span className="text-sm font-medium">Valor a Receber</span>
+                    <div className="text-3xl sm:text-4xl font-bold text-green-600 dark:text-green-400">
+                      {formatCurrency(balance.availableAmount)}
+                    </div>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                      Este é o valor total disponível para saque
                     </p>
                   </div>
-                )}
 
-                {hasPendingRequest && balance.availableAmount >= 50 && (
-                  <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-lg">
-                    <p className="text-sm text-blue-800 dark:text-blue-200">
-                      ℹ️ Você tem solicitações em processamento. Este novo saque será adicionado à fila e processado após a aprovação das anteriores.
-                    </p>
-                  </div>
-                )}
+                  {/* Alertas */}
+                  {balance.availableAmount < 50 && (
+                    <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-lg">
+                      <p className="text-sm text-amber-800 dark:text-amber-200">
+                        ⚠️ Valor mínimo para saque: R$ 50,00
+                      </p>
+                    </div>
+                  )}
 
-                <Button
-                  type="submit"
-                  size="lg"
-                  disabled={submitting || balance.availableAmount < 50}
-                  className="w-full h-12 sm:h-14 text-base sm:text-lg"
-                >
-                  {submitting ? 'Enviando...' : `Solicitar Saque de ${formatCurrency(balance.availableAmount)}`}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
+                  {hasPendingRequest && balance.availableAmount >= 50 && (
+                    <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-lg">
+                      <p className="text-sm text-blue-800 dark:text-blue-200">
+                        ℹ️ Você tem solicitações em processamento. Este novo saque será adicionado à fila e processado após a aprovação das anteriores.
+                      </p>
+                    </div>
+                  )}
+
+                  <Button
+                    type="submit"
+                    size="lg"
+                    disabled={submitting || balance.availableAmount < 50 || !pixStatus.hasPixKey}
+                    className="w-full h-12 sm:h-14 text-base sm:text-lg"
+                  >
+                    {submitting ? 'Enviando...' : `Solicitar Saque de ${formatCurrency(balance.availableAmount)}`}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="historico" className="space-y-4">
