@@ -178,11 +178,10 @@ export const SearchableEventSelect: React.FC<SearchableEventSelectProps> = ({
         </Button>
       </PopoverTrigger>
       <PopoverContent 
-        className="w-[--radix-popover-trigger-width] p-0 z-[9999]" 
+        className="w-[--radix-popover-trigger-width] p-0 z-[9999] pointer-events-auto" 
         align="start"
         sideOffset={4}
-        onPointerDownOutside={(e) => e.preventDefault()}
-        onInteractOutside={(e) => e.preventDefault()}
+        onOpenAutoFocus={(e) => e.preventDefault()}
       >
         {/* Campo de pesquisa */}
         <div className="p-3 border-b">
