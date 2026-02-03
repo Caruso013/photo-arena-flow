@@ -140,7 +140,7 @@ export const SearchableEventSelect: React.FC<SearchableEventSelectProps> = ({
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={setOpen} modal={false}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -178,9 +178,11 @@ export const SearchableEventSelect: React.FC<SearchableEventSelectProps> = ({
         </Button>
       </PopoverTrigger>
       <PopoverContent 
-        className="w-[--radix-popover-trigger-width] p-0" 
+        className="w-[--radix-popover-trigger-width] p-0 z-[9999]" 
         align="start"
         sideOffset={4}
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
       >
         {/* Campo de pesquisa */}
         <div className="p-3 border-b">
@@ -229,50 +231,30 @@ export const SearchableEventSelect: React.FC<SearchableEventSelectProps> = ({
           ) : (
             filteredEvents.map((event) => {
               const isSelected = event.id === value;
-              const isFuture = isFutureEvent(event.event_date);
               
               return (
                 <button
                   key={event.id}
+                  type="button"
                   onClick={() => handleSelect(event.id)}
                   className={cn(
-                    "w-full text-left p-3 hover:bg-accent transition-colors border-b border-border/50 last:border-0",
+                    "w-full text-left px-3 py-2.5 hover:bg-accent transition-colors border-b border-border/50 last:border-0",
                     isSelected && "bg-primary/5"
                   )}
                 >
-                  <div className="flex items-start gap-3">
-                    <div className={cn(
-                      "h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5",
-                      isFuture ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
-                    )}>
-                      <Camera className="h-4 w-4" />
-                    </div>
+                  <div className="flex items-center gap-3">
+                    <Camera className="h-4 w-4 text-primary flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className={cn(
-                        "font-medium truncate",
+                        "font-medium truncate text-sm",
                         isSelected && "text-primary"
                       )}>
                         {event.title}
                       </p>
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
-                        {event.event_date && (
-                          <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <Calendar className="h-3 w-3" />
-                            {formatEventDate(event.event_date)}
-                            {isFuture && (
-                              <span className="ml-1 px-1.5 py-0.5 rounded bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-[10px] font-medium">
-                                Futuro
-                              </span>
-                            )}
-                          </span>
-                        )}
-                        {event.location && (
-                          <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <MapPin className="h-3 w-3" />
-                            <span className="truncate max-w-[150px]">{event.location}</span>
-                          </span>
-                        )}
-                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {formatEventDate(event.event_date)}
+                        {event.location && ` • ${event.location}`}
+                      </span>
                     </div>
                     {isSelected && (
                       <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center flex-shrink-0">

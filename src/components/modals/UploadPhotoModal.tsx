@@ -122,7 +122,7 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
       // Se não tiver data, permite.
       const now = new Date();
       now.setHours(0, 0, 0, 0);
-      const MAX_PAST_DAYS = 60; // 60 dias de tolerância para eventos passados
+      const MAX_PAST_DAYS = 30; // 30 dias de tolerância para eventos passados
 
       const validCampaigns = allCampaigns.filter((c: any) => {
         if (!c || !c.is_active) return false;
@@ -426,41 +426,6 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
             </div>
           ) : (
             <>
-          {/* Painel de Regras de Upload */}
-          <div className="p-4 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20">
-            <div className="flex items-start gap-3">
-              <div className="h-8 w-8 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
-                <Info className="h-4 w-4 text-amber-700 dark:text-amber-400" />
-              </div>
-              <div className="flex-1">
-                <h4 className="font-semibold text-sm text-amber-900 dark:text-amber-100 mb-2">
-                  Regras de Upload
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                  <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
-                    <Clock className="h-3.5 w-3.5 flex-shrink-0" />
-                    <span>Eventos futuros: sempre disponíveis</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
-                    <Clock className="h-3.5 w-3.5 flex-shrink-0" />
-                    <span>Eventos passados: até 60 dias</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
-                    <FileImage className="h-3.5 w-3.5 flex-shrink-0" />
-                    <span>Máximo por foto: 2.5MB</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
-                    <FileImage className="h-3.5 w-3.5 flex-shrink-0" />
-                    <span>Formatos: JPEG, PNG, WebP</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200 sm:col-span-2">
-                    <Key className="h-3.5 w-3.5 flex-shrink-0" />
-                    <span>Chave PIX obrigatória para recebimentos</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
 
           {/* Seleção de Evento com Pesquisa */}
           <div className="space-y-3">
