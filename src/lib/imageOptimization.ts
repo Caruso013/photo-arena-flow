@@ -11,13 +11,13 @@ export interface ImageSizeConfig {
   quality: number;
 }
 
-// Configurações de tamanho otimizadas para reduzir Cached Egress
-// Qualidades mais baixas para economizar bandwidth
+// Configurações de tamanho AGRESSIVAS para reduzir Cached Egress
+// Qualidades muito baixas para economizar bandwidth drasticamente
 export const IMAGE_SIZE_CONFIG: Record<ImageSize, ImageSizeConfig | null> = {
-  blur: { width: 40, height: 40, quality: 15 },      // 3-5KB - blur inicial (reduzido)
-  thumbnail: { width: 300, height: 225, quality: 65 }, // 20-35KB - preview (reduzido)
-  medium: { width: 600, height: 450, quality: 75 },    // 60-100KB - visualização (reduzido)
-  large: { width: 1000, height: 750, quality: 80 },    // 150-250KB - compra (reduzido)
+  blur: { width: 20, height: 20, quality: 10 },       // 1-2KB - blur inicial
+  thumbnail: { width: 200, height: 150, quality: 50 }, // 8-15KB - preview (reduzido)
+  medium: { width: 400, height: 300, quality: 60 },    // 25-40KB - visualização (reduzido)
+  large: { width: 800, height: 600, quality: 70 },     // 80-120KB - compra (reduzido)
   original: null // Sem transformação
 };
 
