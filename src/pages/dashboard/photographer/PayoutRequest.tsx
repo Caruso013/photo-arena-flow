@@ -315,7 +315,7 @@ const PayoutRequestPage = () => {
                     <p className="text-muted-foreground text-sm mb-4">
                       Você precisa cadastrar uma chave PIX antes de solicitar saques.
                     </p>
-                    <Link to="/dashboard/photographer/pix-settings">
+                    <Link to="/dashboard/photographer/pix">
                       <Button>Cadastrar Chave PIX</Button>
                     </Link>
                   </div>
@@ -335,7 +335,7 @@ const PayoutRequestPage = () => {
                       <Key className="h-4 w-4 text-primary" />
                       <span className="font-medium text-sm">Chave PIX Cadastrada</span>
                       <Link 
-                        to="/dashboard/photographer/pix-settings" 
+                        to="/dashboard/photographer/pix" 
                         className="ml-auto text-xs text-primary hover:underline"
                       >
                         Alterar
