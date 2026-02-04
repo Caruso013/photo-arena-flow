@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -153,6 +154,8 @@ const OrganizationRevenue = () => {
   const fetchOrganizationData = async () => {
     try {
       setLoading(true);
+      
+      console.log('🔍 Buscando dados de organização para usuário:', user?.id, 'Role:', profile?.role);
 
       // 1. Buscar organização do usuário
       const { data: orgUser, error: orgUserError } = await supabase
@@ -162,13 +165,25 @@ const OrganizationRevenue = () => {
         .maybeSingle(); // Usa maybeSingle para não dar erro se não encontrar
 
       if (orgUserError) {
-        console.error('Erro ao buscar vínculo organização:', orgUserError);
+        console.error('❌ Erro ao buscar vínculo organização:', orgUserError);
+        console.error('Código do erro:', orgUserError.code, 'Detalhes:', orgUserError.details);
+        
+        // Se for erro de permissão, mostrar mensagem específica
+        if (orgUserError.code === 'PGRST301' || orgUserError.message?.includes('permission')) {
+          toast({
+            title: "Erro de permissão",
+            description: "Você não tem permissão para acessar os dados da organização. Entre em contato com o suporte.",
+            variant: "destructive",
+          });
+        }
         throw orgUserError;
       }
       
+      console.log('📋 Resultado da busca de vínculo:', orgUser);
+      
       // Se não encontrou vínculo, mostrar tela de organização não encontrada
       if (!orgUser || !orgUser.organizations) {
-        console.log('Usuário não está vinculado a nenhuma organização');
+        console.log('⚠️ Usuário não está vinculado a nenhuma organização. User ID:', user?.id);
         setOrganization(null);
         setLoading(false);
         return;
@@ -383,7 +398,29 @@ const OrganizationRevenue = () => {
         </div>
         <h2 className="text-2xl font-bold">Organização não encontrada</h2>
         <p className="text-muted-foreground text-center max-w-md">
-          Não foi possível encontrar sua organização. Entre em contato com o suporte se o problema persistir.
+          Não foi possível encontrar o vínculo com sua organização.
+        </p>
+        <div className="text-sm text-muted-foreground bg-muted p-4 rounded-lg max-w-md">
+          <p className="mb-2"><strong>Possíveis causas:</strong></p>
+          <ul className="list-disc list-inside space-y-1">
+            <li>Sua conta ainda não foi vinculada a uma organização</li>
+            <li>O vínculo foi removido pelo administrador</li>
+            <li>Houve um problema técnico temporário</li>
+          </ul>
+        </div>
+        <div className="flex gap-3 mt-4">
+          <Button 
+            variant="outline" 
+            onClick={() => window.location.reload()}
+          >
+            Tentar novamente
+          </Button>
+          <Button asChild>
+            <a href="mailto:suporte@stafotos.com">Contatar Suporte</a>
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground mt-4">
+          ID do usuário: {user?.id?.slice(0, 8)}...
         </p>
       </div>
     );

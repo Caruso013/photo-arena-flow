@@ -111,7 +111,7 @@ serve(async (req) => {
       console.log('✅ Purchases atualizadas com sucesso!');
     }
 
-    // Buscar detalhes do comprador para enviar email
+    // Buscar detalhes do comprador e TODAS as fotos para enviar email completo
     const firstPurchase = pendingPurchases[0];
     if (firstPurchase) {
       try {
@@ -122,40 +122,50 @@ serve(async (req) => {
           .eq('id', firstPurchase.buyer_id)
           .single();
 
-        // Buscar dados da foto e campanha
-        const { data: photo } = await supabase
-          .from('photos')
-          .select('title, campaign_id')
-          .eq('id', firstPurchase.photo_id)
-          .single();
-
+        // Buscar dados de TODAS as fotos compradas
+        const photosData = [];
         let campaignTitle = '';
-        let photographerName = '';
-
-        if (photo?.campaign_id) {
-          const { data: campaign } = await supabase
-            .from('campaigns')
-            .select('title, photographer_id')
-            .eq('id', photo.campaign_id)
+        
+        for (const purchase of pendingPurchases) {
+          const { data: photo } = await supabase
+            .from('photos')
+            .select('id, title, watermarked_url, campaign_id, campaigns(title, photographer_id)')
+            .eq('id', purchase.photo_id)
             .single();
-          
-          campaignTitle = campaign?.title || '';
-          
-          if (campaign?.photographer_id) {
-            const { data: photographer } = await supabase
-              .from('profiles')
-              .select('full_name')
-              .eq('id', campaign.photographer_id)
-              .single();
-            photographerName = photographer?.full_name || '';
+
+          if (photo) {
+            let photographerName = '';
+            const campaign = photo.campaigns as any;
+            
+            if (campaign?.photographer_id) {
+              const { data: photographer } = await supabase
+                .from('profiles')
+                .select('full_name')
+                .eq('id', campaign.photographer_id)
+                .single();
+              photographerName = photographer?.full_name || '';
+            }
+            
+            // Usar o primeiro título de campanha encontrado
+            if (!campaignTitle && campaign?.title) {
+              campaignTitle = campaign.title;
+            }
+
+            photosData.push({
+              id: photo.id,
+              title: photo.title || 'Foto do evento',
+              thumbnail_url: photo.watermarked_url,
+              price: Number(purchase.amount),
+              photographer_name: photographerName
+            });
           }
         }
 
-        // Calcular valor total (pode ter várias fotos)
+        // Calcular valor total
         const totalAmount = pendingPurchases.reduce((sum, p) => sum + Number(p.amount), 0);
 
         if (buyer?.email) {
-          console.log('📧 Enviando email de confirmação para:', buyer.email);
+          console.log('📧 Enviando email de confirmação para:', buyer.email, 'com', photosData.length, 'fotos');
           
           await fetch(`${supabaseUrl}/functions/v1/send-purchase-confirmation-email`, {
             method: 'POST',
@@ -166,16 +176,14 @@ serve(async (req) => {
             body: JSON.stringify({
               buyerEmail: buyer.email,
               buyerName: buyer.full_name,
-              photoTitle: pendingPurchases.length > 1 
-                ? `${pendingPurchases.length} fotos` 
-                : (photo?.title || 'Foto do evento'),
+              photos: photosData,
               campaignTitle: campaignTitle,
               amount: totalAmount,
-              photographerName: photographerName,
+              photographerName: photosData[0]?.photographer_name || '',
             }),
           });
           
-          console.log('✅ Email de confirmação enviado!');
+          console.log('✅ Email de confirmação enviado com', photosData.length, 'fotos!');
         }
       } catch (emailError) {
         console.warn('⚠️ Erro ao enviar email (não crítico):', emailError);
