@@ -229,29 +229,32 @@ const OrganizationRevenue = () => {
 
       console.log('✅ Total de vendas encontradas:', allSalesData?.length || 0);
 
+      // Buscar todos os fotógrafos e compradores de uma vez (performance)
+      const photographerIds = [...new Set((allSalesData || []).map(s => s.photographer_id).filter(Boolean))];
+      const buyerIds = [...new Set((allSalesData || []).map(s => (s.purchases as any)?.buyer_id).filter(Boolean))];
+      
+      const [photographersResult, buyersResult] = await Promise.all([
+        photographerIds.length > 0 
+          ? supabase.from('profiles').select('id, full_name').in('id', photographerIds)
+          : Promise.resolve({ data: [] }),
+        buyerIds.length > 0 
+          ? supabase.from('profiles').select('id, full_name').in('id', buyerIds)
+          : Promise.resolve({ data: [] })
+      ]);
+      
+      const photographerMap = new Map((photographersResult.data || []).map(p => [p.id, p.full_name]));
+      const buyerMap = new Map((buyersResult.data || []).map(b => [b.id, b.full_name]));
+
       // Processar todas as vendas
       const processedAllSales: SaleData[] = [];
       for (const sale of allSalesData || []) {
-        let photographerName = null;
-        if (sale.photographer_id) {
-          const { data: photographer } = await supabase
-            .from('profiles')
-            .select('full_name')
-            .eq('id', sale.photographer_id)
-            .single();
-          photographerName = photographer?.full_name || 'Fotógrafo';
-        }
-
-        let buyerName = null;
         const purchase = sale.purchases as any;
-        if (purchase?.buyer_id) {
-          const { data: buyer } = await supabase
-            .from('profiles')
-            .select('full_name')
-            .eq('id', purchase.buyer_id)
-            .single();
-          buyerName = buyer?.full_name || 'Cliente';
-        }
+        const photographerName = sale.photographer_id 
+          ? (photographerMap.get(sale.photographer_id) || 'Fotógrafo')
+          : null;
+        const buyerName = purchase?.buyer_id 
+          ? (buyerMap.get(purchase.buyer_id) || 'Cliente')
+          : null;
 
         // Calcular valor total da venda (soma de todas as partes)
         const purchaseAmount = Number(purchase?.amount || 0);
