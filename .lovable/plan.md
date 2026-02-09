@@ -1,95 +1,93 @@
 
 
-## Plano: Correção Total do Modal de Upload
+# Plano: Dar acesso aos nomes de clientes para organizadores
 
-### Problemas Identificados
+## Problema Atual
 
-1. **Evento "GOAL CUP | Campo do Mec" já está ativo** no banco de dados - o problema é a interação do seletor
-2. **Painel de regras muito poluído** - remover completamente
-3. **Seleção de evento não funciona** - Popover dentro de Dialog captura cliques incorretamente
-4. **Limite atual é 60 dias** - reduzir para 30 dias
-5. **Interface muito complexa** - simplificar exibição de eventos
-6. **Sequência de fotos** - já está implementada no `backgroundUploadService.ts` usando `extractFileSequence` e `upload_sequence`
+O dashboard de organizações (`OrganizationRevenue.tsx`) busca nomes de fotógrafos e compradores diretamente na tabela `profiles`. Quando aplicarmos as restrições de segurança (Etapa 1 do plano anterior), organizações perderão esse acesso, pois não são admin nem donos desses perfis.
 
----
+## Solução
 
-### Correções a Implementar
+Integrar essa necessidade ao plano de segurança existente. A view `profiles_public` (que será criada na Etapa 1) contém `id` e `full_name` - exatamente o que as organizações precisam. Basta trocar a consulta no dashboard.
 
-#### 1. Corrigir SearchableEventSelect (Problema Principal)
+## Mudanças Necessárias
 
-O Popover dentro de um Dialog tem conflito de modais. Correções:
+### 1. Na migration SQL (Etapa 1 do plano de segurança)
 
-| Linha | Alteração |
-|-------|-----------|
-| 143 | Adicionar `modal={false}` ao Popover |
-| 181-184 | Adicionar `z-index: 9999`, `onPointerDownOutside`, `onInteractOutside` |
-| 232-286 | Simplificar layout dos itens (remover badge "Futuro", compactar) |
+A view `profiles_public` já planejada resolve o problema:
 
-Código corrigido para o Popover:
-```typescript
-<Popover open={open} onOpenChange={setOpen} modal={false}>
+```sql
+CREATE OR REPLACE VIEW public.profiles_public
+WITH (security_invoker = on) AS
+SELECT id, full_name, avatar_url, role, created_at
+FROM public.profiles;
 ```
 
-Código corrigido para PopoverContent:
-```typescript
-<PopoverContent 
-  className="w-[--radix-popover-trigger-width] p-0 z-[9999]" 
-  align="start"
-  sideOffset={4}
-  onPointerDownOutside={(e) => e.preventDefault()}
-  onInteractOutside={(e) => e.preventDefault()}
->
+Precisa apenas garantir que a RLS permita organizações acessarem essa view. Como `security_invoker = on` herda a RLS do usuário, e organizações não terão SELECT em `profiles`, precisamos de uma política adicional:
+
+```sql
+-- Organizações podem ver nomes (full_name) via profiles
+CREATE POLICY "Organizations can view profile names"
+  ON public.profiles FOR SELECT
+  USING (
+    has_role(auth.uid(), 'organization'::user_role)
+  );
 ```
 
-Simplificar itens da lista (remover ícone grande, badge "Futuro"):
-```typescript
-<button type="button" onClick={() => handleSelect(event.id)} ...>
-  <div className="flex items-center gap-3">
-    <Camera className="h-4 w-4 text-primary" />
-    <div className="flex-1">
-      <p className="font-medium truncate text-sm">{event.title}</p>
-      <span className="text-xs text-muted-foreground">
-        {formatEventDate(event.event_date)} • {event.location}
-      </span>
-    </div>
-    {isSelected && <CheckIcon />}
-  </div>
-</button>
+Isso permite que organizações vejam profiles completos. Alternativa mais restritiva: criar uma view dedicada para organizações que só mostra compradores de seus eventos.
+
+**Abordagem recomendada (mais segura):** Criar uma policy que permite organizações verem apenas profiles que são relevantes (compradores dos seus eventos ou fotógrafos dos seus eventos):
+
+```sql
+CREATE POLICY "Organizations can view related profiles"
+  ON public.profiles FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM revenue_shares rs
+      JOIN organization_users ou ON ou.organization_id = rs.organization_id
+      JOIN purchases pu ON pu.id = rs.purchase_id
+      WHERE ou.user_id = auth.uid()
+        AND (profiles.id = pu.buyer_id OR profiles.id = rs.photographer_id)
+    )
+  );
 ```
 
-#### 2. Atualizar UploadPhotoModal
+Isso garante que organizações vejam APENAS nomes de pessoas envolvidas nas suas vendas - nem mais, nem menos.
 
-| Linha | Alteração |
-|-------|-----------|
-| 125 | Mudar `MAX_PAST_DAYS = 60` para `MAX_PAST_DAYS = 30` |
-| 429-463 | **REMOVER** todo o bloco do painel de regras amarelo |
+### 2. No frontend (1 arquivo)
 
-#### 3. Sobre a Sequência de Fotos (Já Implementado)
+**`src/pages/dashboard/OrganizationRevenue.tsx`** (linhas 236-243):
 
-O sistema já possui lógica de sequenciamento em `backgroundUploadService.ts`:
+Trocar as consultas de `profiles` para `profiles_public`:
 
-- **Linha 21-37**: Função `extractFileSequence` extrai número do nome do arquivo (ex: IMG_0234.jpg vira 234)
-- **Linha 96-97**: Tarefas são ordenadas por `fileSequence` antes do upload
-- **Linha 207-221**: `upload_sequence` é calculado somando offset + fileSequence
-- **Linha 264**: O campo `upload_sequence` é gravado no banco
+```typescript
+// ANTES
+supabase.from('profiles').select('id, full_name').in('id', photographerIds)
+supabase.from('profiles').select('id, full_name').in('id', buyerIds)
 
-A sequência está funcionando corretamente!
+// DEPOIS
+supabase.from('profiles_public').select('id, full_name').in('id', photographerIds)
+supabase.from('profiles_public').select('id, full_name').in('id', buyerIds)
+```
 
----
+## O que as organizações vao ver
 
-### Arquivos a Modificar
+| Dado | Visivel? |
+|------|----------|
+| Nome do comprador | Sim |
+| Nome do fotografo | Sim |
+| Email do comprador | Nao |
+| PIX do fotografo | Nao |
+| Dados sensíveis | Nao |
 
-| Arquivo | Alterações |
-|---------|-----------|
-| `src/components/modals/SearchableEventSelect.tsx` | Corrigir Popover modal, simplificar lista |
-| `src/components/modals/UploadPhotoModal.tsx` | Remover painel de regras, alterar limite para 30 dias |
+## Ordem de execucao
 
----
+Essa mudanca faz parte da Etapa 1 do plano de seguranca. Sera aplicada junto com as demais restricoes de RLS, sem necessidade de etapa separada.
 
-### Benefícios
+## Secao tecnica
 
-- Seleção de eventos funcionará sem conflitos
-- Interface mais limpa e objetiva
-- Limite de 30 dias conforme solicitado
-- Sequência de fotos já está funcionando corretamente
-
+- A view `profiles_public` usa `security_invoker = on`, ou seja, herda as permissoes RLS do usuario que consulta
+- A policy "Organizations can view related profiles" usa uma subquery em `revenue_shares` + `organization_users` para limitar acesso apenas a perfis envolvidos nas vendas da organizacao
+- Como `has_role` e `SECURITY DEFINER`, nao ha risco de recursao
+- Edge functions usam `service_role` e nao sao afetadas
+- O dashboard de organizacao continuara funcionando normalmente apos a mudanca
