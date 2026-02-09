@@ -183,28 +183,36 @@ const AdminReports = () => {
         totalSales: revenueShares?.length || 0,
       });
 
-      // Buscar dados relacionados separadamente
-      const enrichedData = await Promise.all(
-        (revenueShares || []).map(async (rs) => {
-          const [purchaseData, photographerData, orgData] = await Promise.all([
-            supabase.from('purchases').select('created_at, amount').eq('id', rs.purchase_id).single(),
-            supabase.from('profiles').select('full_name, email').eq('id', rs.photographer_id).single(),
-            rs.organization_id 
-              ? supabase.from('organizations').select('name').eq('id', rs.organization_id).single()
-              : Promise.resolve({ data: null })
-          ]);
+      // Buscar dados relacionados em batch (evita N+1 queries)
+      const purchaseIds = [...new Set((revenueShares || []).map(rs => rs.purchase_id))];
+      const photographerIds = [...new Set((revenueShares || []).map(rs => rs.photographer_id))];
+      const orgIds = [...new Set((revenueShares || []).map(rs => rs.organization_id).filter(Boolean))] as string[];
 
-          return {
-            id: rs.id,
-            purchase: purchaseData.data,
-            photographer: photographerData.data,
-            organization: orgData.data,
-            platform_amount: rs.platform_amount,
-            photographer_amount: rs.photographer_amount,
-            organization_amount: rs.organization_amount
-          };
-        })
-      );
+      const [purchasesResult, photographersResult, orgsResult] = await Promise.all([
+        purchaseIds.length > 0
+          ? supabase.from('purchases').select('id, created_at, amount').in('id', purchaseIds)
+          : Promise.resolve({ data: [] }),
+        photographerIds.length > 0
+          ? supabase.from('profiles').select('id, full_name, email').in('id', photographerIds)
+          : Promise.resolve({ data: [] }),
+        orgIds.length > 0
+          ? supabase.from('organizations').select('id, name').in('id', orgIds)
+          : Promise.resolve({ data: [] }),
+      ]);
+
+      const purchaseMap = new Map((purchasesResult.data || []).map(p => [p.id, p]));
+      const photographerMap = new Map((photographersResult.data || []).map(p => [p.id, p]));
+      const orgMap = new Map((orgsResult.data || []).map(o => [o.id, o]));
+
+      const enrichedData = (revenueShares || []).map(rs => ({
+        id: rs.id,
+        purchase: purchaseMap.get(rs.purchase_id) || null,
+        photographer: photographerMap.get(rs.photographer_id) || null,
+        organization: rs.organization_id ? (orgMap.get(rs.organization_id) || null) : null,
+        platform_amount: rs.platform_amount,
+        photographer_amount: rs.photographer_amount,
+        organization_amount: rs.organization_amount,
+      }));
 
       const ws = XLSX.utils.json_to_sheet(
         enrichedData.map(rs => ({

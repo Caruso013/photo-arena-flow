@@ -4,8 +4,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ShoppingCart, CheckCircle2, Loader2 } from 'lucide-react';
-import { LazyImage } from '@/components/ui/lazy-image';
+import { CheckCircle2, Loader2, Download } from 'lucide-react';
+import { downloadOriginalPhoto } from '@/lib/photoDownload';
 
 interface Purchase {
   id: string;
@@ -69,11 +69,17 @@ export default function CheckoutSuccess() {
     fetchPurchases();
   }, [user, purchaseIds.join(',')]);
 
-  const handleDownload = (url: string, fileName: string) => {
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = fileName;
-    link.click();
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  const handleDownload = async (url: string, fileName: string, photoId: string) => {
+    try {
+      setDownloadingId(photoId);
+      await downloadOriginalPhoto(url, fileName);
+    } catch (error) {
+      console.error('Erro ao baixar foto:', error);
+    } finally {
+      setDownloadingId(null);
+    }
   };
 
   return (
@@ -171,12 +177,20 @@ export default function CheckoutSuccess() {
                   <Button
                     size="sm"
                     className="w-full gap-2"
-                    onClick={() => purchase.photo?.original_url && handleDownload(purchase.photo.original_url, `foto-${purchase.photo.id}.jpg`)}
+                    onClick={() => purchase.photo?.original_url && handleDownload(purchase.photo.original_url, `foto-${purchase.photo.id}.jpg`, purchase.photo.id)}
+                    disabled={downloadingId === purchase.photo?.id}
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                    Baixar Alta Resolução
+                    {downloadingId === purchase.photo?.id ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Baixando...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-4 h-4" />
+                        Baixar Alta Resolução
+                      </>
+                    )}
                   </Button>
                 </CardContent>
               </Card>
