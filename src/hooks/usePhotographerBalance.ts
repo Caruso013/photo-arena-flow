@@ -56,13 +56,26 @@ export const usePhotographerBalance = (photographerId?: string): PhotographerBal
       setLoading(true);
       setError(null);
 
-      // 1. Buscar revenue_shares com status da purchase
-      const { data: revenueData, error: revenueError } = await supabase
-        .from('revenue_shares')
-        .select('photographer_amount, purchase:purchases!inner(status, created_at)')
-        .eq('photographer_id', effectiveId);
+      // 1. Buscar revenue_shares com paginação para ultrapassar limite de 1000
+      const PAGE_SIZE = 1000;
+      let allRevenueData: any[] = [];
+      let from = 0;
+      
+      while (true) {
+        const { data: batch, error: batchError } = await supabase
+          .from('revenue_shares')
+          .select('photographer_amount, purchase:purchases!inner(status, created_at)')
+          .eq('photographer_id', effectiveId)
+          .range(from, from + PAGE_SIZE - 1);
 
-      if (revenueError) throw revenueError;
+        if (batchError) throw batchError;
+        
+        allRevenueData = [...allRevenueData, ...(batch || [])];
+        if (!batch || batch.length < PAGE_SIZE) break;
+        from += PAGE_SIZE;
+      }
+      
+      const revenueData = allRevenueData;
 
       const now = Date.now();
       let totalEarned = 0;
