@@ -71,6 +71,7 @@ serve(async (req) => {
     console.log('📋 External reference:', externalRef);
 
     // Buscar purchases que correspondem com detalhes completos
+    // Usar apenas LIKE para evitar crash quando externalRef não é UUID válido (ex: batch_xxx)
     const { data: purchases, error: searchError } = await supabase
       .from('purchases')
       .select(`
@@ -81,15 +82,15 @@ serve(async (req) => {
         photo_id,
         photographer_id
       `)
-      .or(`stripe_payment_intent_id.like.%${externalRef}%,id.eq.${externalRef}`);
+      .like('stripe_payment_intent_id', `%${externalRef}%`);
 
     if (searchError || !purchases || purchases.length === 0) {
       console.warn('⚠️ Nenhuma purchase encontrada para:', externalRef);
       return new Response('OK', { status: 200 });
     }
 
-    // Filtrar apenas pending
-    const pendingPurchases = purchases.filter(p => p.status !== 'completed');
+    // Filtrar purchases que ainda não foram completadas (pending ou failed)
+    const pendingPurchases = purchases.filter(p => p.status === 'pending' || p.status === 'failed');
     
     if (pendingPurchases.length === 0) {
       console.log('✅ Todas purchases já estão completed');

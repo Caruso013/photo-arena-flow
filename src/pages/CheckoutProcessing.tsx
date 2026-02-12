@@ -36,7 +36,7 @@ export default function CheckoutProcessing() {
           .from('purchases')
           .select('id, status')
           .eq('buyer_id', user.id)
-          .like('stripe_payment_intent_id', `batch:${externalRef}%`);
+          .like('stripe_payment_intent_id', `%${externalRef}%`);
         
         if (batchError) throw batchError;
         data = batchData || [];

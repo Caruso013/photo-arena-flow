@@ -100,8 +100,8 @@ serve(async (req) => {
     
     const { data: pendingPurchases, error: fetchError } = await supabaseAdmin
       .from('purchases')
-      .select('id, stripe_payment_intent_id, created_at, amount')
-      .eq('status', 'pending')
+      .select('id, stripe_payment_intent_id, created_at, amount, status')
+      .in('status', ['pending', 'failed'])
       .lt('created_at', tenMinutesAgo)
       .not('stripe_payment_intent_id', 'is', null);
 
