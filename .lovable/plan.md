@@ -1,93 +1,124 @@
 
 
-# Plano: Dar acesso aos nomes de clientes para organizadores
+# Plano de Emergencia: Corrigir Vendas Nao Computadas
 
-## Problema Atual
+## Diagnostico Completo
 
-O dashboard de organizações (`OrganizationRevenue.tsx`) busca nomes de fotógrafos e compradores diretamente na tabela `profiles`. Quando aplicarmos as restrições de segurança (Etapa 1 do plano anterior), organizações perderão esse acesso, pois não são admin nem donos desses perfis.
+Apos investigacao profunda no banco de dados, encontrei **3 problemas criticos** que estao causando perda de vendas:
 
-## Solução
+### Problema 1: Webhook falha silenciosamente para compras em lote (CRITICO)
 
-Integrar essa necessidade ao plano de segurança existente. A view `profiles_public` (que será criada na Etapa 1) contém `id` e `full_name` - exatamente o que as organizações precisam. Basta trocar a consulta no dashboard.
+No arquivo `supabase/functions/mercadopago-webhook/index.ts`, linha 84:
 
-## Mudanças Necessárias
-
-### 1. Na migration SQL (Etapa 1 do plano de segurança)
-
-A view `profiles_public` já planejada resolve o problema:
-
-```sql
-CREATE OR REPLACE VIEW public.profiles_public
-WITH (security_invoker = on) AS
-SELECT id, full_name, avatar_url, role, created_at
-FROM public.profiles;
+```text
+.or(`stripe_payment_intent_id.like.%${externalRef}%,id.eq.${externalRef}`)
 ```
 
-Precisa apenas garantir que a RLS permita organizações acessarem essa view. Como `security_invoker = on` herda a RLS do usuário, e organizações não terão SELECT em `profiles`, precisamos de uma política adicional:
+Quando o cliente compra mais de 1 foto, o `externalRef` vem no formato `batch_43dde03f_2_mlirtb1k`. A parte `id.eq.batch_43dde03f_2_mlirtb1k` tenta comparar uma coluna UUID com um texto invalido, causando erro no Postgres. O erro faz a query inteira falhar e o webhook nao processa o pagamento.
 
-```sql
--- Organizações podem ver nomes (full_name) via profiles
-CREATE POLICY "Organizations can view profile names"
-  ON public.profiles FOR SELECT
-  USING (
-    has_role(auth.uid(), 'organization'::user_role)
-  );
+**Impacto medido:**
+- 125 compras em lote travadas (R$ 1.529,46)
+- 39 compras avulsas travadas (R$ 464,92)
+- Total: **164 compras, R$ 1.994,38** com webhooks recebidos mas nao processados
+- Dessas, **74 compras (R$ 927,55)** sao vendas realmente perdidas (cliente nunca recebeu as fotos e nao retentou)
+
+### Problema 2: Saldo do fotografo limitado a 1000 registros
+
+O hook `usePhotographerBalance.ts` busca todos os `revenue_shares` sem paginacao. O Supabase limita a 1000 linhas por padrao. O fotografo Kauan tem **1.037 vendas**, entao 37 sao ignoradas no calculo.
+
+**Impacto:** O dashboard mostra R$ 111,46 quando o saldo real e R$ 435,78. Isso causa confusao e reclamacoes.
+
+### Problema 3: Pagina de processamento nao encontra compras em lote
+
+No `CheckoutProcessing.tsx`, linha 39:
+
+```text
+.like('stripe_payment_intent_id', `batch:${externalRef}%`)
 ```
 
-Isso permite que organizações vejam profiles completos. Alternativa mais restritiva: criar uma view dedicada para organizações que só mostra compradores de seus eventos.
+Usa `batch:` (dois pontos) mas o formato real e `batch_` (underscore). Compras em lote nunca sao encontradas pelo polling, e o cliente ve "tempo limite" mesmo quando o pagamento foi aprovado.
 
-**Abordagem recomendada (mais segura):** Criar uma policy que permite organizações verem apenas profiles que são relevantes (compradores dos seus eventos ou fotógrafos dos seus eventos):
+---
 
-```sql
-CREATE POLICY "Organizations can view related profiles"
-  ON public.profiles FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM revenue_shares rs
-      JOIN organization_users ou ON ou.organization_id = rs.organization_id
-      JOIN purchases pu ON pu.id = rs.purchase_id
-      WHERE ou.user_id = auth.uid()
-        AND (profiles.id = pu.buyer_id OR profiles.id = rs.photographer_id)
-    )
-  );
+## Plano de Correcao (3 etapas)
+
+### Etapa 1: Corrigir o webhook (URGENTE)
+
+**Arquivo:** `supabase/functions/mercadopago-webhook/index.ts`
+
+Remover o `id.eq.` da query OR para evitar erro de UUID invalido. Usar apenas o LIKE que funciona para ambos os formatos:
+
+```text
+ANTES:  .or(`stripe_payment_intent_id.like.%${externalRef}%,id.eq.${externalRef}`)
+DEPOIS: .like('stripe_payment_intent_id', `%${externalRef}%`)
 ```
 
-Isso garante que organizações vejam APENAS nomes de pessoas envolvidas nas suas vendas - nem mais, nem menos.
+Tambem adicionar tratamento para compras com status `failed` (nao apenas `pending`), para que o webhook consiga recuperar vendas que foram marcadas como falhas pela reconciliacao antes do pagamento chegar.
 
-### 2. No frontend (1 arquivo)
+### Etapa 2: Corrigir o calculo de saldo
 
-**`src/pages/dashboard/OrganizationRevenue.tsx`** (linhas 236-243):
+**Arquivo:** `src/hooks/usePhotographerBalance.ts`
 
-Trocar as consultas de `profiles` para `profiles_public`:
+Adicionar paginacao para buscar TODOS os revenue_shares, nao apenas os primeiros 1000:
 
-```typescript
-// ANTES
-supabase.from('profiles').select('id, full_name').in('id', photographerIds)
-supabase.from('profiles').select('id, full_name').in('id', buyerIds)
-
-// DEPOIS
-supabase.from('profiles_public').select('id, full_name').in('id', photographerIds)
-supabase.from('profiles_public').select('id, full_name').in('id', buyerIds)
+```text
+// Buscar em lotes de 1000 ate pegar todos
+let allRevenue = [];
+let from = 0;
+const PAGE_SIZE = 1000;
+while (true) {
+  const { data } = await supabase
+    .from('revenue_shares')
+    .select(...)
+    .eq('photographer_id', effectiveId)
+    .range(from, from + PAGE_SIZE - 1);
+  
+  allRevenue = [...allRevenue, ...(data || [])];
+  if (!data || data.length < PAGE_SIZE) break;
+  from += PAGE_SIZE;
+}
 ```
 
-## O que as organizações vao ver
+### Etapa 3: Corrigir pagina de processamento
 
-| Dado | Visivel? |
-|------|----------|
-| Nome do comprador | Sim |
-| Nome do fotografo | Sim |
-| Email do comprador | Nao |
-| PIX do fotografo | Nao |
-| Dados sensíveis | Nao |
+**Arquivo:** `src/pages/CheckoutProcessing.tsx`
 
-## Ordem de execucao
+Corrigir o filtro de busca para usar o formato correto:
 
-Essa mudanca faz parte da Etapa 1 do plano de seguranca. Sera aplicada junto com as demais restricoes de RLS, sem necessidade de etapa separada.
+```text
+ANTES:  .like('stripe_payment_intent_id', `batch:${externalRef}%`)
+DEPOIS: .like('stripe_payment_intent_id', `${externalRef}%`)
+```
 
-## Secao tecnica
+---
 
-- A view `profiles_public` usa `security_invoker = on`, ou seja, herda as permissoes RLS do usuario que consulta
-- A policy "Organizations can view related profiles" usa uma subquery em `revenue_shares` + `organization_users` para limitar acesso apenas a perfis envolvidos nas vendas da organizacao
-- Como `has_role` e `SECURITY DEFINER`, nao ha risco de recursao
-- Edge functions usam `service_role` e nao sao afetadas
-- O dashboard de organizacao continuara funcionando normalmente apos a mudanca
+## Recuperacao dos Dados Perdidos
+
+Apos corrigir e deployar o webhook, sera necessario executar a reconciliacao manual para tentar recuperar as 74 vendas perdidas (R$ 927,55). O sistema ja tem um botao de reconciliacao no painel admin. Porem, a funcao de reconciliacao tambem precisa de um ajuste: atualmente so verifica purchases `pending`, mas muitas vendas travadas estao como `failed`. Vou atualizar o `reconcile-pending-purchases` para tambem verificar `failed`.
+
+**Arquivo:** `supabase/functions/reconcile-pending-purchases/index.ts`
+
+```text
+ANTES:  .eq('status', 'pending')
+DEPOIS: .in('status', ['pending', 'failed'])
+```
+
+---
+
+## Ordem de Execucao
+
+1. Corrigir webhook (etapa 1) + deploy imediato
+2. Corrigir reconciliacao + deploy
+3. Executar reconciliacao manual para recuperar vendas perdidas
+4. Corrigir calculo de saldo (etapa 2)
+5. Corrigir pagina de processamento (etapa 3)
+
+## Resumo dos Arquivos Alterados
+
+| Arquivo | Mudanca |
+|---------|---------|
+| `supabase/functions/mercadopago-webhook/index.ts` | Remover `id.eq.` da query, aceitar status `failed` |
+| `supabase/functions/reconcile-pending-purchases/index.ts` | Incluir `failed` na busca |
+| `src/hooks/usePhotographerBalance.ts` | Paginar busca de revenue_shares |
+| `src/pages/CheckoutProcessing.tsx` | Corrigir filtro `batch:` para `batch_` |
+
