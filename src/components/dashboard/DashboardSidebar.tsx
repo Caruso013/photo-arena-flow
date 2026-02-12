@@ -24,6 +24,7 @@ import {
   Ticket,
   QrCode,
   UserCheck,
+  ClipboardList,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
@@ -61,6 +62,7 @@ const DashboardSidebar = ({ isOpen, onToggle }: DashboardSidebarProps) => {
     { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
     { title: 'Meu QR Code', url: '/dashboard/photographer/qrcode', icon: QrCode },
     { title: 'Chave PIX', url: '/dashboard/photographer/pix', icon: KeyRound },
+    { title: 'Candidaturas', url: '/dashboard/photographer/applications', icon: ClipboardList },
     { title: 'Meus Eventos', url: '/dashboard/events', icon: Calendar },
     { title: 'Eventos Próximos', url: '/eventos-proximos', icon: Calendar },
     { title: 'Minhas Fotos', url: '/dashboard/photos', icon: Image },

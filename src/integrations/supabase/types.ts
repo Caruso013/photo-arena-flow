@@ -143,18 +143,24 @@ export type Database = {
       }
       campaigns: {
         Row: {
+          applications_open: boolean
+          available_slots: number | null
           cover_image_url: string | null
           created_at: string
           description: string | null
           event_date: string | null
+          event_end_time: string | null
+          event_start_time: string | null
           event_terms: string | null
           event_terms_pdf_url: string | null
+          expected_audience: number | null
           id: string
           is_active: boolean
           is_featured: boolean | null
           location: string | null
           organization_id: string | null
           organization_percentage: number
+          photo_price_display: number | null
           photographer_id: string | null
           photographer_percentage: number
           platform_percentage: number
@@ -164,18 +170,24 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          applications_open?: boolean
+          available_slots?: number | null
           cover_image_url?: string | null
           created_at?: string
           description?: string | null
           event_date?: string | null
+          event_end_time?: string | null
+          event_start_time?: string | null
           event_terms?: string | null
           event_terms_pdf_url?: string | null
+          expected_audience?: number | null
           id?: string
           is_active?: boolean
           is_featured?: boolean | null
           location?: string | null
           organization_id?: string | null
           organization_percentage?: number
+          photo_price_display?: number | null
           photographer_id?: string | null
           photographer_percentage?: number
           platform_percentage?: number
@@ -185,18 +197,24 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          applications_open?: boolean
+          available_slots?: number | null
           cover_image_url?: string | null
           created_at?: string
           description?: string | null
           event_date?: string | null
+          event_end_time?: string | null
+          event_start_time?: string | null
           event_terms?: string | null
           event_terms_pdf_url?: string | null
+          expected_audience?: number | null
           id?: string
           is_active?: boolean
           is_featured?: boolean | null
           location?: string | null
           organization_id?: string | null
           organization_percentage?: number
+          photo_price_display?: number | null
           photographer_id?: string | null
           photographer_percentage?: number
           platform_percentage?: number
