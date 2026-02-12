@@ -30,6 +30,12 @@ interface EditEventModalProps {
     photographer_percentage?: number;
     organization_percentage?: number;
     platform_percentage?: number;
+    applications_open?: boolean;
+    expected_audience?: number | null;
+    event_start_time?: string | null;
+    event_end_time?: string | null;
+    photo_price_display?: number | null;
+    available_slots?: number | null;
   };
   organizations?: Array<{ id: string; name: string }>;
   open: boolean;
@@ -54,6 +60,12 @@ const EditEventModal: React.FC<EditEventModalProps> = ({
   const [eventDate, setEventDate] = useState(campaignData.event_date || '');
   const [isActive, setIsActive] = useState(campaignData.is_active);
   const [progressiveDiscountEnabled, setProgressiveDiscountEnabled] = useState(campaignData.progressive_discount_enabled ?? true);
+  const [applicationsOpen, setApplicationsOpen] = useState(campaignData.applications_open ?? false);
+  const [expectedAudience, setExpectedAudience] = useState(campaignData.expected_audience?.toString() || '');
+  const [eventStartTime, setEventStartTime] = useState(campaignData.event_start_time || '');
+  const [eventEndTime, setEventEndTime] = useState(campaignData.event_end_time || '');
+  const [photoPriceDisplay, setPhotoPriceDisplay] = useState(campaignData.photo_price_display?.toString() || '');
+  const [availableSlots, setAvailableSlots] = useState(campaignData.available_slots?.toString() || '');
   
   // Organizer tab state
   const [organizerData, setOrganizerData] = useState<{
@@ -87,6 +99,12 @@ const EditEventModal: React.FC<EditEventModalProps> = ({
     setEventDate(campaignData.event_date || '');
     setIsActive(campaignData.is_active);
     setProgressiveDiscountEnabled(campaignData.progressive_discount_enabled ?? true);
+    setApplicationsOpen(campaignData.applications_open ?? false);
+    setExpectedAudience(campaignData.expected_audience?.toString() || '');
+    setEventStartTime(campaignData.event_start_time || '');
+    setEventEndTime(campaignData.event_end_time || '');
+    setPhotoPriceDisplay(campaignData.photo_price_display?.toString() || '');
+    setAvailableSlots(campaignData.available_slots?.toString() || '');
     setEventTerms(campaignData.event_terms || null);
     setEventTermsPdfUrl(campaignData.event_terms_pdf_url || null);
     setPreviewUrl(campaignData.cover_image_url || '');
@@ -167,6 +185,12 @@ const EditEventModal: React.FC<EditEventModalProps> = ({
           photographer_percentage: organizerData.photographerPercentage,
           organization_percentage: organizerData.organizationPercentage,
           platform_percentage: platformPercentage,
+          applications_open: applicationsOpen,
+          expected_audience: expectedAudience ? parseInt(expectedAudience) : null,
+          event_start_time: eventStartTime || null,
+          event_end_time: eventEndTime || null,
+          photo_price_display: photoPriceDisplay ? parseFloat(photoPriceDisplay) : null,
+          available_slots: availableSlots ? parseInt(availableSlots) : null,
         })
         .eq('id', campaignId);
 
@@ -305,6 +329,79 @@ const EditEventModal: React.FC<EditEventModalProps> = ({
                   </div>
                 </AlertDescription>
               </Alert>
+            )}
+
+            {/* Seção de Candidaturas */}
+            <div className="flex items-center justify-between p-3 border rounded-lg bg-accent/30">
+              <div className="flex-1">
+                <Label className="font-medium">Abrir Inscrições para Fotógrafos</Label>
+                <p className="text-xs text-muted-foreground">
+                  {applicationsOpen 
+                    ? 'Fotógrafos podem se candidatar para este evento' 
+                    : 'Inscrições encerradas - ninguém pode se candidatar'}
+                </p>
+              </div>
+              <Switch 
+                checked={applicationsOpen} 
+                onCheckedChange={setApplicationsOpen} 
+              />
+            </div>
+
+            {applicationsOpen && (
+              <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
+                <p className="text-sm font-medium">Detalhes para Candidatura</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="event_start_time" className="text-xs">Horário Início</Label>
+                    <Input 
+                      id="event_start_time"
+                      type="time" 
+                      value={eventStartTime} 
+                      onChange={(e) => setEventStartTime(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="event_end_time" className="text-xs">Horário Fim</Label>
+                    <Input 
+                      id="event_end_time"
+                      type="time" 
+                      value={eventEndTime} 
+                      onChange={(e) => setEventEndTime(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="photo_price" className="text-xs">Valor por foto (R$)</Label>
+                    <Input 
+                      id="photo_price"
+                      type="number" 
+                      step="0.01"
+                      placeholder="19.00"
+                      value={photoPriceDisplay} 
+                      onChange={(e) => setPhotoPriceDisplay(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="expected_audience" className="text-xs">Público Esperado</Label>
+                    <Input 
+                      id="expected_audience"
+                      type="number" 
+                      placeholder="10000"
+                      value={expectedAudience} 
+                      onChange={(e) => setExpectedAudience(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5 col-span-2">
+                    <Label htmlFor="available_slots" className="text-xs">Vagas Disponíveis</Label>
+                    <Input 
+                      id="available_slots"
+                      type="number" 
+                      placeholder="5"
+                      value={availableSlots} 
+                      onChange={(e) => setAvailableSlots(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
             )}
           </TabsContent>
 
