@@ -192,11 +192,18 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
 
 
       // Buscar dados reais de revenue_shares agrupados por mês
-      const { data: revenueSharesData, error: revenueError } = await supabase
+      let revenueSharesQuery = supabase
         .from('revenue_shares')
         .select('platform_amount, photographer_amount, organization_amount, created_at')
         .gte('created_at', new Date(Date.now() - 6 * 30 * 24 * 60 * 60 * 1000).toISOString())
         .order('created_at', { ascending: true });
+
+      // Filtrar por fotógrafo quando não for admin
+      if (userRole === 'photographer' && user) {
+        revenueSharesQuery = revenueSharesQuery.eq('photographer_id', user.id);
+      }
+
+      const { data: revenueSharesData, error: revenueError } = await revenueSharesQuery;
 
       if (revenueError) throw revenueError;
 
