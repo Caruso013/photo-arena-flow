@@ -36,7 +36,7 @@ const AdminLogin = lazy(() => import("./pages/AdminLogin"));
 const Fotografos = lazy(() => import("./pages/Fotografos"));
 const Servicos = lazy(() => import("./pages/Servicos"));
 const Campaign = lazy(() => import("./pages/Campaign"));
-const EventosProximos = lazy(() => import("./pages/EventosProximos"));
+
 const FAQ = lazy(() => import("./pages/FAQ"));
 const Sobre = lazy(() => import("./pages/Sobre"));
 const Tutorial = lazy(() => import("./pages/Tutorial"));
@@ -191,7 +191,7 @@ const AppContent = () => {
           </Route>
           <Route path="/highlights" element={<PhotoHighlights />} />
           <Route path="/cart" element={<Cart />} />
-          <Route path="/eventos-proximos" element={<EventosProximos />} />
+          
           <Route path="/evento/:id" element={<Campaign />} />
           <Route path="/campaign/:id" element={<Campaign />} />
           <Route path="/E/:code" element={<Campaign />} />

@@ -123,7 +123,7 @@ const MesarioLogin = () => {
           </div>
           <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
             <Clock className="h-5 w-5 text-primary" />
-            <span className="text-sm text-muted-foreground">Válido por 24h</span>
+            <span className="text-sm text-muted-foreground">Válido por 4 dias</span>
           </div>
         </div>
 

@@ -22,7 +22,7 @@ const AdminEvents = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from('campaigns')
-        .select('*')
+        .select('*, organizations(name)')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -60,7 +60,7 @@ const AdminEvents = () => {
 
   return (
     <AdminLayout>
-      <div className="space-y-8">
+      <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Eventos</h1>
           <p className="text-muted-foreground">Gerencie campanhas e candidaturas</p>

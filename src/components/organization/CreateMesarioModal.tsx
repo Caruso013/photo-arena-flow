@@ -12,8 +12,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Copy, CheckCircle2, UserPlus } from 'lucide-react';
+import { Loader2, Copy, CheckCircle2, UserPlus, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { MaskedInput } from '@/components/ui/masked-input';
 
 interface CreateMesarioModalProps {
   open: boolean;
@@ -37,6 +38,7 @@ const CreateMesarioModal = ({
   organizationId
 }: CreateMesarioModalProps) => {
   const [mesarioName, setMesarioName] = useState('');
+  const [whatsapp, setWhatsapp] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [createdSession, setCreatedSession] = useState<CreatedSession | null>(null);
@@ -98,8 +100,19 @@ const CreateMesarioModal = ({
     }
   };
 
+  const sendWhatsApp = () => {
+    if (!createdSession) return;
+    const cleanPhone = whatsapp.replace(/\D/g, '');
+    const phone = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
+    const baseUrl = window.location.origin;
+    const msg = `Olá ${createdSession.mesario_name}! 👋\n\nVocê foi designado como *mesário* para o evento *"${campaignTitle}"*.\n\n🔑 Seu código de acesso: *${createdSession.access_code}*\n🔗 Acesse: ${baseUrl}/mesario\n⏰ Válido até: ${formatExpiration(createdSession.expires_at)}\n\nInsira o código acima para fazer login no sistema.`;
+    const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+    window.open(url, '_blank');
+  };
+
   const handleClose = () => {
     setMesarioName('');
+    setWhatsapp('');
     setError(null);
     setCreatedSession(null);
     onOpenChange(false);
@@ -115,6 +128,8 @@ const CreateMesarioModal = ({
       minute: '2-digit'
     });
   };
+
+  const hasValidWhatsapp = whatsapp.replace(/\D/g, '').length === 11;
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -146,6 +161,21 @@ const CreateMesarioModal = ({
                 />
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="mesario_whatsapp">WhatsApp (opcional)</Label>
+                <MaskedInput
+                  mask="(99) 99999-9999"
+                  id="mesario_whatsapp"
+                  placeholder="(11) 99999-9999"
+                  value={whatsapp}
+                  onChange={(e) => setWhatsapp(e.target.value)}
+                  disabled={loading}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Se informado, você poderá enviar o código por WhatsApp
+                </p>
+              </div>
+
               {error && (
                 <Alert variant="destructive">
                   <AlertDescription>{error}</AlertDescription>
@@ -171,17 +201,14 @@ const CreateMesarioModal = ({
           </>
         ) : (
           <div className="space-y-6 py-4">
-            {/* Success State */}
             <div className="text-center">
               <div className="w-16 h-16 rounded-full bg-green-500/10 mx-auto mb-4 flex items-center justify-center">
                 <CheckCircle2 className="h-8 w-8 text-green-500" />
               </div>
-
               <p className="font-medium mb-1">{createdSession.mesario_name}</p>
               <p className="text-sm text-muted-foreground">Mesário do evento</p>
             </div>
 
-            {/* Access Code */}
             <div className="bg-muted p-4 rounded-lg text-center">
               <p className="text-sm text-muted-foreground mb-2">Código de Acesso</p>
               <div className="flex items-center justify-center gap-2">
@@ -194,20 +221,29 @@ const CreateMesarioModal = ({
               </div>
             </div>
 
-            {/* Expiration */}
             <Alert>
               <AlertDescription className="text-center">
                 <strong>Válido até:</strong> {formatExpiration(createdSession.expires_at)}
                 <br />
-                <span className="text-sm">(24 horas a partir de agora)</span>
+                <span className="text-sm">(4 dias a partir de agora)</span>
               </AlertDescription>
             </Alert>
 
-            {/* Instructions */}
+            {/* WhatsApp send button */}
+            {hasValidWhatsapp && (
+              <Button
+                className="w-full gap-2 bg-green-600 hover:bg-green-700 text-white"
+                onClick={sendWhatsApp}
+              >
+                <MessageCircle className="h-5 w-5" />
+                Enviar via WhatsApp
+              </Button>
+            )}
+
             <div className="text-sm text-muted-foreground space-y-1">
               <p>• O mesário deve acessar: <strong>/mesario</strong></p>
               <p>• Inserir o código acima para fazer login</p>
-              <p>• O código expira automaticamente após 24h</p>
+              <p>• O código expira automaticamente após 4 dias</p>
             </div>
 
             <DialogFooter>

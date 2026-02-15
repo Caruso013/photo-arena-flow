@@ -16,7 +16,8 @@ import {
   QrCode,
   RefreshCw,
   AlertTriangle,
-  CheckCircle
+  CheckCircle,
+  MessageCircle
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -228,7 +229,7 @@ const MesarioManager: React.FC = () => {
       <Alert>
         <Clock className="h-4 w-4" />
         <AlertDescription>
-          Os acessos de mesário expiram automaticamente após <strong>12 horas</strong> e são removidos do sistema.
+          Os acessos de mesário expiram automaticamente após <strong>4 dias</strong> e são removidos do sistema.
           Cada mesário recebe um código de 6 dígitos para acessar o scanner.
         </AlertDescription>
       </Alert>
@@ -368,13 +369,29 @@ const MesarioManager: React.FC = () => {
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           {session.is_active && !timeInfo.expired && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => deactivateSession(session.id)}
-                            >
-                              Desativar
-                            </Button>
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="gap-1 bg-green-600/10 hover:bg-green-600/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800"
+                                onClick={() => {
+                                  const baseUrl = window.location.origin;
+                                  const msg = `Olá ${session.mesario_name}! 👋\n\nVocê foi designado como mesário para o evento "${session.campaign?.title || 'Evento'}".\n\n🔑 Código: ${session.access_code}\n🔗 Acesse: ${baseUrl}/mesario\n⏰ Válido até: ${format(new Date(session.expires_at), 'dd/MM/yyyy HH:mm', { locale: ptBR })}`;
+                                  const url = `https://wa.me/?text=${encodeURIComponent(msg)}`;
+                                  window.open(url, '_blank');
+                                }}
+                              >
+                                <MessageCircle className="h-4 w-4" />
+                                WhatsApp
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => deactivateSession(session.id)}
+                              >
+                                Desativar
+                              </Button>
+                            </>
                           )}
                           <Button
                             variant="ghost"
