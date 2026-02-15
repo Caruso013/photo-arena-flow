@@ -75,9 +75,9 @@ Deno.serve(async (req: Request) => {
 
     const accessCode = codeData;
 
-    // Calcular expiração (12 horas)
+    // Calcular expiração (4 dias)
     const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 12);
+    expiresAt.setDate(expiresAt.getDate() + 4);
 
     // Criar sessão de mesário
     const { data: session, error: sessionError } = await supabase

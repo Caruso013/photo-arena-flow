@@ -19,7 +19,6 @@ import {
   XCircle,
   Camera,
   FileText,
-  Loader2,
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -53,7 +52,6 @@ export default function EventApplicationDetail() {
   const [loading, setLoading] = useState(true);
   const [existingApplication, setExistingApplication] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showForm, setShowForm] = useState(false);
   const [message, setMessage] = useState('');
 
   const fetchData = useCallback(async () => {
@@ -124,7 +122,6 @@ export default function EventApplicationDetail() {
       }
 
       toast.success('Candidatura enviada com sucesso! 🎉');
-      setShowForm(false);
       fetchData();
     } catch (err: any) {
       console.error('Erro ao enviar candidatura:', err);
@@ -150,8 +147,7 @@ export default function EventApplicationDetail() {
         <Camera className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
         <h2 className="text-lg font-medium">Evento não encontrado</h2>
         <Button variant="outline" className="mt-4" onClick={() => navigate(-1)}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Voltar
+          <ArrowLeft className="h-4 w-4 mr-2" /> Voltar
         </Button>
       </div>
     );
@@ -169,48 +165,35 @@ export default function EventApplicationDetail() {
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
-      {/* Back button */}
       <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard/photographer/applications')}>
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        Voltar para eventos
+        <ArrowLeft className="h-4 w-4 mr-2" /> Voltar para eventos
       </Button>
 
       {/* Hero card */}
       <Card className="overflow-hidden border-2">
-        {/* Cover image */}
         <div className="relative aspect-[16/9] bg-muted overflow-hidden">
           {campaign.cover_image_url ? (
-            <img
-              src={campaign.cover_image_url}
-              alt={campaign.title}
-              className="w-full h-full object-cover"
-            />
+            <img src={campaign.cover_image_url} alt={campaign.title} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
               <Camera className="h-16 w-16 text-primary/40" />
             </div>
           )}
-
-          {/* Status banner */}
           <div className="absolute bottom-0 left-0 right-0">
             {campaign.applications_open ? (
               <div className="bg-primary/90 backdrop-blur-sm text-primary-foreground text-center py-2.5 text-sm font-semibold flex items-center justify-center gap-2">
-                <CheckCircle className="h-4 w-4" />
-                Inscrições Abertas
+                <CheckCircle className="h-4 w-4" /> Inscrições Abertas
               </div>
             ) : (
               <div className="bg-destructive/90 backdrop-blur-sm text-destructive-foreground text-center py-2.5 text-sm font-semibold flex items-center justify-center gap-2">
-                <XCircle className="h-4 w-4" />
-                Inscrições Encerradas
+                <XCircle className="h-4 w-4" /> Inscrições Encerradas
               </div>
             )}
           </div>
         </div>
 
-        {/* Event details */}
         <CardContent className="p-5 space-y-4">
           <h1 className="text-xl font-bold leading-tight">{campaign.title}</h1>
-
           {campaign.description && (
             <p className="text-sm text-muted-foreground">{campaign.description}</p>
           )}
@@ -222,7 +205,6 @@ export default function EventApplicationDetail() {
                 <span>{campaign.location}</span>
               </div>
             )}
-
             {campaign.event_date && (
               <div className="flex items-center gap-2.5 text-sm">
                 <CalendarDays className="h-4 w-4 text-primary shrink-0" />
@@ -234,23 +216,18 @@ export default function EventApplicationDetail() {
                 </span>
               </div>
             )}
-
             {campaign.photo_price_display != null && (
               <div className="flex items-center gap-2.5 text-sm">
                 <DollarSign className="h-4 w-4 text-primary shrink-0" />
-                <span>
-                  R$ {campaign.photo_price_display.toFixed(2).replace('.', ',')} por foto vendida
-                </span>
+                <span>R$ {campaign.photo_price_display.toFixed(2).replace('.', ',')} por foto vendida</span>
               </div>
             )}
-
             {campaign.expected_audience != null && (
               <div className="flex items-center gap-2.5 text-sm">
                 <Users className="h-4 w-4 text-primary shrink-0" />
                 <span>{campaign.expected_audience.toLocaleString('pt-BR')} pessoas</span>
               </div>
             )}
-
             {campaign.available_slots != null && (
               <div className="flex items-center gap-2.5 text-sm">
                 <Camera className="h-4 w-4 text-primary shrink-0" />
@@ -261,14 +238,9 @@ export default function EventApplicationDetail() {
 
           <Separator />
 
-          {/* Organization branding */}
           <div className="flex items-center gap-3">
-            <img
-              src={orgLogo}
-              alt={orgName}
-              className="h-8 w-8 rounded-full object-contain border"
-              style={orgColor ? { borderColor: orgColor } : undefined}
-            />
+            <img src={orgLogo} alt={orgName} className="h-8 w-8 rounded-full object-contain border"
+              style={orgColor ? { borderColor: orgColor } : undefined} />
             <div>
               <p className="text-xs text-muted-foreground">Organizado por</p>
               <p className="text-sm font-medium">{orgName}</p>
@@ -277,7 +249,7 @@ export default function EventApplicationDetail() {
         </CardContent>
       </Card>
 
-      {/* Application status or form */}
+      {/* Application status or inline form */}
       {existingApplication ? (
         <Card className={`border-2 ${applicationStatusMap[existingApplication.status]?.color || ''}`}>
           <CardContent className="p-5">
@@ -295,35 +267,24 @@ export default function EventApplicationDetail() {
           </CardContent>
         </Card>
       ) : campaign.applications_open ? (
-        showForm ? (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <FileText className="h-5 w-5 text-primary" />
-                Formulário de Candidatura
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <EventApplicationForm
-                campaign={campaign}
-                message={message}
-                onMessageChange={setMessage}
-                onSubmit={handleSubmit}
-                isSubmitting={isSubmitting}
-                onCancel={() => setShowForm(false)}
-              />
-            </CardContent>
-          </Card>
-        ) : (
-          <Button
-            size="lg"
-            className="w-full text-base font-semibold py-6"
-            onClick={() => setShowForm(true)}
-          >
-            <Camera className="h-5 w-5 mr-2" />
-            Candidatar-se para este Evento
-          </Button>
-        )
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <FileText className="h-5 w-5 text-primary" />
+              Formulário de Candidatura
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <EventApplicationForm
+              campaign={campaign}
+              message={message}
+              onMessageChange={setMessage}
+              onSubmit={handleSubmit}
+              isSubmitting={isSubmitting}
+              onCancel={() => navigate('/dashboard/photographer/applications')}
+            />
+          </CardContent>
+        </Card>
       ) : (
         <Card className="border-2 border-destructive/20 bg-destructive/5">
           <CardContent className="p-5 text-center">

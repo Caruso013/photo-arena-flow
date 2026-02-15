@@ -64,7 +64,7 @@ const DashboardSidebar = ({ isOpen, onToggle }: DashboardSidebarProps) => {
     { title: 'Chave PIX', url: '/dashboard/photographer/pix', icon: KeyRound },
     { title: 'Candidaturas', url: '/dashboard/photographer/applications', icon: ClipboardList },
     { title: 'Meus Eventos', url: '/dashboard/events', icon: Calendar },
-    { title: 'Eventos Próximos', url: '/eventos-proximos', icon: Calendar },
+    
     { title: 'Minhas Fotos', url: '/dashboard/photos', icon: Image },
     { title: 'Fotos em Destaque', url: '/dashboard/photographer/featured', icon: Star },
     { title: 'Solicitar Saque', url: '/dashboard/photographer/payout', icon: DollarSign },

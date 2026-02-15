@@ -17,7 +17,7 @@ const routeNames: Record<string, string> = {
   financial: 'Financeiro',
   profile: 'Perfil',
   campaign: 'Campanha',
-  'eventos-proximos': 'Eventos Próximos',
+  
   contato: 'Contato',
   faq: 'Ajuda',
   fotografos: 'Fotógrafos',
