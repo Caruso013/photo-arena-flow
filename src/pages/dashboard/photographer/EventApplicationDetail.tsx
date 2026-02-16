@@ -223,11 +223,11 @@ export default function EventApplicationDetail() {
                 <span>R$ {campaign.photo_price_display.toFixed(2).replace('.', ',')} por foto vendida</span>
               </div>
             )}
-            {campaign.photo_price_display != null && campaign.photographer_percentage > 0 && (
+            {campaign.photographer_percentage > 0 && (
               <div className="flex items-center gap-2.5 text-sm">
                 <DollarSign className="h-4 w-4 text-emerald-500 shrink-0" />
                 <span className="font-medium text-emerald-600 dark:text-emerald-400">
-                  Você ganha: R$ {((campaign.photo_price_display * campaign.photographer_percentage) / 100).toFixed(2).replace('.', ',')} por foto ({campaign.photographer_percentage}%)
+                  Você ganha {campaign.photographer_percentage}% por foto vendida
                 </span>
               </div>
             )}

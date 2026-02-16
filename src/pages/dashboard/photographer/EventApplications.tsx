@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   MapPin,
-  Users,
+  
   Camera,
   Search,
   CalendarDays,
@@ -38,6 +38,7 @@ interface CampaignWithApplication {
   photo_price_display: number | null;
   available_slots: number | null;
   organization_id: string | null;
+  photographer_percentage?: number;
   organization?: { name: string; logo_url: string | null; primary_color: string | null } | null;
   my_application_status?: string | null;
   my_applied_at?: string | null;
@@ -65,7 +66,7 @@ export default function EventApplications() {
           id, title, description, location, event_date,
           cover_image_url, applications_open, expected_audience,
           event_start_time, event_end_time, photo_price_display,
-          available_slots, organization_id, is_active,
+          available_slots, organization_id, is_active, photographer_percentage,
           organizations(name, logo_url, primary_color)
         `)
         .eq('is_active', true)
@@ -183,10 +184,10 @@ export default function EventApplications() {
               <span>R$ {campaign.photo_price_display.toFixed(2).replace('.', ',')} por foto</span>
             </div>
           )}
-          {campaign.expected_audience != null && (
+          {campaign.photographer_percentage != null && campaign.photographer_percentage > 0 && (
             <div className="flex items-center gap-2">
-              <Users className="h-3.5 w-3.5 shrink-0" />
-              <span>{campaign.expected_audience.toLocaleString('pt-BR')} pessoas</span>
+              <DollarSign className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+              <span className="text-emerald-600 dark:text-emerald-400 font-medium">Você ganha {campaign.photographer_percentage}%</span>
             </div>
           )}
         </div>
