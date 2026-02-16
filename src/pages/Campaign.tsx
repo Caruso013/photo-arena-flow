@@ -696,13 +696,33 @@ const Campaign = () => {
         return;
       }
 
+      // Buscar photographer_id da foto (fallback se campaign.photographer_id for null)
+      let photographerId = campaign.photographer_id;
+      if (!photographerId) {
+        const { data: photoData } = await supabase
+          .from('photos')
+          .select('photographer_id')
+          .eq('id', releasePhotoId)
+          .maybeSingle();
+        photographerId = photoData?.photographer_id || null;
+      }
+
+      if (!photographerId) {
+        toast({
+          title: "Erro",
+          description: "Não foi possível identificar o fotógrafo desta foto.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       // Criar compra gratuita (amount = 0)
       const { error: purchaseError } = await supabase
         .from('purchases')
         .insert({
           photo_id: releasePhotoId,
           buyer_id: selectedUserForRelease.id,
-          photographer_id: campaign.photographer_id,
+          photographer_id: photographerId,
           amount: 0,
           status: 'completed',
           stripe_payment_intent_id: `FREE_RELEASE_${Date.now()}`,
