@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import {
   MapPin,
   CalendarDays,
-  Users,
+  
   DollarSign,
   Clock,
   ArrowLeft,
@@ -41,6 +41,7 @@ interface CampaignDetail {
   event_terms: string | null;
   event_terms_pdf_url: string | null;
   organization_id: string | null;
+  photographer_percentage: number;
   organization?: { name: string; logo_url: string | null; primary_color: string | null } | null;
 }
 
@@ -66,7 +67,7 @@ export default function EventApplicationDetail() {
             cover_image_url, applications_open, expected_audience,
             event_start_time, event_end_time, photo_price_display,
             available_slots, event_terms, event_terms_pdf_url,
-            organization_id,
+            organization_id, photographer_percentage,
             organizations(name, logo_url, primary_color)
           `)
           .eq('id', id)
@@ -222,10 +223,12 @@ export default function EventApplicationDetail() {
                 <span>R$ {campaign.photo_price_display.toFixed(2).replace('.', ',')} por foto vendida</span>
               </div>
             )}
-            {campaign.expected_audience != null && (
+            {campaign.photo_price_display != null && campaign.photographer_percentage > 0 && (
               <div className="flex items-center gap-2.5 text-sm">
-                <Users className="h-4 w-4 text-primary shrink-0" />
-                <span>{campaign.expected_audience.toLocaleString('pt-BR')} pessoas</span>
+                <DollarSign className="h-4 w-4 text-emerald-500 shrink-0" />
+                <span className="font-medium text-emerald-600 dark:text-emerald-400">
+                  Você ganha: R$ {((campaign.photo_price_display * campaign.photographer_percentage) / 100).toFixed(2).replace('.', ',')} por foto ({campaign.photographer_percentage}%)
+                </span>
               </div>
             )}
             {campaign.available_slots != null && (
