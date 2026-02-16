@@ -715,19 +715,61 @@ export const OrganizationManager: React.FC<OrganizationManagerProps> = ({ organi
               </p>
             </div>
 
-            {/* Logo URL */}
+            {/* Logo Upload */}
             <div className="space-y-2">
-              <Label htmlFor="edit-logo-url" className="flex items-center gap-2">
+              <Label className="flex items-center gap-2">
                 <Image className="h-4 w-4" />
-                Logo (URL)
+                Logo da Organização
               </Label>
-              <Input
-                id="edit-logo-url"
-                type="url"
-                value={formData.logo_url}
-                onChange={(e) => setFormData({ ...formData, logo_url: e.target.value })}
-                placeholder="https://exemplo.com/logo.png"
+              <input
+                ref={logoInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  if (file.size > 5 * 1024 * 1024) {
+                    toast({ title: 'Arquivo muito grande', description: 'Máximo 5MB', variant: 'destructive' });
+                    return;
+                  }
+                  setUploadingLogo(true);
+                  try {
+                    const ext = file.name.split('.').pop();
+                    const fileName = `${selectedOrg?.id || 'new'}_${Date.now()}.${ext}`;
+                    const { error: uploadErr } = await supabase.storage.from('org-logos').upload(fileName, file);
+                    if (uploadErr) throw uploadErr;
+                    const { data: urlData } = supabase.storage.from('org-logos').getPublicUrl(fileName);
+                    setFormData(prev => ({ ...prev, logo_url: urlData.publicUrl }));
+                    toast({ title: 'Logo enviada com sucesso!' });
+                  } catch (err: any) {
+                    console.error('Upload error:', err);
+                    toast({ title: 'Erro no upload', description: err.message, variant: 'destructive' });
+                  } finally {
+                    setUploadingLogo(false);
+                  }
+                }}
               />
+              <div className="flex items-center gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  disabled={uploadingLogo}
+                  onClick={() => logoInputRef.current?.click()}
+                >
+                  <Upload className="h-4 w-4" />
+                  {uploadingLogo ? 'Enviando...' : 'Enviar Logo'}
+                </Button>
+                <Input
+                  type="url"
+                  value={formData.logo_url}
+                  onChange={(e) => setFormData({ ...formData, logo_url: e.target.value })}
+                  placeholder="ou cole a URL da logo"
+                  className="flex-1"
+                />
+              </div>
               {formData.logo_url && (
                 <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
                   <img 
@@ -741,9 +783,6 @@ export const OrganizationManager: React.FC<OrganizationManagerProps> = ({ organi
                   <span className="text-sm text-muted-foreground">Preview da logo</span>
                 </div>
               )}
-              <p className="text-xs text-muted-foreground">
-                Cole a URL da logo da organização (PNG, JPG, SVG)
-              </p>
             </div>
 
             <Button onClick={handleEdit} className="w-full">

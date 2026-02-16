@@ -57,7 +57,7 @@ const EditEventModal: React.FC<EditEventModalProps> = ({
   const [title, setTitle] = useState(campaignData.title);
   const [description, setDescription] = useState(campaignData.description || '');
   const [location, setLocation] = useState(campaignData.location || '');
-  const [eventDate, setEventDate] = useState(campaignData.event_date || '');
+  const [eventDate, setEventDate] = useState(campaignData.event_date?.split('T')[0] || '');
   const [isActive, setIsActive] = useState(campaignData.is_active);
   const [progressiveDiscountEnabled, setProgressiveDiscountEnabled] = useState(campaignData.progressive_discount_enabled ?? true);
   const [applicationsOpen, setApplicationsOpen] = useState(campaignData.applications_open ?? false);
@@ -96,7 +96,7 @@ const EditEventModal: React.FC<EditEventModalProps> = ({
     setTitle(campaignData.title);
     setDescription(campaignData.description || '');
     setLocation(campaignData.location || '');
-    setEventDate(campaignData.event_date || '');
+    setEventDate(campaignData.event_date?.split('T')[0] || '');
     setIsActive(campaignData.is_active);
     setProgressiveDiscountEnabled(campaignData.progressive_discount_enabled ?? true);
     setApplicationsOpen(campaignData.applications_open ?? false);
@@ -177,7 +177,7 @@ const EditEventModal: React.FC<EditEventModalProps> = ({
           title: title.trim(),
           description: description.trim() || null,
           location: location.trim() || null,
-          event_date: eventDate || null,
+          event_date: eventDate?.split('T')[0] || null,
           is_active: isActive,
           progressive_discount_enabled: progressiveDiscountEnabled,
           cover_image_url: coverImageUrl,
