@@ -46,8 +46,6 @@ const Events = () => {
     dateTo: '',
     sortBy: 'recent',
     photographer: '',
-    minPrice: '',
-    maxPrice: '',
   });
 
   // Pull to refresh
@@ -128,20 +126,7 @@ const Events = () => {
         (campaign) => new Date(campaign.event_date) <= new Date(filters.dateTo)
       );
     }
-    
-    // Filtro de preço
-    if (filters.minPrice) {
-      const min = parseFloat(filters.minPrice);
-      filtered = filtered.filter((campaign) => 
-        campaign.photo_price_display != null && campaign.photo_price_display >= min
-      );
-    }
-    if (filters.maxPrice) {
-      const max = parseFloat(filters.maxPrice);
-      filtered = filtered.filter((campaign) => 
-        campaign.photo_price_display != null && campaign.photo_price_display <= max
-      );
-    }
+
 
     // Ordenação
     filtered.sort((a, b) => {
