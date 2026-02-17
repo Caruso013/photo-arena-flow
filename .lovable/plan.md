@@ -1,90 +1,60 @@
 
 
-# Plano: Correcoes de Data, Porcentagem e Upload de Logo
+# Plano: Filtros Funcionais + Remover Publico Esperado + Melhorias
 
-## 3 Problemas a Resolver
+## 1. Corrigir Filtros da Pagina de Eventos (Print 1)
 
----
+**Problema:** O filtro de fotografo no `EventFilters.tsx` aceita texto (nome), mas o `Events.tsx` compara esse texto diretamente com `photographer_id` (UUID). Resultado: o filtro por nome nunca funciona. Alem disso, os filtros de preco nao sao aplicados porque nao ha logica para eles no `Events.tsx`.
 
-## 1. Datas dos eventos mudando sozinhas
-
-**Problema:** Quando o admin edita um evento e salva, a data pode ser alterada involuntariamente. Isso pode ocorrer porque o campo `event_date` nao esta sendo tratado corretamente no formato do input date HTML (`YYYY-MM-DD`).
-
-**Solucao:** Garantir que o `event_date` seja sempre convertido para `YYYY-MM-DD` antes de popular o estado do formulario de edicao, usando `.split('T')[0]` para remover qualquer parte de hora/timezone. Tambem garantir que ao salvar, somente a data limpa seja enviada.
-
-**Arquivos:**
+**Solucao:**
 | Arquivo | Mudanca |
 |---------|---------|
-| `src/components/modals/EditEventModal.tsx` | Linhas 60, 99: Aplicar `.split('T')[0]` ao `event_date` ao inicializar e no useEffect |
-| `src/components/dashboard/CampaignManager.tsx` | Garantir que `event_date` seja passado como string limpa `YYYY-MM-DD` ao `EditEventModal` |
+| `src/pages/Events.tsx` | Corrigir filtro de fotografo para comparar por NOME (nao por ID). Adicionar logica de filtro por preco usando `photo_price_display` da query. Buscar `photo_price_display` na query do Supabase |
+| `src/components/events/EventFilters.tsx` | Ajustar placeholder do campo fotografo para deixar claro que eh busca por nome |
+
+### Detalhes tecnicos:
+
+O filtro de fotografo passara a comparar o texto digitado com `photographer.full_name` e `campaign_photographers.profiles.full_name` (busca por nome, case-insensitive).
+
+O filtro de preco comparara com `photo_price_display` de cada campanha (campo ja existente na tabela `campaigns`). A query precisara incluir `photo_price_display` no select.
 
 ---
 
-## 2. Remover "100 pessoas" e mostrar apenas porcentagem do fotografo
+## 2. Remover "Publico Esperado" do Modal de Edicao (Print 2)
 
-**Problema:** Na listagem de candidaturas (print), ainda aparece "100 pessoas" (expected_audience). O cliente quer ver apenas a porcentagem que o fotografo ganha, sem o valor em reais.
+**Problema:** O campo "Publico Esperado" ainda aparece no modal de edicao (`EditEventModal.tsx`). O cliente nao quer essa informacao.
 
-**Solucao:** No arquivo `EventApplications.tsx`, substituir o bloco de `expected_audience` por uma linha que mostre a porcentagem do fotografo (ex: "Voce ganha 60%"). Buscar `photographer_percentage` na query.
-
-**Arquivos:**
+**Solucao:**
 | Arquivo | Mudanca |
 |---------|---------|
-| `src/pages/dashboard/photographer/EventApplications.tsx` | Linhas 64-68: Adicionar `photographer_percentage` na query. Linhas 186-191: Substituir `expected_audience` por porcentagem do fotografo |
-| `src/pages/dashboard/photographer/EventApplicationDetail.tsx` | Linhas 226-233: Simplificar para mostrar apenas porcentagem, sem o valor em reais |
+| `src/components/modals/EditEventModal.tsx` | Remover campo "Publico Esperado" (linhas 383-391). Remover estado `expectedAudience` e referencia no submit. Manter o campo no banco (sem migration), apenas nao exibir mais |
 
 ---
 
-## 3. Upload de logo da organizacao pelo admin
+## 3. Remover "Publico Esperado" do Modal de Criacao
 
-**Problema:** Atualmente o admin so consegue colar uma URL para a logo. Precisa de um botao de upload que envie a imagem para o Supabase Storage.
+**Problema:** O `CreateEventDialog.tsx` nao tem o campo visivel, mas o `EditEventModal` sim. Confirmar que a criacao nao envia `expected_audience`.
 
-**Solucao:** 
-1. Criar bucket `org-logos` no Supabase Storage (migration SQL)
-2. Adicionar funcionalidade de upload de arquivo nos dialogos de criar e editar organizacao em `OrganizationManager.tsx`
-3. O admin clica em "Enviar Logo", seleciona o arquivo, ele sobe para o bucket e a URL publica eh salva no campo `logo_url`
+**Solucao:** Ja esta limpo no `CreateEventDialog.tsx` - nenhuma mudanca necessaria.
 
-**Arquivos:**
+---
+
+## 4. Limpeza no EventApplications
+
 | Arquivo | Mudanca |
 |---------|---------|
-| `supabase/migrations/create_org_logos_bucket.sql` | Criar bucket `org-logos` publico com politicas RLS para admin |
-| `src/components/dashboard/OrganizationManager.tsx` | Adicionar input file + botao upload nos dialogos de criar e editar. Usar `logoInputRef` e `uploadingLogo` que ja existem mas nao estao sendo usados. Upload para `org-logos` bucket |
+| `src/pages/dashboard/photographer/EventApplications.tsx` | Remover `expected_audience` da interface `CampaignWithApplication` (linha 35) e da query (linha 67) - limpeza de codigo morto |
 
 ---
 
-## Secao Tecnica
+## Resumo de Arquivos
 
-### Correcao de Data
-```text
-// EditEventModal.tsx - Ao inicializar e no useEffect:
-ANTES: setEventDate(campaignData.event_date || '');
-DEPOIS: setEventDate(campaignData.event_date?.split('T')[0] || '');
-```
+| Arquivo | Tipo |
+|---------|------|
+| `src/pages/Events.tsx` | Editar - corrigir filtros fotografo e preco |
+| `src/components/events/EventFilters.tsx` | Editar - melhorar placeholder |
+| `src/components/modals/EditEventModal.tsx` | Editar - remover Publico Esperado |
+| `src/pages/dashboard/photographer/EventApplications.tsx` | Editar - limpeza |
 
-### Cards de Candidatura - Porcentagem
-```text
-// EventApplications.tsx - Query:
-Adicionar: photographer_percentage na select
-
-// Substituir bloco expected_audience por:
-{campaign.photographer_percentage > 0 && (
-  <div className="flex items-center gap-2">
-    <DollarSign className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
-    <span className="text-emerald-600">Voce ganha {campaign.photographer_percentage}%</span>
-  </div>
-)}
-```
-
-### Bucket de Logos
-```text
--- Migration SQL
-INSERT INTO storage.buckets (id, name, public) VALUES ('org-logos', 'org-logos', true);
--- Politica: qualquer autenticado pode fazer upload (admin controla via frontend)
-CREATE POLICY "Authenticated upload org logos" ON storage.objects
-  FOR INSERT TO authenticated WITH CHECK (bucket_id = 'org-logos');
-CREATE POLICY "Public read org logos" ON storage.objects
-  FOR SELECT USING (bucket_id = 'org-logos');
-```
-
-### Upload de Logo no OrganizationManager
-Utilizar os estados `uploadingLogo` e `logoInputRef` ja declarados no componente. Ao selecionar arquivo, fazer upload para `org-logos/{org_id}_{timestamp}.ext`, obter URL publica e salvar no `formData.logo_url`.
+Nenhuma migration de banco necessaria.
 
