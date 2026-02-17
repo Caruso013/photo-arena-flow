@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useSearch } from '@/contexts/SearchContext';
 import { useSearchParams } from 'react-router-dom';
-import { Camera, RefreshCw } from 'lucide-react';
+import { Camera } from 'lucide-react';
 import MainLayout from '@/components/layout/MainLayout';
 import { SkeletonCard } from '@/components/ui/skeleton-card';
 import { EventFilters, FilterState } from '@/components/events/EventFilters';
@@ -27,6 +27,7 @@ interface Campaign {
   created_at?: string;
   photographer_id?: string;
   photographer: Photographer | null;
+  photo_price_display?: number | null;
   campaign_photographers?: {
     photographer_id: string;
     profiles: Photographer;
@@ -91,16 +92,17 @@ const Events = () => {
       });
     }
     
-    // Filtro por fotógrafo (incluindo múltiplos fotógrafos)
+    // Filtro por fotógrafo (busca por nome, case-insensitive)
     if (filters.photographer.trim()) {
+      const photographerTerm = filters.photographer.toLowerCase();
       filtered = filtered.filter((campaign) => {
-        // Verificar fotógrafo principal
-        if (campaign.photographer_id === filters.photographer) return true;
+        // Verificar fotógrafo principal por nome
+        if (campaign.photographer?.full_name?.toLowerCase().includes(photographerTerm)) return true;
         
-        // Verificar fotógrafos adicionais
+        // Verificar fotógrafos adicionais por nome
         if (campaign.campaign_photographers) {
           return campaign.campaign_photographers.some(
-            cp => cp.photographer_id === filters.photographer
+            cp => cp.profiles?.full_name?.toLowerCase().includes(photographerTerm)
           );
         }
         return false;
@@ -127,6 +129,20 @@ const Events = () => {
       );
     }
     
+    // Filtro de preço
+    if (filters.minPrice) {
+      const min = parseFloat(filters.minPrice);
+      filtered = filtered.filter((campaign) => 
+        campaign.photo_price_display != null && campaign.photo_price_display >= min
+      );
+    }
+    if (filters.maxPrice) {
+      const max = parseFloat(filters.maxPrice);
+      filtered = filtered.filter((campaign) => 
+        campaign.photo_price_display != null && campaign.photo_price_display <= max
+      );
+    }
+
     // Ordenação
     filtered.sort((a, b) => {
       switch (filters.sortBy) {
