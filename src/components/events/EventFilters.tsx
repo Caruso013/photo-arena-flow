@@ -27,8 +27,6 @@ export interface FilterState {
   dateTo: string;
   sortBy: 'date' | 'title' | 'recent';
   photographer: string;
-  minPrice: string;
-  maxPrice: string;
 }
 
 export function EventFilters({ onFilterChange }: EventFiltersProps) {
@@ -39,8 +37,6 @@ export function EventFilters({ onFilterChange }: EventFiltersProps) {
     dateTo: '',
     sortBy: 'recent',
     photographer: '',
-    minPrice: '',
-    maxPrice: '',
   });
 
   const handleFilterChange = (key: keyof FilterState, value: string) => {
@@ -56,15 +52,12 @@ export function EventFilters({ onFilterChange }: EventFiltersProps) {
       dateTo: '',
       sortBy: 'recent',
       photographer: '',
-      minPrice: '',
-      maxPrice: '',
     };
     setFilters(emptyFilters);
     onFilterChange(emptyFilters);
   };
 
-  const hasActiveFilters = filters.location || filters.dateFrom || filters.dateTo || 
-    filters.photographer || filters.minPrice || filters.maxPrice;
+  const hasActiveFilters = filters.location || filters.dateFrom || filters.dateTo || filters.photographer;
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen} className="mb-6">
@@ -75,7 +68,7 @@ export function EventFilters({ onFilterChange }: EventFiltersProps) {
             Filtros Avançados
             {hasActiveFilters && (
               <span className="ml-1 rounded-full bg-primary text-primary-foreground px-2 py-0.5 text-xs">
-                {[filters.location, filters.dateFrom, filters.dateTo, filters.photographer, filters.minPrice, filters.maxPrice].filter(Boolean).length}
+                {[filters.location, filters.dateFrom, filters.dateTo, filters.photographer].filter(Boolean).length}
               </span>
             )}
           </Button>
@@ -92,17 +85,7 @@ export function EventFilters({ onFilterChange }: EventFiltersProps) {
       <CollapsibleContent>
         <Card>
           <CardContent className="pt-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="location">Localização</Label>
-                <Input
-                  id="location"
-                  placeholder="Ex: São Paulo"
-                  value={filters.location}
-                  onChange={(e) => handleFilterChange('location', e.target.value)}
-                />
-              </div>
-
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="photographer">Fotógrafo</Label>
                 <Input
@@ -114,52 +97,34 @@ export function EventFilters({ onFilterChange }: EventFiltersProps) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="dateFrom">Data inicial</Label>
+                <Label htmlFor="location">Localização</Label>
                 <Input
-                  id="dateFrom"
-                  type="date"
-                  value={filters.dateFrom}
-                  onChange={(e) => handleFilterChange('dateFrom', e.target.value)}
+                  id="location"
+                  placeholder="Ex: São Paulo"
+                  value={filters.location}
+                  onChange={(e) => handleFilterChange('location', e.target.value)}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="dateTo">Data final</Label>
-                <Input
-                  id="dateTo"
-                  type="date"
-                  value={filters.dateTo}
-                  onChange={(e) => handleFilterChange('dateTo', e.target.value)}
-                />
+                <Label htmlFor="dateFrom">Data</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="dateFrom"
+                    type="date"
+                    value={filters.dateFrom}
+                    onChange={(e) => handleFilterChange('dateFrom', e.target.value)}
+                  />
+                  <Input
+                    id="dateTo"
+                    type="date"
+                    value={filters.dateTo}
+                    onChange={(e) => handleFilterChange('dateTo', e.target.value)}
+                  />
+                </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="minPrice">Preço mínimo</Label>
-                <Input
-                  id="minPrice"
-                  type="number"
-                  placeholder="R$ 0"
-                  min="0"
-                  step="0.01"
-                  value={filters.minPrice}
-                  onChange={(e) => handleFilterChange('minPrice', e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="maxPrice">Preço máximo</Label>
-                <Input
-                  id="maxPrice"
-                  type="number"
-                  placeholder="R$ 1000"
-                  min="0"
-                  step="0.01"
-                  value={filters.maxPrice}
-                  onChange={(e) => handleFilterChange('maxPrice', e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="sortBy">Ordenar por</Label>
                 <Select
                   value={filters.sortBy}
