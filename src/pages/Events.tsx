@@ -26,6 +26,7 @@ interface Campaign {
   cover_image_url: string;
   created_at?: string;
   photographer_id?: string;
+  organization_id?: string | null;
   photographer: Photographer | null;
   photo_price_display?: number | null;
   campaign_photographers?: {
@@ -46,6 +47,7 @@ const Events = () => {
     dateTo: '',
     sortBy: 'recent',
     photographer: '',
+    organizationId: '',
   });
 
   // Pull to refresh
@@ -107,6 +109,11 @@ const Events = () => {
       });
     }
     
+    // Filtro por organização
+    if (filters.organizationId) {
+      filtered = filtered.filter((campaign) => campaign.organization_id === filters.organizationId);
+    }
+
     // Filtro de localização
     if (filters.location.trim()) {
       const location = filters.location.toLowerCase();
