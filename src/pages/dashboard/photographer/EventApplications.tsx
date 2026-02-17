@@ -32,7 +32,7 @@ interface CampaignWithApplication {
   event_date: string | null;
   cover_image_url: string | null;
   applications_open: boolean;
-  expected_audience: number | null;
+  
   event_start_time: string | null;
   event_end_time: string | null;
   photo_price_display: number | null;
@@ -64,7 +64,7 @@ export default function EventApplications() {
         .from('campaigns')
         .select(`
           id, title, description, location, event_date,
-          cover_image_url, applications_open, expected_audience,
+          cover_image_url, applications_open,
           event_start_time, event_end_time, photo_price_display,
           available_slots, organization_id, is_active, photographer_percentage,
           organizations(name, logo_url, primary_color)

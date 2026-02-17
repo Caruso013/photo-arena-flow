@@ -61,7 +61,7 @@ const EditEventModal: React.FC<EditEventModalProps> = ({
   const [isActive, setIsActive] = useState(campaignData.is_active);
   const [progressiveDiscountEnabled, setProgressiveDiscountEnabled] = useState(campaignData.progressive_discount_enabled ?? true);
   const [applicationsOpen, setApplicationsOpen] = useState(campaignData.applications_open ?? false);
-  const [expectedAudience, setExpectedAudience] = useState(campaignData.expected_audience?.toString() || '');
+  
   const [eventStartTime, setEventStartTime] = useState(campaignData.event_start_time || '');
   const [eventEndTime, setEventEndTime] = useState(campaignData.event_end_time || '');
   const [photoPriceDisplay, setPhotoPriceDisplay] = useState(campaignData.photo_price_display?.toString() || '');
@@ -100,7 +100,7 @@ const EditEventModal: React.FC<EditEventModalProps> = ({
     setIsActive(campaignData.is_active);
     setProgressiveDiscountEnabled(campaignData.progressive_discount_enabled ?? true);
     setApplicationsOpen(campaignData.applications_open ?? false);
-    setExpectedAudience(campaignData.expected_audience?.toString() || '');
+    
     setEventStartTime(campaignData.event_start_time || '');
     setEventEndTime(campaignData.event_end_time || '');
     setPhotoPriceDisplay(campaignData.photo_price_display?.toString() || '');
@@ -186,7 +186,7 @@ const EditEventModal: React.FC<EditEventModalProps> = ({
           organization_percentage: organizerData.organizationPercentage,
           platform_percentage: platformPercentage,
           applications_open: applicationsOpen,
-          expected_audience: expectedAudience ? parseInt(expectedAudience) : null,
+          
           event_start_time: eventStartTime || null,
           event_end_time: eventEndTime || null,
           photo_price_display: photoPriceDisplay ? parseFloat(photoPriceDisplay) : null,
@@ -381,16 +381,6 @@ const EditEventModal: React.FC<EditEventModalProps> = ({
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="expected_audience" className="text-xs">Público Esperado</Label>
-                    <Input 
-                      id="expected_audience"
-                      type="number" 
-                      placeholder="10000"
-                      value={expectedAudience} 
-                      onChange={(e) => setExpectedAudience(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-1.5 col-span-2">
                     <Label htmlFor="available_slots" className="text-xs">Vagas Disponíveis</Label>
                     <Input 
                       id="available_slots"

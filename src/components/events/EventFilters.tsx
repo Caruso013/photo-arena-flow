@@ -107,7 +107,7 @@ export function EventFilters({ onFilterChange }: EventFiltersProps) {
                 <Label htmlFor="photographer">Fotógrafo</Label>
                 <Input
                   id="photographer"
-                  placeholder="Nome do fotógrafo"
+                  placeholder="Buscar por nome..."
                   value={filters.photographer}
                   onChange={(e) => handleFilterChange('photographer', e.target.value)}
                 />
