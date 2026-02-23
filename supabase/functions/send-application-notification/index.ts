@@ -125,20 +125,27 @@ serve(async (req) => {
             
             <div style="padding: 30px 20px; background: #ffffff;">
               <p style="font-size: 16px; margin-bottom: 20px;">
-                Olá <strong style="color: #e6b800;">${photographerName}</strong>,
+                Olá <strong style="color: #e6b800;">${photographerName}</strong>, tudo bem?
               </p>
               
               <p style="font-size: 16px; margin-bottom: 20px;">
-                Agradecemos seu interesse em fotografar o evento <strong>${campaignTitle}</strong>.
+                Quero agradecer pela sua candidatura para a cobertura do evento <strong>${campaignTitle}</strong>. Tivemos mais de um fotógrafo interessado nesse evento e, nesse caso, o sistema priorizou automaticamente o fotógrafo que está mais ativo dentro do site no momento.
               </p>
               
               <p style="font-size: 16px; margin-bottom: 20px;">
-                Infelizmente, desta vez não poderemos contar com você para este evento específico. No entanto, valorizamos seu interesse e encorajamos você a se candidatar para outros eventos disponíveis na plataforma.
+                Por isso, <strong>dessa vez você não foi selecionado</strong>.
               </p>
+
+              <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 20px; border-radius: 4px; margin-bottom: 25px;">
+                <p style="margin: 0 0 12px 0; font-weight: bold; font-size: 15px;">🚀 Como aumentar suas chances nos próximos eventos:</p>
+                <p style="margin: 0; font-size: 14px; line-height: 1.8;">
+                  Para aumentar muito suas chances nos próximos eventos, é importante trabalhar dentro do site com frequência, criando eventos, postando jogos (inclusive os que não são parceria da STA) e vendendo suas fotos. O sistema leva em consideração essa atividade para definir automaticamente quem terá prioridade nas coberturas.
+                </p>
+              </div>
 
               <div style="background: #e7f3ff; border-left: 4px solid #2196f3; padding: 15px; border-radius: 4px; margin-bottom: 25px;">
                 <p style="margin: 0; font-size: 14px;">
-                  💡 <strong>Dica:</strong> Continue acompanhando novos eventos e oportunidades no seu painel.
+                  💡 Contamos com você e queremos muito te ver nos próximos jogos! Qualquer dúvida, pode chamar.
                 </p>
               </div>
 
@@ -148,8 +155,6 @@ serve(async (req) => {
                   Ver Outros Eventos
                 </a>
               </div>
-
-              <p style="font-size: 16px; text-align: center;">Não desista! Novas oportunidades surgem todos os dias. 🌟</p>
             </div>
 
             <div style="padding: 25px 20px; background: #0d0d0d; color: #fafafa; text-align: center;">

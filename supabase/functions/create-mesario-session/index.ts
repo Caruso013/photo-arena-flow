@@ -75,9 +75,9 @@ Deno.serve(async (req: Request) => {
 
     const accessCode = codeData;
 
-    // Calcular expiração (4 dias)
+    // Sessão vitalícia - expira em 100 anos
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 4);
+    expiresAt.setFullYear(expiresAt.getFullYear() + 100);
 
     // Criar sessão de mesário
     const { data: session, error: sessionError } = await supabase

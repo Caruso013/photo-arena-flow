@@ -32,3 +32,6 @@ verify_jwt = true
 
 [functions.create-organization-user]
 verify_jwt = true
+
+[functions.send-payout-request-email]
+verify_jwt = true
