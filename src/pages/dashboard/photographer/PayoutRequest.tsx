@@ -122,6 +122,24 @@ const PayoutRequestPage = () => {
 
       console.log('✅ Solicitação criada com sucesso:', insertedData);
 
+      // Enviar email para o admin
+      try {
+        await supabase.functions.invoke('send-payout-request-email', {
+          body: {
+            photographerName: profile.pix_recipient_name || user.email,
+            photographerEmail: user.email,
+            amount: balance.availableAmount,
+            pixKey: profile.pix_key,
+            recipientName: profile.pix_recipient_name || '',
+            institution: profile.pix_institution || null,
+            requestedAt: new Date().toISOString(),
+          }
+        });
+        console.log('✅ Email de saque enviado ao admin');
+      } catch (emailError) {
+        console.error('Erro ao enviar email de saque:', emailError);
+      }
+
       toast.success('Solicitação de saque enviada com sucesso!', {
         description: `${formatCurrency(balance.availableAmount)} será processado em até 2 dias úteis`
       });

@@ -105,7 +105,7 @@ const CreateMesarioModal = ({
     const cleanPhone = whatsapp.replace(/\D/g, '');
     const phone = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
     const baseUrl = window.location.origin;
-    const msg = `Olá ${createdSession.mesario_name}! 👋\n\nVocê foi designado como *mesário* para o evento *"${campaignTitle}"*.\n\n🔑 Seu código de acesso: *${createdSession.access_code}*\n🔗 Acesse: ${baseUrl}/mesario\n⏰ Válido até: ${formatExpiration(createdSession.expires_at)}\n\nInsira o código acima para fazer login no sistema.`;
+    const msg = `Olá ${createdSession.mesario_name}! 👋\n\nVocê foi designado como *mesário* para o evento *"${campaignTitle}"*.\n\n🔑 Seu código de acesso: *${createdSession.access_code}*\n🔗 Acesse: ${baseUrl}/mesario\n♾️ Acesso vitalício - não expira!\n\nInsira o código acima para fazer login no sistema.`;
     const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
     window.open(url, '_blank');
   };
@@ -118,15 +118,8 @@ const CreateMesarioModal = ({
     onOpenChange(false);
   };
 
-  const formatExpiration = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+  const formatExpiration = (_dateStr: string) => {
+    return 'Acesso vitalício';
   };
 
   const hasValidWhatsapp = whatsapp.replace(/\D/g, '').length === 11;
@@ -223,9 +216,7 @@ const CreateMesarioModal = ({
 
             <Alert>
               <AlertDescription className="text-center">
-                <strong>Válido até:</strong> {formatExpiration(createdSession.expires_at)}
-                <br />
-                <span className="text-sm">(4 dias a partir de agora)</span>
+                <strong>Acesso vitalício</strong> - Este mesário não expira.
               </AlertDescription>
             </Alert>
 
@@ -243,7 +234,7 @@ const CreateMesarioModal = ({
             <div className="text-sm text-muted-foreground space-y-1">
               <p>• O mesário deve acessar: <strong>/mesario</strong></p>
               <p>• Inserir o código acima para fazer login</p>
-              <p>• O código expira automaticamente após 4 dias</p>
+              <p>• O acesso é vitalício e não expira</p>
             </div>
 
             <DialogFooter>
