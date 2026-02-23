@@ -80,17 +80,18 @@ export const OrganizationManager: React.FC<OrganizationManagerProps> = ({ organi
         .substring(0, 10);
     }
     
-    // Senha determinística: login@DataCriação (DDMMYYYY)
-    // Exemplo: apf@03102025
+    // Senha determinística: Login@DataCriação (DDMMYYYY)
+    // Capitaliza primeira letra para atender requisito de maiúscula do Supabase
     const date = createdAt ? new Date(createdAt) : new Date();
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = date.getFullYear();
     const dateString = `${day}${month}${year}`;
+    const capitalizedLogin = login.charAt(0).toUpperCase() + login.slice(1);
     
     return {
       email: `${login}@stafotos.com`,
-      password: `${login}@${dateString}`
+      password: `${capitalizedLogin}@${dateString}`
     };
   };
 
