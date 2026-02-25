@@ -108,7 +108,7 @@ const CreateMesarioModal = ({
     const phone = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
     const baseUrl = window.location.origin;
     const orgText = organizationName ? ` da organização *"${organizationName}"*` : '';
-    const msg = `Olá ${createdSession.mesario_name}! 👋\n\nVocê foi designado como *mesário* para o evento *"${campaignTitle}"*${orgText}.\n\n🔑 Seu código de acesso: *${createdSession.access_code}*\n🔗 Acesse: ${baseUrl}/mesario\n♾️ Acesso vitalício - não expira!\n\nInsira o código acima para fazer login no sistema.`;
+    const msg = `Olá ${createdSession.mesario_name}! 👋\n\nVocê foi designado como *mesário* para o evento *"${campaignTitle}"*${orgText}.\n\n🔑 Seu código de acesso: *${createdSession.access_code}*\n🔗 Acesse: ${baseUrl}/mesario\n📅 Validade: 1 mês antes e 1 mês após o evento\n\nInsira o código acima para fazer login no sistema.`;
     const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
     window.open(url, '_blank');
   };
@@ -121,8 +121,8 @@ const CreateMesarioModal = ({
     onOpenChange(false);
   };
 
-  const formatExpiration = (_dateStr: string) => {
-    return 'Acesso vitalício';
+  const formatExpiration = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString('pt-BR');
   };
 
   const hasValidWhatsapp = whatsapp.replace(/\D/g, '').length === 11;
@@ -219,7 +219,7 @@ const CreateMesarioModal = ({
 
             <Alert>
               <AlertDescription className="text-center">
-                <strong>Acesso vitalício</strong> - Este mesário não expira.
+                <strong>Válido até:</strong> {formatExpiration(createdSession.expires_at)}
               </AlertDescription>
             </Alert>
 
@@ -237,7 +237,7 @@ const CreateMesarioModal = ({
             <div className="text-sm text-muted-foreground space-y-1">
               <p>• O mesário deve acessar: <strong>/mesario</strong></p>
               <p>• Inserir o código acima para fazer login</p>
-              <p>• O acesso é vitalício e não expira</p>
+              <p>• Válido de 1 mês antes até 1 mês após o evento</p>
             </div>
 
             <DialogFooter>

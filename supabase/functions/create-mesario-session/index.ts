@@ -75,9 +75,23 @@ Deno.serve(async (req: Request) => {
 
     const accessCode = codeData;
 
-    // Sessão vitalícia - expira em 100 anos
+    // Buscar data do evento para calcular expiração (1 mês antes + 1 mês depois)
+    const { data: campaignData } = await supabase
+      .from('campaigns')
+      .select('event_date')
+      .eq('id', campaign_id)
+      .single();
+
     const expiresAt = new Date();
-    expiresAt.setFullYear(expiresAt.getFullYear() + 100);
+    if (campaignData?.event_date) {
+      // Expira 1 mês após a data do evento
+      const eventDate = new Date(campaignData.event_date);
+      expiresAt.setTime(eventDate.getTime());
+      expiresAt.setMonth(expiresAt.getMonth() + 1);
+    } else {
+      // Sem data de evento, expira em 2 meses a partir de agora
+      expiresAt.setMonth(expiresAt.getMonth() + 2);
+    }
 
     // Criar sessão de mesário
     const { data: session, error: sessionError } = await supabase
