@@ -22,6 +22,7 @@ interface CreateMesarioModalProps {
   campaignId: string;
   campaignTitle: string;
   organizationId?: string;
+  organizationName?: string;
 }
 
 interface CreatedSession {
@@ -35,7 +36,8 @@ const CreateMesarioModal = ({
   onOpenChange,
   campaignId,
   campaignTitle,
-  organizationId
+  organizationId,
+  organizationName
 }: CreateMesarioModalProps) => {
   const [mesarioName, setMesarioName] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
@@ -105,7 +107,8 @@ const CreateMesarioModal = ({
     const cleanPhone = whatsapp.replace(/\D/g, '');
     const phone = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
     const baseUrl = window.location.origin;
-    const msg = `Olá ${createdSession.mesario_name}! 👋\n\nVocê foi designado como *mesário* para o evento *"${campaignTitle}"*.\n\n🔑 Seu código de acesso: *${createdSession.access_code}*\n🔗 Acesse: ${baseUrl}/mesario\n♾️ Acesso vitalício - não expira!\n\nInsira o código acima para fazer login no sistema.`;
+    const orgText = organizationName ? ` da organização *"${organizationName}"*` : '';
+    const msg = `Olá ${createdSession.mesario_name}! 👋\n\nVocê foi designado como *mesário* para o evento *"${campaignTitle}"*${orgText}.\n\n🔑 Seu código de acesso: *${createdSession.access_code}*\n🔗 Acesse: ${baseUrl}/mesario\n♾️ Acesso vitalício - não expira!\n\nInsira o código acima para fazer login no sistema.`;
     const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
     window.open(url, '_blank');
   };
@@ -135,7 +138,7 @@ const CreateMesarioModal = ({
           <DialogDescription>
             {createdSession 
               ? 'Compartilhe o código com o mesário'
-              : `Evento: ${campaignTitle}`
+              : `Evento: ${campaignTitle}${organizationName ? ` • ${organizationName}` : ''}`
             }
           </DialogDescription>
         </DialogHeader>

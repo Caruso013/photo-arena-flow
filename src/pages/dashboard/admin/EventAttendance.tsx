@@ -42,6 +42,7 @@ const EventAttendance = () => {
   const navigate = useNavigate();
   const { profile } = useAuth();
   const [campaign, setCampaign] = useState<Campaign | null>(null);
+  const [organizationName, setOrganizationName] = useState<string | undefined>();
   const [photographers, setPhotographers] = useState<PhotographerAttendance[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -58,12 +59,24 @@ const EventAttendance = () => {
       // Buscar campanha
       const { data: campaignData, error: campaignError } = await supabase
         .from('campaigns')
-        .select('id, title, event_date, location')
+        .select('id, title, event_date, location, organization_id')
         .eq('id', id)
         .single();
 
       if (campaignError) throw campaignError;
       setCampaign(campaignData);
+
+      // Buscar nome da organização
+      if (campaignData.organization_id) {
+        const { data: orgData } = await supabase
+          .from('organizations')
+          .select('name')
+          .eq('id', campaignData.organization_id)
+          .single();
+        setOrganizationName(orgData?.name || undefined);
+      } else {
+        setOrganizationName(undefined);
+      }
 
       // Buscar fotógrafos aprovados
       const { data: applications, error: appError } = await supabase
@@ -312,6 +325,7 @@ const EventAttendance = () => {
           onOpenChange={setShowMesarioModal}
           campaignId={campaign.id}
           campaignTitle={campaign.title}
+          organizationName={organizationName}
         />
       )}
     </AdminLayout>

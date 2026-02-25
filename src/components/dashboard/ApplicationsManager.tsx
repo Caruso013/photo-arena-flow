@@ -206,7 +206,10 @@ export const ApplicationsManager = () => {
         description: `A candidatura foi ${action === 'approve' ? 'aprovada' : 'rejeitada'} com sucesso.`,
       });
 
-      await fetchApplications();
+      // Atualizar estado local em vez de refetch completo
+      setApplications(prev => prev.map(a => 
+        a.id === applicationId ? { ...a, status: newStatus } : a
+      ));
     } catch (error) {
       console.error('Error processing application:', error);
       toast({
