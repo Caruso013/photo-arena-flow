@@ -1,60 +1,71 @@
 
 
-# Plano: Filtros Funcionais + Remover Publico Esperado + Melhorias
+## Plano de Implementação - 4 Mudanças Solicitadas
 
-## 1. Corrigir Filtros da Pagina de Eventos (Print 1)
+### 1. Mesário: Incluir nome do evento e organização na mensagem
 
-**Problema:** O filtro de fotografo no `EventFilters.tsx` aceita texto (nome), mas o `Events.tsx` compara esse texto diretamente com `photographer_id` (UUID). Resultado: o filtro por nome nunca funciona. Alem disso, os filtros de preco nao sao aplicados porque nao ha logica para eles no `Events.tsx`.
+**Problema**: A mensagem do WhatsApp e o modal do mesário não mostram o nome da organização.
 
-**Solucao:**
-| Arquivo | Mudanca |
-|---------|---------|
-| `src/pages/Events.tsx` | Corrigir filtro de fotografo para comparar por NOME (nao por ID). Adicionar logica de filtro por preco usando `photo_price_display` da query. Buscar `photo_price_display` na query do Supabase |
-| `src/components/events/EventFilters.tsx` | Ajustar placeholder do campo fotografo para deixar claro que eh busca por nome |
+**Solução**:
+- Adicionar prop `organizationName` ao `CreateMesarioModal`
+- Atualizar a mensagem do WhatsApp para incluir organização: *"evento 'X' da organização 'Y'"*
+- Atualizar o `DialogDescription` para exibir evento + organização
+- No `EventAttendance.tsx`, buscar `organization_id` da campanha, depois o nome da organização, e passar como prop
 
-### Detalhes tecnicos:
-
-O filtro de fotografo passara a comparar o texto digitado com `photographer.full_name` e `campaign_photographers.profiles.full_name` (busca por nome, case-insensitive).
-
-O filtro de preco comparara com `photo_price_display` de cada campanha (campo ja existente na tabela `campaigns`). A query precisara incluir `photo_price_display` no select.
+**Arquivos**: `src/components/organization/CreateMesarioModal.tsx`, `src/pages/dashboard/admin/EventAttendance.tsx`
 
 ---
 
-## 2. Remover "Publico Esperado" do Modal de Edicao (Print 2)
+### 2. Faixa Beta + Botão WhatsApp no topo do site
 
-**Problema:** O campo "Publico Esperado" ainda aparece no modal de edicao (`EditEventModal.tsx`). O cliente nao quer essa informacao.
+**Problema**: O site não indica que está em fase beta.
 
-**Solucao:**
-| Arquivo | Mudanca |
-|---------|---------|
-| `src/components/modals/EditEventModal.tsx` | Remover campo "Publico Esperado" (linhas 383-391). Remover estado `expectedAudience` e referencia no submit. Manter o campo no banco (sem migration), apenas nao exibir mais |
+**Solução**:
+- Criar um componente `BetaBanner` com uma faixa sutil fixa no topo (altura ~32px)
+- Texto: "🚧 Este site está em fase beta" + botão "WhatsApp" com link direto para contato
+- Cores: fundo amarelo/dourado sutil, texto pequeno
+- Botão de fechar (X) para o usuário dispensar (salva no localStorage)
+- Adicionar no `MainLayout.tsx` antes do `<Header />`
 
----
-
-## 3. Remover "Publico Esperado" do Modal de Criacao
-
-**Problema:** O `CreateEventDialog.tsx` nao tem o campo visivel, mas o `EditEventModal` sim. Confirmar que a criacao nao envia `expected_audience`.
-
-**Solucao:** Ja esta limpo no `CreateEventDialog.tsx` - nenhuma mudanca necessaria.
+**Arquivos**: Novo `src/components/layout/BetaBanner.tsx`, editar `src/components/layout/MainLayout.tsx`
 
 ---
 
-## 4. Limpeza no EventApplications
+### 3. Barra de busca no gerenciamento de fotógrafos
 
-| Arquivo | Mudanca |
-|---------|---------|
-| `src/pages/dashboard/photographer/EventApplications.tsx` | Remover `expected_audience` da interface `CampaignWithApplication` (linha 35) e da query (linha 67) - limpeza de codigo morto |
+**Problema**: Ao atribuir fotógrafos a um evento, a lista é grande e difícil de navegar.
+
+**Solução**:
+- Adicionar um estado `searchQuery` no `CampaignPhotographersManager`
+- Inserir um `<Input>` com ícone de busca acima da lista de fotógrafos disponíveis
+- Filtrar `availablePhotographers` por `full_name` ou `email` que contenha o termo buscado
+- Filtro em tempo real, case-insensitive
+
+**Arquivo**: `src/components/dashboard/CampaignPhotographersManager.tsx`
 
 ---
 
-## Resumo de Arquivos
+### 4. Candidatura rejeitada causa refresh/volta ao início do dashboard
 
-| Arquivo | Tipo |
+**Problema**: Ao rejeitar uma candidatura no `ApplicationsManager`, o `fetchApplications()` recarrega tudo e pode perder a posição do scroll ou o estado das tabs.
+
+**Solução**:
+- No `ApplicationsManager.tsx`, em vez de chamar `fetchApplications()` após rejeitar, atualizar o estado localmente: mudar o `status` da aplicação para `'rejected'` diretamente no array `applications` via `setApplications`
+- Isso evita recarregar a página inteira e mantém a posição do usuário
+- Mesmo tratamento para aprovação: atualizar localmente em vez de refetch completo
+
+**Arquivo**: `src/components/dashboard/ApplicationsManager.tsx`
+
+---
+
+### Resumo de Arquivos
+
+| Arquivo | Ação |
 |---------|------|
-| `src/pages/Events.tsx` | Editar - corrigir filtros fotografo e preco |
-| `src/components/events/EventFilters.tsx` | Editar - melhorar placeholder |
-| `src/components/modals/EditEventModal.tsx` | Editar - remover Publico Esperado |
-| `src/pages/dashboard/photographer/EventApplications.tsx` | Editar - limpeza |
-
-Nenhuma migration de banco necessaria.
+| `src/components/layout/BetaBanner.tsx` | Criar |
+| `src/components/layout/MainLayout.tsx` | Editar (adicionar BetaBanner) |
+| `src/components/organization/CreateMesarioModal.tsx` | Editar (add organizationName) |
+| `src/pages/dashboard/admin/EventAttendance.tsx` | Editar (buscar org name, passar prop) |
+| `src/components/dashboard/CampaignPhotographersManager.tsx` | Editar (add busca) |
+| `src/components/dashboard/ApplicationsManager.tsx` | Editar (update local ao invés de refetch) |
 
