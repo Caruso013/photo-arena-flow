@@ -19,7 +19,7 @@ const BetaBanner = () => {
 
   if (dismissed) return null;
 
-  const whatsappUrl = 'https://wa.me/5511999999999?text=Olá! Encontrei um problema no site STA Fotos.';
+  const whatsappUrl = 'https://wa.me/5511957719467?text=Olá! Encontrei um problema no site STA Fotos.';
 
   return (
     <div className="w-full bg-yellow-500/10 border-b border-yellow-500/20 px-4 py-1.5 text-center relative">
