@@ -2,6 +2,7 @@ import { useLocation } from 'react-router-dom';
 import Header from './Header';
 import Footer from './Footer';
 import SidebarAd from '../ads/SidebarAd';
+import BetaBanner from './BetaBanner';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -18,6 +19,7 @@ const MainLayout = ({ children, hideAds = false }: MainLayoutProps) => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      <BetaBanner />
       <Header />
       
       {/* Anúncios laterais - apenas em desktop e fora da home */}

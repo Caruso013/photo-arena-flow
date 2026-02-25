@@ -5,7 +5,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from '@/components/ui/use-toast';
-import { UserPlus, X, Camera, RefreshCw } from 'lucide-react';
+import { UserPlus, X, Camera, RefreshCw, Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useQueryClient } from '@tanstack/react-query';
@@ -36,6 +37,7 @@ export const CampaignPhotographersManager: React.FC<CampaignPhotographersManager
   const [assignedPhotographers, setAssignedPhotographers] = useState<AssignedPhotographer[]>([]);
   const [availablePhotographers, setAvailablePhotographers] = useState<Photographer[]>([]);
   const [selectedPhotographers, setSelectedPhotographers] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const queryClient = useQueryClient();
 
   // Função para invalidar cache relacionado
@@ -293,9 +295,24 @@ export const CampaignPhotographersManager: React.FC<CampaignPhotographersManager
               </p>
             ) : (
               <>
+                <div className="relative mb-2">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por nome ou email..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
                 <ScrollArea className="h-[200px] border rounded-lg p-2">
                   <div className="space-y-2">
-                    {availablePhotographers.map((photographer) => (
+                    {availablePhotographers
+                      .filter((p) => {
+                        if (!searchQuery.trim()) return true;
+                        const q = searchQuery.toLowerCase();
+                        return (p.full_name?.toLowerCase().includes(q) || p.email.toLowerCase().includes(q));
+                      })
+                      .map((photographer) => (
                       <div
                         key={photographer.id}
                         className="flex items-center space-x-3 p-2 hover:bg-muted rounded-lg cursor-pointer"
