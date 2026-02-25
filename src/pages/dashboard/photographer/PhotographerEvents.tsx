@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, MapPin, Image, Trash2, Plus, Settings } from 'lucide-react';
+import { Calendar, MapPin, Image, Trash2, Plus, Settings, Link2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { SkeletonCard } from '@/components/ui/skeleton-card';
 import { useToast } from '@/hooks/use-toast';
 import CreateEventDialog from '@/components/modals/CreateEventDialog';
+import { copyShareLink } from '@/lib/shareUtils';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -93,7 +94,7 @@ const PhotographerEvents = () => {
 
       // Combinar e ordenar
       const allCampaigns = [...(ownedCampaigns || []), ...assignedCampaigns]
-        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        .sort((a, b) => new Date(b.event_date || b.created_at).getTime() - new Date(a.event_date || a.created_at).getTime());
       
       const campaignsWithCount = allCampaigns.map(campaign => ({
         ...campaign,
@@ -283,6 +284,21 @@ const PhotographerEvents = () => {
                       <Settings className="h-4 w-4 mr-2" />
                       Gerenciar Evento
                     </Link>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    title="Copiar link do evento"
+                    onClick={async () => {
+                      const copied = await copyShareLink(campaign);
+                      toast({
+                        title: copied ? "🔗 Link copiado!" : "Erro ao copiar",
+                        description: copied ? "Cole no WhatsApp ou onde quiser compartilhar." : "Tente copiar manualmente.",
+                        variant: copied ? "default" : "destructive",
+                      });
+                    }}
+                  >
+                    <Link2 className="h-4 w-4" />
                   </Button>
                   <AlertDialog>
                   <AlertDialogTrigger asChild>
