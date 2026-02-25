@@ -58,7 +58,7 @@ const PhotographerEvents = () => {
           photos(count)
         `)
         .eq('photographer_id', user.id)
-        .order('created_at', { ascending: false })
+        .order('event_date', { ascending: false, nullsFirst: false })
         .range(0, 49);
 
       if (ownedError) throw ownedError;
@@ -86,7 +86,7 @@ const PhotographerEvents = () => {
             photos(count)
           `)
           .in('id', assignedIds)
-          .order('created_at', { ascending: false });
+          .order('event_date', { ascending: false, nullsFirst: false });
 
         if (error) throw error;
         assignedCampaigns = data || [];
@@ -94,7 +94,7 @@ const PhotographerEvents = () => {
 
       // Combinar e ordenar
       const allCampaigns = [...(ownedCampaigns || []), ...assignedCampaigns]
-        .sort((a, b) => new Date(b.event_date || b.created_at).getTime() - new Date(a.event_date || a.created_at).getTime());
+        .sort((a, b) => new Date(b.event_date || '1970-01-01').getTime() - new Date(a.event_date || '1970-01-01').getTime());
       
       const campaignsWithCount = allCampaigns.map(campaign => ({
         ...campaign,
