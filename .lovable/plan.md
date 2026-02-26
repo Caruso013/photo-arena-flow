@@ -1,26 +1,32 @@
 
 
-## Plano: Adicionar botão "Copiar Link" no dashboard do fotógrafo
+## Problema Identificado
 
-### Mudanças
+O bug está no `mercadopago-checkout/index.ts` (linha 216): cada purchase armazena `amount: photo.price` (preço cheio), mas o desconto só é aplicado no valor total enviado ao Mercado Pago. Quando o trigger `calculate_revenue_shares()` calcula a divisão, usa `NEW.amount` — que é o preço cheio. Resultado: a soma dos revenue shares é maior que o valor realmente pago.
 
-**Arquivo**: `src/pages/dashboard/photographer/PhotographerEvents.tsx`
+**Exemplo concreto:** 5 fotos × R$12,90 = R$64,50 bruto. Com 5% desconto progressivo = R$61,28 pago. Mas os revenue shares são calculados em cima dos R$64,50, gerando valores incorretos para todos (organização, fotógrafo e plataforma).
 
-1. Importar `Link2` (ícone de link) do `lucide-react` e `copyShareLink` do `shareUtils`
-2. Adicionar botão de copiar link ao lado do botão "Gerenciar Evento" e do botão de excluir
-3. Ao clicar, copia o link do evento (`{origin}/#/E/{short_code}`) para o clipboard e mostra toast "Link copiado!"
-4. Também ordenar os eventos por `event_date` em vez de `created_at` (melhoria solicitada anteriormente)
+## Plano de Correção
 
-### Detalhes técnicos
+### 1. Corrigir `mercadopago-checkout/index.ts`
+- Calcular o valor descontado proporcional por foto
+- Armazenar o valor **final após desconto** no campo `amount` de cada purchase
+- Também preencher os campos `progressive_discount_percentage` e `progressive_discount_amount` que já existem na tabela mas não estão sendo usados
 
-- O botão será um `Button variant="outline" size="icon"` com o ícone `Link2`
-- Usa a função `copyShareLink` já existente em `src/lib/shareUtils.ts`
-- Tooltip visual via título no botão
-- Toast de confirmação ao copiar
-
-### Layout do card (botões)
-
+**Lógica:**
 ```text
-[ Gerenciar Evento (flex-1) ] [ 🔗 ] [ 🗑️ ]
+desconto_total = desconto_progressivo + desconto_cupom
+fator_desconto = finalTotal / subtotal  (ex: 61.28/64.50 = 0.95)
+amount_por_foto = photo.price * fator_desconto  (ex: 12.90 * 0.95 = 12.255)
 ```
+
+### 2. Nenhuma mudança necessária no trigger SQL
+O trigger `calculate_revenue_shares()` já calcula corretamente com base em `NEW.amount`. Basta garantir que `amount` contenha o valor correto (pós-desconto).
+
+### Arquivo modificado
+- `supabase/functions/mercadopago-checkout/index.ts` — seção de criação de purchases (linhas 196-228)
+
+### Impacto
+- Compras futuras terão revenue shares corretos
+- Compras passadas **não serão afetadas** (já estão gravadas com valores antigos)
 
