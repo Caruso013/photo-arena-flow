@@ -194,6 +194,9 @@ serve(async (req) => {
 
     // ===== CRIAR REGISTROS DE PURCHASE =====
     const purchaseIds: string[] = [];
+    const discountFactor = subtotal > 0 ? finalTotal / subtotal : 1;
+
+    console.log('📊 Fator de desconto:', { discountFactor, subtotal, finalTotal });
 
     for (const photo of photos) {
       const { data: photoData } = await supabaseAdmin
@@ -207,14 +210,21 @@ serve(async (req) => {
         continue;
       }
 
+      // Calcular valor proporcional com desconto
+      const originalPrice = Number(photo.price) || 0;
+      const discountedAmount = Number((originalPrice * discountFactor).toFixed(2));
+      const photoDiscountAmount = Number((originalPrice - discountedAmount).toFixed(2));
+
       const { data: purchase, error: purchaseError } = await supabaseAdmin
         .from('purchases')
         .insert({
           photo_id: photo.id,
           buyer_id: buyerId,
           photographer_id: photoData.photographer_id,
-          amount: photo.price,
+          amount: discountedAmount,
           status: 'pending',
+          progressive_discount_percentage: discount?.percentage || 0,
+          progressive_discount_amount: photoDiscountAmount,
         })
         .select()
         .single();
@@ -225,6 +235,7 @@ serve(async (req) => {
       }
 
       purchaseIds.push(purchase.id);
+      console.log(`💰 Purchase criada: foto ${photo.id} | original: R$${originalPrice} → final: R$${discountedAmount} (desconto: R$${photoDiscountAmount})`);
     }
 
     if (purchaseIds.length === 0) {
