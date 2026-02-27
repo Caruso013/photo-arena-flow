@@ -20,6 +20,8 @@ interface Campaign {
   title: string;
   event_date?: string | null;
   location?: string | null;
+  photographer_id?: string | null;
+  photo_price_display?: number | null;
 }
 
 interface SubEvent {
@@ -43,6 +45,7 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
   const [selectedSubEvent, setSelectedSubEvent] = useState('');
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('10.00');
+  const [priceLockedByAdmin, setPriceLockedByAdmin] = useState(false);
   const [files, setFiles] = useState<FileList | null>(null);
   const [uploading, setUploading] = useState(false);
   const [creatingNewFolder, setCreatingNewFolder] = useState(false);
@@ -58,9 +61,21 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
   useEffect(() => {
     if (selectedCampaign) {
       fetchSubEvents(selectedCampaign);
+      // Check if event was created by admin (photographer_id != current user)
+      const campaign = campaigns.find(c => c.id === selectedCampaign);
+      if (campaign && campaign.photographer_id !== profile?.id) {
+        // Admin-created event: lock price to photo_price_display or existing price
+        if (campaign.photo_price_display) {
+          setPrice(campaign.photo_price_display.toFixed(2));
+        }
+        setPriceLockedByAdmin(true);
+      } else {
+        setPriceLockedByAdmin(false);
+      }
     } else {
       setSubEvents([]);
       setSelectedSubEvent('');
+      setPriceLockedByAdmin(false);
     }
   }, [selectedCampaign]);
 
@@ -80,7 +95,7 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
       // Buscar eventos criados pelo fotógrafo OU onde está atribuído via campaign_photographers
       const { data: ownCampaigns, error: ownError } = await supabase
         .from('campaigns')
-        .select('id, title, event_date, is_active, location')
+        .select('id, title, event_date, is_active, location, photographer_id, photo_price_display')
         .eq('photographer_id', profile.id)
         .eq('is_active', true);
 
@@ -95,7 +110,9 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
             title,
             event_date,
             is_active,
-            location
+            location,
+            photographer_id,
+            photo_price_display
           )
         `)
         .eq('photographer_id', profile.id)
@@ -568,6 +585,9 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
               <Label htmlFor="price" className="font-semibold text-base">
                 Preço por foto (R$) *
               </Label>
+              {priceLockedByAdmin && (
+                <span className="text-xs bg-secondary text-secondary-foreground px-2 py-0.5 rounded">🔒 Definido pelo admin</span>
+              )}
             </div>
             <Input
               id="price"
@@ -576,13 +596,15 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
               min="1"
               max="500"
               value={price}
-              onChange={(e) => setPrice(e.target.value)}
+              onChange={(e) => !priceLockedByAdmin && setPrice(e.target.value)}
               onBlur={(e) => {
+                if (priceLockedByAdmin) return;
                 const val = parseFloat(e.target.value);
                 if (isNaN(val) || val < 1) setPrice('1.00');
                 else if (val > 500) setPrice('500.00');
                 else setPrice(val.toFixed(2));
               }}
+              disabled={priceLockedByAdmin}
               className="h-12 text-lg font-bold text-center"
               placeholder="10.00"
               required
