@@ -186,11 +186,11 @@ const PhotographerSalesDetail = ({ photographerId, photographerName, open, onClo
                           <img
                             src={sale.photo_watermarked_url}
                             alt={sale.photo_title}
-                            className="w-12 h-12 rounded object-cover border border-border flex-shrink-0"
+                            className="w-20 h-20 rounded object-cover border border-border flex-shrink-0"
                             loading="lazy"
                           />
                         ) : (
-                          <div className="w-12 h-12 rounded bg-muted flex items-center justify-center flex-shrink-0">
+                          <div className="w-20 h-20 rounded bg-muted flex items-center justify-center flex-shrink-0">
                             <span className="text-xs text-muted-foreground">—</span>
                           </div>
                         )}
