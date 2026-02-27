@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { CampaignManager } from '@/components/dashboard/CampaignManager';
 import { ApplicationsManager } from '@/components/dashboard/ApplicationsManager';
+import { EventSalesManager } from '@/components/dashboard/EventSalesManager';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Calendar, UserCheck } from 'lucide-react';
+import { Calendar, UserCheck, ShoppingCart } from 'lucide-react';
 import AdminLayout from '@/components/dashboard/AdminLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
@@ -76,6 +77,10 @@ const AdminEvents = () => {
               <UserCheck className="h-4 w-4" />
               Candidaturas
             </TabsTrigger>
+            <TabsTrigger value="sales" className="gap-2">
+              <ShoppingCart className="h-4 w-4" />
+              Vendas
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="campaigns">
@@ -84,6 +89,10 @@ const AdminEvents = () => {
 
           <TabsContent value="applications">
             <ApplicationsManager />
+          </TabsContent>
+
+          <TabsContent value="sales">
+            <EventSalesManager />
           </TabsContent>
         </Tabs>
       </div>
