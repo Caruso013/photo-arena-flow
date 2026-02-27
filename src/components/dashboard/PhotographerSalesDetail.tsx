@@ -17,6 +17,7 @@ interface SaleRecord {
   progressive_discount_amount: number | null;
   created_at: string;
   photo_title: string;
+  photo_watermarked_url: string | null;
   campaign_title: string;
   buyer_name: string;
 }
@@ -73,11 +74,11 @@ const PhotographerSalesDetail = ({ photographerId, photographerName, open, onClo
       const buyerIds = [...new Set(purchases.map(p => p.buyer_id))];
 
       const [photosRes, profilesRes] = await Promise.all([
-        supabase.from('photos').select('id, title, campaign_id').in('id', photoIds),
+        supabase.from('photos').select('id, title, campaign_id, watermarked_url').in('id', photoIds),
         supabase.from('profiles').select('id, full_name').in('id', buyerIds),
       ]);
 
-      const photoMap = new Map<string, { id: string; title: string | null; campaign_id: string }>(
+      const photoMap = new Map<string, { id: string; title: string | null; campaign_id: string; watermarked_url: string }>(
         photosRes.data?.map(p => [p.id, p]) || []
       );
       const profileMap = new Map<string, { id: string; full_name: string | null }>(
@@ -101,6 +102,7 @@ const PhotographerSalesDetail = ({ photographerId, photographerName, open, onClo
           progressive_discount_amount: p.progressive_discount_amount,
           created_at: p.created_at,
           photo_title: photo?.title || '—',
+          photo_watermarked_url: photo?.watermarked_url || null,
           campaign_title: photo ? (campaignMap.get(photo.campaign_id)?.title || '—') : '—',
           buyer_name: profileMap.get(p.buyer_id)?.full_name || 'Desconhecido',
         };
@@ -168,8 +170,8 @@ const PhotographerSalesDetail = ({ photographerId, photographerName, open, onClo
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Evento</TableHead>
                   <TableHead>Foto</TableHead>
+                  <TableHead>Evento</TableHead>
                   <TableHead>Comprador</TableHead>
                   <TableHead className="text-right">Valor</TableHead>
                   <TableHead className="text-right">Data</TableHead>
@@ -178,14 +180,30 @@ const PhotographerSalesDetail = ({ photographerId, photographerName, open, onClo
               <TableBody>
                 {sales.map((sale) => (
                   <TableRow key={sale.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        {sale.photo_watermarked_url ? (
+                          <img
+                            src={sale.photo_watermarked_url}
+                            alt={sale.photo_title}
+                            className="w-12 h-12 rounded object-cover border border-border flex-shrink-0"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 rounded bg-muted flex items-center justify-center flex-shrink-0">
+                            <span className="text-xs text-muted-foreground">—</span>
+                          </div>
+                        )}
+                        <span className="truncate max-w-[120px] text-sm">{sale.photo_title}</span>
+                      </div>
+                    </TableCell>
                     <TableCell className="font-medium max-w-[200px] truncate">{sale.campaign_title}</TableCell>
-                    <TableCell className="max-w-[150px] truncate">{sale.photo_title}</TableCell>
                     <TableCell>{sale.buyer_name}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex flex-col items-end">
                         <span className="font-medium">{formatCurrency(sale.amount)}</span>
                         {sale.progressive_discount_amount && sale.progressive_discount_amount > 0 && (
-                          <Badge variant="outline" className="text-xs text-yellow-600">
+                          <Badge variant="outline" className="text-xs text-amber-600">
                             -{formatCurrency(sale.progressive_discount_amount)}
                           </Badge>
                         )}
