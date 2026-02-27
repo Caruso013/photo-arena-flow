@@ -1,30 +1,28 @@
 
 
-## Plano: Adicionar aba "Vendas" no painel de Eventos do Admin
+## Plano: Detalhe de vendas ao clicar no fotógrafo (PhotographerBalances)
 
 ### Objetivo
-Criar uma nova aba "Vendas" dentro da página `/dashboard/admin/events` que mostra todas as fotos vendidas, agrupadas por evento, com informações de comprador, fotógrafo, valor e data.
+Ao clicar em uma linha de fotógrafo na tabela de Provisionamento, abrir um modal/drawer com a lista completa de fotos vendidas por ele (evento, comprador, valor, data), permitindo auditoria.
 
 ### Implementação
 
-#### 1. Criar componente `EventSalesManager.tsx`
-Novo componente em `src/components/dashboard/EventSalesManager.tsx` que:
-- Busca purchases com status `completed` junto com dados da foto, campanha, comprador e fotógrafo
-- Query: `purchases` → join `photos` (photo title, campaign_id) → join `campaigns` (event title) → join `profiles` (buyer name, photographer name)
-- Exibe tabela com colunas: Evento, Foto, Comprador, Fotógrafo, Valor, Data
-- Filtro por evento (select dropdown com campanhas)
-- Filtro por período (data início/fim)
-- Badge de valor com desconto quando `progressive_discount_amount > 0`
+#### 1. Criar componente `PhotographerSalesDetail.tsx`
+Novo componente em `src/components/dashboard/PhotographerSalesDetail.tsx`:
+- Recebe `photographerId`, `photographerName` e `open`/`onClose` props
+- Usa um `Dialog` (modal) com scroll
+- Busca `purchases` filtrado por `photographer_id` e `status = 'completed'`
+- Resolve nomes do comprador via `profiles`, título da foto e evento via `photos` → `campaigns`
+- Tabela com colunas: Evento, Foto, Comprador, Valor, Data
+- Paginação com "carregar mais" (50 por página)
+- Botão de exportar Excel das vendas do fotógrafo
 
-#### 2. Modificar `Events.tsx`
-Adicionar terceira aba "Vendas" com ícone `ShoppingCart` ao `TabsList` existente, renderizando o novo `EventSalesManager`.
-
-### Detalhes Técnicos
-- Query usa `supabase.from('purchases').select('*, photos(title, campaign_id, campaigns(title)), profiles!purchases_buyer_id_fkey(full_name)')` — como o schema não tem foreign key explícita no client types, buscaremos comprador e fotógrafo separadamente via profiles
-- Paginação com limit de 50 registros + botão "carregar mais"
-- RLS já permite admin ver todas as purchases
+#### 2. Modificar `PhotographerBalances.tsx`
+- Adicionar state para `selectedPhotographer` (id + name)
+- Tornar cada linha da tabela clicável (`cursor-pointer`, `onClick`)
+- Renderizar `PhotographerSalesDetail` quando um fotógrafo é selecionado
 
 ### Arquivos
-- **Novo**: `src/components/dashboard/EventSalesManager.tsx`
-- **Editado**: `src/pages/dashboard/admin/Events.tsx` (adicionar aba)
+- **Novo**: `src/components/dashboard/PhotographerSalesDetail.tsx`
+- **Editado**: `src/pages/dashboard/admin/PhotographerBalances.tsx`
 
