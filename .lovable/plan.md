@@ -1,32 +1,30 @@
 
 
-## Problema Identificado
+## Plano: Adicionar aba "Vendas" no painel de Eventos do Admin
 
-O bug está no `mercadopago-checkout/index.ts` (linha 216): cada purchase armazena `amount: photo.price` (preço cheio), mas o desconto só é aplicado no valor total enviado ao Mercado Pago. Quando o trigger `calculate_revenue_shares()` calcula a divisão, usa `NEW.amount` — que é o preço cheio. Resultado: a soma dos revenue shares é maior que o valor realmente pago.
+### Objetivo
+Criar uma nova aba "Vendas" dentro da página `/dashboard/admin/events` que mostra todas as fotos vendidas, agrupadas por evento, com informações de comprador, fotógrafo, valor e data.
 
-**Exemplo concreto:** 5 fotos × R$12,90 = R$64,50 bruto. Com 5% desconto progressivo = R$61,28 pago. Mas os revenue shares são calculados em cima dos R$64,50, gerando valores incorretos para todos (organização, fotógrafo e plataforma).
+### Implementação
 
-## Plano de Correção
+#### 1. Criar componente `EventSalesManager.tsx`
+Novo componente em `src/components/dashboard/EventSalesManager.tsx` que:
+- Busca purchases com status `completed` junto com dados da foto, campanha, comprador e fotógrafo
+- Query: `purchases` → join `photos` (photo title, campaign_id) → join `campaigns` (event title) → join `profiles` (buyer name, photographer name)
+- Exibe tabela com colunas: Evento, Foto, Comprador, Fotógrafo, Valor, Data
+- Filtro por evento (select dropdown com campanhas)
+- Filtro por período (data início/fim)
+- Badge de valor com desconto quando `progressive_discount_amount > 0`
 
-### 1. Corrigir `mercadopago-checkout/index.ts`
-- Calcular o valor descontado proporcional por foto
-- Armazenar o valor **final após desconto** no campo `amount` de cada purchase
-- Também preencher os campos `progressive_discount_percentage` e `progressive_discount_amount` que já existem na tabela mas não estão sendo usados
+#### 2. Modificar `Events.tsx`
+Adicionar terceira aba "Vendas" com ícone `ShoppingCart` ao `TabsList` existente, renderizando o novo `EventSalesManager`.
 
-**Lógica:**
-```text
-desconto_total = desconto_progressivo + desconto_cupom
-fator_desconto = finalTotal / subtotal  (ex: 61.28/64.50 = 0.95)
-amount_por_foto = photo.price * fator_desconto  (ex: 12.90 * 0.95 = 12.255)
-```
+### Detalhes Técnicos
+- Query usa `supabase.from('purchases').select('*, photos(title, campaign_id, campaigns(title)), profiles!purchases_buyer_id_fkey(full_name)')` — como o schema não tem foreign key explícita no client types, buscaremos comprador e fotógrafo separadamente via profiles
+- Paginação com limit de 50 registros + botão "carregar mais"
+- RLS já permite admin ver todas as purchases
 
-### 2. Nenhuma mudança necessária no trigger SQL
-O trigger `calculate_revenue_shares()` já calcula corretamente com base em `NEW.amount`. Basta garantir que `amount` contenha o valor correto (pós-desconto).
-
-### Arquivo modificado
-- `supabase/functions/mercadopago-checkout/index.ts` — seção de criação de purchases (linhas 196-228)
-
-### Impacto
-- Compras futuras terão revenue shares corretos
-- Compras passadas **não serão afetadas** (já estão gravadas com valores antigos)
+### Arquivos
+- **Novo**: `src/components/dashboard/EventSalesManager.tsx`
+- **Editado**: `src/pages/dashboard/admin/Events.tsx` (adicionar aba)
 
