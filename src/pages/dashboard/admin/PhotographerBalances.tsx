@@ -10,6 +10,7 @@ import { DollarSign, Search, Users, TrendingUp, Clock, Download } from 'lucide-r
 import AdminLayout from '@/components/dashboard/AdminLayout';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
+import PhotographerSalesDetail from '@/components/dashboard/PhotographerSalesDetail';
 
 interface PhotographerBalance {
   photographer_id: string;
@@ -27,6 +28,7 @@ const PhotographerBalances = () => {
   const [balances, setBalances] = useState<PhotographerBalance[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedPhotographer, setSelectedPhotographer] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     fetchBalances();
@@ -291,7 +293,11 @@ const PhotographerBalances = () => {
                   </thead>
                   <tbody>
                     {filteredBalances.map((balance) => (
-                      <tr key={balance.photographer_id} className="border-b hover:bg-muted/50">
+                      <tr
+                        key={balance.photographer_id}
+                        className="border-b hover:bg-muted/50 cursor-pointer"
+                        onClick={() => setSelectedPhotographer({ id: balance.photographer_id, name: balance.photographer_name })}
+                      >
                         <td className="py-4">
                           <div>
                             <p className="font-medium">{balance.photographer_name}</p>
@@ -327,6 +333,15 @@ const PhotographerBalances = () => {
             )}
           </CardContent>
         </Card>
+
+        {selectedPhotographer && (
+          <PhotographerSalesDetail
+            photographerId={selectedPhotographer.id}
+            photographerName={selectedPhotographer.name}
+            open={!!selectedPhotographer}
+            onClose={() => setSelectedPhotographer(null)}
+          />
+        )}
       </div>
     </AdminLayout>
   );
