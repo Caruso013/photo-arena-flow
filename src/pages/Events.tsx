@@ -143,8 +143,20 @@ const Events = () => {
         case 'title':
           return a.title.localeCompare(b.title);
         case 'recent':
-        default:
-          return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+        default: {
+          // Ordenar por data do evento: futuros primeiro (ascendente), depois passados (descendente)
+          const now = new Date();
+          now.setHours(0, 0, 0, 0);
+          const dateA = new Date(a.event_date);
+          const dateB = new Date(b.event_date);
+          const isFutureA = dateA.getTime() >= now.getTime();
+          const isFutureB = dateB.getTime() >= now.getTime();
+          
+          if (isFutureA && !isFutureB) return -1;
+          if (!isFutureA && isFutureB) return 1;
+          if (isFutureA && isFutureB) return dateA.getTime() - dateB.getTime();
+          return dateB.getTime() - dateA.getTime();
+        }
       }
     });
     
