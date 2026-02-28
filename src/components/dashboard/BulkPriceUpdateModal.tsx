@@ -37,28 +37,26 @@ const BulkPriceUpdateModal = ({ open, onClose }: BulkPriceUpdateModalProps) => {
   useEffect(() => {
     if (open) {
       fetchOrganizations();
+      fetchAllEvents();
       setSelectedOrgId('');
       setSelectedEventId('');
       setNewPrice('');
       setPreview(null);
       setScope('event');
-      setEvents([]);
     }
   }, [open]);
 
+  // When org changes in event scope, filter events
   useEffect(() => {
-    if (selectedOrgId) {
-      fetchEvents();
-      if (scope === 'organization') {
-        fetchPreview();
-      } else {
-        setPreview(null);
-      }
+    if (scope === 'event') {
+      fetchAllEvents(selectedOrgId || undefined);
+      setSelectedEventId('');
+      setPreview(null);
+    } else if (scope === 'organization' && selectedOrgId) {
+      fetchOrgPreview();
     } else {
       setPreview(null);
-      setEvents([]);
     }
-    setSelectedEventId('');
   }, [selectedOrgId, scope]);
 
   useEffect(() => {
@@ -74,19 +72,23 @@ const BulkPriceUpdateModal = ({ open, onClose }: BulkPriceUpdateModalProps) => {
     setLoadingOrgs(false);
   };
 
-  const fetchEvents = async () => {
-    if (!selectedOrgId) return;
+  const fetchAllEvents = async (orgId?: string) => {
     setLoadingEvents(true);
-    const { data } = await supabase
+    let query = supabase
       .from('campaigns')
       .select('id, title, event_date, location')
-      .eq('organization_id', selectedOrgId)
-      .order('event_date', { ascending: false });
+      .order('event_date', { ascending: false, nullsFirst: false });
+
+    if (orgId) {
+      query = query.eq('organization_id', orgId);
+    }
+
+    const { data } = await query;
     setEvents(data || []);
     setLoadingEvents(false);
   };
 
-  const fetchPreview = async () => {
+  const fetchOrgPreview = async () => {
     setLoadingPreview(true);
     const { data: campaigns } = await supabase
       .from('campaigns')
@@ -224,14 +226,17 @@ const BulkPriceUpdateModal = ({ open, onClose }: BulkPriceUpdateModalProps) => {
             </Select>
           </div>
 
-          {/* Organization selector */}
+          {/* Organization selector - optional filter for event scope, required for org scope */}
           <div className="space-y-2">
-            <Label>Organização</Label>
+            <Label>{scope === 'event' ? 'Filtrar por organização (opcional)' : 'Organização'}</Label>
             <Select value={selectedOrgId} onValueChange={setSelectedOrgId} disabled={loadingOrgs}>
               <SelectTrigger>
                 <SelectValue placeholder={loadingOrgs ? 'Carregando...' : 'Selecione uma organização'} />
               </SelectTrigger>
               <SelectContent>
+                {scope === 'event' && (
+                  <SelectItem value="all">Todas as organizações</SelectItem>
+                )}
                 {organizations.map(org => (
                   <SelectItem key={org.id} value={org.id}>{org.name}</SelectItem>
                 ))}
@@ -240,7 +245,7 @@ const BulkPriceUpdateModal = ({ open, onClose }: BulkPriceUpdateModalProps) => {
           </div>
 
           {/* Event selector (only for 'event' scope) */}
-          {scope === 'event' && selectedOrgId && (
+          {scope === 'event' && (
             <div className="space-y-2">
               <Label>Evento</Label>
               {loadingEvents ? (
