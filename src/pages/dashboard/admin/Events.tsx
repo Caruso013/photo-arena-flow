@@ -4,15 +4,18 @@ import { CampaignManager } from '@/components/dashboard/CampaignManager';
 import { ApplicationsManager } from '@/components/dashboard/ApplicationsManager';
 import { EventSalesManager } from '@/components/dashboard/EventSalesManager';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Calendar, UserCheck, ShoppingCart } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Calendar, UserCheck, ShoppingCart, DollarSign } from 'lucide-react';
 import AdminLayout from '@/components/dashboard/AdminLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
+import BulkPriceUpdateModal from '@/components/dashboard/BulkPriceUpdateModal';
 
 const AdminEvents = () => {
   const { profile } = useAuth();
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [bulkPriceOpen, setBulkPriceOpen] = useState(false);
 
   useEffect(() => {
     fetchCampaigns();
@@ -62,9 +65,15 @@ const AdminEvents = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Eventos</h1>
-          <p className="text-muted-foreground">Gerencie campanhas e candidaturas</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Eventos</h1>
+            <p className="text-muted-foreground">Gerencie campanhas e candidaturas</p>
+          </div>
+          <Button variant="outline" onClick={() => setBulkPriceOpen(true)} className="gap-2">
+            <DollarSign className="h-4 w-4" />
+            Preço em Massa
+          </Button>
         </div>
 
         <Tabs defaultValue="campaigns" className="space-y-6">
@@ -95,6 +104,8 @@ const AdminEvents = () => {
             <EventSalesManager />
           </TabsContent>
         </Tabs>
+
+        <BulkPriceUpdateModal open={bulkPriceOpen} onClose={() => setBulkPriceOpen(false)} />
       </div>
     </AdminLayout>
   );
