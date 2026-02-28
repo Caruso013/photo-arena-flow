@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/components/ui/use-toast';
 import { DollarSign, AlertTriangle, Loader2 } from 'lucide-react';
+import { SearchableEventSelect, EventOption } from '@/components/modals/SearchableEventSelect';
 
 interface Organization {
   id: string;
@@ -18,37 +19,71 @@ interface BulkPriceUpdateModalProps {
   onClose: () => void;
 }
 
+type UpdateScope = 'organization' | 'event';
+
 const BulkPriceUpdateModal = ({ open, onClose }: BulkPriceUpdateModalProps) => {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [selectedOrgId, setSelectedOrgId] = useState('');
+  const [selectedEventId, setSelectedEventId] = useState('');
+  const [events, setEvents] = useState<EventOption[]>([]);
   const [newPrice, setNewPrice] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingOrgs, setLoadingOrgs] = useState(false);
+  const [loadingEvents, setLoadingEvents] = useState(false);
   const [preview, setPreview] = useState<{ campaigns: number; photos: number } | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
+  const [scope, setScope] = useState<UpdateScope>('event');
 
   useEffect(() => {
     if (open) {
       fetchOrganizations();
       setSelectedOrgId('');
+      setSelectedEventId('');
       setNewPrice('');
       setPreview(null);
+      setScope('event');
+      setEvents([]);
     }
   }, [open]);
 
   useEffect(() => {
     if (selectedOrgId) {
-      fetchPreview();
+      fetchEvents();
+      if (scope === 'organization') {
+        fetchPreview();
+      } else {
+        setPreview(null);
+      }
     } else {
       setPreview(null);
+      setEvents([]);
     }
-  }, [selectedOrgId]);
+    setSelectedEventId('');
+  }, [selectedOrgId, scope]);
+
+  useEffect(() => {
+    if (scope === 'event' && selectedEventId) {
+      fetchEventPreview();
+    }
+  }, [selectedEventId]);
 
   const fetchOrganizations = async () => {
     setLoadingOrgs(true);
     const { data } = await supabase.from('organizations').select('id, name').order('name');
     setOrganizations(data || []);
     setLoadingOrgs(false);
+  };
+
+  const fetchEvents = async () => {
+    if (!selectedOrgId) return;
+    setLoadingEvents(true);
+    const { data } = await supabase
+      .from('campaigns')
+      .select('id, title, event_date, location')
+      .eq('organization_id', selectedOrgId)
+      .order('event_date', { ascending: false });
+    setEvents(data || []);
+    setLoadingEvents(false);
   };
 
   const fetchPreview = async () => {
@@ -73,50 +108,83 @@ const BulkPriceUpdateModal = ({ open, onClose }: BulkPriceUpdateModalProps) => {
     setLoadingPreview(false);
   };
 
+  const fetchEventPreview = async () => {
+    setLoadingPreview(true);
+    const { count } = await supabase
+      .from('photos')
+      .select('id', { count: 'exact', head: true })
+      .eq('campaign_id', selectedEventId);
+    setPreview({ campaigns: 1, photos: count || 0 });
+    setLoadingPreview(false);
+  };
+
   const handleUpdate = async () => {
     const price = parseFloat(newPrice.replace(',', '.'));
-    if (!selectedOrgId || isNaN(price) || price <= 0) {
-      toast({ title: 'Preencha todos os campos corretamente', variant: 'destructive' });
+    if (isNaN(price) || price <= 0) {
+      toast({ title: 'Preencha o preço corretamente', variant: 'destructive' });
+      return;
+    }
+
+    if (scope === 'event' && !selectedEventId) {
+      toast({ title: 'Selecione um evento', variant: 'destructive' });
+      return;
+    }
+    if (scope === 'organization' && !selectedOrgId) {
+      toast({ title: 'Selecione uma organização', variant: 'destructive' });
       return;
     }
 
     setLoading(true);
     try {
-      // Get campaign IDs for the org
-      const { data: campaigns } = await supabase
-        .from('campaigns')
-        .select('id')
-        .eq('organization_id', selectedOrgId);
+      if (scope === 'event') {
+        const { error: photosError } = await supabase
+          .from('photos')
+          .update({ price })
+          .eq('campaign_id', selectedEventId);
+        if (photosError) throw photosError;
 
-      const campaignIds = campaigns?.map(c => c.id) || [];
+        const { error: campaignError } = await supabase
+          .from('campaigns')
+          .update({ photo_price_display: price })
+          .eq('id', selectedEventId);
+        if (campaignError) throw campaignError;
 
-      if (campaignIds.length === 0) {
-        toast({ title: 'Nenhuma campanha encontrada para esta organização', variant: 'destructive' });
-        setLoading(false);
-        return;
+        const eventName = events.find(e => e.id === selectedEventId)?.title || '';
+        toast({
+          title: 'Preços atualizados!',
+          description: `Fotos de "${eventName}" atualizadas para R$ ${price.toFixed(2).replace('.', ',')}`,
+        });
+      } else {
+        const { data: campaigns } = await supabase
+          .from('campaigns')
+          .select('id')
+          .eq('organization_id', selectedOrgId);
+
+        const campaignIds = campaigns?.map(c => c.id) || [];
+        if (campaignIds.length === 0) {
+          toast({ title: 'Nenhuma campanha encontrada', variant: 'destructive' });
+          setLoading(false);
+          return;
+        }
+
+        const { error: photosError } = await supabase
+          .from('photos')
+          .update({ price })
+          .in('campaign_id', campaignIds);
+        if (photosError) throw photosError;
+
+        const { error: campaignError } = await supabase
+          .from('campaigns')
+          .update({ photo_price_display: price })
+          .eq('organization_id', selectedOrgId);
+        if (campaignError) throw campaignError;
+
+        const orgName = organizations.find(o => o.id === selectedOrgId)?.name || '';
+        toast({
+          title: 'Preços atualizados!',
+          description: `Todas as fotos de "${orgName}" atualizadas para R$ ${price.toFixed(2).replace('.', ',')}`,
+        });
       }
-
-      // Update photos price in batches
-      const { error: photosError } = await supabase
-        .from('photos')
-        .update({ price })
-        .in('campaign_id', campaignIds);
-
-      if (photosError) throw photosError;
-
-      // Update campaign display price
-      const { error: campaignError } = await supabase
-        .from('campaigns')
-        .update({ photo_price_display: price })
-        .eq('organization_id', selectedOrgId);
-
-      if (campaignError) throw campaignError;
-
-      const orgName = organizations.find(o => o.id === selectedOrgId)?.name || '';
-      toast({
-        title: 'Preços atualizados!',
-        description: `Todas as fotos de "${orgName}" foram atualizadas para R$ ${price.toFixed(2).replace('.', ',')}`,
-      });
       onClose();
     } catch (error: any) {
       console.error('Error updating prices:', error);
@@ -125,6 +193,8 @@ const BulkPriceUpdateModal = ({ open, onClose }: BulkPriceUpdateModalProps) => {
       setLoading(false);
     }
   };
+
+  const isReady = scope === 'event' ? !!selectedEventId && !!newPrice : !!selectedOrgId && !!newPrice;
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
@@ -135,11 +205,26 @@ const BulkPriceUpdateModal = ({ open, onClose }: BulkPriceUpdateModalProps) => {
             Atualizar Preço em Massa
           </DialogTitle>
           <DialogDescription>
-            Altere o valor de todas as fotos de uma organização de uma vez.
+            Altere o valor das fotos por evento ou por organização.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
+          {/* Scope selector */}
+          <div className="space-y-2">
+            <Label>Escopo</Label>
+            <Select value={scope} onValueChange={(v) => setScope(v as UpdateScope)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="event">Por evento</SelectItem>
+                <SelectItem value="organization">Toda organização</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Organization selector */}
           <div className="space-y-2">
             <Label>Organização</Label>
             <Select value={selectedOrgId} onValueChange={setSelectedOrgId} disabled={loadingOrgs}>
@@ -154,9 +239,31 @@ const BulkPriceUpdateModal = ({ open, onClose }: BulkPriceUpdateModalProps) => {
             </Select>
           </div>
 
+          {/* Event selector (only for 'event' scope) */}
+          {scope === 'event' && selectedOrgId && (
+            <div className="space-y-2">
+              <Label>Evento</Label>
+              {loadingEvents ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Carregando eventos...
+                </div>
+              ) : events.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nenhum evento encontrado</p>
+              ) : (
+                <SearchableEventSelect
+                  events={events}
+                  value={selectedEventId}
+                  onValueChange={setSelectedEventId}
+                  placeholder="Buscar evento..."
+                />
+              )}
+            </div>
+          )}
+
           {preview && (
             <div className="rounded-md border border-border bg-muted/50 p-3 text-sm space-y-1">
-              <p><strong>{preview.campaigns}</strong> eventos encontrados</p>
+              {scope === 'organization' && <p><strong>{preview.campaigns}</strong> eventos encontrados</p>}
               <p><strong>{preview.photos}</strong> fotos serão atualizadas</p>
             </div>
           )}
@@ -193,10 +300,7 @@ const BulkPriceUpdateModal = ({ open, onClose }: BulkPriceUpdateModalProps) => {
           <Button variant="outline" onClick={onClose} disabled={loading}>
             Cancelar
           </Button>
-          <Button
-            onClick={handleUpdate}
-            disabled={loading || !selectedOrgId || !newPrice}
-          >
+          <Button onClick={handleUpdate} disabled={loading || !isReady}>
             {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
             Atualizar Preços
           </Button>
