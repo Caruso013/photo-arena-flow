@@ -147,8 +147,8 @@ const Events = () => {
           // Ordenar por data do evento: futuros primeiro (ascendente), depois passados (descendente)
           const now = new Date();
           now.setHours(0, 0, 0, 0);
-          const dateA = new Date(a.event_date);
-          const dateB = new Date(b.event_date);
+          const dateA = new Date(a.event_date || '1970-01-01');
+          const dateB = new Date(b.event_date || '1970-01-01');
           const isFutureA = dateA.getTime() >= now.getTime();
           const isFutureB = dateB.getTime() >= now.getTime();
           
@@ -181,7 +181,7 @@ const Events = () => {
           )
         `)
         .eq('is_active', true)
-        .order('created_at', { ascending: false });
+        .order('event_date', { ascending: false, nullsFirst: false });
 
       if (campaignsError) throw campaignsError;
 
