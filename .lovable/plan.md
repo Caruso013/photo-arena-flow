@@ -1,28 +1,21 @@
 
 
-## Plano: Detalhe de vendas ao clicar no fotógrafo (PhotographerBalances)
+## Análise do Problema
 
-### Objetivo
-Ao clicar em uma linha de fotógrafo na tabela de Provisionamento, abrir um modal/drawer com a lista completa de fotos vendidas por ele (evento, comprador, valor, data), permitindo auditoria.
+Olhando o screenshot, os eventos passados estão em ordem **ascendente** (19/02 → 25/02 → 27/02), quando deveriam estar em ordem **descendente** (27/02 → 25/02 → 19/02 = mais recentes primeiro).
 
-### Implementação
+O código de ordenação no `Events.tsx` (linhas 146-159) já foi corrigido na última edição e parece correto. Porém, identifiquei que há campanhas no banco com `event_date = NULL` (ex: "4ª Rodada Copa Biritiba"), o que pode corromper a ordenação do `Array.sort()`.
 
-#### 1. Criar componente `PhotographerSalesDetail.tsx`
-Novo componente em `src/components/dashboard/PhotographerSalesDetail.tsx`:
-- Recebe `photographerId`, `photographerName` e `open`/`onClose` props
-- Usa um `Dialog` (modal) com scroll
-- Busca `purchases` filtrado por `photographer_id` e `status = 'completed'`
-- Resolve nomes do comprador via `profiles`, título da foto e evento via `photos` → `campaigns`
-- Tabela com colunas: Evento, Foto, Comprador, Valor, Data
-- Paginação com "carregar mais" (50 por página)
-- Botão de exportar Excel das vendas do fotógrafo
+### Correção
 
-#### 2. Modificar `PhotographerBalances.tsx`
-- Adicionar state para `selectedPhotographer` (id + name)
-- Tornar cada linha da tabela clicável (`cursor-pointer`, `onClick`)
-- Renderizar `PhotographerSalesDetail` quando um fotógrafo é selecionado
+**Arquivo:** `src/pages/Events.tsx`
 
-### Arquivos
-- **Novo**: `src/components/dashboard/PhotographerSalesDetail.tsx`
-- **Editado**: `src/pages/dashboard/admin/PhotographerBalances.tsx`
+1. Adicionar proteção contra `event_date` nulo no sort — tratar como data muito antiga (final da lista)
+2. Garantir que a query do banco também ordene por `event_date` em vez de `created_at`, para que o estado inicial já venha na ordem correta antes do `useMemo` rodar
+
+**Mudanças específicas:**
+- Na função `fetchCampaigns`: trocar `.order('created_at', { ascending: false })` → `.order('event_date', { ascending: false, nullsFirst: false })`
+- No sort do `useMemo`: adicionar fallback para `event_date` nulo (`new Date(a.event_date || '1970-01-01')`)
+
+São ajustes mínimos em ~4 linhas no arquivo `Events.tsx`.
 
