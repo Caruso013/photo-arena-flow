@@ -126,7 +126,7 @@ export default function CheckoutSuccess() {
             <p className="mb-4 text-muted-foreground">
               Não encontramos itens desta compra. O webhook pode estar processando...
             </p>
-            <Link to="/dashboard/my-purchases">
+            <Link to="/dashboard/purchases">
               <Button variant="outline">
                 Ir para Minhas Compras
               </Button>
@@ -137,7 +137,7 @@ export default function CheckoutSuccess() {
         <section className="space-y-6 max-w-6xl mx-auto">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-semibold">Suas Fotos</h2>
-            <Link to="/dashboard/my-purchases">
+            <Link to="/dashboard/purchases">
               <Button variant="outline" size="sm">
                 Ver Todas as Compras
               </Button>
