@@ -9,6 +9,7 @@ import { CartProvider } from "@/contexts/CartContext";
 import { SearchProvider } from "@/contexts/SearchContext";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import UploadManager from "@/components/UploadManager";
+import InstagramBrowserModal from "@/components/InstagramBrowserModal";
 import { useServiceWorker } from "@/hooks/useServiceWorker";
 import { useWebVitals } from "@/hooks/useWebVitals";
 import { lazy, Suspense } from "react";
@@ -240,6 +241,7 @@ const App = () => {
                   
                   {/* Upload Manager - sempre visível quando há uploads */}
                   <UploadManager />
+                  <InstagramBrowserModal />
                 </CartProvider>
               </SearchProvider>
             </AuthProvider>
