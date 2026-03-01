@@ -536,13 +536,13 @@ export default function PaymentModal({
                     } else {
                       // Status já final (completed pelo backend) - ir direto para compras
                       setTimeout(() => {
-                        navigate('/dashboard/my-purchases');
+                        navigate('/dashboard/purchases');
                       }, 1000);
                     }
                   } else {
                     // Fallback: ir para minhas compras
                     setTimeout(() => {
-                      navigate('/dashboard/my-purchases');
+                      navigate('/dashboard/purchases');
                     }, 1500);
                   }
                 }}
