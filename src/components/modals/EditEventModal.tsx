@@ -41,6 +41,7 @@ interface EditEventModalProps {
   open: boolean;
   onClose: () => void;
   onEventUpdated: () => void;
+  isPhotographer?: boolean;
 }
 
 const EditEventModal: React.FC<EditEventModalProps> = ({
@@ -49,8 +50,11 @@ const EditEventModal: React.FC<EditEventModalProps> = ({
   organizations = [],
   open,
   onClose,
-  onEventUpdated
+  onEventUpdated,
+  isPhotographer = false
 }) => {
+  // Check if price was already set (photographer can't change it)
+  const priceAlreadySet = isPhotographer && campaignData.photo_price_display != null && campaignData.photo_price_display > 0;
   const { percentage: platformPercentage } = usePlatformPercentage();
   
   // Info tab state
@@ -189,7 +193,7 @@ const EditEventModal: React.FC<EditEventModalProps> = ({
           
           event_start_time: eventStartTime || null,
           event_end_time: eventEndTime || null,
-          photo_price_display: photoPriceDisplay ? parseFloat(photoPriceDisplay) : null,
+          photo_price_display: priceAlreadySet ? campaignData.photo_price_display : (photoPriceDisplay ? parseFloat(photoPriceDisplay) : null),
           available_slots: availableSlots ? parseInt(availableSlots) : null,
         })
         .eq('id', campaignId);
@@ -377,8 +381,12 @@ const EditEventModal: React.FC<EditEventModalProps> = ({
                       step="0.01"
                       placeholder="19.00"
                       value={photoPriceDisplay} 
-                      onChange={(e) => setPhotoPriceDisplay(e.target.value)}
+                      onChange={(e) => !priceAlreadySet && setPhotoPriceDisplay(e.target.value)}
+                      disabled={priceAlreadySet}
                     />
+                    {priceAlreadySet && (
+                      <p className="text-xs text-amber-600 dark:text-amber-400">🔒 Preço já definido, não pode ser alterado</p>
+                    )}
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="available_slots" className="text-xs">Vagas Disponíveis</Label>
