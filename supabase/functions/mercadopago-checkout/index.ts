@@ -306,7 +306,14 @@ serve(async (req) => {
         await supabaseAdmin.from('purchases').delete().in('id', purchaseIds);
 
         const errorMsg = mpResult.cause?.[0]?.description || mpResult.message || 'Erro ao gerar PIX';
-        return errorResponse(errorMsg, 400);
+        // Retornar 200 com success:false para que o frontend receba a mensagem de erro
+        return new Response(JSON.stringify({ 
+          success: false, 
+          error: errorMsg,
+          status: 'error' 
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
       }
 
       // Atualizar purchases com payment_id
@@ -388,7 +395,15 @@ serve(async (req) => {
         await supabaseAdmin.from('purchases').delete().in('id', purchaseIds);
 
         const errorMsg = mpResult.cause?.[0]?.description || mpResult.message || 'Erro ao processar cartão';
-        return errorResponse(errorMsg, 400);
+        // Retornar 200 com success:false para que o frontend receba a mensagem de erro
+        return new Response(JSON.stringify({ 
+          success: false, 
+          error: errorMsg,
+          status: 'error',
+          statusDetail: mpResult.status_detail || 'gateway_error'
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
       }
 
       // Atualizar purchases com payment_id
