@@ -1537,6 +1537,7 @@ const Campaign = () => {
               fetchCampaign();
               setShowEditEventModal(false);
             }}
+            isPhotographer={profile?.role === 'photographer'}
           />
         )}
 

@@ -364,6 +364,7 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
             setSelectedCampaign(null);
           }}
           onEventUpdated={onRefresh}
+          isPhotographer={false}
         />
       )}
 

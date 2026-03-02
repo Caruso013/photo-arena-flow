@@ -61,14 +61,21 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
   useEffect(() => {
     if (selectedCampaign) {
       fetchSubEvents(selectedCampaign);
-      // Check if event was created by admin (photographer_id != current user)
+      // Check if price should be locked
       const campaign = campaigns.find(c => c.id === selectedCampaign);
-      if (campaign && campaign.photographer_id !== profile?.id) {
-        // Admin-created event: lock price to photo_price_display or existing price
-        if (campaign.photo_price_display) {
-          setPrice(campaign.photo_price_display.toFixed(2));
+      if (campaign) {
+        const isAdminCreated = campaign.photographer_id !== profile?.id;
+        const priceAlreadyDefined = campaign.photo_price_display != null && campaign.photo_price_display > 0;
+        
+        if (isAdminCreated || priceAlreadyDefined) {
+          // Lock price: either admin-created event OR photographer already set the price
+          if (campaign.photo_price_display) {
+            setPrice(campaign.photo_price_display.toFixed(2));
+          }
+          setPriceLockedByAdmin(true);
+        } else {
+          setPriceLockedByAdmin(false);
         }
-        setPriceLockedByAdmin(true);
       } else {
         setPriceLockedByAdmin(false);
       }
@@ -586,7 +593,7 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
                 Preço por foto (R$) *
               </Label>
               {priceLockedByAdmin && (
-                <span className="text-xs bg-secondary text-secondary-foreground px-2 py-0.5 rounded">🔒 Definido pelo admin</span>
+                <span className="text-xs bg-secondary text-secondary-foreground px-2 py-0.5 rounded">🔒 Preço já definido</span>
               )}
             </div>
             <Input
