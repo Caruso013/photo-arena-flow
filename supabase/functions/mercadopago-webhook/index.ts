@@ -3,11 +3,11 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
 /**
- * Webhook do Mercado Pago para receber notificações de pagamento
+ * Webhook do Mercado Pago - Otimizado para minimizar conexões DB
  */
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -23,7 +23,6 @@ serve(async (req) => {
     const body = await req.json();
     console.log('📥 Webhook recebido:', JSON.stringify(body));
 
-    // Mercado Pago envia: { action: 'payment.updated', data: { id: 'payment_id' } }
     const paymentId = body.data?.id;
     const action = body.action || body.type;
 
@@ -32,17 +31,17 @@ serve(async (req) => {
       return new Response('OK', { status: 200 });
     }
 
-    // Logar webhook
-    await supabase.from('webhook_logs').insert({
+    // Log webhook (fire and forget - don't await)
+    supabase.from('webhook_logs').insert({
       event_type: action || 'unknown',
       payment_id: String(paymentId),
       request_body: body,
       request_headers: Object.fromEntries(req.headers.entries()),
-    });
+    }).then(() => {});
 
-    // Buscar detalhes do pagamento no Mercado Pago
+    // Buscar detalhes do pagamento no MP
     console.log('🔍 Buscando pagamento:', paymentId);
-    
+
     const mpResponse = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
       headers: { 'Authorization': `Bearer ${mpAccessToken}` },
     });
@@ -55,13 +54,11 @@ serve(async (req) => {
     const payment = await mpResponse.json();
     console.log('💰 Status do pagamento:', payment.status, payment.status_detail);
 
-    // Processar apenas pagamentos aprovados
     if (payment.status !== 'approved') {
-      console.log('⏭️ Pagamento não aprovado, ignorando:', payment.status);
+      console.log('⏭️ Pagamento não aprovado:', payment.status);
       return new Response('OK', { status: 200 });
     }
 
-    // Buscar purchases pelo external_reference
     const externalRef = payment.external_reference;
     if (!externalRef) {
       console.warn('⚠️ Pagamento sem external_reference');
@@ -70,18 +67,10 @@ serve(async (req) => {
 
     console.log('📋 External reference:', externalRef);
 
-    // Buscar purchases que correspondem com detalhes completos
-    // Usar apenas LIKE para evitar crash quando externalRef não é UUID válido (ex: batch_xxx)
+    // Buscar purchases pendentes - single query
     const { data: purchases, error: searchError } = await supabase
       .from('purchases')
-      .select(`
-        id, 
-        status, 
-        amount,
-        buyer_id,
-        photo_id,
-        photographer_id
-      `)
+      .select('id, status, amount, buyer_id, photo_id, photographer_id')
       .like('stripe_payment_intent_id', `%${externalRef}%`);
 
     if (searchError || !purchases || purchases.length === 0) {
@@ -89,9 +78,8 @@ serve(async (req) => {
       return new Response('OK', { status: 200 });
     }
 
-    // Filtrar purchases que ainda não foram completadas (pending ou failed)
     const pendingPurchases = purchases.filter(p => p.status === 'pending' || p.status === 'failed');
-    
+
     if (pendingPurchases.length === 0) {
       console.log('✅ Todas purchases já estão completed');
       return new Response('OK', { status: 200 });
@@ -100,7 +88,7 @@ serve(async (req) => {
     const purchaseIds = pendingPurchases.map(p => p.id);
     console.log(`📝 Atualizando ${purchaseIds.length} purchases para completed`);
 
-    // Atualizar status para completed
+    // Update status - single query
     const { error: updateError } = await supabase
       .from('purchases')
       .update({ status: 'completed' })
@@ -112,63 +100,77 @@ serve(async (req) => {
       console.log('✅ Purchases atualizadas com sucesso!');
     }
 
-    // Buscar detalhes do comprador e TODAS as fotos para enviar email completo
+    // Send confirmation email - optimized with fewer queries
     const firstPurchase = pendingPurchases[0];
     if (firstPurchase) {
       try {
-        // Buscar dados do comprador
+        // Single query for buyer
         const { data: buyer } = await supabase
           .from('profiles')
           .select('email, full_name')
           .eq('id', firstPurchase.buyer_id)
           .single();
 
-        // Buscar dados de TODAS as fotos compradas
-        const photosData = [];
-        let campaignTitle = '';
-        
-        for (const purchase of pendingPurchases) {
-          const { data: photo } = await supabase
-            .from('photos')
-            .select('id, title, watermarked_url, campaign_id, campaigns(title, photographer_id)')
-            .eq('id', purchase.photo_id)
-            .single();
+        // Batch query for all photos at once (instead of N queries)
+        const photoIds = pendingPurchases.map(p => p.photo_id);
+        const { data: photos } = await supabase
+          .from('photos')
+          .select('id, title, watermarked_url, campaign_id, campaigns(title, photographer_id)')
+          .in('id', photoIds);
 
-          if (photo) {
-            let photographerName = '';
+        let campaignTitle = '';
+        const photosData: any[] = [];
+
+        // Get unique photographer IDs for batch lookup
+        const photographerIds = new Set<string>();
+        if (photos) {
+          for (const photo of photos) {
             const campaign = photo.campaigns as any;
-            
             if (campaign?.photographer_id) {
-              const { data: photographer } = await supabase
-                .from('profiles')
-                .select('full_name')
-                .eq('id', campaign.photographer_id)
-                .single();
-              photographerName = photographer?.full_name || '';
+              photographerIds.add(campaign.photographer_id);
             }
-            
-            // Usar o primeiro título de campanha encontrado
             if (!campaignTitle && campaign?.title) {
               campaignTitle = campaign.title;
             }
+          }
+        }
 
+        // Single query for all photographers
+        let photographerMap: Record<string, string> = {};
+        if (photographerIds.size > 0) {
+          const { data: photographers } = await supabase
+            .from('profiles')
+            .select('id, full_name')
+            .in('id', Array.from(photographerIds));
+          if (photographers) {
+            photographerMap = Object.fromEntries(
+              photographers.map(p => [p.id, p.full_name || ''])
+            );
+          }
+        }
+
+        // Build photo data without additional queries
+        if (photos) {
+          for (const photo of photos) {
+            const campaign = photo.campaigns as any;
+            const purchase = pendingPurchases.find(p => p.photo_id === photo.id);
             photosData.push({
               id: photo.id,
               title: photo.title || 'Foto do evento',
               thumbnail_url: photo.watermarked_url,
-              price: Number(purchase.amount),
-              photographer_name: photographerName
+              price: Number(purchase?.amount || 0),
+              photographer_name: campaign?.photographer_id ? (photographerMap[campaign.photographer_id] || '') : '',
             });
           }
         }
 
-        // Calcular valor total
         const totalAmount = pendingPurchases.reduce((sum, p) => sum + Number(p.amount), 0);
 
         if (buyer?.email) {
-          console.log('📧 Enviando email de confirmação para:', buyer.email, 'com', photosData.length, 'fotos');
-          
-          await fetch(`${supabaseUrl}/functions/v1/send-purchase-confirmation-email`, {
+          console.log('📧 Enviando email para:', buyer.email, 'com', photosData.length, 'fotos');
+
+          // Fire and forget - don't block webhook response
+          fetch(`${supabaseUrl}/functions/v1/send-purchase-confirmation-email`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -178,16 +180,14 @@ serve(async (req) => {
               buyerEmail: buyer.email,
               buyerName: buyer.full_name,
               photos: photosData,
-              campaignTitle: campaignTitle,
+              campaignTitle,
               amount: totalAmount,
               photographerName: photosData[0]?.photographer_name || '',
             }),
-          });
-          
-          console.log('✅ Email de confirmação enviado com', photosData.length, 'fotos!');
+          }).catch(err => console.warn('⚠️ Erro email (não crítico):', err.message));
         }
-      } catch (emailError) {
-        console.warn('⚠️ Erro ao enviar email (não crítico):', emailError);
+      } catch (emailError: any) {
+        console.warn('⚠️ Erro ao preparar email (não crítico):', emailError.message);
       }
     }
 
@@ -195,6 +195,6 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('❌ Erro no webhook:', error);
-    return new Response('OK', { status: 200 }); // Sempre retorna 200 para MP não retentar
+    return new Response('OK', { status: 200 });
   }
 });
