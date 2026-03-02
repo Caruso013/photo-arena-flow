@@ -3,26 +3,17 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-/**
- * Edge Function para reconciliar compras pendentes com pagamentos aprovados no Mercado Pago
- * 
- * Lógica:
- * 1. Busca purchases com status='pending' criadas há mais de 10 minutos
- * 2. Extrai o payment_id do Mercado Pago do campo stripe_payment_intent_id
- * 3. Consulta a API do MP para verificar o status real
- * 4. Se aprovado, atualiza para 'completed' (trigger cria revenue_shares)
- */
+const BATCH_SIZE = 15; // Process max 15 payments per run to avoid connection exhaustion
+
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // ===== CONFIGURAÇÃO =====
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
@@ -44,66 +35,50 @@ serve(async (req) => {
     // ===== VALIDAÇÃO DE ADMIN =====
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
-      console.error('❌ Authorization header missing or invalid');
       return new Response(JSON.stringify({ success: false, error: 'Não autorizado' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Usar getClaims para validar o token
-    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+    const { data: { user }, error: userError } = await createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } }
-    });
-    
-    const token = authHeader.replace('Bearer ', '');
-    const { data: claimsData, error: claimsError } = await supabaseClient.auth.getClaims(token);
-    
-    if (claimsError || !claimsData?.claims) {
-      console.error('❌ Token inválido:', claimsError);
+    }).auth.getUser();
+
+    if (userError || !user) {
       return new Response(JSON.stringify({ success: false, error: 'Token inválido' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const userId = claimsData.claims.sub;
-    console.log('🔐 User ID:', userId);
-
-    // Verificar se é admin usando supabaseAdmin
-    const { data: profile, error: profileError } = await supabaseAdmin
+    const { data: profile } = await supabaseAdmin
       .from('profiles')
       .select('role')
-      .eq('id', userId)
+      .eq('id', user.id)
       .single();
 
-    if (profileError || !profile) {
-      console.error('❌ Erro ao buscar perfil:', profileError);
-      return new Response(JSON.stringify({ success: false, error: 'Perfil não encontrado' }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    if (profile.role !== 'admin') {
-      console.error('❌ Usuário não é admin:', profile.role);
+    if (!profile || profile.role !== 'admin') {
       return new Response(JSON.stringify({ success: false, error: 'Apenas administradores podem reconciliar' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-    
-    console.log('✅ Admin autorizado, iniciando reconciliação...');
 
-    // ===== BUSCAR PURCHASES PENDENTES =====
+    console.log('✅ Admin autorizado, iniciando reconciliação em lotes...');
+
+    // ===== BUSCAR PURCHASES PENDENTES (LIMITADO) =====
     const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-    
+
+    // Limitar a busca para evitar sobrecarga - buscar apenas as mais antigas primeiro
     const { data: pendingPurchases, error: fetchError } = await supabaseAdmin
       .from('purchases')
       .select('id, stripe_payment_intent_id, created_at, amount, status')
       .in('status', ['pending', 'failed'])
       .lt('created_at', tenMinutesAgo)
-      .not('stripe_payment_intent_id', 'is', null);
+      .not('stripe_payment_intent_id', 'is', null)
+      .order('created_at', { ascending: true })
+      .limit(200); // Cap fetch to 200 records max
 
     if (fetchError) {
       console.error('❌ Erro ao buscar purchases:', fetchError);
@@ -113,7 +88,7 @@ serve(async (req) => {
       });
     }
 
-    console.log(`📋 Encontradas ${pendingPurchases?.length || 0} compras pendentes com >10min`);
+    console.log(`📋 Encontradas ${pendingPurchases?.length || 0} compras pendentes`);
 
     const results = {
       total: pendingPurchases?.length || 0,
@@ -121,6 +96,8 @@ serve(async (req) => {
       skipped: 0,
       failed: 0,
       noPaymentId: 0,
+      batchesProcessed: 0,
+      totalPayments: 0,
       details: [] as any[],
     };
 
@@ -134,10 +111,9 @@ serve(async (req) => {
       });
     }
 
-    // ===== PROCESSAR CADA PURCHASE =====
-    // Agrupar por external_reference (várias purchases podem ter o mesmo pagamento)
+    // ===== AGRUPAR POR PAYMENT ID =====
     const paymentGroups = new Map<string, typeof pendingPurchases>();
-    
+
     for (const purchase of pendingPurchases) {
       const paymentRef = purchase.stripe_payment_intent_id;
       if (!paymentRef) {
@@ -145,43 +121,50 @@ serve(async (req) => {
         continue;
       }
 
-      // Extrair payment_id do MP (formato: "external_ref|mp:12345")
       const mpMatch = paymentRef.match(/\|mp:(\d+)/);
       if (!mpMatch) {
-        // Pode ser formato antigo ou sem ID do MP
         results.skipped++;
-        results.details.push({
-          purchaseId: purchase.id,
-          status: 'skipped',
-          reason: 'Sem payment_id do MP',
-        });
         continue;
       }
 
       const mpPaymentId = mpMatch[1];
-      
       if (!paymentGroups.has(mpPaymentId)) {
         paymentGroups.set(mpPaymentId, []);
       }
       paymentGroups.get(mpPaymentId)!.push(purchase);
     }
 
-    console.log(`🔍 Verificando ${paymentGroups.size} pagamentos únicos no MP...`);
+    results.totalPayments = paymentGroups.size;
+    console.log(`🔍 Total de ${paymentGroups.size} pagamentos únicos. Processando até ${BATCH_SIZE} por lote.`);
 
-    // Verificar cada pagamento no MP
-    for (const [mpPaymentId, purchases] of paymentGroups) {
+    // ===== PROCESSAR EM LOTES =====
+    let processedCount = 0;
+    const entries = Array.from(paymentGroups.entries());
+
+    for (const [mpPaymentId, purchases] of entries) {
+      if (processedCount >= BATCH_SIZE) {
+        console.log(`⏸️ Limite de ${BATCH_SIZE} pagamentos atingido. Restam ${entries.length - processedCount} para próxima execução.`);
+        break;
+      }
+
       try {
         const mpResponse = await fetch(`https://api.mercadopago.com/v1/payments/${mpPaymentId}`, {
           headers: { 'Authorization': `Bearer ${mpAccessToken}` },
         });
 
+        if (!mpResponse.ok) {
+          console.warn(`⚠️ MP retornou ${mpResponse.status} para payment ${mpPaymentId}`);
+          results.skipped += purchases.length;
+          processedCount++;
+          // Rate limit
+          await new Promise(resolve => setTimeout(resolve, 200));
+          continue;
+        }
+
         const mpResult = await mpResponse.json();
-        console.log(`📋 MP Payment ${mpPaymentId}: ${mpResult.status}`);
+        const purchaseIds = purchases.map(p => p.id);
 
         if (mpResult.status === 'approved') {
-          // Atualizar todas as purchases deste pagamento para completed
-          const purchaseIds = purchases.map(p => p.id);
-          
           const { error: updateError } = await supabaseAdmin
             .from('purchases')
             .update({ status: 'completed' })
@@ -190,77 +173,39 @@ serve(async (req) => {
           if (updateError) {
             console.error(`❌ Erro ao atualizar purchases:`, updateError);
             results.failed += purchases.length;
-            results.details.push({
-              mpPaymentId,
-              purchaseIds,
-              status: 'failed',
-              reason: updateError.message,
-            });
           } else {
-            console.log(`✅ Reconciliadas ${purchaseIds.length} compras para pagamento ${mpPaymentId}`);
+            console.log(`✅ Reconciliadas ${purchaseIds.length} compras (payment ${mpPaymentId})`);
             results.reconciled += purchases.length;
-            results.details.push({
-              mpPaymentId,
-              purchaseIds,
-              status: 'reconciled',
-              mpStatus: mpResult.status,
-            });
           }
-        } else if (mpResult.status === 'pending' || mpResult.status === 'in_process') {
-          // Ainda pendente no MP, manter como está
-          results.skipped += purchases.length;
-          results.details.push({
-            mpPaymentId,
-            purchaseIds: purchases.map(p => p.id),
-            status: 'skipped',
-            reason: `Pagamento ainda ${mpResult.status} no MP`,
-          });
         } else if (mpResult.status === 'rejected' || mpResult.status === 'cancelled') {
-          // Pagamento rejeitado/cancelado - marcar como failed
-          const purchaseIds = purchases.map(p => p.id);
-          
           await supabaseAdmin
             .from('purchases')
             .update({ status: 'failed' })
             .in('id', purchaseIds);
-
           results.failed += purchases.length;
-          results.details.push({
-            mpPaymentId,
-            purchaseIds,
-            status: 'cancelled',
-            reason: `Pagamento ${mpResult.status} no MP`,
-          });
         } else {
+          // pending, in_process, etc - skip
           results.skipped += purchases.length;
-          results.details.push({
-            mpPaymentId,
-            purchaseIds: purchases.map(p => p.id),
-            status: 'skipped',
-            reason: `Status desconhecido: ${mpResult.status}`,
-          });
         }
       } catch (error: any) {
-        console.error(`❌ Erro ao verificar pagamento ${mpPaymentId}:`, error);
+        console.error(`❌ Erro payment ${mpPaymentId}:`, error.message);
         results.failed += purchases.length;
-        results.details.push({
-          mpPaymentId,
-          purchaseIds: purchases.map(p => p.id),
-          status: 'error',
-          reason: error.message,
-        });
       }
 
-      // Rate limiting: esperar 100ms entre requests ao MP
-      await new Promise(resolve => setTimeout(resolve, 100));
+      processedCount++;
+      results.batchesProcessed = processedCount;
+
+      // Rate limiting: 200ms between requests
+      await new Promise(resolve => setTimeout(resolve, 200));
     }
 
-    console.log(`✅ Reconciliação concluída: ${results.reconciled} liberadas, ${results.skipped} puladas, ${results.failed} falharam`);
+    const remaining = Math.max(0, entries.length - processedCount);
+    console.log(`✅ Lote concluído: ${results.reconciled} liberadas, ${results.skipped} puladas, ${results.failed} falharam. Restam: ${remaining}`);
 
     return new Response(JSON.stringify({
       success: true,
-      message: `Reconciliação concluída: ${results.reconciled} compras liberadas`,
-      results,
+      message: `Reconciliação: ${results.reconciled} liberadas, ${remaining} pendentes para próximo lote`,
+      results: { ...results, remaining },
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
