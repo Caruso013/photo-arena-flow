@@ -258,9 +258,27 @@ export default function TransparentCheckout({
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        let errorMsg = 'Erro ao gerar PIX';
+        try {
+          if (error.context?.body) {
+            const reader = error.context.body.getReader();
+            const { value } = await reader.read();
+            const bodyText = new TextDecoder().decode(value);
+            const bodyJson = JSON.parse(bodyText);
+            errorMsg = bodyJson.error || errorMsg;
+          }
+        } catch {
+          errorMsg = error.message || errorMsg;
+        }
+        throw new Error(errorMsg);
+      }
 
-      if (data.success && data.pix) {
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      if (data?.success && data.pix) {
         setPixData({
           qrCode: data.pix.qrCode,
           qrCodeBase64: data.pix.qrCodeBase64,
@@ -346,19 +364,38 @@ export default function TransparentCheckout({
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        // Tentar extrair mensagem real do erro da edge function
+        let errorMsg = 'Erro no pagamento';
+        try {
+          if (error.context?.body) {
+            const reader = error.context.body.getReader();
+            const { value } = await reader.read();
+            const bodyText = new TextDecoder().decode(value);
+            const bodyJson = JSON.parse(bodyText);
+            errorMsg = bodyJson.error || errorMsg;
+          }
+        } catch {
+          errorMsg = error.message || errorMsg;
+        }
+        throw new Error(errorMsg);
+      }
 
-      if (data.success) {
+      if (data?.success) {
         toast({ title: "✅ Pagamento aprovado!", description: "Compra realizada com sucesso." });
         onSuccess(data);
-      } else if (data.status === 'rejected') {
-        toast({ title: "Pagamento recusado", description: "Tente outro cartão ou use PIX.", variant: "destructive" });
-        onError('Pagamento recusado');
-      } else if (data.status === 'pending' || data.status === 'in_process') {
+      } else if (data?.status === 'rejected') {
+        const rejectMsg = data?.error || 'Tente outro cartão ou use PIX.';
+        toast({ title: "Pagamento recusado", description: rejectMsg, variant: "destructive" });
+        onError('Pagamento recusado: ' + rejectMsg);
+      } else if (data?.status === 'pending' || data?.status === 'in_process') {
         toast({ title: "Pagamento em análise", description: "Você será notificado quando for aprovado." });
         onSuccess(data);
+      } else if (data?.error) {
+        // Erro retornado como 200 com success:false
+        throw new Error(data.error);
       } else {
-        throw new Error(data.error || 'Erro no pagamento');
+        throw new Error('Erro desconhecido no pagamento');
       }
     } catch (error: any) {
       console.error('Erro cartão:', error);
