@@ -41,21 +41,27 @@ serve(async (req) => {
       });
     }
 
-    const { data: { user }, error: userError } = await createClient(supabaseUrl, supabaseAnonKey, {
+    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } }
-    }).auth.getUser();
+    });
 
-    if (userError || !user) {
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await supabaseClient.auth.getClaims(token);
+
+    if (claimsError || !claimsData?.claims) {
+      console.error('❌ JWT validation failed:', claimsError);
       return new Response(JSON.stringify({ success: false, error: 'Token inválido' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
+    const userId = claimsData.claims.sub;
+
     const { data: profile } = await supabaseAdmin
       .from('profiles')
       .select('role')
-      .eq('id', user.id)
+      .eq('id', userId)
       .single();
 
     if (!profile || profile.role !== 'admin') {
