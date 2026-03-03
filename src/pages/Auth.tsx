@@ -56,9 +56,24 @@ const Auth = () => {
     }
   }, [searchParams]);
 
+  // Circuit breaker: bloquear tentativas rápidas demais
+  const [lastAttempt, setLastAttempt] = useState<number>(0);
+  const [consecutiveFailures, setConsecutiveFailures] = useState(0);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
+
+    // Circuit breaker: se muitas falhas consecutivas, forçar espera
+    const now = Date.now();
+    const cooldownMs = consecutiveFailures >= 3 ? 10000 : consecutiveFailures >= 2 ? 5000 : 1500;
+    const timeSinceLast = now - lastAttempt;
+    
+    if (timeSinceLast < cooldownMs) {
+      const waitSec = Math.ceil((cooldownMs - timeSinceLast) / 1000);
+      setErrors({ general: `Aguarde ${waitSec} segundo(s) antes de tentar novamente.` });
+      return;
+    }
     
     // Validar com zod
     const validation = signInSchema.safeParse({ 
@@ -78,20 +93,33 @@ const Auth = () => {
     }
     
     setIsLoading(true);
+    setLastAttempt(Date.now());
     const { error } = await signIn(loginEmail, loginPassword);
     setIsLoading(false);
     
     if (error) {
-      // Traduzir erros do Supabase
-      if (error.message.includes('Invalid login credentials') || 
+      setConsecutiveFailures(prev => prev + 1);
+      
+      // Detectar erro de saturação do banco
+      if (error.message.includes('Database error') || 
+          error.message.includes('querying schema') ||
+          error.message.includes('connection') ||
+          error.message.includes('SUPERUSER') ||
+          error.message.includes('500')) {
+        setErrors({ general: 'Servidor temporariamente sobrecarregado. Aguarde 30 segundos e tente novamente.' });
+      } else if (error.message.includes('Invalid login credentials') || 
           error.message.includes('invalid') ||
           error.message.includes('Invalid email or password')) {
+        setConsecutiveFailures(0); // reset - não é erro de infra
         setErrors({ general: 'Email ou senha incorretos. Verifique seus dados e tente novamente.' });
       } else if (error.message.includes('Email not confirmed')) {
+        setConsecutiveFailures(0);
         setErrors({ general: 'Confirme seu email antes de fazer login. Verifique sua caixa de entrada e spam.' });
       } else {
         setErrors({ general: error.message });
       }
+    } else {
+      setConsecutiveFailures(0);
     }
   };
 

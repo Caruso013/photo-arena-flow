@@ -2,79 +2,9 @@ import { toast } from '@/components/ui/use-toast';
 
 // Interceptador global para tratar erros de rede e HTTP
 export const setupGlobalErrorHandling = () => {
-  // Interceptador para fetch global
-  const originalFetch = window.fetch;
-  
-  window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-    try {
-      const response = await originalFetch(input, init);
-      
-      // Se a resposta não for ok, vamos tratar alguns erros específicos
-      if (!response.ok) {
-        const url = typeof input === 'string' ? input : input.toString();
-        
-        // Log do erro para debugging
-        console.error(`Erro HTTP ${response.status} em ${url}`);
-        
-        // Não mostrar toast para algumas URLs específicas (como edge functions em desenvolvimento)
-        const shouldShowToast = !url.includes('/functions/') || response.status >= 500;
-        
-        if (shouldShowToast) {
-          let errorMessage = 'Ocorreu um erro de comunicação. ';
-          
-          switch (response.status) {
-            case 400:
-              errorMessage = 'Dados inválidos enviados. Verifique as informações e tente novamente.';
-              break;
-            case 401:
-              errorMessage = 'Acesso não autorizado. Faça login novamente.';
-              break;
-            case 403:
-              errorMessage = 'Você não tem permissão para esta ação.';
-              break;
-            case 404:
-              errorMessage = 'Recurso não encontrado. A página ou serviço pode ter sido removido.';
-              break;
-            case 429:
-              errorMessage = 'Muitas tentativas. Aguarde alguns minutos e tente novamente.';
-              break;
-            case 500:
-              errorMessage = 'Erro interno do servidor. Nossa equipe foi notificada.';
-              break;
-            case 502:
-            case 503:
-            case 504:
-              errorMessage = 'Serviço temporariamente indisponível. Tente novamente em alguns minutos.';
-              break;
-            default:
-              errorMessage += `Se o problema persistir, entre em contato: contato@stafotos.com (Código: ${response.status})`;
-          }
-          
-          // Só mostrar toast para erros críticos ou se não for uma requisição de edge function
-          if (response.status >= 500 || !url.includes('/functions/')) {
-            toast({
-              title: `Erro ${response.status}`,
-              description: errorMessage,
-              variant: 'destructive',
-            });
-          }
-        }
-      }
-      
-      return response;
-    } catch (error) {
-      // Erro de rede (sem internet, timeout, etc.)
-      console.error('Erro de rede:', error);
-      
-      toast({
-        title: 'Erro de conexão',
-        description: 'Verifique sua conexão com a internet e tente novamente. Se o problema persistir, entre em contato: contato@stafotos.com',
-        variant: 'destructive',
-      });
-      
-      throw error;
-    }
-  };
+  // NÃO interceptar window.fetch - isso causa conflitos com o Supabase SDK
+  // e gera toasts duplicados/cascatas de erros durante saturação do DB.
+  // O tratamento de erros é feito diretamente nos componentes e no AuthContext.
 
   // Interceptador para erros não capturados
   window.addEventListener('error', (event) => {
