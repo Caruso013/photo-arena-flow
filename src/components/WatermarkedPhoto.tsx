@@ -1,5 +1,19 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, memo } from 'react';
 import { getTransformedImageUrl, TransformSize } from '@/lib/supabaseImageTransform';
+
+// Cache global da marca d'água - carrega UMA vez para todas as fotos
+const watermarkCache: Record<string, boolean> = {};
+function preloadWatermark(src: string): boolean {
+  if (watermarkCache[src] === true) return true;
+  if (watermarkCache[src] === undefined) {
+    watermarkCache[src] = false;
+    const img = new Image();
+    img.onload = () => { watermarkCache[src] = true; };
+    img.onerror = () => { watermarkCache[src] = true; };
+    img.src = src;
+  }
+  return watermarkCache[src];
+}
 
 interface WatermarkedPhotoProps {
   src: string;
@@ -11,11 +25,11 @@ interface WatermarkedPhotoProps {
   opacity?: number;
   loading?: 'lazy' | 'eager';
   onDownload?: () => void;
-  isPurchased?: boolean; // Se true, mostra foto original sem marca d'água
-  displaySize?: TransformSize; // Tamanho para transformação de imagem
+  isPurchased?: boolean;
+  displaySize?: TransformSize;
 }
 
-const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = ({
+const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = memo(({
   src,
   alt = '',
   watermarkSrc = '/watermark_front.png',
@@ -28,17 +42,13 @@ const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = ({
   isPurchased = false,
   displaySize = 'medium',
 }) => {
-  // Usar URL otimizada via Supabase Image Transformations (exceto para fotos compradas)
   const optimizedSrc = isPurchased ? src : getTransformedImageUrl(src, displaySize);
   const containerRef = useRef<HTMLDivElement>(null);
   const longPressTimer = useRef<number | null>(null);
   
-  // PROTEÇÃO: Controle de carregamento - foto só aparece quando marca d'água está pronta
-  const [watermarkLoaded, setWatermarkLoaded] = useState(false);
+  // Watermark usa cache global - não bloqueia mais o render
+  const [watermarkReady, setWatermarkReady] = useState(() => preloadWatermark(watermarkSrc));
   const [photoLoaded, setPhotoLoaded] = useState(false);
-  
-  // A foto só fica visível quando AMBAS as imagens estão carregadas
-  const isReady = watermarkLoaded && photoLoaded;
 
   const watermarkPositionClass =
     position === 'center'
@@ -47,34 +57,24 @@ const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = ({
       ? 'right-2 bottom-2 w-16 h-16'
       : 'inset-0 w-full h-full'; // position === 'full'
 
-  // Pré-carregar a marca d'água ANTES de mostrar qualquer coisa
+  // Checar cache da watermark periodicamente até estar pronta
   useEffect(() => {
-    if (isPurchased) {
-      setWatermarkLoaded(true);
-      return;
-    }
+    if (isPurchased || watermarkReady) return;
     
-    // Reset quando src muda
-    setWatermarkLoaded(false);
+    const interval = setInterval(() => {
+      if (preloadWatermark(watermarkSrc)) {
+        setWatermarkReady(true);
+        clearInterval(interval);
+      }
+    }, 100);
+    
+    return () => clearInterval(interval);
+  }, [watermarkSrc, isPurchased, watermarkReady]);
+
+  // Reset photo loaded state when src changes
+  useEffect(() => {
     setPhotoLoaded(false);
-    
-    const watermark = new Image();
-    watermark.onload = () => {
-      setWatermarkLoaded(true);
-    };
-    watermark.onerror = () => {
-      // Se a marca d'água falhar, carregar de qualquer jeito (melhor que não mostrar nada)
-      console.error('Erro ao carregar marca d\'água');
-      setWatermarkLoaded(true);
-    };
-    watermark.src = watermarkSrc;
-    
-    // Cleanup
-    return () => {
-      watermark.onload = null;
-      watermark.onerror = null;
-    };
-  }, [watermarkSrc, isPurchased, src]);
+  }, [src]);
 
   // Proteção contra 3D Touch e long press no iOS
   useEffect(() => {
@@ -178,14 +178,14 @@ const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = ({
       onContextMenu={(e) => e.preventDefault()}
       onDragStart={(e) => e.preventDefault()}
     >
-      {/* Skeleton/placeholder enquanto carrega */}
-      {!isReady && (
+      {/* Skeleton enquanto carrega */}
+      {!photoLoaded && (
         <div className="absolute inset-0 bg-muted animate-pulse flex items-center justify-center">
           <div className="w-8 h-8 border-2 border-muted-foreground/30 border-t-primary rounded-full animate-spin" />
         </div>
       )}
       
-      {/* A foto só aparece quando a marca d'água está carregada */}
+      {/* Foto - aparece assim que carregar (watermark renderiza junto) */}
       <img 
         src={optimizedSrc} 
         alt={alt} 
@@ -200,21 +200,19 @@ const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = ({
           WebkitTouchCallout: 'none',
           userSelect: 'none',
           pointerEvents: 'none',
-          // PROTEÇÃO: Foto invisível até marca d'água carregar
-          opacity: isReady ? 1 : 0,
+          opacity: photoLoaded ? 1 : 0,
           transition: 'opacity 0.2s ease-in-out'
         }}
       />
 
-      {/* watermark overlay in front - FORTE para fotos não compradas */}
-      {/* Só renderiza após a marca d'água estar pré-carregada */}
-      {watermarkLoaded && (
+      {/* watermark overlay - renderiza sempre (já está em cache) */}
+      {watermarkReady && (
         <img
           src={watermarkSrc}
-          alt="Marca d'água"
+          alt=""
           className={`pointer-events-none absolute z-10 ${watermarkPositionClass} ${watermarkClassName}`}
           style={{ 
-            opacity: isReady ? opacity : 0,
+            opacity: photoLoaded ? opacity : 0,
             objectFit: position === 'full' ? 'cover' : 'contain',
             WebkitUserSelect: 'none',
             WebkitTouchCallout: 'none',
@@ -224,7 +222,6 @@ const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = ({
           loading="eager"
           decoding="async"
           aria-hidden
-          crossOrigin="anonymous"
           draggable={false}
         />
       )}
@@ -241,6 +238,8 @@ const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = ({
       />
     </div>
   );
-};
+});
+
+WatermarkedPhoto.displayName = 'WatermarkedPhoto';
 
 export default WatermarkedPhoto;
