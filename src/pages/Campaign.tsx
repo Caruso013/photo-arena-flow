@@ -1206,8 +1206,9 @@ const Campaign = () => {
                           alt={getPhotoName(photo, index)}
                           position="full"
                           opacity={0.85}
-                           imgClassName="w-full h-full object-cover"
-                          loading={index < 8 ? "eager" : "lazy"}
+                          imgClassName="w-full h-full object-cover"
+                          loading={index < 4 ? "eager" : "lazy"}
+                          displaySize="thumbnail"
                         />
                         
                         {/* Botão Destaque (apenas para fotógrafos) */}
@@ -1439,6 +1440,7 @@ const Campaign = () => {
                       opacity={0.85}
                       imgClassName="w-full max-h-[55vh] sm:max-h-[70vh] object-contain rounded-lg"
                       loading="eager"
+                      displaySize="large"
                     />
                   </div>
                 </AntiScreenshotProtection>

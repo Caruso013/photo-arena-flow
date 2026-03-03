@@ -1,16 +1,18 @@
 /**
- * OptimizedImage Component v4
- * Componente otimizado para iOS/Safari com carregamento rápido
+ * OptimizedImage Component v5
+ * Usa Supabase Storage Image Transformations para reduzir egress
  */
 
 import React, { useState, useRef, useCallback, memo, useEffect } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { shouldEagerLoad, ImageSize } from '@/lib/imageOptimization';
+import { getTransformedImageUrl, TransformSize } from '@/lib/supabaseImageTransform';
 
 interface OptimizedImageProps {
   src: string;
   alt: string;
   size?: ImageSize;
+  transformSize?: TransformSize;
   className?: string;
   index?: number;
   onClick?: () => void;
@@ -18,28 +20,37 @@ interface OptimizedImageProps {
 }
 
 /**
- * OptimizedImage - Carregamento otimizado para todos dispositivos incluindo iOS
- * - Usa IntersectionObserver nativo para lazy loading
- * - Fallback robusto para erros de rede
- * - Compatível com Safari/iOS
+ * OptimizedImage - Carregamento otimizado com Supabase Image Transformations
+ * - Serve imagens menores via /render/image/ endpoint
+ * - Lazy loading via IntersectionObserver
+ * - Retry automático em caso de erro
  */
 export const OptimizedImage = memo(({
   src,
   alt,
   size = 'medium',
+  transformSize,
   className = '',
   index = 0,
   onClick,
   onLoad
 }: OptimizedImageProps) => {
   const [status, setStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
-  const [isVisible, setIsVisible] = useState(shouldEagerLoad(index));
+  const [isVisible, setIsVisible] = useState(shouldEagerLoad(index, 4)); // Reduzido de 8 para 4
   const [retryCount, setRetryCount] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
 
-  // URL direta do Supabase sem CDN (mais confiável no iOS)
-  const imageUrl = src;
+  // Mapear ImageSize para TransformSize se não especificado
+  const effectiveTransformSize: TransformSize = transformSize || (
+    size === 'blur' ? 'tiny' :
+    size === 'thumbnail' ? 'thumbnail' :
+    size === 'medium' ? 'medium' :
+    size === 'large' ? 'large' : 'original'
+  );
+
+  // URL otimizada via Supabase Image Transformations
+  const imageUrl = getTransformedImageUrl(src, effectiveTransformSize);
 
   // Intersection Observer para lazy loading
   useEffect(() => {
@@ -55,13 +66,12 @@ export const OptimizedImage = memo(({
         });
       },
       {
-        rootMargin: '200px', // Carrega antes de entrar na viewport
+        rootMargin: '150px',
         threshold: 0.01
       }
     );
 
     observer.observe(containerRef.current);
-
     return () => observer.disconnect();
   }, [isVisible]);
 
@@ -70,11 +80,9 @@ export const OptimizedImage = memo(({
     if (status === 'loading' && isVisible && retryCount < 2) {
       const timeout = setTimeout(() => {
         if (status === 'loading') {
-          // Força reload da imagem
           setRetryCount(prev => prev + 1);
         }
-      }, 8000); // 8 segundos timeout
-
+      }, 10000);
       return () => clearTimeout(timeout);
     }
   }, [status, isVisible, retryCount]);
@@ -86,7 +94,6 @@ export const OptimizedImage = memo(({
 
   const handleError = useCallback(() => {
     if (retryCount < 2) {
-      // Tentar novamente
       setRetryCount(prev => prev + 1);
       setStatus('loading');
     } else {
@@ -124,19 +131,17 @@ export const OptimizedImage = memo(({
       className={`relative overflow-hidden ${className}`}
       onClick={onClick}
     >
-      {/* Skeleton placeholder */}
       {status === 'loading' && (
         <Skeleton className="absolute inset-0" />
       )}
 
-      {/* Imagem - só renderiza quando visível */}
       {isVisible && (
         <img
           ref={imgRef}
-          key={`${src}-${retryCount}`} // Force remount on retry
+          key={`${src}-${retryCount}`}
           src={imageUrl}
           alt={alt}
-          loading={shouldEagerLoad(index) ? 'eager' : 'lazy'}
+          loading={shouldEagerLoad(index, 4) ? 'eager' : 'lazy'}
           decoding="async"
           crossOrigin="anonymous"
           onLoad={handleLoad}
