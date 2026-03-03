@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
+import { getTransformedImageUrl, TransformSize } from '@/lib/supabaseImageTransform';
 
 interface WatermarkedPhotoProps {
   src: string;
@@ -11,6 +12,7 @@ interface WatermarkedPhotoProps {
   loading?: 'lazy' | 'eager';
   onDownload?: () => void;
   isPurchased?: boolean; // Se true, mostra foto original sem marca d'água
+  displaySize?: TransformSize; // Tamanho para transformação de imagem
 }
 
 const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = ({
@@ -24,7 +26,10 @@ const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = ({
   loading = 'lazy',
   onDownload,
   isPurchased = false,
+  displaySize = 'medium',
 }) => {
+  // Usar URL otimizada via Supabase Image Transformations (exceto para fotos compradas)
+  const optimizedSrc = isPurchased ? src : getTransformedImageUrl(src, displaySize);
   const containerRef = useRef<HTMLDivElement>(null);
   const longPressTimer = useRef<number | null>(null);
   
@@ -182,7 +187,7 @@ const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = ({
       
       {/* A foto só aparece quando a marca d'água está carregada */}
       <img 
-        src={src} 
+        src={optimizedSrc} 
         alt={alt} 
         className={imgClassName}
         loading={loading}
