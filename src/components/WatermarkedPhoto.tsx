@@ -42,7 +42,7 @@ const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = memo(({
   isPurchased = false,
   displaySize = 'medium',
 }) => {
-  const optimizedSrc = isPurchased ? src : getTransformedImageUrl(src, displaySize);
+  const [currentSrc, setCurrentSrc] = useState(() => isPurchased ? src : getTransformedImageUrl(src, displaySize));
   const containerRef = useRef<HTMLDivElement>(null);
   const longPressTimer = useRef<number | null>(null);
   
@@ -74,7 +74,8 @@ const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = memo(({
   // Reset photo loaded state when src changes
   useEffect(() => {
     setPhotoLoaded(false);
-  }, [src]);
+    setCurrentSrc(isPurchased ? src : getTransformedImageUrl(src, displaySize));
+  }, [src, isPurchased, displaySize]);
 
   // Proteção contra 3D Touch e long press no iOS
   useEffect(() => {
@@ -187,7 +188,7 @@ const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = memo(({
       
       {/* Foto - aparece assim que carregar (watermark renderiza junto) */}
       <img 
-        src={optimizedSrc} 
+        src={currentSrc} 
         alt={alt} 
         className={imgClassName}
         loading={loading}
@@ -195,6 +196,12 @@ const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = memo(({
         crossOrigin="anonymous"
         draggable={false}
         onLoad={() => setPhotoLoaded(true)}
+        onError={() => {
+          // Fallback para URL original se a otimizada falhar
+          if (currentSrc !== src) {
+            setCurrentSrc(src);
+          }
+        }}
         style={{
           WebkitUserSelect: 'none',
           WebkitTouchCallout: 'none',
