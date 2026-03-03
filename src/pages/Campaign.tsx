@@ -142,8 +142,8 @@ const Campaign = () => {
   // Paginação
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  // Aumentado para 50 fotos por página conforme solicitado
-  const PHOTOS_PER_PAGE = 50;
+  // Reduzido de 50 para 24 para carregamento mais rápido
+  const PHOTOS_PER_PAGE = 24;
   
   // Estado para foto selecionada no modal com navegação
   const [viewingPhotoIndex, setViewingPhotoIndex] = useState<number | null>(null);
@@ -214,50 +214,11 @@ const Campaign = () => {
     }
   }, [campaign?.id]);
 
-  // Resetar página quando trocar de álbum
-  useEffect(() => {
-    setPage(1);
-    setPhotos([]);
-    if (id) {
-      fetchPhotos(1);
-    }
-  }, [selectedSubEvent]);
-
-  // Prefetch da próxima página quando próximo do final
-  useEffect(() => {
-    const prefetchNextPage = async () => {
-      if (!id || page >= totalPages || loadingPhotos) return;
-      
-      const nextPage = page + 1;
-      const from = (nextPage - 1) * PHOTOS_PER_PAGE;
-      const to = from + PHOTOS_PER_PAGE - 1;
-      
-      try {
-        let query = supabase
-          .from('photos')
-          .select('id, title, original_url, watermarked_url, thumbnail_url, price, is_available')
-          .eq('campaign_id', id)
-          .eq('is_available', true)
-          .range(from, to)
-          .order('upload_sequence', { ascending: true })
-          .order('created_at', { ascending: true });
-
-        // Prefetch silencioso (não atualiza state)
-        await query;
-      } catch (error) {
-        // Silenciosamente ignorar erros de prefetch
-      }
-    };
-
-    // Iniciar prefetch quando chegar na página atual
-    const timer = setTimeout(prefetchNextPage, 500);
-    return () => clearTimeout(timer);
-  }, [id, page, totalPages, selectedSubEvent, loadingPhotos]);
-
-  // Buscar fotos quando mudar de página OU mudar de álbum
+  // Buscar fotos quando mudar de álbum (reset página) ou campaign carregar
   useEffect(() => {
     if (campaign?.id) {
-      setPage(1); // Reset para primeira página ao mudar de álbum
+      setPage(1);
+      setPhotos([]);
       fetchPhotos(1);
     }
   }, [selectedSubEvent, campaign?.id]);
