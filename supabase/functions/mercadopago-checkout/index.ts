@@ -198,6 +198,81 @@ serve(async (req) => {
 
     console.log('📊 Fator de desconto:', { discountFactor, subtotal, finalTotal });
 
+    // Gerar idempotency key ANTES de criar purchases (baseado nos IDs das fotos + buyer)
+    const photoIdsSorted = photos.map((p: any) => p.id).sort().join(',');
+    const idempotencyBase = `${buyerId}_${photoIdsSorted}_${finalTotal}`;
+    const idempotencyKey = `${action}-${btoa(idempotencyBase).replace(/[^a-zA-Z0-9]/g, '').substring(0, 40)}`;
+    
+    console.log('🔑 Idempotency key:', idempotencyKey);
+
+    // ===== VERIFICAR PAGAMENTO DUPLICADO =====
+    // Buscar purchases recentes (últimos 2 minutos) do mesmo buyer com as mesmas fotos
+    const photoIds = photos.map((p: any) => p.id);
+    const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+    
+    const { data: recentPurchases } = await supabaseAdmin
+      .from('purchases')
+      .select('id, status, photo_id, stripe_payment_intent_id')
+      .eq('buyer_id', buyerId)
+      .in('photo_id', photoIds)
+      .gte('created_at', twoMinutesAgo)
+      .in('status', ['pending', 'completed']);
+
+    if (recentPurchases && recentPurchases.length >= photoIds.length) {
+      console.warn('⚠️ Possível pagamento duplicado detectado! Purchases recentes:', recentPurchases.length);
+      
+      // Verificar se TODAS as fotos já têm purchase recente
+      const existingPhotoIds = new Set(recentPurchases.map(p => p.photo_id));
+      const allPhotosHavePurchase = photoIds.every((id: string) => existingPhotoIds.has(id));
+      
+      if (allPhotosHavePurchase) {
+        const existingIds = recentPurchases.map(p => p.id);
+        const existingRef = recentPurchases[0]?.stripe_payment_intent_id;
+        
+        // Se já tem um payment_id associado (mp:XXXXX), extrair e retornar
+        if (existingRef && existingRef.includes('mp:')) {
+          const mpId = existingRef.split('mp:')[1];
+          console.log('🔄 Retornando pagamento existente:', mpId);
+          
+          if (action === 'create_card') {
+            return new Response(JSON.stringify({
+              success: false,
+              error: 'Este pagamento já foi processado. Verifique suas compras.',
+              status: 'duplicate',
+            }), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+          
+          if (action === 'create_pix') {
+            return new Response(JSON.stringify({
+              success: false,
+              error: 'Um PIX já foi gerado para estas fotos. Verifique o código PIX anterior ou aguarde 2 minutos.',
+              status: 'duplicate',
+            }), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+        }
+        
+        // Se purchases existem mas sem payment_id, são de uma tentativa anterior que não completou
+        // Reusar essas purchases em vez de criar novas
+        console.log('♻️ Reusando purchases existentes:', existingIds);
+        
+        const externalReference = existingIds.length === 1
+          ? existingIds[0]
+          : `batch_${existingIds[0].slice(0, 8)}_${existingIds.length}_${Date.now().toString(36)}`;
+        
+        await supabaseAdmin
+          .from('purchases')
+          .update({ stripe_payment_intent_id: externalReference })
+          .in('id', existingIds);
+
+        // Pular criação de novas purchases e ir direto para o pagamento
+        return await processPayment(action, externalReference, existingIds, finalTotal, photos, buyer, cleanCpf, deviceId, mpAccessToken, supabaseUrl, corsHeaders, cardToken, cardPaymentMethodId, cardIssuerId, installments, idempotencyKey);
+      }
+    }
+
     for (const photo of photos) {
       const { data: photoData } = await supabaseAdmin
         .from('photos')
@@ -255,183 +330,8 @@ serve(async (req) => {
 
     console.log('📋 External Reference:', externalReference);
 
-    // ===== AÇÃO: CRIAR PAGAMENTO PIX =====
-    if (action === 'create_pix') {
-      console.log('🔄 Criando pagamento PIX...');
+    return await processPayment(action, externalReference, purchaseIds, finalTotal, photos, buyer, cleanCpf, deviceId, mpAccessToken, supabaseUrl, corsHeaders, cardToken, cardPaymentMethodId, cardIssuerId, installments, idempotencyKey);
 
-      const pixPayload = {
-        transaction_amount: Number(finalTotal.toFixed(2)),
-        payment_method_id: 'pix',
-        description: photos.length > 1 ? `${photos.length} fotos - STA Fotos` : 'Foto - STA Fotos',
-        payer: {
-          email: buyer.email.toLowerCase().trim(),
-          first_name: (buyer.name || 'Cliente').trim(),
-          last_name: (buyer.surname || 'STA').trim(),
-          identification: {
-            type: 'CPF',
-            number: cleanCpf,
-          },
-        },
-        external_reference: externalReference,
-        notification_url: `${supabaseUrl}/functions/v1/mercadopago-webhook`,
-      };
-
-      // Headers com Device Session ID para anti-fraude
-      const mpHeaders: Record<string, string> = {
-        'Authorization': `Bearer ${mpAccessToken}`,
-        'Content-Type': 'application/json',
-        'X-Idempotency-Key': `pix-${externalReference}`,
-      };
-
-      // Adicionar Device Session ID se disponível (obrigatório para evitar bloqueio)
-      if (deviceId) {
-        mpHeaders['X-meli-session-id'] = deviceId;
-        console.log('🔐 Device Session ID adicionado ao request PIX');
-      } else {
-        console.warn('⚠️ Device Session ID não fornecido - pode causar bloqueio');
-      }
-
-      const mpResponse = await fetch('https://api.mercadopago.com/v1/payments', {
-        method: 'POST',
-        headers: mpHeaders,
-        body: JSON.stringify(pixPayload),
-      });
-
-      const mpResult = await mpResponse.json();
-      console.log('📦 Resposta MP:', JSON.stringify(mpResult));
-
-      if (!mpResponse.ok || mpResult.error) {
-        console.error('❌ Erro MP:', mpResult);
-        // Limpar purchases criadas
-        await supabaseAdmin.from('purchases').delete().in('id', purchaseIds);
-
-        const errorMsg = mpResult.cause?.[0]?.description || mpResult.message || 'Erro ao gerar PIX';
-        // Retornar 200 com success:false para que o frontend receba a mensagem de erro
-        return new Response(JSON.stringify({ 
-          success: false, 
-          error: errorMsg,
-          status: 'error' 
-        }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
-      // Atualizar purchases com payment_id
-      await supabaseAdmin
-        .from('purchases')
-        .update({ stripe_payment_intent_id: `${externalReference}|mp:${mpResult.id}` })
-        .in('id', purchaseIds);
-
-      const pixInfo = mpResult.point_of_interaction?.transaction_data;
-
-      return new Response(JSON.stringify({
-        success: true,
-        paymentId: mpResult.id,
-        purchaseIds,
-        pix: pixInfo ? {
-          qrCode: pixInfo.qr_code,
-          qrCodeBase64: pixInfo.qr_code_base64,
-          expirationDate: mpResult.date_of_expiration,
-        } : null,
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // ===== AÇÃO: CRIAR PAGAMENTO COM CARTÃO =====
-    if (action === 'create_card') {
-      if (!cardToken) {
-        return errorResponse('Token do cartão não fornecido', 400);
-      }
-
-      console.log('🔄 Processando pagamento com cartão...');
-
-      const cardPayload: any = {
-        transaction_amount: Number(finalTotal.toFixed(2)),
-        token: cardToken,
-        description: photos.length > 1 ? `${photos.length} fotos - STA Fotos` : 'Foto - STA Fotos',
-        installments: Number(installments) || 1,
-        payment_method_id: cardPaymentMethodId,
-        payer: {
-          email: buyer.email.toLowerCase().trim(),
-          first_name: (buyer.name || 'Cliente').trim(),
-          last_name: (buyer.surname || 'STA').trim(),
-          identification: {
-            type: 'CPF',
-            number: cleanCpf,
-          },
-        },
-        external_reference: externalReference,
-        notification_url: `${supabaseUrl}/functions/v1/mercadopago-webhook`,
-      };
-
-      if (cardIssuerId) {
-        cardPayload.issuer_id = Number(cardIssuerId);
-      }
-
-      // Headers com Device Session ID para anti-fraude
-      const mpCardHeaders: Record<string, string> = {
-        'Authorization': `Bearer ${mpAccessToken}`,
-        'Content-Type': 'application/json',
-        'X-Idempotency-Key': `card-${externalReference}`,
-      };
-
-      if (deviceId) {
-        mpCardHeaders['X-meli-session-id'] = deviceId;
-        console.log('🔐 Device Session ID adicionado ao request Cartão');
-      }
-
-      const mpResponse = await fetch('https://api.mercadopago.com/v1/payments', {
-        method: 'POST',
-        headers: mpCardHeaders,
-        body: JSON.stringify(cardPayload),
-      });
-
-      const mpResult = await mpResponse.json();
-      console.log('📦 Resposta MP Cartão:', mpResult.status, mpResult.status_detail);
-
-      if (!mpResponse.ok || mpResult.error) {
-        console.error('❌ Erro MP Cartão:', mpResult);
-        await supabaseAdmin.from('purchases').delete().in('id', purchaseIds);
-
-        const errorMsg = mpResult.cause?.[0]?.description || mpResult.message || 'Erro ao processar cartão';
-        // Retornar 200 com success:false para que o frontend receba a mensagem de erro
-        return new Response(JSON.stringify({ 
-          success: false, 
-          error: errorMsg,
-          status: 'error',
-          statusDetail: mpResult.status_detail || 'gateway_error'
-        }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
-      // Atualizar purchases com payment_id
-      await supabaseAdmin
-        .from('purchases')
-        .update({ stripe_payment_intent_id: `${externalReference}|mp:${mpResult.id}` })
-        .in('id', purchaseIds);
-
-      // Se aprovado imediatamente
-      if (mpResult.status === 'approved') {
-        await supabaseAdmin
-          .from('purchases')
-          .update({ status: 'completed' })
-          .in('id', purchaseIds);
-      }
-
-      return new Response(JSON.stringify({
-        success: mpResult.status === 'approved',
-        status: mpResult.status,
-        statusDetail: mpResult.status_detail,
-        paymentId: mpResult.id,
-        purchaseIds,
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    return errorResponse('Ação não reconhecida. Use: create_pix, create_card ou check_status', 400);
 
   } catch (error) {
     console.error('❌ Erro geral:', error);
@@ -448,29 +348,141 @@ function errorResponse(message: string, status: number) {
   });
 }
 
+async function processPayment(
+  action: string, externalReference: string, purchaseIds: string[],
+  finalTotal: number, photos: any[], buyer: any, cleanCpf: string,
+  deviceId: string, mpAccessToken: string, supabaseUrl: string,
+  corsHeaders: Record<string, string>, cardToken?: string,
+  cardPaymentMethodId?: string, cardIssuerId?: string,
+  installments?: number, idempotencyKey?: string,
+) {
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+  if (action === 'create_pix') {
+    console.log('🔄 Criando pagamento PIX...');
+    const pixPayload = {
+      transaction_amount: Number(finalTotal.toFixed(2)),
+      payment_method_id: 'pix',
+      description: photos.length > 1 ? `${photos.length} fotos - STA Fotos` : 'Foto - STA Fotos',
+      payer: {
+        email: buyer.email.toLowerCase().trim(),
+        first_name: (buyer.name || 'Cliente').trim(),
+        last_name: (buyer.surname || 'STA').trim(),
+        identification: { type: 'CPF', number: cleanCpf },
+      },
+      external_reference: externalReference,
+      notification_url: `${supabaseUrl}/functions/v1/mercadopago-webhook`,
+    };
+
+    const mpHeaders: Record<string, string> = {
+      'Authorization': `Bearer ${mpAccessToken}`,
+      'Content-Type': 'application/json',
+      'X-Idempotency-Key': idempotencyKey || `pix-${externalReference}`,
+    };
+    if (deviceId) mpHeaders['X-meli-session-id'] = deviceId;
+
+    const mpResponse = await fetch('https://api.mercadopago.com/v1/payments', {
+      method: 'POST', headers: mpHeaders, body: JSON.stringify(pixPayload),
+    });
+    const mpResult = await mpResponse.json();
+
+    if (!mpResponse.ok || mpResult.error) {
+      await supabaseAdmin.from('purchases').delete().in('id', purchaseIds);
+      const errorMsg = mpResult.cause?.[0]?.description || mpResult.message || 'Erro ao gerar PIX';
+      return new Response(JSON.stringify({ success: false, error: errorMsg, status: 'error' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    await supabaseAdmin.from('purchases')
+      .update({ stripe_payment_intent_id: `${externalReference}|mp:${mpResult.id}` })
+      .in('id', purchaseIds);
+
+    const pixInfo = mpResult.point_of_interaction?.transaction_data;
+    return new Response(JSON.stringify({
+      success: true, paymentId: mpResult.id, purchaseIds,
+      pix: pixInfo ? {
+        qrCode: pixInfo.qr_code, qrCodeBase64: pixInfo.qr_code_base64,
+        expirationDate: mpResult.date_of_expiration,
+      } : null,
+    }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+  }
+
+  if (action === 'create_card') {
+    if (!cardToken) return errorResponse('Token do cartão não fornecido', 400);
+    console.log('🔄 Processando pagamento com cartão...');
+
+    const cardPayload: any = {
+      transaction_amount: Number(finalTotal.toFixed(2)),
+      token: cardToken,
+      description: photos.length > 1 ? `${photos.length} fotos - STA Fotos` : 'Foto - STA Fotos',
+      installments: Number(installments) || 1,
+      payment_method_id: cardPaymentMethodId,
+      payer: {
+        email: buyer.email.toLowerCase().trim(),
+        first_name: (buyer.name || 'Cliente').trim(),
+        last_name: (buyer.surname || 'STA').trim(),
+        identification: { type: 'CPF', number: cleanCpf },
+      },
+      external_reference: externalReference,
+      notification_url: `${supabaseUrl}/functions/v1/mercadopago-webhook`,
+    };
+    if (cardIssuerId) cardPayload.issuer_id = Number(cardIssuerId);
+
+    const mpCardHeaders: Record<string, string> = {
+      'Authorization': `Bearer ${mpAccessToken}`,
+      'Content-Type': 'application/json',
+      'X-Idempotency-Key': idempotencyKey || `card-${externalReference}`,
+    };
+    if (deviceId) mpCardHeaders['X-meli-session-id'] = deviceId;
+
+    const mpResponse = await fetch('https://api.mercadopago.com/v1/payments', {
+      method: 'POST', headers: mpCardHeaders, body: JSON.stringify(cardPayload),
+    });
+    const mpResult = await mpResponse.json();
+    console.log('📦 Resposta MP Cartão:', mpResult.status, mpResult.status_detail);
+
+    if (!mpResponse.ok || mpResult.error) {
+      await supabaseAdmin.from('purchases').delete().in('id', purchaseIds);
+      const errorMsg = mpResult.cause?.[0]?.description || mpResult.message || 'Erro ao processar cartão';
+      return new Response(JSON.stringify({ 
+        success: false, error: errorMsg, status: 'error',
+        statusDetail: mpResult.status_detail || 'gateway_error'
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    await supabaseAdmin.from('purchases')
+      .update({ stripe_payment_intent_id: `${externalReference}|mp:${mpResult.id}` })
+      .in('id', purchaseIds);
+
+    if (mpResult.status === 'approved') {
+      await supabaseAdmin.from('purchases')
+        .update({ status: 'completed' })
+        .in('id', purchaseIds);
+    }
+
+    return new Response(JSON.stringify({
+      success: mpResult.status === 'approved',
+      status: mpResult.status, statusDetail: mpResult.status_detail,
+      paymentId: mpResult.id, purchaseIds,
+    }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+  }
+
+  return errorResponse('Ação não reconhecida', 400);
+}
+
 async function processApprovedPayment(supabase: any, mpResult: any) {
   const externalRef = mpResult.external_reference;
   if (!externalRef) return;
-
   console.log('✅ Processando pagamento aprovado:', externalRef);
 
-  // Buscar purchases pelo external_reference
   const { data: purchases } = await supabase
-    .from('purchases')
-    .select('id')
+    .from('purchases').select('id')
     .like('stripe_payment_intent_id', `%${externalRef.split('|')[0]}%`);
 
-  if (!purchases || purchases.length === 0) {
-    console.warn('⚠️ Nenhuma purchase encontrada para:', externalRef);
-    return;
-  }
+  if (!purchases || purchases.length === 0) return;
 
   const purchaseIds = purchases.map((p: any) => p.id);
-  console.log(`📋 Atualizando ${purchaseIds.length} purchases para completed`);
-
-  // Atualizar status
-  await supabase
-    .from('purchases')
-    .update({ status: 'completed' })
-    .in('id', purchaseIds);
+  await supabase.from('purchases').update({ status: 'completed' }).in('id', purchaseIds);
 }

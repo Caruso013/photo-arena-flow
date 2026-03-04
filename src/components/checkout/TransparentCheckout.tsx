@@ -98,6 +98,7 @@ export default function TransparentCheckout({
   const [selectedIssuer, setSelectedIssuer] = useState('');
 
   const mpRef = useRef<any>(null);
+  const isProcessingRef = useRef(false); // Guard contra duplo clique
 
   // Estado do Device ID para anti-fraude
   const [deviceId, setDeviceId] = useState<string>('');
@@ -227,6 +228,8 @@ export default function TransparentCheckout({
 
   // Gerar PIX
   const handleGeneratePix = async () => {
+    if (isProcessingRef.current) return;
+    isProcessingRef.current = true;
     setLoading(true);
     setPixData(null);
 
@@ -301,6 +304,7 @@ export default function TransparentCheckout({
       onError(error.message);
     } finally {
       setLoading(false);
+      isProcessingRef.current = false;
     }
   };
 
@@ -308,11 +312,18 @@ export default function TransparentCheckout({
   const handleCardPayment = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Guard contra duplo clique / dupla submissão
+    if (isProcessingRef.current) {
+      console.warn('⚠️ Pagamento já em processamento, ignorando clique duplicado');
+      return;
+    }
+
     if (!mpRef.current || !cardBrand) {
       toast({ title: "Preencha os dados do cartão", variant: "destructive" });
       return;
     }
 
+    isProcessingRef.current = true;
     setLoading(true);
 
     try {
@@ -402,6 +413,7 @@ export default function TransparentCheckout({
       toast({ title: "Erro no pagamento", description: error.message, variant: "destructive" });
     } finally {
       setLoading(false);
+      isProcessingRef.current = false;
     }
   };
 
