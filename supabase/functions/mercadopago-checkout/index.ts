@@ -149,13 +149,16 @@ serve(async (req) => {
       return errorResponse('Nenhuma foto selecionada', 400);
     }
 
-    if (!buyer || !buyer.email || !buyer.cpf) {
-      return errorResponse('Dados do comprador incompletos (email e CPF são obrigatórios)', 400);
+    // Para compra gratuita, buyer pode ser simplificado
+    if (action !== 'free_purchase') {
+      if (!buyer || !buyer.email || !buyer.cpf) {
+        return errorResponse('Dados do comprador incompletos (email e CPF são obrigatórios)', 400);
+      }
     }
 
     // Limpar CPF
-    const cleanCpf = buyer.cpf.replace(/\D/g, '');
-    if (cleanCpf.length !== 11) {
+    const cleanCpf = (buyer?.cpf || '').replace(/\D/g, '');
+    if (action !== 'free_purchase' && cleanCpf.length !== 11) {
       return errorResponse('CPF deve ter 11 dígitos', 400);
     }
 
@@ -181,7 +184,7 @@ serve(async (req) => {
     const progressiveDiscountAmount = discount?.amount || 0;
     const couponDiscountAmount = coupon?.amount || 0;
     const totalDiscount = progressiveDiscountAmount + couponDiscountAmount;
-    const finalTotal = Math.max(subtotal - totalDiscount, 1); // Mínimo R$ 1
+    const finalTotal = Math.max(subtotal - totalDiscount, 0); // Permitir R$ 0 para cupons 100%
 
     console.log('💰 Valores:', { 
       subtotal, 
@@ -329,6 +332,37 @@ serve(async (req) => {
       .in('id', purchaseIds);
 
     console.log('📋 External Reference:', externalReference);
+
+    // ===== COMPRA GRATUITA (finalTotal <= 0) =====
+    if (finalTotal <= 0 || action === 'free_purchase') {
+      console.log('🎁 Compra gratuita! Marcando purchases como completed...');
+
+      // Marcar todas as purchases como completed
+      await supabaseAdmin
+        .from('purchases')
+        .update({ status: 'completed' })
+        .in('id', purchaseIds);
+
+      // Registrar uso do cupom se houver
+      if (coupon?.coupon_id && buyerId) {
+        await supabaseAdmin.from('coupon_uses').insert({
+          coupon_id: coupon.coupon_id,
+          user_id: buyerId,
+          original_amount: subtotal,
+          discount_amount: couponDiscountAmount,
+          final_amount: 0,
+        });
+        console.log('🎟️ Uso de cupom registrado:', coupon.coupon_id);
+      }
+
+      return new Response(JSON.stringify({
+        success: true,
+        status: 'approved',
+        statusDetail: 'free_purchase',
+        purchaseIds,
+        paymentId: null,
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
 
     return await processPayment(action, externalReference, purchaseIds, finalTotal, photos, buyer, cleanCpf, deviceId, mpAccessToken, supabaseUrl, corsHeaders, cardToken, cardPaymentMethodId, cardIssuerId, installments, idempotencyKey);
 

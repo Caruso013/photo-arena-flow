@@ -320,6 +320,17 @@ export default function PaymentModal({
                       <span>-{formatCurrency(progressiveDiscount.discountAmount)}</span>
                     </div>
                   )}
+
+                  {/* Desconto do Cupom */}
+                  {appliedCoupon?.valid && appliedCoupon.discount_amount > 0 && (
+                    <div className="flex justify-between items-center text-sm text-green-600">
+                      <span className="flex items-center gap-1">
+                        <Tag className="h-3 w-3" />
+                        Cupom:
+                      </span>
+                      <span>-{formatCurrency(appliedCoupon.discount_amount)}</span>
+                    </div>
+                  )}
                   
                   {/* Incentivo para próximo desconto */}
                   {progressiveDiscountEnabled && nextThreshold && progressiveDiscount.discountPercentage === 0 && (
@@ -341,7 +352,7 @@ export default function PaymentModal({
                   <div className="flex justify-between items-center pt-2 border-t border-border">
                     <span className="font-bold">Total:</span>
                     <span className="text-2xl font-bold text-primary">
-                      {formatCurrency(totalPrice)}
+                      {formatCurrency(Math.max(0, totalPrice - (appliedCoupon?.discount_amount || 0)))}
                     </span>
                   </div>
                 </div>
