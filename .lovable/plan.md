@@ -1,36 +1,42 @@
 
 
-## Plano: Bloquear alteração de preço pelo fotógrafo após definição
+## Problem Analysis
 
-### Problema
-Atualmente, o fotógrafo pode alterar livremente tanto o `photo_price_display` (preço do evento) quanto o `price` individual de cada foto, mesmo após já ter definido esses valores.
+From the screenshots and code, I identified **3 issues** preventing coupons from working properly:
 
-### Solução
-Bloquear a edição de preços pelo fotógrafo em 3 pontos do código:
+### Issue 1: Server enforces minimum R$1 charge
+In `mercadopago-checkout/index.ts` line 184:
+```typescript
+const finalTotal = Math.max(subtotal - totalDiscount, 1); // Mínimo R$ 1
+```
+A 100% coupon should result in R$0, but the server forces it to R$1 and still sends it to Mercado Pago. There's no "free purchase" flow.
 
-### Mudanças
+### Issue 2: PaymentModal doesn't display coupon discount
+The PaymentModal (lines 306-348) only shows the progressive discount. Even though `appliedCoupon` is received as a prop, it's never rendered in the price summary, so the user sees R$19 instead of R$0.
 
-**1. `src/components/modals/EditEventModal.tsx`**
-- Receber uma nova prop `isPhotographer` (boolean)
-- Quando `isPhotographer === true` e `photo_price_display` já tem valor, desabilitar o campo de preço e mostrar aviso "Preço já definido, não pode ser alterado"
-- Remover `photo_price_display` do objeto de update quando fotógrafo tenta salvar e o valor já existia
+### Issue 3: No free checkout path
+When total = R$0 (100% coupon), the system still tries to create a Mercado Pago payment, which either fails or charges R$1.
 
-**2. `src/components/modals/UploadPhotoModal.tsx`**
-- Verificar se o evento já possui fotos com preço definido pelo fotógrafo
-- Se o evento já tem `photo_price_display` definido OU já tem fotos publicadas, travar o campo de preço no valor existente
-- Expandir a lógica `priceLockedByAdmin` para incluir também o cenário "fotógrafo já definiu o preço anteriormente" — renomear para `priceLocked`
+---
 
-**3. `src/pages/Campaign.tsx`** e **`src/components/dashboard/CampaignManager.tsx`**
-- Passar `isPhotographer` ao `EditEventModal` baseado no role do perfil logado
+## Plan
 
-### Lógica de bloqueio
-- Se `campaign.photo_price_display` já tem valor e o usuário é fotógrafo → campo desabilitado
-- Se o evento já tem fotos e o usuário é fotógrafo → preço individual travado no valor da primeira foto ou do `photo_price_display`
-- Admin sempre pode alterar preços (sem restrição)
+### 1. Add free checkout flow (Cart.tsx + PaymentModal.tsx)
+When `finalTotal === 0` after all discounts, bypass the payment modal entirely:
+- In `Cart.tsx`: when `finalTotal <= 0`, the "Finalizar Compra" button triggers a direct "free purchase" flow instead of opening the PaymentModal
+- Create purchase records directly with status `completed`, register coupon usage, and redirect to success
 
-### Arquivos modificados
-- `src/components/modals/EditEventModal.tsx` — desabilitar campo de preço para fotógrafo
-- `src/components/modals/UploadPhotoModal.tsx` — travar preço após primeira definição
-- `src/pages/Campaign.tsx` — passar prop `isPhotographer`
-- `src/components/dashboard/CampaignManager.tsx` — passar prop `isPhotographer=false`
+### 2. Display coupon discount in PaymentModal
+Add the coupon discount line in PaymentModal's price summary (between progressive discount and total), showing the applied coupon amount. Also update `totalPrice` calculation to subtract coupon discount.
+
+### 3. Fix server-side minimum to allow R$0
+In `mercadopago-checkout/index.ts`, change the minimum from 1 to 0. When `finalTotal === 0`, create purchases as completed without calling Mercado Pago API. This serves as a backend safety net.
+
+### 4. Handle free purchase in the edge function
+Add a new code path in the edge function: if `finalTotal <= 0`, skip payment creation, mark purchases as `completed`, register coupon usage, and return success directly.
+
+### Files to modify:
+- `src/pages/Cart.tsx` - Add free checkout handler
+- `src/components/modals/PaymentModal.tsx` - Display coupon discount in summary + adjust total calculation
+- `supabase/functions/mercadopago-checkout/index.ts` - Support zero-total purchases
 
