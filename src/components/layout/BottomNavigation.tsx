@@ -1,7 +1,7 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
-import { Home, Calendar, ShoppingCart, Heart, User, LogIn, Search } from 'lucide-react';
+import { Home, Calendar, ShoppingCart, Heart, User, LogIn } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { useHapticFeedback } from '@/hooks/useHapticFeedback';
