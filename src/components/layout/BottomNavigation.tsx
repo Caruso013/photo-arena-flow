@@ -27,11 +27,10 @@ const BottomNavigation = () => {
       showBadge: false
     },
     { 
-      icon: Search, 
-      label: 'Buscar', 
-      path: '/events',
-      showBadge: false,
-      highlight: true // Destaque para o botão principal
+      icon: Heart, 
+      label: 'Favoritos', 
+      path: '/dashboard/favorites',
+      showBadge: false
     },
     { 
       icon: ShoppingCart, 
