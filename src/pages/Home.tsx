@@ -74,51 +74,60 @@ const Home = () => {
       if (error) throw error;
 
       if (campaignsData && campaignsData.length > 0) {
-        // Buscar dados adicionais para cada campanha
-        const campaignsWithDetails = await Promise.all(
-          campaignsData.map(async (campaign) => {
-            // Buscar contagem de fotos
-            const { count: photoCount } = await supabase
-              .from('photos')
-              .select('id', { count: 'exact', head: true })
-              .eq('campaign_id', campaign.id)
-              .eq('is_available', true);
+        const campaignIds = campaignsData.map(c => c.id);
+        const photographerIds = [...new Set(campaignsData.map(c => c.photographer_id).filter(Boolean))] as string[];
 
-            // Buscar nome do fotógrafo (somente se photographer_id existir)
-            let photographerData = null;
-            if (campaign.photographer_id) {
-              const { data } = await supabase
-                .from('profiles')
-                .select('full_name')
-                .eq('id', campaign.photographer_id)
-                .maybeSingle();
-              photographerData = data;
-            }
+        // Batch: contagem de fotos por campanha, perfis de fotógrafos, e capas fallback
+        const [photoCounts, photographerProfiles, fallbackCovers] = await Promise.all([
+          // Contagem de fotos em batch
+          supabase
+            .from('photos')
+            .select('campaign_id')
+            .in('campaign_id', campaignIds)
+            .eq('is_available', true),
+          // Perfis de fotógrafos em batch
+          photographerIds.length > 0
+            ? supabase.from('profiles').select('id, full_name').in('id', photographerIds)
+            : Promise.resolve({ data: [] }),
+          // Capas fallback para campanhas sem cover
+          supabase
+            .from('photos')
+            .select('campaign_id, watermarked_url')
+            .in('campaign_id', campaignIds.filter(id => {
+              const c = campaignsData.find(cd => cd.id === id);
+              return !c?.cover_image_url;
+            }))
+            .eq('is_available', true)
+            .not('watermarked_url', 'is', null)
+            .order('upload_sequence', { ascending: true })
+        ]);
 
-            // Fallback para capa se não tiver - usar watermarked_url
-            let coverUrl = campaign.cover_image_url;
-            if (!coverUrl) {
-              const { data: firstPhoto } = await supabase
-                .from('photos')
-                .select('watermarked_url')
-                .eq('campaign_id', campaign.id)
-                .eq('is_available', true)
-                .not('watermarked_url', 'is', null)
-                .order('upload_sequence', { ascending: true })
-                .limit(1)
-                .maybeSingle();
-              
-              coverUrl = firstPhoto?.watermarked_url || '';
-            }
+        // Mapear contagens
+        const countMap: Record<string, number> = {};
+        (photoCounts.data || []).forEach((p: any) => {
+          countMap[p.campaign_id] = (countMap[p.campaign_id] || 0) + 1;
+        });
 
-            return {
-              ...campaign,
-              cover_image_url: coverUrl,
-              photo_count: photoCount || 0,
-              photographer_name: photographerData?.full_name || 'STA Fotos'
-            };
-          })
-        );
+        // Mapear fotógrafos
+        const photographerMap: Record<string, string> = {};
+        ((photographerProfiles as any).data || []).forEach((p: any) => {
+          photographerMap[p.id] = p.full_name;
+        });
+
+        // Mapear capas fallback (primeira foto por campanha)
+        const coverMap: Record<string, string> = {};
+        (fallbackCovers.data || []).forEach((p: any) => {
+          if (!coverMap[p.campaign_id]) {
+            coverMap[p.campaign_id] = p.watermarked_url;
+          }
+        });
+
+        const campaignsWithDetails = campaignsData.map(campaign => ({
+          ...campaign,
+          cover_image_url: campaign.cover_image_url || coverMap[campaign.id] || '',
+          photo_count: countMap[campaign.id] || 0,
+          photographer_name: (campaign.photographer_id && photographerMap[campaign.photographer_id]) || 'STA Fotos'
+        }));
 
         setFeaturedCampaigns(campaignsWithDetails);
       }
