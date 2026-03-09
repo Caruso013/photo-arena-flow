@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Camera, Search, MapPin, Calendar, ArrowRight, Zap, Shield, Users, Trophy, Star, TrendingUp, Sparkles } from 'lucide-react';
+import { Camera, Search, MapPin, Calendar, ArrowRight, Users, Trophy, Star, Sparkles } from 'lucide-react';
 import MainLayout from '@/components/layout/MainLayout';
 
 interface FeaturedCampaign {
@@ -74,51 +74,60 @@ const Home = () => {
       if (error) throw error;
 
       if (campaignsData && campaignsData.length > 0) {
-        // Buscar dados adicionais para cada campanha
-        const campaignsWithDetails = await Promise.all(
-          campaignsData.map(async (campaign) => {
-            // Buscar contagem de fotos
-            const { count: photoCount } = await supabase
-              .from('photos')
-              .select('id', { count: 'exact', head: true })
-              .eq('campaign_id', campaign.id)
-              .eq('is_available', true);
+        const campaignIds = campaignsData.map(c => c.id);
+        const photographerIds = [...new Set(campaignsData.map(c => c.photographer_id).filter(Boolean))] as string[];
 
-            // Buscar nome do fotógrafo (somente se photographer_id existir)
-            let photographerData = null;
-            if (campaign.photographer_id) {
-              const { data } = await supabase
-                .from('profiles')
-                .select('full_name')
-                .eq('id', campaign.photographer_id)
-                .maybeSingle();
-              photographerData = data;
-            }
+        // Batch: contagem de fotos por campanha, perfis de fotógrafos, e capas fallback
+        const [photoCounts, photographerProfiles, fallbackCovers] = await Promise.all([
+          // Contagem de fotos em batch
+          supabase
+            .from('photos')
+            .select('campaign_id')
+            .in('campaign_id', campaignIds)
+            .eq('is_available', true),
+          // Perfis de fotógrafos em batch
+          photographerIds.length > 0
+            ? supabase.from('profiles').select('id, full_name').in('id', photographerIds)
+            : Promise.resolve({ data: [] }),
+          // Capas fallback para campanhas sem cover
+          supabase
+            .from('photos')
+            .select('campaign_id, watermarked_url')
+            .in('campaign_id', campaignIds.filter(id => {
+              const c = campaignsData.find(cd => cd.id === id);
+              return !c?.cover_image_url;
+            }))
+            .eq('is_available', true)
+            .not('watermarked_url', 'is', null)
+            .order('upload_sequence', { ascending: true })
+        ]);
 
-            // Fallback para capa se não tiver - usar watermarked_url
-            let coverUrl = campaign.cover_image_url;
-            if (!coverUrl) {
-              const { data: firstPhoto } = await supabase
-                .from('photos')
-                .select('watermarked_url')
-                .eq('campaign_id', campaign.id)
-                .eq('is_available', true)
-                .not('watermarked_url', 'is', null)
-                .order('upload_sequence', { ascending: true })
-                .limit(1)
-                .maybeSingle();
-              
-              coverUrl = firstPhoto?.watermarked_url || '';
-            }
+        // Mapear contagens
+        const countMap: Record<string, number> = {};
+        (photoCounts.data || []).forEach((p: any) => {
+          countMap[p.campaign_id] = (countMap[p.campaign_id] || 0) + 1;
+        });
 
-            return {
-              ...campaign,
-              cover_image_url: coverUrl,
-              photo_count: photoCount || 0,
-              photographer_name: photographerData?.full_name || 'STA Fotos'
-            };
-          })
-        );
+        // Mapear fotógrafos
+        const photographerMap: Record<string, string> = {};
+        ((photographerProfiles as any).data || []).forEach((p: any) => {
+          photographerMap[p.id] = p.full_name;
+        });
+
+        // Mapear capas fallback (primeira foto por campanha)
+        const coverMap: Record<string, string> = {};
+        (fallbackCovers.data || []).forEach((p: any) => {
+          if (!coverMap[p.campaign_id]) {
+            coverMap[p.campaign_id] = p.watermarked_url;
+          }
+        });
+
+        const campaignsWithDetails = campaignsData.map(campaign => ({
+          ...campaign,
+          cover_image_url: campaign.cover_image_url || coverMap[campaign.id] || '',
+          photo_count: countMap[campaign.id] || 0,
+          photographer_name: (campaign.photographer_id && photographerMap[campaign.photographer_id]) || 'STA Fotos'
+        }));
 
         setFeaturedCampaigns(campaignsWithDetails);
       }
@@ -320,50 +329,6 @@ const Home = () => {
               Ver Todos os Eventos
               <ArrowRight className="h-5 w-5" />
             </Button>
-          </div>
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section className="py-20 bg-muted/30">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-foreground">Por que escolher a STA?</h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Tecnologia de ponta para eternizar seus momentos
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            <Card className="text-center p-8 hover:shadow-lg transition-all">
-              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Zap className="h-8 w-8 text-primary" />
-              </div>
-              <h3 className="text-xl font-bold mb-3 text-foreground">Busca Rápida</h3>
-              <p className="text-muted-foreground">
-                Encontre suas fotos por evento, data ou número de peito de forma rápida e fácil
-              </p>
-            </Card>
-
-            <Card className="text-center p-8 hover:shadow-lg transition-all">
-              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Shield className="h-8 w-8 text-primary" />
-              </div>
-              <h3 className="text-xl font-bold mb-3 text-foreground">Pagamento Seguro</h3>
-              <p className="text-muted-foreground">
-                Transações protegidas e processamento rápido para sua tranquilidade
-              </p>
-            </Card>
-
-            <Card className="text-center p-8 hover:shadow-lg transition-all">
-              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <TrendingUp className="h-8 w-8 text-primary" />
-              </div>
-              <h3 className="text-xl font-bold mb-3 text-foreground">Alta Qualidade</h3>
-              <p className="text-muted-foreground">
-                Fotos profissionais em alta resolução para guardar para sempre
-              </p>
-            </Card>
           </div>
         </div>
       </section>

@@ -57,40 +57,46 @@ const Index = () => {
         return;
       }
 
-      // Buscar capa e contagem de fotos para cada campanha
-      const campaignsWithDetails = await Promise.all(
-        campaignsData.map(async (campaign) => {
-          // Contar fotos disponíveis
-          const { count: photoCount } = await supabase
-            .from('photos')
-            .select('id', { count: 'exact', head: true })
-            .eq('campaign_id', campaign.id)
-            .eq('is_available', true);
+      const campaignIds = campaignsData.map(c => c.id);
 
-          // Buscar capa ou primeira foto watermarked
-          let coverImageUrl = campaign.cover_image_url;
-          
-          if (!coverImageUrl) {
-            const { data: firstPhoto } = await supabase
-              .from('photos')
-              .select('watermarked_url')
-              .eq('campaign_id', campaign.id)
-              .eq('is_available', true)
-              .not('watermarked_url', 'is', null)
-              .order('upload_sequence', { ascending: true })
-              .limit(1)
-              .maybeSingle();
-            
-            coverImageUrl = firstPhoto?.watermarked_url || '';
-          }
+      // Batch: contagem de fotos e capas fallback
+      const [photoCounts, fallbackCovers] = await Promise.all([
+        supabase
+          .from('photos')
+          .select('campaign_id')
+          .in('campaign_id', campaignIds)
+          .eq('is_available', true),
+        supabase
+          .from('photos')
+          .select('campaign_id, watermarked_url')
+          .in('campaign_id', campaignIds.filter(id => {
+            const c = campaignsData.find(cd => cd.id === id);
+            return !c?.cover_image_url;
+          }))
+          .eq('is_available', true)
+          .not('watermarked_url', 'is', null)
+          .order('upload_sequence', { ascending: true })
+      ]);
 
-          return {
-            ...campaign,
-            cover_image_url: coverImageUrl,
-            photo_count: photoCount || 0
-          };
-        })
-      );
+      // Mapear contagens
+      const countMap: Record<string, number> = {};
+      (photoCounts.data || []).forEach((p: any) => {
+        countMap[p.campaign_id] = (countMap[p.campaign_id] || 0) + 1;
+      });
+
+      // Mapear capas fallback (primeira por campanha)
+      const coverMap: Record<string, string> = {};
+      (fallbackCovers.data || []).forEach((p: any) => {
+        if (!coverMap[p.campaign_id]) {
+          coverMap[p.campaign_id] = p.watermarked_url;
+        }
+      });
+
+      const campaignsWithDetails = campaignsData.map(campaign => ({
+        ...campaign,
+        cover_image_url: campaign.cover_image_url || coverMap[campaign.id] || '',
+        photo_count: countMap[campaign.id] || 0
+      }));
 
       // Filtrar campanhas com fotos e limitar a 6
       const eligibleCampaigns = campaignsWithDetails
@@ -322,57 +328,6 @@ const Index = () => {
               )}
             </div>
           )}
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section className="py-12 sm:py-16 px-4 bg-muted/30">
-        <div className="container mx-auto">
-          <div className="text-center mb-12 scroll-animate">
-            <h2 className="text-3xl sm:text-4xl font-bold mb-3">Por que escolher a STA Fotos?</h2>
-            <p className="text-muted-foreground text-base sm:text-lg">
-              A maneira mais fácil e rápida de encontrar e comprar suas fotos
-            </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 scroll-animate">
-            <Card className="border-2 hover:border-primary/50 transition-all hover:shadow-lg">
-              <CardContent className="p-6 text-center space-y-4">
-                <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
-                  <Camera className="h-8 w-8 text-primary" />
-                </div>
-                <h3 className="text-xl font-bold">Reconhecimento Facial</h3>
-                <p className="text-muted-foreground">
-                  Faça upload de uma selfie e encontre automaticamente todas as suas fotos no evento
-                </p>
-              </CardContent>
-            </Card>
-            <Card className="border-2 hover:border-primary/50 transition-all hover:shadow-lg">
-              <CardContent className="p-6 text-center space-y-4">
-                <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
-                  <svg className="h-8 w-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold">Compra Instantânea</h3>
-                <p className="text-muted-foreground">
-                  Pagamento seguro via PIX e receba suas fotos em alta qualidade imediatamente
-                </p>
-              </CardContent>
-            </Card>
-            <Card className="border-2 hover:border-primary/50 transition-all hover:shadow-lg">
-              <CardContent className="p-6 text-center space-y-4">
-                <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
-                  <svg className="h-8 w-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold">100% Seguro</h3>
-                <p className="text-muted-foreground">
-                  Suas fotos e dados pessoais protegidos com criptografia de ponta a ponta
-                </p>
-              </CardContent>
-            </Card>
-          </div>
         </div>
       </section>
 

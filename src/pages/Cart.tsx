@@ -221,10 +221,10 @@ const Cart = () => {
             <div className="space-y-4">
               {items.map((item) => (
                 <Card key={item.id}>
-                  <CardContent className="p-3 sm:p-4">
-                    <div className="flex gap-3 sm:gap-4">
+                  <CardContent className="p-2 sm:p-4">
+                    <div className="flex gap-2 sm:gap-4 items-center">
                       <AntiScreenshotProtection>
-                        <div className="w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 flex-shrink-0">
+                        <div className="w-14 h-14 sm:w-24 sm:h-24 md:w-32 md:h-32 flex-shrink-0">
                           <WatermarkedPhoto
                             src={item.watermarked_url}
                             alt={item.title || "Foto"}
@@ -232,26 +232,25 @@ const Cart = () => {
                           />
                         </div>
                       </AntiScreenshotProtection>
-                      <div className="flex-1 min-w-0 flex flex-col">
-                        <h3 className="font-semibold text-sm sm:text-base lg:text-lg mb-1 sm:mb-2 truncate">
+                      <div className="flex-1 min-w-0 flex flex-row sm:flex-col items-center sm:items-start gap-1 sm:gap-0">
+                        <h3 className="font-semibold text-xs sm:text-base lg:text-lg truncate">
                           {item.title || "Foto sem título"}
                         </h3>
-                        <p className="text-xl sm:text-2xl font-bold text-primary mb-2 sm:mb-4">
+                        <p className="text-sm sm:text-2xl font-bold text-primary sm:mb-4">
                           {formatCurrency(Number(item.price))}
                         </p>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            haptic.light();
-                            removeFromCart(item.id);
-                          }}
-                          className="text-destructive hover:text-destructive mt-auto min-h-[44px]"
-                        >
-                          <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                          <span className="text-xs sm:text-sm">Remover</span>
-                        </Button>
                       </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          haptic.light();
+                          removeFromCart(item.id);
+                        }}
+                        className="text-destructive hover:text-destructive flex-shrink-0 h-9 w-9 sm:h-10 sm:w-10"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>

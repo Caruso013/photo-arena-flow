@@ -1,7 +1,7 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
-import { Home, Calendar, ShoppingCart, Heart, User, LogIn, Search } from 'lucide-react';
+import { Home, Calendar, ShoppingCart, Heart, User, LogIn } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { useHapticFeedback } from '@/hooks/useHapticFeedback';
@@ -27,11 +27,10 @@ const BottomNavigation = () => {
       showBadge: false
     },
     { 
-      icon: Search, 
-      label: 'Buscar', 
-      path: '/events',
-      showBadge: false,
-      highlight: true // Destaque para o botão principal
+      icon: Heart, 
+      label: 'Favoritos', 
+      path: '/dashboard/favorites',
+      showBadge: false
     },
     { 
       icon: ShoppingCart, 
@@ -65,12 +64,11 @@ const BottomNavigation = () => {
       badgeCount: 0
     },
     { 
-      icon: Search, 
-      label: 'Buscar Fotos', 
-      path: '/events',
-      showBadge: false,
-      badgeCount: 0,
-      highlight: true
+      icon: ShoppingCart, 
+      label: 'Carrinho', 
+      path: '/cart',
+      showBadge: items.length > 0,
+      badgeCount: items.length
     },
     { 
       icon: LogIn, 
@@ -90,26 +88,6 @@ const BottomNavigation = () => {
           const Icon = item.icon;
           const isActive = location.pathname === item.path || 
             (item.path === '/dashboard' && location.pathname.startsWith('/dashboard') && item.path === '/dashboard');
-          const isHighlight = 'highlight' in item && item.highlight;
-          
-          // Botão central destacado (busca facial)
-          if (isHighlight) {
-            return (
-              <NavLink
-                key={`${item.path}-${index}`}
-                to={item.path}
-                onClick={() => haptic.medium()}
-                className="flex flex-col items-center justify-center -mt-4 touch-manipulation"
-              >
-                <div className="bg-gradient-to-r from-yellow-500 to-amber-600 rounded-full p-3 shadow-lg shadow-yellow-500/40 hover:shadow-xl hover:shadow-yellow-500/50 transition-all active:scale-90">
-                  <Icon className="h-6 w-6 text-white" />
-                </div>
-                <span className="text-[10px] font-semibold mt-1 text-yellow-600 dark:text-yellow-400">
-                  {item.label}
-                </span>
-              </NavLink>
-            );
-          }
           
           return (
             <NavLink
