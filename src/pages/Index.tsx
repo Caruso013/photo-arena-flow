@@ -57,40 +57,46 @@ const Index = () => {
         return;
       }
 
-      // Buscar capa e contagem de fotos para cada campanha
-      const campaignsWithDetails = await Promise.all(
-        campaignsData.map(async (campaign) => {
-          // Contar fotos disponíveis
-          const { count: photoCount } = await supabase
-            .from('photos')
-            .select('id', { count: 'exact', head: true })
-            .eq('campaign_id', campaign.id)
-            .eq('is_available', true);
+      const campaignIds = campaignsData.map(c => c.id);
 
-          // Buscar capa ou primeira foto watermarked
-          let coverImageUrl = campaign.cover_image_url;
-          
-          if (!coverImageUrl) {
-            const { data: firstPhoto } = await supabase
-              .from('photos')
-              .select('watermarked_url')
-              .eq('campaign_id', campaign.id)
-              .eq('is_available', true)
-              .not('watermarked_url', 'is', null)
-              .order('upload_sequence', { ascending: true })
-              .limit(1)
-              .maybeSingle();
-            
-            coverImageUrl = firstPhoto?.watermarked_url || '';
-          }
+      // Batch: contagem de fotos e capas fallback
+      const [photoCounts, fallbackCovers] = await Promise.all([
+        supabase
+          .from('photos')
+          .select('campaign_id')
+          .in('campaign_id', campaignIds)
+          .eq('is_available', true),
+        supabase
+          .from('photos')
+          .select('campaign_id, watermarked_url')
+          .in('campaign_id', campaignIds.filter(id => {
+            const c = campaignsData.find(cd => cd.id === id);
+            return !c?.cover_image_url;
+          }))
+          .eq('is_available', true)
+          .not('watermarked_url', 'is', null)
+          .order('upload_sequence', { ascending: true })
+      ]);
 
-          return {
-            ...campaign,
-            cover_image_url: coverImageUrl,
-            photo_count: photoCount || 0
-          };
-        })
-      );
+      // Mapear contagens
+      const countMap: Record<string, number> = {};
+      (photoCounts.data || []).forEach((p: any) => {
+        countMap[p.campaign_id] = (countMap[p.campaign_id] || 0) + 1;
+      });
+
+      // Mapear capas fallback (primeira por campanha)
+      const coverMap: Record<string, string> = {};
+      (fallbackCovers.data || []).forEach((p: any) => {
+        if (!coverMap[p.campaign_id]) {
+          coverMap[p.campaign_id] = p.watermarked_url;
+        }
+      });
+
+      const campaignsWithDetails = campaignsData.map(campaign => ({
+        ...campaign,
+        cover_image_url: campaign.cover_image_url || coverMap[campaign.id] || '',
+        photo_count: countMap[campaign.id] || 0
+      }));
 
       // Filtrar campanhas com fotos e limitar a 6
       const eligibleCampaigns = campaignsWithDetails
