@@ -266,6 +266,13 @@ class BackgroundUploadService {
 
         if (dbError) throw dbError;
 
+        // Sync price to campaign if not already set (first upload sets the standard)
+        await supabase
+          .from('campaigns')
+          .update({ photo_price_display: task.price })
+          .eq('id', task.campaignId)
+          .is('photo_price_display', null);
+
         // Upload concluído com sucesso
         clearInterval(progressInterval);
         task.status = 'completed';
