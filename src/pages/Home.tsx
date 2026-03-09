@@ -333,50 +333,6 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="py-20 bg-muted/30">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-foreground">Por que escolher a STA?</h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Tecnologia de ponta para eternizar seus momentos
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            <Card className="text-center p-8 hover:shadow-lg transition-all">
-              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Zap className="h-8 w-8 text-primary" />
-              </div>
-              <h3 className="text-xl font-bold mb-3 text-foreground">Busca Rápida</h3>
-              <p className="text-muted-foreground">
-                Encontre suas fotos por evento, data ou número de peito de forma rápida e fácil
-              </p>
-            </Card>
-
-            <Card className="text-center p-8 hover:shadow-lg transition-all">
-              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Shield className="h-8 w-8 text-primary" />
-              </div>
-              <h3 className="text-xl font-bold mb-3 text-foreground">Pagamento Seguro</h3>
-              <p className="text-muted-foreground">
-                Transações protegidas e processamento rápido para sua tranquilidade
-              </p>
-            </Card>
-
-            <Card className="text-center p-8 hover:shadow-lg transition-all">
-              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <TrendingUp className="h-8 w-8 text-primary" />
-              </div>
-              <h3 className="text-xl font-bold mb-3 text-foreground">Alta Qualidade</h3>
-              <p className="text-muted-foreground">
-                Fotos profissionais em alta resolução para guardar para sempre
-              </p>
-            </Card>
-          </div>
-        </div>
-      </section>
-
       {/* CTA Section */}
       <section className="py-20">
         <div className="container mx-auto px-4">

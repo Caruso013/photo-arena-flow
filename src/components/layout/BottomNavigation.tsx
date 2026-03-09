@@ -64,12 +64,11 @@ const BottomNavigation = () => {
       badgeCount: 0
     },
     { 
-      icon: Search, 
-      label: 'Buscar Fotos', 
-      path: '/events',
-      showBadge: false,
-      badgeCount: 0,
-      highlight: true
+      icon: ShoppingCart, 
+      label: 'Carrinho', 
+      path: '/cart',
+      showBadge: items.length > 0,
+      badgeCount: items.length
     },
     { 
       icon: LogIn, 

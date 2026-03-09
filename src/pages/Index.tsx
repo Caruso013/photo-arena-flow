@@ -331,57 +331,6 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="py-12 sm:py-16 px-4 bg-muted/30">
-        <div className="container mx-auto">
-          <div className="text-center mb-12 scroll-animate">
-            <h2 className="text-3xl sm:text-4xl font-bold mb-3">Por que escolher a STA Fotos?</h2>
-            <p className="text-muted-foreground text-base sm:text-lg">
-              A maneira mais fácil e rápida de encontrar e comprar suas fotos
-            </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 scroll-animate">
-            <Card className="border-2 hover:border-primary/50 transition-all hover:shadow-lg">
-              <CardContent className="p-6 text-center space-y-4">
-                <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
-                  <Camera className="h-8 w-8 text-primary" />
-                </div>
-                <h3 className="text-xl font-bold">Reconhecimento Facial</h3>
-                <p className="text-muted-foreground">
-                  Faça upload de uma selfie e encontre automaticamente todas as suas fotos no evento
-                </p>
-              </CardContent>
-            </Card>
-            <Card className="border-2 hover:border-primary/50 transition-all hover:shadow-lg">
-              <CardContent className="p-6 text-center space-y-4">
-                <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
-                  <svg className="h-8 w-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold">Compra Instantânea</h3>
-                <p className="text-muted-foreground">
-                  Pagamento seguro via PIX e receba suas fotos em alta qualidade imediatamente
-                </p>
-              </CardContent>
-            </Card>
-            <Card className="border-2 hover:border-primary/50 transition-all hover:shadow-lg">
-              <CardContent className="p-6 text-center space-y-4">
-                <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
-                  <svg className="h-8 w-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold">100% Seguro</h3>
-                <p className="text-muted-foreground">
-                  Suas fotos e dados pessoais protegidos com criptografia de ponta a ponta
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
       {/* CTA Section */}
       {!user && (
         <section className="py-16 sm:py-20 px-4">
