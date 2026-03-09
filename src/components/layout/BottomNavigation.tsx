@@ -88,26 +88,6 @@ const BottomNavigation = () => {
           const Icon = item.icon;
           const isActive = location.pathname === item.path || 
             (item.path === '/dashboard' && location.pathname.startsWith('/dashboard') && item.path === '/dashboard');
-          const isHighlight = 'highlight' in item && item.highlight;
-          
-          // Botão central destacado (busca facial)
-          if (isHighlight) {
-            return (
-              <NavLink
-                key={`${item.path}-${index}`}
-                to={item.path}
-                onClick={() => haptic.medium()}
-                className="flex flex-col items-center justify-center -mt-4 touch-manipulation"
-              >
-                <div className="bg-gradient-to-r from-yellow-500 to-amber-600 rounded-full p-3 shadow-lg shadow-yellow-500/40 hover:shadow-xl hover:shadow-yellow-500/50 transition-all active:scale-90">
-                  <Icon className="h-6 w-6 text-white" />
-                </div>
-                <span className="text-[10px] font-semibold mt-1 text-yellow-600 dark:text-yellow-400">
-                  {item.label}
-                </span>
-              </NavLink>
-            );
-          }
           
           return (
             <NavLink
