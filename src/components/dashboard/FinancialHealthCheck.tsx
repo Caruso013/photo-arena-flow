@@ -104,13 +104,13 @@ export const FinancialHealthCheck = () => {
       const pendingPayouts = payouts?.filter(p => p.status === 'pending').length || 0;
       const approvedPayouts = payouts?.filter(p => p.status === 'approved').length || 0;
 
-      // 6. Fotógrafos com saldo disponível
-      const { data: photographerBalances, error: balanceError } = await supabase
-        .from('revenue_shares')
-        .select('photographer_id, photographer_amount, purchase:purchases!inner(status, created_at)')
-        .eq('purchase.status', 'completed');
-
-      if (balanceError) throw balanceError;
+      // 6. Fotógrafos com saldo disponível (COM PAGINAÇÃO)
+      const photographerBalances = await fetchAllFromTable((from, to) =>
+        supabase.from('revenue_shares')
+          .select('photographer_id, photographer_amount, purchase:purchases!inner(status, created_at)')
+          .eq('purchase.status', 'completed')
+          .range(from, to)
+      );
 
       const now = new Date();
       const securityPeriod = 12 * 60 * 60 * 1000;
