@@ -66,19 +66,31 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
     fetchFinancialData();
   }, [user, userRole]);
 
+  // Helper para paginação (evitar limite de 1000 registros)
+  const fetchAllPaginated = async (table: 'purchases' | 'revenue_shares', selectCols: string, filters?: { column: string; value: any }[]) => {
+    const PAGE_SIZE = 1000;
+    let all: any[] = [];
+    let from = 0;
+    while (true) {
+      let q = supabase.from(table).select(selectCols).range(from, from + PAGE_SIZE - 1);
+      filters?.forEach(f => { q = q.eq(f.column, f.value); });
+      const { data, error } = await q;
+      if (error) throw error;
+      all = [...all, ...(data || [])];
+      if (!data || data.length < PAGE_SIZE) break;
+      from += PAGE_SIZE;
+    }
+    return all;
+  };
+
   const fetchFinancialData = async () => {
     try {
       setLoading(true);
 
       // Se for fotógrafo, buscar apenas seus revenue_shares
       if (userRole === 'photographer' && user) {
-        // Buscar revenue_shares do fotógrafo
-        const { data: revenueSharesData, error: revenueError } = await supabase
-          .from('revenue_shares')
-          .select('photographer_amount, created_at')
-          .eq('photographer_id', user.id);
-
-        if (revenueError) throw revenueError;
+        // Buscar revenue_shares do fotógrafo (COM PAGINAÇÃO)
+        const revenueSharesData = await fetchAllPaginated('revenue_shares', 'photographer_amount, created_at', [{ column: 'photographer_id', value: user.id }]);
 
         // Calcular receita do fotógrafo
         const photographerRevenue = revenueSharesData?.reduce(
