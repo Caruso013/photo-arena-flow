@@ -98,10 +98,10 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
           0
         ) || 0;
 
-        // Buscar TODOS os fotógrafos para calcular rank correto
-        const { data: allPhotographersData } = await supabase
-          .from('revenue_shares')
-          .select('photographer_id, photographer_amount');
+        // Buscar TODOS os fotógrafos para calcular rank correto (COM PAGINAÇÃO)
+        const allPhotographersData = await fetchAllFromTable((from, to) =>
+          supabase.from('revenue_shares').select('photographer_id, photographer_amount').range(from, to)
+        );
 
         // Agregar receita por fotógrafo
         const photographerRevenueMap = new Map<string, number>();
