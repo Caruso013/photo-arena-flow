@@ -66,19 +66,31 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
     fetchFinancialData();
   }, [user, userRole]);
 
+  // Helper para paginação (evitar limite de 1000 registros do Supabase)
+  const fetchAllFromTable = async (buildQuery: (from: number, to: number) => any) => {
+    const PAGE_SIZE = 1000;
+    let all: any[] = [];
+    let from = 0;
+    while (true) {
+      const { data, error } = await buildQuery(from, from + PAGE_SIZE - 1);
+      if (error) throw error;
+      all = [...all, ...(data || [])];
+      if (!data || data.length < PAGE_SIZE) break;
+      from += PAGE_SIZE;
+    }
+    return all;
+  };
+
   const fetchFinancialData = async () => {
     try {
       setLoading(true);
 
       // Se for fotógrafo, buscar apenas seus revenue_shares
       if (userRole === 'photographer' && user) {
-        // Buscar revenue_shares do fotógrafo
-        const { data: revenueSharesData, error: revenueError } = await supabase
-          .from('revenue_shares')
-          .select('photographer_amount, created_at')
-          .eq('photographer_id', user.id);
-
-        if (revenueError) throw revenueError;
+        // Buscar revenue_shares do fotógrafo (COM PAGINAÇÃO)
+        const revenueSharesData = await fetchAllFromTable((from, to) =>
+          supabase.from('revenue_shares').select('photographer_amount, created_at').eq('photographer_id', user.id).range(from, to)
+        );
 
         // Calcular receita do fotógrafo
         const photographerRevenue = revenueSharesData?.reduce(
@@ -86,14 +98,14 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
           0
         ) || 0;
 
-        // Buscar TODOS os fotógrafos para calcular rank correto
-        const { data: allPhotographersData } = await supabase
-          .from('revenue_shares')
-          .select('photographer_id, photographer_amount');
+        // Buscar TODOS os fotógrafos para calcular rank correto (COM PAGINAÇÃO)
+        const allPhotographersData = await fetchAllFromTable((from, to) =>
+          supabase.from('revenue_shares').select('photographer_id, photographer_amount').range(from, to)
+        );
 
         // Agregar receita por fotógrafo
         const photographerRevenueMap = new Map<string, number>();
-        allPhotographersData?.forEach(share => {
+        allPhotographersData.forEach((share: any) => {
           const current = photographerRevenueMap.get(share.photographer_id) || 0;
           photographerRevenueMap.set(share.photographer_id, current + Number(share.photographer_amount || 0));
         });
@@ -105,20 +117,17 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
 
         const photographerRank = sortedPhotographers.findIndex(p => p.id === user.id) + 1;
 
-        // Buscar compras do fotógrafo para stats
-        const { data: salesData, error: salesError } = await supabase
-          .from('purchases')
-          .select(`
+        // Buscar compras do fotógrafo para stats (COM PAGINAÇÃO)
+        const salesData = await fetchAllFromTable((from, to) =>
+          supabase.from('purchases').select(`
             photographer_id,
             amount,
             photo:photos(title, price),
             photographer:profiles!photographer_id(full_name),
             created_at
-          `)
-          .eq('status', 'completed')
-          .eq('photographer_id', user.id);
-
-        if (salesError) throw salesError;
+          `).eq('status', 'completed').eq('photographer_id', user.id).range(from, to)
+        );
+        // salesData already fetched above
 
         const stats: PhotographerStats = {
           photographer_id: user.id,
@@ -134,19 +143,16 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
         setTotalRevenue(photographerRevenue);
         setPhotographerStats([stats]);
       } else {
-        // Para admin, buscar todos os fotógrafos
-        const { data: salesData, error: salesError } = await supabase
-          .from('purchases')
-          .select(`
+        // Para admin, buscar todos os fotógrafos (COM PAGINAÇÃO)
+        const salesData = await fetchAllFromTable((from, to) =>
+          supabase.from('purchases').select(`
             photographer_id,
             amount,
             photo:photos(title, price),
             photographer:profiles!photographer_id(full_name),
             created_at
-          `)
-          .eq('status', 'completed');
-
-        if (salesError) throw salesError;
+          `).eq('status', 'completed').range(from, to)
+        );
 
         // Process photographer stats
         const photographerMap = new Map<string, PhotographerStats>();
@@ -191,37 +197,42 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
       }
 
 
-      // Buscar dados reais de revenue_shares agrupados por mês
-      let revenueSharesQuery = supabase
-        .from('revenue_shares')
-        .select('platform_amount, photographer_amount, organization_amount, created_at')
-        .gte('created_at', new Date(Date.now() - 6 * 30 * 24 * 60 * 60 * 1000).toISOString())
-        .order('created_at', { ascending: true });
-
-      // Filtrar por fotógrafo quando não for admin
-      if (userRole === 'photographer' && user) {
-        revenueSharesQuery = revenueSharesQuery.eq('photographer_id', user.id);
-      }
-
-      const { data: revenueSharesData, error: revenueError } = await revenueSharesQuery;
-
-      if (revenueError) throw revenueError;
+      // Buscar dados reais de revenue_shares agrupados por mês (COM PAGINAÇÃO)
+      const sixMonthsAgo = new Date(Date.now() - 6 * 30 * 24 * 60 * 60 * 1000).toISOString();
+      
+      const revenueSharesChartData = await fetchAllFromTable((from, to) => {
+        let q = supabase
+          .from('revenue_shares')
+          .select('platform_amount, photographer_amount, organization_amount, created_at')
+          .gte('created_at', sixMonthsAgo)
+          .order('created_at', { ascending: true })
+          .range(from, to);
+        
+        // Filtrar por fotógrafo quando não for admin
+        if (userRole === 'photographer' && user) {
+          q = q.eq('photographer_id', user.id);
+        }
+        return q;
+      });
 
       // Calcular totais de receita por categoria
       let totalPlatform = 0;
       let totalPhotographers = 0;
       let totalOrganizations = 0;
 
-      // Agrupar por mês
-      const monthlyMap = new Map<string, { platform: number; photographers: number; organizations: number }>();
+      // Agrupar por mês COM ANO para evitar merge de meses de anos diferentes
+      const monthlyMap = new Map<string, { platform: number; photographers: number; organizations: number; sortKey: number }>();
       const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
-      revenueSharesData?.forEach(share => {
+      revenueSharesChartData.forEach((share: any) => {
         const date = new Date(share.created_at);
-        const monthKey = `${monthNames[date.getMonth()]}`;
+        const year = date.getFullYear();
+        const month = date.getMonth();
+        const monthKey = `${monthNames[month]}/${year.toString().slice(-2)}`;
+        const sortKey = year * 100 + month;
         
         if (!monthlyMap.has(monthKey)) {
-          monthlyMap.set(monthKey, { platform: 0, photographers: 0, organizations: 0 });
+          monthlyMap.set(monthKey, { platform: 0, photographers: 0, organizations: 0, sortKey });
         }
         
         const monthly = monthlyMap.get(monthKey)!;
@@ -240,12 +251,15 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
       setPhotographersRevenue(totalPhotographers);
       setOrganizationsRevenue(totalOrganizations);
 
-      const monthlyData: RevenueData[] = Array.from(monthlyMap.entries()).map(([month, data]) => ({
-        month,
-        platform: data.platform,
-        photographers: data.photographers,
-        organizations: data.organizations
-      }));
+      // Ordenar por data e converter para array
+      const monthlyData: RevenueData[] = Array.from(monthlyMap.entries())
+        .sort((a, b) => a[1].sortKey - b[1].sortKey)
+        .map(([month, data]) => ({
+          month,
+          platform: Math.round(data.platform * 100) / 100,
+          photographers: Math.round(data.photographers * 100) / 100,
+          organizations: Math.round(data.organizations * 100) / 100
+        }));
       
       setRevenueData(monthlyData);
 

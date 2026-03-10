@@ -36,6 +36,21 @@ export const FinancialHealthCheck = () => {
   const [metrics, setMetrics] = useState<HealthMetrics | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
 
+  // Helper para paginação (evitar limite de 1000 registros do Supabase)
+  const fetchAllFromTable = async (buildQuery: (from: number, to: number) => any) => {
+    const PAGE_SIZE = 1000;
+    let all: any[] = [];
+    let from = 0;
+    while (true) {
+      const { data, error } = await buildQuery(from, from + PAGE_SIZE - 1);
+      if (error) throw error;
+      all = [...all, ...(data || [])];
+      if (!data || data.length < PAGE_SIZE) break;
+      from += PAGE_SIZE;
+    }
+    return all;
+  };
+
   const runHealthCheck = async () => {
     try {
       setLoading(true);
@@ -43,45 +58,41 @@ export const FinancialHealthCheck = () => {
       
       console.log('🏥 Iniciando Health Check Financeiro...');
 
-      // 1. Total de receita das purchases
-      const { data: purchases, error: purchasesError } = await supabase
-        .from('purchases')
-        .select('id, amount, status')
-        .eq('status', 'completed');
+      // 1. Total de receita das purchases (COM PAGINAÇÃO)
+      const purchases = await fetchAllFromTable((from, to) =>
+        supabase.from('purchases').select('id, amount, status').eq('status', 'completed').range(from, to)
+      );
 
-      if (purchasesError) throw purchasesError;
+      const totalRevenue = purchases.reduce((sum: number, p: any) => sum + Number(p.amount), 0);
+      const avgTicket = purchases.length ? totalRevenue / purchases.length : 0;
 
-      const totalRevenue = purchases?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
-      const avgTicket = purchases?.length ? totalRevenue / purchases.length : 0;
+      // 2. Total de revenue_shares com valores detalhados (COM PAGINAÇÃO)
+      const revenueShares = await fetchAllFromTable((from, to) =>
+        supabase.from('revenue_shares').select('photographer_amount, platform_amount, organization_amount, purchase_id').range(from, to)
+      );
 
-      // 2. Total de revenue_shares com valores detalhados
-      const { data: revenueShares, error: sharesError } = await supabase
-        .from('revenue_shares')
-        .select('photographer_amount, platform_amount, organization_amount, purchase_id');
-
-      if (sharesError) throw sharesError;
-
-      const totalRevenueShares = revenueShares?.reduce(
-        (sum, s) => sum + Number(s.photographer_amount) + Number(s.platform_amount) + Number(s.organization_amount), 
+      // Usar arredondamento em centavos para evitar erros de ponto flutuante
+      const totalRevenueShares = revenueShares.reduce(
+        (sum: number, s: any) => sum + Math.round((Number(s.photographer_amount) + Number(s.platform_amount) + Number(s.organization_amount)) * 100), 
         0
-      ) || 0;
+      ) / 100;
 
       // Calcular receitas separadas
-      const platformRevenue = revenueShares?.reduce((sum, s) => sum + Number(s.platform_amount), 0) || 0;
-      const photographersRevenue = revenueShares?.reduce((sum, s) => sum + Number(s.photographer_amount), 0) || 0;
-      const organizationsRevenue = revenueShares?.reduce((sum, s) => sum + Number(s.organization_amount), 0) || 0;
+      const platformRevenue = revenueShares.reduce((sum: number, s: any) => sum + Number(s.platform_amount), 0);
+      const photographersRevenue = revenueShares.reduce((sum: number, s: any) => sum + Number(s.photographer_amount), 0);
+      const organizationsRevenue = revenueShares.reduce((sum: number, s: any) => sum + Number(s.organization_amount), 0);
 
       // 3. Verificar revenue_shares órfãs (sem purchase)
-      const purchaseIds = new Set(purchases?.map(p => p.id) || []);
-      const orphanedShares = revenueShares?.filter(
-        s => !purchaseIds.has(s.purchase_id)
-      ).length || 0;
+      const purchaseIds = new Set(purchases.map((p: any) => p.id));
+      const orphanedShares = revenueShares.filter(
+        (s: any) => !purchaseIds.has(s.purchase_id)
+      ).length;
 
       // 4. Verificar purchases sem revenue_share
-      const sharesPurchaseIds = new Set(revenueShares?.map(s => s.purchase_id) || []);
-      const missingShares = purchases?.filter(
-        p => !sharesPurchaseIds.has(p.id)
-      ).length || 0;
+      const sharesPurchaseIds = new Set(revenueShares.map((s: any) => s.purchase_id));
+      const missingShares = purchases.filter(
+        (p: any) => !sharesPurchaseIds.has(p.id)
+      ).length;
 
       // 5. Payout requests pendentes e aprovados
       const { data: payouts, error: payoutsError } = await supabase
@@ -93,13 +104,13 @@ export const FinancialHealthCheck = () => {
       const pendingPayouts = payouts?.filter(p => p.status === 'pending').length || 0;
       const approvedPayouts = payouts?.filter(p => p.status === 'approved').length || 0;
 
-      // 6. Fotógrafos com saldo disponível
-      const { data: photographerBalances, error: balanceError } = await supabase
-        .from('revenue_shares')
-        .select('photographer_id, photographer_amount, purchase:purchases!inner(status, created_at)')
-        .eq('purchase.status', 'completed');
-
-      if (balanceError) throw balanceError;
+      // 6. Fotógrafos com saldo disponível (COM PAGINAÇÃO)
+      const photographerBalances = await fetchAllFromTable((from, to) =>
+        supabase.from('revenue_shares')
+          .select('photographer_id, photographer_amount, purchase:purchases!inner(status, created_at)')
+          .eq('purchase.status', 'completed')
+          .range(from, to)
+      );
 
       const now = new Date();
       const securityPeriod = 12 * 60 * 60 * 1000;
