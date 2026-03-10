@@ -36,14 +36,13 @@ export const FinancialHealthCheck = () => {
   const [metrics, setMetrics] = useState<HealthMetrics | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
 
-  const fetchAllPaginated = async (table: 'purchases' | 'revenue_shares', selectCols: string, filters?: { column: string; value: any }[]) => {
+  // Helper para paginação (evitar limite de 1000 registros do Supabase)
+  const fetchAllFromTable = async (buildQuery: (from: number, to: number) => any) => {
     const PAGE_SIZE = 1000;
     let all: any[] = [];
     let from = 0;
     while (true) {
-      let q = supabase.from(table).select(selectCols).range(from, from + PAGE_SIZE - 1);
-      filters?.forEach(f => { q = q.eq(f.column, f.value); });
-      const { data, error } = await q;
+      const { data, error } = await buildQuery(from, from + PAGE_SIZE - 1);
       if (error) throw error;
       all = [...all, ...(data || [])];
       if (!data || data.length < PAGE_SIZE) break;
@@ -60,13 +59,17 @@ export const FinancialHealthCheck = () => {
       console.log('🏥 Iniciando Health Check Financeiro...');
 
       // 1. Total de receita das purchases (COM PAGINAÇÃO)
-      const purchases = await fetchAllPaginated('purchases', 'id, amount, status', [{ column: 'status', value: 'completed' }]);
+      const purchases = await fetchAllFromTable((from, to) =>
+        supabase.from('purchases').select('id, amount, status').eq('status', 'completed').range(from, to)
+      );
 
       const totalRevenue = purchases.reduce((sum: number, p: any) => sum + Number(p.amount), 0);
       const avgTicket = purchases.length ? totalRevenue / purchases.length : 0;
 
       // 2. Total de revenue_shares com valores detalhados (COM PAGINAÇÃO)
-      const revenueShares = await fetchAllPaginated('revenue_shares', 'photographer_amount, platform_amount, organization_amount, purchase_id');
+      const revenueShares = await fetchAllFromTable((from, to) =>
+        supabase.from('revenue_shares').select('photographer_amount, platform_amount, organization_amount, purchase_id').range(from, to)
+      );
 
       const totalRevenueShares = revenueShares?.reduce(
         (sum, s) => sum + Number(s.photographer_amount) + Number(s.platform_amount) + Number(s.organization_amount), 
