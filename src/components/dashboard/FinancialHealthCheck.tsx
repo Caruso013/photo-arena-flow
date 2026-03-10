@@ -71,10 +71,11 @@ export const FinancialHealthCheck = () => {
         supabase.from('revenue_shares').select('photographer_amount, platform_amount, organization_amount, purchase_id').range(from, to)
       );
 
-      const totalRevenueShares = revenueShares?.reduce(
-        (sum, s) => sum + Number(s.photographer_amount) + Number(s.platform_amount) + Number(s.organization_amount), 
+      // Usar arredondamento em centavos para evitar erros de ponto flutuante
+      const totalRevenueShares = revenueShares.reduce(
+        (sum: number, s: any) => sum + Math.round((Number(s.photographer_amount) + Number(s.platform_amount) + Number(s.organization_amount)) * 100), 
         0
-      ) || 0;
+      ) / 100;
 
       // Calcular receitas separadas
       const platformRevenue = revenueShares?.reduce((sum, s) => sum + Number(s.platform_amount), 0) || 0;
