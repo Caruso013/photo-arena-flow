@@ -151,6 +151,21 @@ const OrganizationRevenue = () => {
     return cyclesData;
   };
 
+  // Helper para paginação (evitar limite de 1000 registros do Supabase)
+  const fetchAllFromTable = async (buildQuery: (from: number, to: number) => any) => {
+    const PAGE_SIZE = 1000;
+    let all: any[] = [];
+    let from = 0;
+    while (true) {
+      const { data, error } = await buildQuery(from, from + PAGE_SIZE - 1);
+      if (error) throw error;
+      all = [...all, ...(data || [])];
+      if (!data || data.length < PAGE_SIZE) break;
+      from += PAGE_SIZE;
+    }
+    return all;
+  };
+
   const fetchOrganizationData = async () => {
     try {
       setLoading(true);
@@ -162,13 +177,12 @@ const OrganizationRevenue = () => {
         .from('organization_users')
         .select('organization_id, organizations(*)')
         .eq('user_id', user?.id)
-        .maybeSingle(); // Usa maybeSingle para não dar erro se não encontrar
+        .maybeSingle();
 
       if (orgUserError) {
         console.error('❌ Erro ao buscar vínculo organização:', orgUserError);
         console.error('Código do erro:', orgUserError.code, 'Detalhes:', orgUserError.details);
         
-        // Se for erro de permissão, mostrar mensagem específica
         if (orgUserError.code === 'PGRST301' || orgUserError.message?.includes('permission')) {
           toast({
             title: "Erro de permissão",
@@ -181,7 +195,6 @@ const OrganizationRevenue = () => {
       
       console.log('📋 Resultado da busca de vínculo:', orgUser);
       
-      // Se não encontrou vínculo, mostrar tela de organização não encontrada
       if (!orgUser || !orgUser.organizations) {
         console.log('⚠️ Usuário não está vinculado a nenhuma organização. User ID:', user?.id);
         setOrganization(null);
@@ -194,38 +207,38 @@ const OrganizationRevenue = () => {
 
       console.log('📊 Buscando dados da organização:', org.name, 'ID:', org.id);
 
-      // 2. PRIMEIRO: Buscar TODAS as vendas (sem filtro de data) para mostrar histórico total
-      const { data: allSalesData, error: allSalesError } = await supabase
-        .from('revenue_shares')
-        .select(`
-          id,
-          organization_amount,
-          photographer_amount,
-          platform_amount,
-          created_at,
-          purchase_id,
-          photographer_id,
-          purchases (
-            amount,
-            buyer_id,
-            photo_id,
-            photos (
-              title,
-              campaign_id,
-              campaigns (
+      // 2. Buscar TODAS as vendas COM PAGINAÇÃO
+      const allSalesData = await fetchAllFromTable((from, to) =>
+        supabase
+          .from('revenue_shares')
+          .select(`
+            id,
+            organization_amount,
+            photographer_amount,
+            platform_amount,
+            created_at,
+            purchase_id,
+            photographer_id,
+            purchases (
+              amount,
+              buyer_id,
+              photo_id,
+              photos (
                 title,
-                event_date
+                campaign_id,
+                campaigns (
+                  title,
+                  event_date
+                )
               )
             )
-          )
-        `)
-        .eq('organization_id', org.id)
-        .order('created_at', { ascending: false });
+          `)
+          .eq('organization_id', org.id)
+          .order('created_at', { ascending: false })
+          .range(from, to)
+      );
 
-      if (allSalesError) {
-        console.error('❌ Erro ao buscar todas as vendas:', allSalesError);
-        throw allSalesError;
-      }
+      console.log('✅ Total de vendas encontradas:', allSalesData?.length || 0);
 
       console.log('✅ Total de vendas encontradas:', allSalesData?.length || 0);
 

@@ -143,27 +143,31 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
         setTotalRevenue(photographerRevenue);
         setPhotographerStats([stats]);
       } else {
-        // Para admin, buscar todos os fotógrafos (COM PAGINAÇÃO)
-        const salesData = await fetchAllFromTable((from, to) =>
-          supabase.from('purchases').select(`
+        // Para admin: usar revenue_shares como fonte de verdade (não purchases.amount)
+        const allRevenueShares = await fetchAllFromTable((from, to) =>
+          supabase.from('revenue_shares').select(`
             photographer_id,
-            amount,
-            photo:photos(title, price),
-            photographer:profiles!photographer_id(full_name),
-            created_at
-          `).eq('status', 'completed').range(from, to)
+            photographer_amount,
+            platform_amount,
+            organization_amount,
+            purchase:purchases!inner(
+              created_at,
+              photo:photos(title, price),
+              photographer:profiles!purchases_photographer_id_fkey(full_name)
+            )
+          `).range(from, to)
         );
 
-        // Process photographer stats
+        // Process photographer stats from revenue_shares
         const photographerMap = new Map<string, PhotographerStats>();
         let totalRevenueSum = 0;
 
-        salesData?.forEach(sale => {
-          const photographerId = sale.photographer_id;
-          const photographerName = sale.photographer?.full_name || 'Fotógrafo Desconhecido';
-          const amount = Number(sale.amount || 0);
+        allRevenueShares?.forEach((share: any) => {
+          const photographerId = share.photographer_id;
+          const photographerName = share.purchase?.photographer?.full_name || 'Fotógrafo Desconhecido';
+          const totalAmount = Number(share.photographer_amount || 0) + Number(share.platform_amount || 0) + Number(share.organization_amount || 0);
           
-          totalRevenueSum += amount;
+          totalRevenueSum += totalAmount;
 
           if (!photographerMap.has(photographerId)) {
             photographerMap.set(photographerId, {
@@ -180,20 +184,21 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
           const stats = photographerMap.get(photographerId)!;
           stats.total_sales += 1;
           stats.total_photos += 1;
-          stats.total_revenue += amount;
+          stats.total_revenue += totalAmount;
         });
 
         // Calculate averages and sort by revenue
         const sortedStats = Array.from(photographerMap.values())
           .map(stats => ({
             ...stats,
-            avg_photo_price: stats.total_sales > 0 ? stats.total_revenue / stats.total_sales : 0
+            total_revenue: Math.round(stats.total_revenue * 100) / 100,
+            avg_photo_price: stats.total_sales > 0 ? Math.round((stats.total_revenue / stats.total_sales) * 100) / 100 : 0
           }))
           .sort((a, b) => b.total_revenue - a.total_revenue)
           .map((stats, index) => ({ ...stats, rank: index + 1 }));
 
         setPhotographerStats(sortedStats);
-        setTotalRevenue(totalRevenueSum);
+        setTotalRevenue(Math.round(totalRevenueSum * 100) / 100);
       }
 
 

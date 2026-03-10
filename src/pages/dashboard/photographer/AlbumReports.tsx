@@ -167,12 +167,15 @@ const AlbumReports = () => {
         .select('*', { count: 'exact', head: true })
         .eq('photographer_id', user?.id);
 
-      // Buscar vendas completadas
-      const { data: completedPurchases } = await supabase
-        .from('purchases')
-        .select('id, photo_id')
-        .eq('photographer_id', user?.id)
-        .eq('status', 'completed');
+      // Buscar vendas completadas (COM PAGINAÇÃO)
+      const completedPurchases = await fetchAllFromTable((from, to) =>
+        supabase
+          .from('purchases')
+          .select('id, photo_id')
+          .eq('photographer_id', user?.id)
+          .eq('status', 'completed')
+          .range(from, to)
+      );
 
       // Contar fotos únicas vendidas
       const uniquePhotosSold = new Set(completedPurchases?.map(p => p.photo_id) || []).size;
@@ -199,7 +202,7 @@ const AlbumReports = () => {
         total_photos_sold: uniquePhotosSold,
         conversion_rate: conversionRate,
         avg_photos_per_order: avgPhotosPerOrder,
-        active_carts: 0, // Deixar como 0 por enquanto
+        active_carts: 0,
       });
     } catch (error) {
       console.error('Erro ao buscar métricas gerais:', error);

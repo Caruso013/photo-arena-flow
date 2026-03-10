@@ -1,72 +1,16 @@
-import { useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { DollarSign, TrendingUp, Calendar, Download } from 'lucide-react';
+import { DollarSign, TrendingUp, Calendar, Download, Clock, Lock } from 'lucide-react';
 import { SkeletonCard } from '@/components/ui/skeleton-card';
 import { Button } from '@/components/ui/button';
-
-interface EarningsData {
-  total_earnings: number;
-  pending_earnings: number;
-  completed_earnings: number;
-  total_photos_sold: number;
-  average_photo_price: number;
-}
+import { usePhotographerBalance } from '@/hooks/usePhotographerBalance';
+import { formatCurrency } from '@/lib/utils';
+import { useNavigate } from 'react-router-dom';
 
 const PhotographerEarnings = () => {
-  const { user } = useAuth();
-  const [earnings, setEarnings] = useState<EarningsData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const balance = usePhotographerBalance();
+  const navigate = useNavigate();
 
-  useEffect(() => {
-    if (user?.id) {
-      fetchEarnings();
-    }
-  }, [user?.id]);
-
-  const fetchEarnings = async () => {
-    if (!user?.id) return;
-    
-    try {
-      // Buscar compras recentes de fotos do fotógrafo (últimas 200)
-      const { data: purchases, error } = await supabase
-        .from('purchases')
-        .select(`
-          *,
-          photos!inner(photographer_id, price)
-        `)
-        .eq('photos.photographer_id', user.id)
-        .order('created_at', { ascending: false })
-        .range(0, 199); // Limitar a 200 compras mais recentes
-
-      if (error) throw error;
-
-      // Calcular estatísticas
-      const completed = purchases?.filter(p => p.status === 'completed') || [];
-      const pending = purchases?.filter(p => p.status === 'pending') || [];
-
-      const completedEarnings = completed.reduce((sum, p) => sum + Number(p.amount), 0);
-      const pendingEarnings = pending.reduce((sum, p) => sum + Number(p.amount), 0);
-      const totalEarnings = completedEarnings + pendingEarnings;
-      const totalPhotosSold = purchases?.length || 0;
-      const avgPrice = totalPhotosSold > 0 ? totalEarnings / totalPhotosSold : 0;
-
-      setEarnings({
-        total_earnings: totalEarnings,
-        pending_earnings: pendingEarnings,
-        completed_earnings: completedEarnings,
-        total_photos_sold: totalPhotosSold,
-        average_photo_price: avgPrice,
-      });
-    } catch (error) {
-      console.error('Error fetching earnings:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
+  if (balance.loading) {
     return (
       <div className="p-6 space-y-6">
         <SkeletonCard />
@@ -96,10 +40,10 @@ const PhotographerEarnings = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-foreground">
-              R$ {earnings?.total_earnings.toFixed(2) || '0.00'}
+              {formatCurrency(balance.totalEarned)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Incluindo pendentes
+              Histórico completo
             </p>
           </CardContent>
         </Card>
@@ -107,16 +51,16 @@ const PhotographerEarnings = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-foreground">
-              Ganhos Confirmados
+              Disponível para Saque
             </CardTitle>
             <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-              R$ {earnings?.completed_earnings.toFixed(2) || '0.00'}
+              {formatCurrency(balance.availableAmount)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Pagamentos aprovados
+              Após período de segurança
             </p>
           </CardContent>
         </Card>
@@ -130,10 +74,10 @@ const PhotographerEarnings = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-foreground">
-              {earnings?.total_photos_sold || 0}
+              {balance.totalPhotosSold}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Total de vendas
+              {balance.monthlySales} este mês
             </p>
           </CardContent>
         </Card>
@@ -141,16 +85,16 @@ const PhotographerEarnings = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-foreground">
-              Preço Médio
+              Taxa de Conversão
             </CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-foreground">
-              R$ {earnings?.average_photo_price.toFixed(2) || '0.00'}
+              {balance.conversionRate.toFixed(1)}%
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Por foto vendida
+              {balance.totalPhotos} fotos enviadas
             </p>
           </CardContent>
         </Card>
@@ -162,34 +106,60 @@ const PhotographerEarnings = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex justify-between items-center p-4 bg-muted/50 rounded-lg">
-            <div>
-              <p className="text-sm text-muted-foreground">Ganhos Pendentes</p>
-              <p className="text-lg font-semibold text-yellow-600 dark:text-yellow-400">
-                R$ {earnings?.pending_earnings.toFixed(2) || '0.00'}
-              </p>
+            <div className="flex items-center gap-3">
+              <Clock className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+              <div>
+                <p className="text-sm text-muted-foreground">Pendente (período de segurança)</p>
+                <p className="text-lg font-semibold text-yellow-600 dark:text-yellow-400">
+                  {formatCurrency(balance.pendingAmount)}
+                </p>
+              </div>
             </div>
             <div className="text-right">
               <p className="text-xs text-muted-foreground">
-                Aguardando confirmação de pagamento
+                Liberado após 12h da venda
               </p>
             </div>
           </div>
+
+          {balance.blockedAmount > 0 && (
+            <div className="flex justify-between items-center p-4 bg-muted/50 rounded-lg">
+              <div className="flex items-center gap-3">
+                <Lock className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                <div>
+                  <p className="text-sm text-muted-foreground">Bloqueado em saques</p>
+                  <p className="text-lg font-semibold text-orange-600 dark:text-orange-400">
+                    {formatCurrency(balance.blockedAmount)}
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-muted-foreground">
+                  Aguardando processamento
+                </p>
+              </div>
+            </div>
+          )}
 
           <div className="flex justify-between items-center p-4 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
             <div>
               <p className="text-sm text-green-900 dark:text-green-100">Disponível para Saque</p>
               <p className="text-lg font-semibold text-green-600 dark:text-green-400">
-                R$ {earnings?.completed_earnings.toFixed(2) || '0.00'}
+                {formatCurrency(balance.availableAmount)}
               </p>
             </div>
-            <Button variant="default" disabled={!earnings || earnings.completed_earnings === 0}>
+            <Button 
+              variant="default" 
+              disabled={balance.availableAmount < 50}
+              onClick={() => navigate('/dashboard/photographer/payout')}
+            >
               <Download className="h-4 w-4 mr-2" />
               Solicitar Saque
             </Button>
           </div>
 
           <p className="text-xs text-muted-foreground mt-4">
-            💡 Os ganhos serão disponibilizados após a confirmação do pagamento pelo cliente.
+            💡 Os ganhos ficam disponíveis 12h após a confirmação do pagamento.
             O saque pode ser solicitado quando atingir o valor mínimo de R$ 50,00.
           </p>
         </CardContent>

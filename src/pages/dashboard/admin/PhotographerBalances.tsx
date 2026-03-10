@@ -34,11 +34,14 @@ const PhotographerBalances = () => {
     fetchBalances();
   }, []);
 
+  const SECURITY_PERIOD_HOURS = 12;
+  const SECURITY_PERIOD_MS = SECURITY_PERIOD_HOURS * 60 * 60 * 1000;
+
   const fetchBalances = async () => {
     try {
       setLoading(true);
 
-      // Buscar TODOS os revenue_shares com paginação para evitar limite de 1000 registros
+      // Buscar TODOS os revenue_shares com paginação + data da purchase para período de segurança
       let allRevenueData: any[] = [];
       let page = 0;
       const pageSize = 1000;
@@ -50,7 +53,7 @@ const PhotographerBalances = () => {
           .select(`
             photographer_id,
             photographer_amount,
-            purchase:purchases!inner(status)
+            purchase:purchases!inner(status, created_at)
           `)
           .eq('purchase.status', 'completed')
           .range(page * pageSize, (page + 1) * pageSize - 1);
@@ -76,7 +79,6 @@ const PhotographerBalances = () => {
       // Buscar perfis dos fotógrafos
       const photographerIds = [...new Set(allRevenueData?.map(r => r.photographer_id) || [])];
       
-      // Evitar query vazia
       if (photographerIds.length === 0) {
         setBalances([]);
         return;
@@ -89,28 +91,41 @@ const PhotographerBalances = () => {
 
       const profileMap = new Map(profilesData?.map(p => [p.id, p]) || []);
 
-      // Agregar dados - agora todos os registros já são de compras completed
-      const balanceMap = new Map<string, PhotographerBalance>();
+      const now = Date.now();
+
+      // Agregar dados COM período de segurança de 12h
+      const balanceMap = new Map<string, PhotographerBalance & { available_before_payouts: number }>();
 
       allRevenueData?.forEach(revenue => {
         const id = revenue.photographer_id;
         if (!balanceMap.has(id)) {
-          const profile = profileMap.get(id);
+          const prof = profileMap.get(id);
           balanceMap.set(id, {
             photographer_id: id,
-            photographer_name: profile?.full_name || 'Fotógrafo',
-            photographer_email: profile?.email || '',
+            photographer_name: prof?.full_name || 'Fotógrafo',
+            photographer_email: prof?.email || '',
             total_earned: 0,
             total_withdrawn: 0,
             pending_withdrawal: 0,
             available_balance: 0,
             total_sales: 0,
+            available_before_payouts: 0,
           });
         }
 
         const balance = balanceMap.get(id)!;
-        balance.total_earned += Number(revenue.photographer_amount || 0);
+        const amount = Number(revenue.photographer_amount || 0);
+        balance.total_earned += amount;
         balance.total_sales += 1;
+
+        // Verificar período de segurança de 12h
+        const purchase = revenue.purchase;
+        const purchaseDate = new Date(purchase?.created_at).getTime();
+        const hoursSinceSale = (now - purchaseDate) / SECURITY_PERIOD_MS;
+        
+        if (hoursSinceSale >= 1) {
+          balance.available_before_payouts += amount;
+        }
       });
 
       // Adicionar payouts
@@ -125,13 +140,21 @@ const PhotographerBalances = () => {
         }
       });
 
-      // Calcular saldo disponível
+      // Calcular saldo disponível (respeitando período de segurança)
       balanceMap.forEach(balance => {
-        balance.available_balance = balance.total_earned - balance.total_withdrawn - balance.pending_withdrawal;
+        balance.available_balance = Math.max(0, 
+          balance.available_before_payouts - balance.total_withdrawn - balance.pending_withdrawal
+        );
+        // Arredondamento em centavos
+        balance.total_earned = Math.round(balance.total_earned * 100) / 100;
+        balance.available_balance = Math.round(balance.available_balance * 100) / 100;
+        balance.total_withdrawn = Math.round(balance.total_withdrawn * 100) / 100;
+        balance.pending_withdrawal = Math.round(balance.pending_withdrawal * 100) / 100;
       });
 
       // Ordenar por saldo disponível
       const sortedBalances = Array.from(balanceMap.values())
+        .map(({ available_before_payouts, ...rest }) => rest) // Remove campo interno
         .sort((a, b) => b.available_balance - a.available_balance);
 
       setBalances(sortedBalances);
