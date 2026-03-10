@@ -83,16 +83,16 @@ export const FinancialHealthCheck = () => {
       const organizationsRevenue = revenueShares.reduce((sum: number, s: any) => sum + Number(s.organization_amount), 0);
 
       // 3. Verificar revenue_shares órfãs (sem purchase)
-      const purchaseIds = new Set(purchases?.map(p => p.id) || []);
-      const orphanedShares = revenueShares?.filter(
-        s => !purchaseIds.has(s.purchase_id)
-      ).length || 0;
+      const purchaseIds = new Set(purchases.map((p: any) => p.id));
+      const orphanedShares = revenueShares.filter(
+        (s: any) => !purchaseIds.has(s.purchase_id)
+      ).length;
 
       // 4. Verificar purchases sem revenue_share
-      const sharesPurchaseIds = new Set(revenueShares?.map(s => s.purchase_id) || []);
-      const missingShares = purchases?.filter(
-        p => !sharesPurchaseIds.has(p.id)
-      ).length || 0;
+      const sharesPurchaseIds = new Set(revenueShares.map((s: any) => s.purchase_id));
+      const missingShares = purchases.filter(
+        (p: any) => !sharesPurchaseIds.has(p.id)
+      ).length;
 
       // 5. Payout requests pendentes e aprovados
       const { data: payouts, error: payoutsError } = await supabase
