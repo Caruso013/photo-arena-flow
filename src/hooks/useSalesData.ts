@@ -18,6 +18,21 @@ export const useSalesData = (days: number = 30, photographerId?: string) => {
     fetchSalesData();
   }, [days, photographerId, user, profile]);
 
+  // Helper para paginação (evitar limite de 1000 registros do Supabase)
+  const fetchAllFromTable = async (buildQuery: (from: number, to: number) => any) => {
+    const PAGE_SIZE = 1000;
+    let all: any[] = [];
+    let from = 0;
+    while (true) {
+      const { data, error } = await buildQuery(from, from + PAGE_SIZE - 1);
+      if (error) throw error;
+      all = [...all, ...(data || [])];
+      if (!data || data.length < PAGE_SIZE) break;
+      from += PAGE_SIZE;
+    }
+    return all;
+  };
+
   const fetchSalesData = async () => {
     try {
       setLoading(true);
@@ -25,25 +40,23 @@ export const useSalesData = (days: number = 30, photographerId?: string) => {
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - days);
 
-      let query = supabase
-        .from('purchases')
-        .select('created_at, amount, photo_id')
-        .eq('status', 'completed')
-        .gte('created_at', startDate.toISOString())
-        .order('created_at', { ascending: true });
+      const purchases = await fetchAllFromTable((from, to) => {
+        let query = supabase
+          .from('purchases')
+          .select('created_at, amount, photo_id')
+          .eq('status', 'completed')
+          .gte('created_at', startDate.toISOString())
+          .order('created_at', { ascending: true })
+          .range(from, to);
 
-      // Se tiver photographerId específico, filtrar
-      if (photographerId) {
-        query = query.eq('photographer_id', photographerId);
-      } 
-      // Se for fotógrafo logado, mostrar só suas vendas
-      else if (profile?.role === 'photographer') {
-        query = query.eq('photographer_id', user?.id);
-      }
+        if (photographerId) {
+          query = query.eq('photographer_id', photographerId);
+        } else if (profile?.role === 'photographer') {
+          query = query.eq('photographer_id', user?.id);
+        }
 
-      const { data: purchases, error } = await query;
-
-      if (error) throw error;
+        return query;
+      });
 
       // Agrupar por dia
       const salesByDay = new Map<string, { sales: number; revenue: number; photos: Set<string> }>();
