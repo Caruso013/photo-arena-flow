@@ -127,8 +127,7 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
             created_at
           `).eq('status', 'completed').eq('photographer_id', user.id).range(from, to)
         );
-
-        if (salesError) throw salesError;
+        // salesData already fetched above
 
         const stats: PhotographerStats = {
           photographer_id: user.id,
