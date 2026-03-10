@@ -105,7 +105,7 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
 
         // Agregar receita por fotógrafo
         const photographerRevenueMap = new Map<string, number>();
-        allPhotographersData?.forEach(share => {
+        allPhotographersData.forEach((share: any) => {
           const current = photographerRevenueMap.get(share.photographer_id) || 0;
           photographerRevenueMap.set(share.photographer_id, current + Number(share.photographer_amount || 0));
         });
