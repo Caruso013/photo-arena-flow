@@ -143,19 +143,16 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
         setTotalRevenue(photographerRevenue);
         setPhotographerStats([stats]);
       } else {
-        // Para admin, buscar todos os fotógrafos
-        const { data: salesData, error: salesError } = await supabase
-          .from('purchases')
-          .select(`
+        // Para admin, buscar todos os fotógrafos (COM PAGINAÇÃO)
+        const salesData = await fetchAllFromTable((from, to) =>
+          supabase.from('purchases').select(`
             photographer_id,
             amount,
             photo:photos(title, price),
             photographer:profiles!photographer_id(full_name),
             created_at
-          `)
-          .eq('status', 'completed');
-
-        if (salesError) throw salesError;
+          `).eq('status', 'completed').range(from, to)
+        );
 
         // Process photographer stats
         const photographerMap = new Map<string, PhotographerStats>();
