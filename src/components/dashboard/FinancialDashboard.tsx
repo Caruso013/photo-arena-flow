@@ -66,15 +66,13 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
     fetchFinancialData();
   }, [user, userRole]);
 
-  // Helper para paginação (evitar limite de 1000 registros)
-  const fetchAllPaginated = async (table: 'purchases' | 'revenue_shares', selectCols: string, filters?: { column: string; value: any }[]) => {
+  // Helper para paginação (evitar limite de 1000 registros do Supabase)
+  const fetchAllFromTable = async (buildQuery: (from: number, to: number) => any) => {
     const PAGE_SIZE = 1000;
     let all: any[] = [];
     let from = 0;
     while (true) {
-      let q = supabase.from(table).select(selectCols).range(from, from + PAGE_SIZE - 1);
-      filters?.forEach(f => { q = q.eq(f.column, f.value); });
-      const { data, error } = await q;
+      const { data, error } = await buildQuery(from, from + PAGE_SIZE - 1);
       if (error) throw error;
       all = [...all, ...(data || [])];
       if (!data || data.length < PAGE_SIZE) break;
@@ -90,7 +88,9 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
       // Se for fotógrafo, buscar apenas seus revenue_shares
       if (userRole === 'photographer' && user) {
         // Buscar revenue_shares do fotógrafo (COM PAGINAÇÃO)
-        const revenueSharesData = await fetchAllPaginated('revenue_shares', 'photographer_amount, created_at', [{ column: 'photographer_id', value: user.id }]);
+        const revenueSharesData = await fetchAllFromTable((from, to) =>
+          supabase.from('revenue_shares').select('photographer_amount, created_at').eq('photographer_id', user.id).range(from, to)
+        );
 
         // Calcular receita do fotógrafo
         const photographerRevenue = revenueSharesData?.reduce(
