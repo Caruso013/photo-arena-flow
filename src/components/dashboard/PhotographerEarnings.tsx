@@ -92,34 +92,47 @@ export const PhotographerEarnings = () => {
     try {
       setLoading(true);
 
-      // Buscar revenue_shares com informações de foto, campanha e comprador
-      const { data: revenueData, error } = await supabase
-        .from('revenue_shares')
-        .select(`
-          *,
-          purchases!revenue_shares_purchase_id_fkey(
-            id,
-            created_at,
-            buyer_id,
-            amount,
-            photos!purchases_photo_id_fkey(
+      // Helper para paginação (evitar limite de 1000 registros do Supabase)
+      const fetchAllFromTable = async (buildQuery: (from: number, to: number) => any) => {
+        const PAGE_SIZE = 1000;
+        let all: any[] = [];
+        let from = 0;
+        while (true) {
+          const { data, error } = await buildQuery(from, from + PAGE_SIZE - 1);
+          if (error) throw error;
+          all = [...all, ...(data || [])];
+          if (!data || data.length < PAGE_SIZE) break;
+          from += PAGE_SIZE;
+        }
+        return all;
+      };
+
+      // Buscar revenue_shares com informações de foto, campanha e comprador (COM PAGINAÇÃO)
+      const revenueData = await fetchAllFromTable((from, to) =>
+        supabase
+          .from('revenue_shares')
+          .select(`
+            *,
+            purchases!revenue_shares_purchase_id_fkey(
               id,
-              title,
-              original_url,
-              price,
-              campaigns!photos_campaign_id_fkey(
+              created_at,
+              buyer_id,
+              amount,
+              photos!purchases_photo_id_fkey(
                 id,
-                title
+                title,
+                original_url,
+                price,
+                campaigns!photos_campaign_id_fkey(
+                  id,
+                  title
+                )
               )
             )
-          )
-        `)
-        .eq('photographer_id', user?.id);
-
-      if (error) {
-        console.error('Erro ao buscar ganhos:', error);
-        throw error;
-      }
+          `)
+          .eq('photographer_id', user?.id)
+          .range(from, to)
+      );
 
       // Buscar nomes e emails dos compradores
       const buyerIds = [...new Set(revenueData?.map((r: any) => r.purchases?.buyer_id).filter(Boolean))];
