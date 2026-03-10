@@ -162,21 +162,21 @@ const AdminReports = () => {
     try {
       setLoading(true);
       
-      let query = supabase
-        .from('revenue_shares')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const revenueShares = await fetchAllFromTable((from, to) => {
+        let query = supabase
+          .from('revenue_shares')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .range(from, to);
 
-      if (startDate) {
-        query = query.gte('created_at', `${startDate}T00:00:00`);
-      }
-      if (endDate) {
-        query = query.lte('created_at', `${endDate}T23:59:59`);
-      }
-
-      const { data: revenueShares, error } = await query;
-
-      if (error) throw error;
+        if (startDate) {
+          query = query.gte('created_at', `${startDate}T00:00:00`);
+        }
+        if (endDate) {
+          query = query.lte('created_at', `${endDate}T23:59:59`);
+        }
+        return query;
+      });
 
       // Calcular totais
       let totalPlatform = 0;
@@ -189,13 +189,13 @@ const AdminReports = () => {
         totalOrganizations += Number(rs.organization_amount || 0);
       });
 
-      const totalRevenue = totalPlatform + totalPhotographers + totalOrganizations;
+      const totalRevenue = Math.round((totalPlatform + totalPhotographers + totalOrganizations) * 100) / 100;
 
       setSummary({
         totalRevenue,
-        platformRevenue: totalPlatform,
-        photographersRevenue: totalPhotographers,
-        organizationsRevenue: totalOrganizations,
+        platformRevenue: Math.round(totalPlatform * 100) / 100,
+        photographersRevenue: Math.round(totalPhotographers * 100) / 100,
+        organizationsRevenue: Math.round(totalOrganizations * 100) / 100,
         totalSales: revenueShares?.length || 0,
       });
 
