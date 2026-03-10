@@ -117,18 +117,16 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
 
         const photographerRank = sortedPhotographers.findIndex(p => p.id === user.id) + 1;
 
-        // Buscar compras do fotógrafo para stats
-        const { data: salesData, error: salesError } = await supabase
-          .from('purchases')
-          .select(`
+        // Buscar compras do fotógrafo para stats (COM PAGINAÇÃO)
+        const salesData = await fetchAllFromTable((from, to) =>
+          supabase.from('purchases').select(`
             photographer_id,
             amount,
             photo:photos(title, price),
             photographer:profiles!photographer_id(full_name),
             created_at
-          `)
-          .eq('status', 'completed')
-          .eq('photographer_id', user.id);
+          `).eq('status', 'completed').eq('photographer_id', user.id).range(from, to)
+        );
 
         if (salesError) throw salesError;
 
