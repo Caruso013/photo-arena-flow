@@ -25,30 +25,46 @@ const AdminReports = () => {
     totalSales: number;
   } | null>(null);
 
+  // Helper para paginação (evitar limite de 1000 registros do Supabase)
+  const fetchAllFromTable = async (buildQuery: (from: number, to: number) => any) => {
+    const PAGE_SIZE = 1000;
+    let all: any[] = [];
+    let from = 0;
+    while (true) {
+      const { data, error } = await buildQuery(from, from + PAGE_SIZE - 1);
+      if (error) throw error;
+      all = [...all, ...(data || [])];
+      if (!data || data.length < PAGE_SIZE) break;
+      from += PAGE_SIZE;
+    }
+    return all;
+  };
+
   const generateSalesReport = async () => {
     try {
       setLoading(true);
-      let query = supabase
-        .from('purchases')
-        .select(`
-          *,
-          photo:photos(title, campaign:campaigns(title)),
-          buyer:profiles!purchases_buyer_id_fkey(full_name, email),
-          photographer:profiles!purchases_photographer_id_fkey(full_name, email)
-        `)
-        .eq('status', 'completed')
-        .order('created_at', { ascending: false });
+      
+      const purchases = await fetchAllFromTable((from, to) => {
+        let query = supabase
+          .from('purchases')
+          .select(`
+            *,
+            photo:photos(title, campaign:campaigns(title)),
+            buyer:profiles!purchases_buyer_id_fkey(full_name, email),
+            photographer:profiles!purchases_photographer_id_fkey(full_name, email)
+          `)
+          .eq('status', 'completed')
+          .order('created_at', { ascending: false })
+          .range(from, to);
 
-      if (startDate) {
-        query = query.gte('created_at', `${startDate}T00:00:00`);
-      }
-      if (endDate) {
-        query = query.lte('created_at', `${endDate}T23:59:59`);
-      }
-
-      const { data: purchases, error } = await query;
-
-      if (error) throw error;
+        if (startDate) {
+          query = query.gte('created_at', `${startDate}T00:00:00`);
+        }
+        if (endDate) {
+          query = query.lte('created_at', `${endDate}T23:59:59`);
+        }
+        return query;
+      });
 
       const ws = XLSX.utils.json_to_sheet(
         (purchases || []).map(p => ({
