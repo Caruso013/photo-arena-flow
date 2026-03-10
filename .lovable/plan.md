@@ -1,42 +1,81 @@
 
 
-## Problem Analysis
+## Auditoria Completa do Sistema Financeiro
 
-From the screenshots and code, I identified **3 issues** preventing coupons from working properly:
-
-### Issue 1: Server enforces minimum R$1 charge
-In `mercadopago-checkout/index.ts` line 184:
-```typescript
-const finalTotal = Math.max(subtotal - totalDiscount, 1); // Mínimo R$ 1
-```
-A 100% coupon should result in R$0, but the server forces it to R$1 and still sends it to Mercado Pago. There's no "free purchase" flow.
-
-### Issue 2: PaymentModal doesn't display coupon discount
-The PaymentModal (lines 306-348) only shows the progressive discount. Even though `appliedCoupon` is received as a prop, it's never rendered in the price summary, so the user sees R$19 instead of R$0.
-
-### Issue 3: No free checkout path
-When total = R$0 (100% coupon), the system still tries to create a Mercado Pago payment, which either fails or charges R$1.
+Analisei 100% dos arquivos financeiros. Encontrei **7 bugs críticos** que causam dados incorretos ou incompletos.
 
 ---
 
-## Plan
+### Bug 1: Reports.tsx — 3 queries sem paginação (dados truncados)
 
-### 1. Add free checkout flow (Cart.tsx + PaymentModal.tsx)
-When `finalTotal === 0` after all discounts, bypass the payment modal entirely:
-- In `Cart.tsx`: when `finalTotal <= 0`, the "Finalizar Compra" button triggers a direct "free purchase" flow instead of opening the PaymentModal
-- Create purchase records directly with status `completed`, register coupon usage, and redirect to success
+`generateFinancialReport`, `fetchSummary` e `generateSalesReport` buscam `revenue_shares` e `purchases` sem paginação. Com mais de 1000 registros, os relatórios Excel e o resumo financeiro ficam incompletos.
 
-### 2. Display coupon discount in PaymentModal
-Add the coupon discount line in PaymentModal's price summary (between progressive discount and total), showing the applied coupon amount. Also update `totalPrice` calculation to subtract coupon discount.
+**Fix:** Adicionar `fetchAllFromTable` helper e usar em todas as 3 funções.
 
-### 3. Fix server-side minimum to allow R$0
-In `mercadopago-checkout/index.ts`, change the minimum from 1 to 0. When `finalTotal === 0`, create purchases as completed without calling Mercado Pago API. This serves as a backend safety net.
+---
 
-### 4. Handle free purchase in the edge function
-Add a new code path in the edge function: if `finalTotal <= 0`, skip payment creation, mark purchases as `completed`, register coupon usage, and return success directly.
+### Bug 2: AlbumReports.tsx — 2 queries sem paginação
 
-### Files to modify:
-- `src/pages/Cart.tsx` - Add free checkout handler
-- `src/components/modals/PaymentModal.tsx` - Display coupon discount in summary + adjust total calculation
-- `supabase/functions/mercadopago-checkout/index.ts` - Support zero-total purchases
+`fetchAlbumReports` busca `revenue_shares` sem paginação. `fetchOverallMetrics` busca `purchases` sem paginação. Relatórios de álbum ficam truncados.
+
+**Fix:** Adicionar paginação em ambas as queries.
+
+---
+
+### Bug 3: OrganizationRevenue.tsx — query sem paginação
+
+A busca de vendas da organização (`revenue_shares` com joins) não usa paginação. Organizações com muitas vendas terão receita subnotificada.
+
+**Fix:** Adicionar paginação na query principal.
+
+---
+
+### Bug 4: PhotographerBalances.tsx (Admin) — ignora período de segurança de 12h
+
+O campo `available_balance` é calculado como `total_earned - total_withdrawn - pending_withdrawal`, sem considerar o período de segurança de 12h. Isso faz o admin ver um saldo disponível maior do que o real, podendo aprovar saques de valores que ainda estão bloqueados.
+
+**Fix:** Adicionar filtro de `created_at` das purchases para separar valores dentro/fora do período de segurança, igual ao `usePhotographerBalance` hook.
+
+---
+
+### Bug 5: PhotographerEarnings.tsx (página antiga) — dados duplicados/incorretos
+
+A página `src/pages/dashboard/photographer/PhotographerEarnings.tsx` (diferente do componente `src/components/dashboard/PhotographerEarnings.tsx`) usa `purchases` diretamente em vez de `revenue_shares`, mostrando o valor bruto (`amount`) como ganho do fotógrafo em vez do `photographer_amount`. Isso infla os ganhos exibidos.
+
+**Fix:** Verificar se esta página ainda é usada nas rotas. Se sim, migrar para usar `usePhotographerBalance` ou redirecionar para o componente correto.
+
+---
+
+### Bug 6: Reports.tsx — relatório financeiro Excel exporta PIX key em texto puro
+
+A query de `revenue_shares` no relatório financeiro não inclui dados sensíveis, mas o relatório de vendas expõe emails de compradores sem necessidade. Menor risco, mas vale notar.
+
+**Fix:** Manter, mas documentar que relatórios são confidenciais (já está no PDF).
+
+---
+
+### Bug 7: FinancialDashboard.tsx — admin `totalRevenue` usa `purchases.amount`, inconsistente
+
+Para admin, `totalRevenue` vem da soma de `purchases.amount`. Para o gráfico de receita, vem de `revenue_shares`. Se houver purchases sem revenue_shares (bug de webhook), os valores divergem silenciosamente. O HealthCheck já detecta isso, mas o dashboard mostra o valor incorreto sem aviso.
+
+**Fix:** Unificar para usar sempre `revenue_shares` como fonte de verdade para receita, já que é a tabela que reflete a divisão real.
+
+---
+
+### Resumo de Arquivos a Modificar
+
+| Arquivo | Bugs | Severidade |
+|---------|------|------------|
+| `src/pages/dashboard/admin/Reports.tsx` | Paginação em 3 queries | Alta |
+| `src/pages/dashboard/photographer/AlbumReports.tsx` | Paginação em 2 queries | Alta |
+| `src/pages/dashboard/OrganizationRevenue.tsx` | Paginação em 1 query | Alta |
+| `src/pages/dashboard/admin/PhotographerBalances.tsx` | Período de segurança 12h | Alta |
+| `src/components/dashboard/FinancialDashboard.tsx` | Fonte de dados admin | Média |
+| `src/pages/dashboard/photographer/PhotographerEarnings.tsx` | Verificar uso/remover | Média |
+
+### Ordem de implementação
+1. Paginação (Reports, AlbumReports, OrganizationRevenue) — 3 arquivos
+2. Período de segurança no PhotographerBalances
+3. Consistência de fonte de dados no FinancialDashboard
+4. Verificar/remover PhotographerEarnings antiga
 
