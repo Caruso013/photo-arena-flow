@@ -78,9 +78,9 @@ export const FinancialHealthCheck = () => {
       ) / 100;
 
       // Calcular receitas separadas
-      const platformRevenue = revenueShares?.reduce((sum, s) => sum + Number(s.platform_amount), 0) || 0;
-      const photographersRevenue = revenueShares?.reduce((sum, s) => sum + Number(s.photographer_amount), 0) || 0;
-      const organizationsRevenue = revenueShares?.reduce((sum, s) => sum + Number(s.organization_amount), 0) || 0;
+      const platformRevenue = revenueShares.reduce((sum: number, s: any) => sum + Number(s.platform_amount), 0);
+      const photographersRevenue = revenueShares.reduce((sum: number, s: any) => sum + Number(s.photographer_amount), 0);
+      const organizationsRevenue = revenueShares.reduce((sum: number, s: any) => sum + Number(s.organization_amount), 0);
 
       // 3. Verificar revenue_shares órfãs (sem purchase)
       const purchaseIds = new Set(purchases?.map(p => p.id) || []);
