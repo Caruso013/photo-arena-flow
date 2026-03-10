@@ -48,33 +48,49 @@ const AlbumReports = () => {
     }
   }, [user]);
 
+  // Helper para paginação (evitar limite de 1000 registros do Supabase)
+  const fetchAllFromTable = async (buildQuery: (from: number, to: number) => any) => {
+    const PAGE_SIZE = 1000;
+    let all: any[] = [];
+    let from = 0;
+    while (true) {
+      const { data, error } = await buildQuery(from, from + PAGE_SIZE - 1);
+      if (error) throw error;
+      all = [...all, ...(data || [])];
+      if (!data || data.length < PAGE_SIZE) break;
+      from += PAGE_SIZE;
+    }
+    return all;
+  };
+
   const fetchAlbumReports = async () => {
     try {
       setLoading(true);
 
-      // Buscar revenue_shares do fotógrafo com informações de álbum e buyer
-      const { data: revenueData, error } = await supabase
-        .from('revenue_shares')
-        .select(`
-          *,
-          purchases!revenue_shares_purchase_id_fkey(
-            buyer_id,
-            photos!purchases_photo_id_fkey(
-              sub_event_id,
-              price,
-              sub_events:sub_events!photos_sub_event_id_fkey(
-                id,
-                title,
-                campaigns!sub_events_campaign_id_fkey(
-                  title
+      // Buscar revenue_shares do fotógrafo com informações de álbum e buyer (COM PAGINAÇÃO)
+      const revenueData = await fetchAllFromTable((from, to) =>
+        supabase
+          .from('revenue_shares')
+          .select(`
+            *,
+            purchases!revenue_shares_purchase_id_fkey(
+              buyer_id,
+              photos!purchases_photo_id_fkey(
+                sub_event_id,
+                price,
+                sub_events:sub_events!photos_sub_event_id_fkey(
+                  id,
+                  title,
+                  campaigns!sub_events_campaign_id_fkey(
+                    title
+                  )
                 )
               )
             )
-          )
-        `)
-        .eq('photographer_id', user?.id);
-
-      if (error) throw error;
+          `)
+          .eq('photographer_id', user?.id)
+          .range(from, to)
+      );
 
       // Agrupar por álbum (com tracking de compradores únicos)
       const albumMap = new Map<string, AlbumReport & { buyers: Set<string> }>();
@@ -126,15 +142,15 @@ const AlbumReports = () => {
           album_title: album.album_title,
           campaign_title: album.campaign_title,
           photos_sold: album.photos_sold,
-          total_revenue: album.total_revenue,
-          avg_photo_price: album.photos_sold > 0 ? album.total_revenue / album.photos_sold : 0,
+          total_revenue: Math.round(album.total_revenue * 100) / 100,
+          avg_photo_price: album.photos_sold > 0 ? Math.round((album.total_revenue / album.photos_sold) * 100) / 100 : 0,
           unique_buyers: uniqueBuyers,
-          avg_ticket: uniqueBuyers > 0 ? album.total_revenue / uniqueBuyers : 0,
+          avg_ticket: uniqueBuyers > 0 ? Math.round((album.total_revenue / uniqueBuyers) * 100) / 100 : 0,
         };
       }).sort((a, b) => b.total_revenue - a.total_revenue);
 
       setAlbums(albumReports);
-      setTotalRevenue(totalRev);
+      setTotalRevenue(Math.round(totalRev * 100) / 100);
       setTotalPhotosSold(totalPhotos);
     } catch (error) {
       console.error('Erro ao buscar relatórios de álbuns:', error);
@@ -151,12 +167,15 @@ const AlbumReports = () => {
         .select('*', { count: 'exact', head: true })
         .eq('photographer_id', user?.id);
 
-      // Buscar vendas completadas
-      const { data: completedPurchases } = await supabase
-        .from('purchases')
-        .select('id, photo_id')
-        .eq('photographer_id', user?.id)
-        .eq('status', 'completed');
+      // Buscar vendas completadas (COM PAGINAÇÃO)
+      const completedPurchases = await fetchAllFromTable((from, to) =>
+        supabase
+          .from('purchases')
+          .select('id, photo_id')
+          .eq('photographer_id', user?.id)
+          .eq('status', 'completed')
+          .range(from, to)
+      );
 
       // Contar fotos únicas vendidas
       const uniquePhotosSold = new Set(completedPurchases?.map(p => p.photo_id) || []).size;
@@ -183,7 +202,7 @@ const AlbumReports = () => {
         total_photos_sold: uniquePhotosSold,
         conversion_rate: conversionRate,
         avg_photos_per_order: avgPhotosPerOrder,
-        active_carts: 0, // Deixar como 0 por enquanto
+        active_carts: 0,
       });
     } catch (error) {
       console.error('Erro ao buscar métricas gerais:', error);
