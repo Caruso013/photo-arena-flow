@@ -208,9 +208,11 @@ export default function TransparentCheckout({
     }
   };
 
-  // Verificar status do PIX
+  // Verificar status do PIX - com backoff progressivo
+  const pixPollCountRef = useRef(0);
   const checkPixStatus = async (paymentId: string) => {
     try {
+      pixPollCountRef.current++;
       const { data } = await supabase.functions.invoke('mercadopago-checkout', {
         body: { action: 'check_status', paymentId },
       });
@@ -220,6 +222,11 @@ export default function TransparentCheckout({
         setCheckingPix(false);
         toast({ title: "✅ Pagamento confirmado!", description: "PIX aprovado com sucesso." });
         onSuccess(data);
+      } else if (pixPollCountRef.current >= 40) {
+        // Timeout após ~3-4 minutos
+        if (pixIntervalRef.current) clearInterval(pixIntervalRef.current);
+        setCheckingPix(false);
+        toast({ title: "⏱️ Tempo esgotado", description: "Verifique em 'Minhas Compras' se o pagamento foi confirmado.", variant: "destructive" });
       }
     } catch (error) {
       console.error('Erro ao verificar PIX:', error);
@@ -288,11 +295,12 @@ export default function TransparentCheckout({
           paymentId: data.paymentId,
         });
 
-        // Iniciar verificação automática
+        // Iniciar verificação automática - polling a cada 6 segundos (reduz carga no servidor)
         setCheckingPix(true);
+        pixPollCountRef.current = 0;
         pixIntervalRef.current = setInterval(() => {
           checkPixStatus(data.paymentId);
-        }, 3000);
+        }, 6000);
 
         toast({ title: "✅ PIX gerado!", description: "Escaneie o QR Code ou copie o código." });
       } else {

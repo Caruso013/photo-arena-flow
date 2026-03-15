@@ -120,6 +120,7 @@ serve(async (req) => {
     }
 
     // ===== AÇÃO: VERIFICAR STATUS DO PAGAMENTO =====
+    // NOTA: Esta ação NÃO usa o banco de dados para reduzir conexões
     if (action === 'check_status' && paymentId) {
       console.log('🔍 Verificando status do pagamento:', paymentId);
 
@@ -130,9 +131,14 @@ serve(async (req) => {
       const mpResult = await mpResponse.json();
       console.log('📋 Status MP:', mpResult.status);
 
-      // Se aprovado, processar compra
+      // Se aprovado, processar compra (única operação de banco)
       if (mpResult.status === 'approved') {
-        await processApprovedPayment(supabaseAdmin, mpResult);
+        try {
+          await processApprovedPayment(supabaseAdmin, mpResult);
+        } catch (dbError) {
+          console.warn('⚠️ Erro ao processar aprovação no DB (será reconciliado):', dbError);
+          // Não falhar - o webhook/reconciliação cuidará disso
+        }
       }
 
       return new Response(JSON.stringify({
