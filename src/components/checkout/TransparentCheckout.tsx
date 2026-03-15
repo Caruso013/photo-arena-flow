@@ -295,11 +295,12 @@ export default function TransparentCheckout({
           paymentId: data.paymentId,
         });
 
-        // Iniciar verificação automática
+        // Iniciar verificação automática - polling a cada 6 segundos (reduz carga no servidor)
         setCheckingPix(true);
+        pixPollCountRef.current = 0;
         pixIntervalRef.current = setInterval(() => {
           checkPixStatus(data.paymentId);
-        }, 3000);
+        }, 6000);
 
         toast({ title: "✅ PIX gerado!", description: "Escaneie o QR Code ou copie o código." });
       } else {
