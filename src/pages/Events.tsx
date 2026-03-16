@@ -10,11 +10,20 @@ import { EventCard } from '@/components/events/EventCard';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { PullToRefreshIndicator } from '@/components/ui/PullToRefreshIndicator';
 import { useHapticFeedback } from '@/hooks/useHapticFeedback';
+import { resilientQuery } from '@/lib/supabaseResilience';
 
 interface Photographer {
   id: string;
   full_name: string;
   avatar_url?: string;
+}
+
+interface SubEvent {
+  id: string;
+  title: string;
+  location: string | null;
+  photo_count: number;
+  campaign_id: string;
 }
 
 interface Campaign {
@@ -33,7 +42,11 @@ interface Campaign {
     photographer_id: string;
     profiles: Photographer;
   }[];
+  sub_events?: SubEvent[];
+  photo_count?: number;
 }
+
+const PAGE_SIZE = 12;
 
 const Events = () => {
   const { searchTerm } = useSearch();
@@ -41,6 +54,9 @@ const Events = () => {
   const haptic = useHapticFeedback();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [page, setPage] = useState(0);
   const [filters, setFilters] = useState<FilterState>({
     location: '',
     dateFrom: '',
@@ -54,7 +70,10 @@ const Events = () => {
   const pullToRefresh = usePullToRefresh({
     onRefresh: async () => {
       haptic.light();
-      await fetchCampaigns();
+      setPage(0);
+      setCampaigns([]);
+      setHasMore(true);
+      await fetchCampaigns(0, true);
       haptic.success();
     }
   });
@@ -70,36 +89,25 @@ const Events = () => {
   const filteredCampaigns = useMemo(() => {
     let filtered = [...campaigns];
     
-    // Filtro de busca
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter((campaign) => {
-        // Buscar no título e localização
         if (campaign.title.toLowerCase().includes(term)) return true;
         if (campaign.location.toLowerCase().includes(term)) return true;
-        
-        // Buscar no fotógrafo principal
         if (campaign.photographer?.full_name.toLowerCase().includes(term)) return true;
-        
-        // Buscar em fotógrafos adicionais
         if (campaign.campaign_photographers) {
           return campaign.campaign_photographers.some(
             cp => cp.profiles?.full_name.toLowerCase().includes(term)
           );
         }
-        
         return false;
       });
     }
     
-    // Filtro por fotógrafo (busca por nome, case-insensitive)
     if (filters.photographer.trim()) {
       const photographerTerm = filters.photographer.toLowerCase();
       filtered = filtered.filter((campaign) => {
-        // Verificar fotógrafo principal por nome
         if (campaign.photographer?.full_name?.toLowerCase().includes(photographerTerm)) return true;
-        
-        // Verificar fotógrafos adicionais por nome
         if (campaign.campaign_photographers) {
           return campaign.campaign_photographers.some(
             cp => cp.profiles?.full_name?.toLowerCase().includes(photographerTerm)
@@ -109,12 +117,10 @@ const Events = () => {
       });
     }
     
-    // Filtro por organização
     if (filters.organizationId) {
       filtered = filtered.filter((campaign) => campaign.organization_id === filters.organizationId);
     }
 
-    // Filtro de localização
     if (filters.location.trim()) {
       const location = filters.location.toLowerCase();
       filtered = filtered.filter((campaign) =>
@@ -122,7 +128,6 @@ const Events = () => {
       );
     }
     
-    // Filtro de data
     if (filters.dateFrom) {
       filtered = filtered.filter(
         (campaign) => new Date(campaign.event_date) >= new Date(filters.dateFrom)
@@ -134,8 +139,6 @@ const Events = () => {
       );
     }
 
-
-    // Ordenação
     filtered.sort((a, b) => {
       switch (filters.sortBy) {
         case 'date':
@@ -144,7 +147,6 @@ const Events = () => {
           return a.title.localeCompare(b.title);
         case 'recent':
         default: {
-          // Ordenar por data do evento: futuros primeiro (ascendente), depois passados (descendente)
           const now = new Date();
           now.setHours(0, 0, 0, 0);
           const dateA = new Date(a.event_date || '1970-01-01');
@@ -164,76 +166,128 @@ const Events = () => {
   }, [campaigns, searchTerm, filters]);
 
   useEffect(() => {
-    fetchCampaigns();
+    fetchCampaigns(0, true);
   }, []);
 
-  const fetchCampaigns = async () => {
+  const fetchCampaigns = async (pageNum: number = 0, reset: boolean = false) => {
+    if (reset) setLoading(true);
+    else setLoadingMore(true);
+
     try {
-      // Buscar campanhas ativas
-      const { data: campaignsData, error: campaignsError } = await supabase
-        .from('campaigns')
-        .select(`
-          *,
-          photographer:profiles!photographer_id(id, full_name, avatar_url),
-          campaign_photographers(
-            photographer_id,
-            profiles:profiles!photographer_id(id, full_name, avatar_url)
-          )
-        `)
-        .eq('is_active', true)
-        .order('event_date', { ascending: false, nullsFirst: false });
+      const from = pageNum * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+
+      // 1) Buscar campanhas paginadas
+      const { data: campaignsData, error: campaignsError } = await resilientQuery(
+        () => supabase
+          .from('campaigns')
+          .select(`
+            *,
+            photographer:profiles!photographer_id(id, full_name, avatar_url),
+            campaign_photographers(
+              photographer_id,
+              profiles:profiles!photographer_id(id, full_name, avatar_url)
+            )
+          `)
+          .eq('is_active', true)
+          .order('event_date', { ascending: false, nullsFirst: false })
+          .range(from, to),
+        'fetch-campaigns'
+      );
 
       if (campaignsError) throw campaignsError;
 
       if (!campaignsData || campaignsData.length === 0) {
-        setCampaigns([]);
+        if (reset) setCampaigns([]);
+        setHasMore(false);
         return;
       }
 
-      // Para cada campanha, contar fotos disponíveis e buscar fallback de capa
-      const campaignsWithPhotoCount = await Promise.all(
-        campaignsData.map(async (campaign) => {
-          const { count: photoCount } = await supabase
+      if (campaignsData.length < PAGE_SIZE) {
+        setHasMore(false);
+      }
+
+      const campaignIds = campaignsData.map(c => c.id);
+
+      // 2) Batch: photo counts, sub_events, fallback covers — ALL in parallel
+      const [photoCounts, subEventsData, fallbackCovers] = await Promise.all([
+        resilientQuery(
+          () => supabase
             .from('photos')
-            .select('id', { count: 'exact', head: true })
-            .eq('campaign_id', campaign.id)
-            .eq('is_available', true);
+            .select('campaign_id')
+            .in('campaign_id', campaignIds)
+            .eq('is_available', true),
+          'photo-counts'
+        ),
+        resilientQuery(
+          () => supabase
+            .from('sub_events')
+            .select('id, title, location, photo_count, campaign_id')
+            .in('campaign_id', campaignIds)
+            .order('created_at', { ascending: true }),
+          'sub-events'
+        ),
+        resilientQuery(
+          () => supabase
+            .from('photos')
+            .select('campaign_id, watermarked_url')
+            .in('campaign_id', campaignIds.filter(id => {
+              const c = campaignsData.find(cd => cd.id === id);
+              return !c?.cover_image_url;
+            }))
+            .eq('is_available', true)
+            .not('watermarked_url', 'is', null)
+            .order('upload_sequence', { ascending: true }),
+          'fallback-covers'
+        ),
+      ]);
 
-          // Buscar capa ou primeira foto watermarked disponível
-          let coverImageUrl = campaign.cover_image_url;
-          
-          if (!coverImageUrl) {
-            const { data: firstPhoto } = await supabase
-              .from('photos')
-              .select('watermarked_url')
-              .eq('campaign_id', campaign.id)
-              .eq('is_available', true)
-              .not('watermarked_url', 'is', null)
-              .order('upload_sequence', { ascending: true })
-              .limit(1)
-              .maybeSingle();
-            
-            coverImageUrl = firstPhoto?.watermarked_url || '';
-          }
+      // Map photo counts
+      const countMap: Record<string, number> = {};
+      (photoCounts.data || []).forEach((p: any) => {
+        countMap[p.campaign_id] = (countMap[p.campaign_id] || 0) + 1;
+      });
 
-          return {
-            ...campaign,
-            cover_image_url: coverImageUrl,
-            photo_count: photoCount || 0
-          };
-        })
-      );
+      // Map sub_events per campaign
+      const subEventsMap: Record<string, SubEvent[]> = {};
+      (subEventsData.data || []).forEach((se: any) => {
+        if (!subEventsMap[se.campaign_id]) subEventsMap[se.campaign_id] = [];
+        subEventsMap[se.campaign_id].push(se);
+      });
 
-      // Filtrar apenas campanhas com 5+ fotos
-      const eligibleCampaigns = campaignsWithPhotoCount.filter(
-        campaign => campaign.photo_count >= 5
-      );
+      // Map fallback covers (first photo per campaign)
+      const coverMap: Record<string, string> = {};
+      (fallbackCovers.data || []).forEach((p: any) => {
+        if (!coverMap[p.campaign_id]) coverMap[p.campaign_id] = p.watermarked_url;
+      });
 
-      setCampaigns(eligibleCampaigns);
+      const enriched = campaignsData.map(campaign => ({
+        ...campaign,
+        cover_image_url: campaign.cover_image_url || coverMap[campaign.id] || '',
+        photo_count: countMap[campaign.id] || 0,
+        sub_events: subEventsMap[campaign.id] || [],
+      }));
+
+      // Filtrar campanhas com 5+ fotos
+      const eligible = enriched.filter(c => (c.photo_count || 0) >= 5);
+
+      if (reset) {
+        setCampaigns(eligible);
+      } else {
+        setCampaigns(prev => [...prev, ...eligible]);
+      }
+      setPage(pageNum);
     } catch (error) {
       console.error('Error fetching campaigns:', error);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
+    }
+  };
+
+  const handleLoadMore = () => {
+    if (!loadingMore && hasMore) {
+      fetchCampaigns(page + 1, false);
     }
   };
 
@@ -258,7 +312,6 @@ const Events = () => {
             </p>
           </div>
 
-          {/* Barra de informações e filtros */}
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex items-center gap-2">
               {!loading && (
@@ -299,15 +352,29 @@ const Events = () => {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-            {filteredCampaigns.map((campaign, index) => (
-              <EventCard 
-                key={campaign.id}
-                campaign={campaign}
-                index={index}
-              />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+              {filteredCampaigns.map((campaign, index) => (
+                <EventCard 
+                  key={campaign.id}
+                  campaign={campaign}
+                  index={index}
+                />
+              ))}
+            </div>
+            
+            {hasMore && (
+              <div className="text-center mt-8">
+                <button
+                  onClick={handleLoadMore}
+                  disabled={loadingMore}
+                  className="px-8 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+                >
+                  {loadingMore ? 'Carregando...' : 'Carregar mais eventos'}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </section>
     </MainLayout>

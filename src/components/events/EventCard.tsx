@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -13,8 +13,6 @@ import {
   X,
   Share2
 } from 'lucide-react';
-import { LazyImage } from '@/components/ui/lazy-image';
-import { supabase } from '@/integrations/supabase/client';
 import {
   HoverCard,
   HoverCardContent,
@@ -57,6 +55,8 @@ interface Campaign {
     photographer_id: string;
     profiles: Photographer;
   }[];
+  sub_events?: SubEvent[];
+  photo_count?: number;
 }
 
 interface EventCardProps {
@@ -65,18 +65,16 @@ interface EventCardProps {
 }
 
 export const EventCard: React.FC<EventCardProps> = ({ campaign, index }) => {
-  const [subEvents, setSubEvents] = useState<SubEvent[]>([]);
-  const [loadingSubEvents, setLoadingSubEvents] = useState(false);
-  const [totalPhotos, setTotalPhotos] = useState(0);
   const [sheetOpen, setSheetOpen] = useState(false);
   const isMobile = useIsMobile();
   
-  // Link curto para a campanha
+  const subEvents = campaign.sub_events || [];
+  const totalPhotos = campaign.photo_count || subEvents.reduce((sum, se) => sum + (se.photo_count || 0), 0);
+  
   const campaignLink = campaign.short_code 
     ? `/E/${campaign.short_code}` 
     : `/campaign/${campaign.id}`;
   
-  // Função para compartilhar
   const handleShare = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -98,45 +96,11 @@ export const EventCard: React.FC<EventCardProps> = ({ campaign, index }) => {
     }
   };
 
-  useEffect(() => {
-    fetchSubEvents();
-  }, [campaign.id]);
-
-  const fetchSubEvents = async () => {
-    setLoadingSubEvents(true);
-    try {
-      const { data, error } = await supabase
-        .from('sub_events')
-        .select('id, title, location, photo_count')
-        .eq('campaign_id', campaign.id)
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
-
-      const subEventsData = data || [];
-      setSubEvents(subEventsData);
-      
-      const total = subEventsData.reduce((sum, se) => sum + (se.photo_count || 0), 0);
-      setTotalPhotos(total);
-    } catch (error) {
-      console.error('Error fetching sub-events:', error);
-      setSubEvents([]);
-      setTotalPhotos(0);
-    } finally {
-      setLoadingSubEvents(false);
-    }
-  };
-
-  // Obter todos os fotógrafos do evento
   const allPhotographers = (): Photographer[] => {
     const photographers: Photographer[] = [];
-    
-    // Adicionar fotógrafo principal
     if (campaign.photographer) {
       photographers.push(campaign.photographer);
     }
-    
-    // Adicionar fotógrafos adicionais (se houver)
     if (campaign.campaign_photographers) {
       campaign.campaign_photographers.forEach(cp => {
         if (cp.profiles && !photographers.find(p => p.id === cp.profiles.id)) {
@@ -144,14 +108,13 @@ export const EventCard: React.FC<EventCardProps> = ({ campaign, index }) => {
         }
       });
     }
-    
     return photographers;
   };
 
   return (
     <div
       className="group animate-fade-in"
-      style={{ animationDelay: `${index * 0.1}s` }}
+      style={{ animationDelay: `${Math.min(index, 5) * 0.1}s` }}
     >
       <Card className="overflow-hidden cursor-pointer border-2 transition-all duration-300 hover:border-primary/50 hover:shadow-2xl hover:-translate-y-2 active:scale-[0.98] backdrop-blur-sm bg-card/80">
         <Link to={campaignLink}>
@@ -178,7 +141,6 @@ export const EventCard: React.FC<EventCardProps> = ({ campaign, index }) => {
               </div>
             )}
             
-            {/* Badge com total de fotos - melhorado */}
             {totalPhotos > 0 && (
               <div className="absolute top-3 right-3">
                 <Badge variant="secondary" className="bg-black/70 text-white border-0 backdrop-blur-md px-3 py-1.5 shadow-lg">
@@ -209,7 +171,6 @@ export const EventCard: React.FC<EventCardProps> = ({ campaign, index }) => {
         <CardContent className="p-4 md:p-5 bg-gradient-to-b from-card to-card/50">
           <div className="flex justify-between items-start gap-3">
             <div className="flex-1 min-w-0 space-y-3">
-              {/* Fotógrafos - Layout melhorado */}
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <div className="h-px flex-1 bg-border" />
@@ -248,7 +209,6 @@ export const EventCard: React.FC<EventCardProps> = ({ campaign, index }) => {
                 )}
               </div>
               
-              {/* Pastas/Sub-eventos - Mobile usa Sheet, Desktop usa HoverCard */}
               {subEvents.length > 0 && (
                 <>
                   {isMobile ? (
