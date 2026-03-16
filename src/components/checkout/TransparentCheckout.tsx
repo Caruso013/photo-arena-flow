@@ -501,7 +501,7 @@ export default function TransparentCheckout({
                 </ul>
               </div>
 
-              <Button onClick={handleGeneratePix} disabled={loading} className="w-full bg-[#32BCAD] hover:bg-[#2aa89b]">
+              <Button onClick={() => handleGeneratePix()} disabled={loading} className="w-full bg-[#32BCAD] hover:bg-[#2aa89b]">
                 {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <QrCode className="h-4 w-4 mr-2" />}
                 Gerar QR Code PIX
               </Button>
