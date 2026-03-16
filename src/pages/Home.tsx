@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Camera, Search, MapPin, Calendar, ArrowRight, Users, Trophy, Star, Sparkles } from 'lucide-react';
 import MainLayout from '@/components/layout/MainLayout';
+import { resilientQuery } from '@/lib/supabaseResilience';
 
 interface FeaturedCampaign {
   id: string;
@@ -28,101 +29,94 @@ const Home = () => {
 
   useEffect(() => {
     fetchData();
-    
-    // Intersection Observer para animações
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('animate-fade-in-up');
-          }
-        });
-      },
-      { threshold: 0.1 }
-    );
-
-    const elements = document.querySelectorAll('.scroll-animate');
-    elements.forEach((el) => observer.observe(el));
-
-    return () => observer.disconnect();
   }, []);
 
   const fetchData = async () => {
     try {
-      // Buscar estatísticas (com filtros para respeitar RLS)
-      const [eventsCount, photosCount, photographersCount] = await Promise.all([
-        supabase.from('campaigns').select('id', { count: 'exact', head: true }).eq('is_active', true),
-        supabase.from('photos').select('id', { count: 'exact', head: true }).eq('is_available', true),
-        supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'photographer')
+      // Single batch: stats + campaigns
+      const [eventsCount, campaignsData] = await Promise.all([
+        resilientQuery(
+          () => supabase.from('campaigns').select('id', { count: 'exact', head: true }).eq('is_active', true),
+          'home-events-count'
+        ),
+        resilientQuery(
+          () => supabase
+            .from('campaigns')
+            .select('id, title, description, event_date, location, cover_image_url, photographer_id, is_featured')
+            .eq('is_active', true)
+            .order('is_featured', { ascending: false })
+            .order('created_at', { ascending: false })
+            .limit(6),
+          'home-campaigns'
+        ),
       ]);
 
       setStats({
         events: eventsCount.count || 0,
-        photos: photosCount.count || 0,
-        photographers: photographersCount.count || 0
+        photos: 0, // Will be set from photo counts below
+        photographers: 0,
       });
 
-      // Buscar campanhas ativas (prioriza featured, depois as mais recentes)
-      const { data: campaignsData, error } = await supabase
-        .from('campaigns')
-        .select('id, title, description, event_date, location, cover_image_url, photographer_id, is_featured')
-        .eq('is_active', true)
-        .order('is_featured', { ascending: false })
-        .order('created_at', { ascending: false })
-        .limit(6);
+      if (campaignsData.data && campaignsData.data.length > 0) {
+        const campaigns = campaignsData.data;
+        const campaignIds = campaigns.map(c => c.id);
+        const photographerIds = [...new Set(campaigns.map(c => c.photographer_id).filter(Boolean))] as string[];
 
-      if (error) throw error;
-
-      if (campaignsData && campaignsData.length > 0) {
-        const campaignIds = campaignsData.map(c => c.id);
-        const photographerIds = [...new Set(campaignsData.map(c => c.photographer_id).filter(Boolean))] as string[];
-
-        // Batch: contagem de fotos por campanha, perfis de fotógrafos, e capas fallback
+        // Second batch: photo counts, photographer names, fallback covers
         const [photoCounts, photographerProfiles, fallbackCovers] = await Promise.all([
-          // Contagem de fotos em batch
-          supabase
-            .from('photos')
-            .select('campaign_id')
-            .in('campaign_id', campaignIds)
-            .eq('is_available', true),
-          // Perfis de fotógrafos em batch
+          resilientQuery(
+            () => supabase
+              .from('photos')
+              .select('campaign_id')
+              .in('campaign_id', campaignIds)
+              .eq('is_available', true),
+            'home-photo-counts'
+          ),
           photographerIds.length > 0
-            ? supabase.from('profiles').select('id, full_name').in('id', photographerIds)
+            ? resilientQuery(
+                () => supabase.from('profiles').select('id, full_name').in('id', photographerIds),
+                'home-photographers'
+              )
             : Promise.resolve({ data: [] }),
-          // Capas fallback para campanhas sem cover
-          supabase
-            .from('photos')
-            .select('campaign_id, watermarked_url')
-            .in('campaign_id', campaignIds.filter(id => {
-              const c = campaignsData.find(cd => cd.id === id);
-              return !c?.cover_image_url;
-            }))
-            .eq('is_available', true)
-            .not('watermarked_url', 'is', null)
-            .order('upload_sequence', { ascending: true })
+          resilientQuery(
+            () => supabase
+              .from('photos')
+              .select('campaign_id, watermarked_url')
+              .in('campaign_id', campaignIds.filter(id => {
+                const c = campaigns.find(cd => cd.id === id);
+                return !c?.cover_image_url;
+              }))
+              .eq('is_available', true)
+              .not('watermarked_url', 'is', null)
+              .order('upload_sequence', { ascending: true }),
+            'home-fallback-covers'
+          ),
         ]);
 
-        // Mapear contagens
         const countMap: Record<string, number> = {};
+        let totalPhotos = 0;
         (photoCounts.data || []).forEach((p: any) => {
           countMap[p.campaign_id] = (countMap[p.campaign_id] || 0) + 1;
+          totalPhotos++;
         });
 
-        // Mapear fotógrafos
         const photographerMap: Record<string, string> = {};
         ((photographerProfiles as any).data || []).forEach((p: any) => {
           photographerMap[p.id] = p.full_name;
         });
 
-        // Mapear capas fallback (primeira foto por campanha)
         const coverMap: Record<string, string> = {};
         (fallbackCovers.data || []).forEach((p: any) => {
-          if (!coverMap[p.campaign_id]) {
-            coverMap[p.campaign_id] = p.watermarked_url;
-          }
+          if (!coverMap[p.campaign_id]) coverMap[p.campaign_id] = p.watermarked_url;
         });
 
-        const campaignsWithDetails = campaignsData.map(campaign => ({
+        setStats(prev => ({
+          ...prev,
+          photos: totalPhotos,
+          photographers: photographerIds.length,
+        }));
+
+        const campaignsWithDetails = campaigns.map(campaign => ({
           ...campaign,
           cover_image_url: campaign.cover_image_url || coverMap[campaign.id] || '',
           photo_count: countMap[campaign.id] || 0,
@@ -142,15 +136,12 @@ const Home = () => {
     <MainLayout>
       {/* Hero Section */}
       <section className="relative overflow-hidden py-16 md:py-28">
-        {/* Background com gradiente animado */}
         <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/10 via-background to-yellow-600/5"></div>
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-yellow-500/20 via-transparent to-transparent"></div>
-        
-        {/* Grid pattern */}
         <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
         
         <div className="container mx-auto px-4 relative z-10">
-          <div className="max-w-4xl mx-auto text-center scroll-animate">
+          <div className="max-w-4xl mx-auto text-center">
             <div className="inline-block mb-6 px-5 py-2.5 bg-yellow-500/10 border border-yellow-500/30 rounded-full backdrop-blur-sm">
               <span className="text-yellow-600 dark:text-yellow-400 font-semibold text-sm flex items-center gap-2">
                 <Sparkles className="h-4 w-4" />
@@ -164,9 +155,7 @@ const Home = () => {
               Acesse eventos esportivos e encontre todas as suas fotos de forma rápida e fácil
             </p>
             
-            {/* CTAs Principais */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8">
-              {/* Botão de Reconhecimento Facial - TEMPORARIAMENTE DESATIVADO */}
               <Button 
                 size="lg" 
                 className="gap-3 text-lg px-8 py-6 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 shadow-lg shadow-yellow-500/30 hover:shadow-xl hover:shadow-yellow-500/50 transition-all duration-300 hover:scale-105 w-full sm:w-auto"
@@ -186,7 +175,6 @@ const Home = () => {
               </Button>
             </div>
             
-            {/* Texto explicativo adicional */}
             <p className="text-sm text-muted-foreground">
               Mais de {stats.photos.toLocaleString()} fotos disponíveis em {stats.events} eventos
             </p>
@@ -197,7 +185,7 @@ const Home = () => {
       {/* Stats Section */}
       <section className="py-16 bg-muted/30">
         <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto scroll-animate">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
             <Card className="text-center border-primary/20 hover:border-primary/40 transition-all">
               <CardContent className="pt-8 pb-6">
                 <Trophy className="h-12 w-12 text-primary mx-auto mb-4" />
@@ -226,7 +214,7 @@ const Home = () => {
       {/* Featured Events */}
       <section className="py-20">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-12 scroll-animate">
+          <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold mb-4 text-foreground">Eventos em Destaque</h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
               Confira os últimos eventos e encontre suas fotos
@@ -268,10 +256,6 @@ const Home = () => {
                         loading="lazy"
                         onError={(e) => {
                           e.currentTarget.style.display = 'none';
-                          const parent = e.currentTarget.parentElement;
-                          if (parent) {
-                            parent.innerHTML = '<div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5"><svg class="h-16 w-16 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg></div>';
-                          }
                         }}
                       />
                     ) : (

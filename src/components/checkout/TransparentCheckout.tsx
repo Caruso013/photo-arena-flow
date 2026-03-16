@@ -233,20 +233,24 @@ export default function TransparentCheckout({
     }
   };
 
-  // Gerar PIX
-  const handleGeneratePix = async () => {
-    if (isProcessingRef.current) return;
-    isProcessingRef.current = true;
-    setLoading(true);
-    setPixData(null);
+  // Gerar PIX com retry automático
+  const handleGeneratePix = async (retryAttempt = 0) => {
+    if (isProcessingRef.current && retryAttempt === 0) return;
+    if (retryAttempt === 0) {
+      isProcessingRef.current = true;
+      setLoading(true);
+      setPixData(null);
+    }
+
+    const MAX_PIX_RETRIES = 3;
 
     try {
-      console.log('🔄 Gerando PIX com deviceId:', deviceId);
+      console.log(`🔄 Gerando PIX (tentativa ${retryAttempt + 1}/${MAX_PIX_RETRIES}) deviceId:`, deviceId);
 
       const { data, error } = await supabase.functions.invoke('mercadopago-checkout', {
         body: {
           action: 'create_pix',
-          deviceId, // ID do dispositivo para anti-fraude (capturado na inicialização)
+          deviceId,
           photos: photos.map(p => ({ id: p.id, title: p.title || 'Foto', price: p.price || 0 })),
           buyer: {
             name: buyerInfo.name,
@@ -259,7 +263,6 @@ export default function TransparentCheckout({
             percentage: progressiveDiscount.percentage,
             amount: progressiveDiscount.amount,
           } : null,
-          // Adicionar cupom se aplicado
           coupon: appliedCoupon ? {
             coupon_id: appliedCoupon.couponId,
             code: appliedCoupon.code,
@@ -281,10 +284,32 @@ export default function TransparentCheckout({
         } catch {
           errorMsg = error.message || errorMsg;
         }
+        
+        // Retry on connection/server errors
+        const isTransient = errorMsg.includes('connection') || errorMsg.includes('53300') || 
+                           errorMsg.includes('timeout') || errorMsg.includes('500') ||
+                           errorMsg.includes('PGRST');
+        if (isTransient && retryAttempt < MAX_PIX_RETRIES - 1) {
+          const delay = 2000 * Math.pow(2, retryAttempt);
+          console.warn(`⚠️ Erro transitório no PIX, retentando em ${delay}ms...`);
+          toast({ title: "Tentando novamente...", description: `Aguarde ${Math.round(delay/1000)}s` });
+          await new Promise(r => setTimeout(r, delay));
+          return handleGeneratePix(retryAttempt + 1);
+        }
+        
         throw new Error(errorMsg);
       }
 
       if (data?.error) {
+        // Retry on server-side transient errors
+        const isTransient = data.error.includes('connection') || data.error.includes('53300') || 
+                           data.error.includes('timeout');
+        if (isTransient && retryAttempt < MAX_PIX_RETRIES - 1) {
+          const delay = 2000 * Math.pow(2, retryAttempt);
+          console.warn(`⚠️ Erro transitório no PIX (data.error), retentando em ${delay}ms...`);
+          await new Promise(r => setTimeout(r, delay));
+          return handleGeneratePix(retryAttempt + 1);
+        }
         throw new Error(data.error);
       }
 
@@ -295,7 +320,6 @@ export default function TransparentCheckout({
           paymentId: data.paymentId,
         });
 
-        // Iniciar verificação automática - polling a cada 6 segundos (reduz carga no servidor)
         setCheckingPix(true);
         pixPollCountRef.current = 0;
         pixIntervalRef.current = setInterval(() => {
@@ -304,7 +328,7 @@ export default function TransparentCheckout({
 
         toast({ title: "✅ PIX gerado!", description: "Escaneie o QR Code ou copie o código." });
       } else {
-        throw new Error(data.error || 'Erro ao gerar PIX');
+        throw new Error(data?.error || 'Erro ao gerar PIX');
       }
     } catch (error: any) {
       console.error('Erro PIX:', error);
@@ -477,7 +501,7 @@ export default function TransparentCheckout({
                 </ul>
               </div>
 
-              <Button onClick={handleGeneratePix} disabled={loading} className="w-full bg-[#32BCAD] hover:bg-[#2aa89b]">
+              <Button onClick={() => handleGeneratePix()} disabled={loading} className="w-full bg-[#32BCAD] hover:bg-[#2aa89b]">
                 {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <QrCode className="h-4 w-4 mr-2" />}
                 Gerar QR Code PIX
               </Button>

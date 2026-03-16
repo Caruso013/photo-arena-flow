@@ -1,30 +1,42 @@
 
 
-## Diagnóstico
+## Problem Analysis
 
-Encontrei **2 problemas críticos** afetando o site:
+From the screenshots and code, I identified **3 issues** preventing coupons from working properly:
 
-### 1. Chave API inválida (afeta TODO o site)
-O console mostra `Invalid API key` na Home. O arquivo `src/integrations/supabase/client.ts` tem uma chave anon hardcoded como fallback que está **desatualizada** — não corresponde à chave atual do projeto Supabase. Isso faz com que, quando a variável de ambiente `VITE_SUPABASE_PUBLISHABLE_KEY` não está disponível (por ex. no build publicado), o site inteiro quebre.
+### Issue 1: Server enforces minimum R$1 charge
+In `mercadopago-checkout/index.ts` line 184:
+```typescript
+const finalTotal = Math.max(subtotal - totalDiscount, 1); // Mínimo R$ 1
+```
+A 100% coupon should result in R$0, but the server forces it to R$1 and still sends it to Mercado Pago. There's no "free purchase" flow.
 
-**Correção**: Atualizar a chave fallback para a chave anon correta: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd0cHFwcHZ5anJubnVobHNicHFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwOTgxODksImV4cCI6MjA3MjY3NDE4OX0.1pstB5tT2nz0VSwukbr7nTzkMNcenURm-maPu3sqKLY`
+### Issue 2: PaymentModal doesn't display coupon discount
+The PaymentModal (lines 306-348) only shows the progressive discount. Even though `appliedCoupon` is received as a prop, it's never rendered in the price summary, so the user sees R$19 instead of R$0.
 
-### 2. Esgotamento de conexões do banco (erro 53300 persiste)
-O banco ainda está retornando `remaining connection slots are reserved for roles with the SUPERUSER attribute`. Mesmo após o restart, a Home dispara **6 queries simultâneas** (3 counts + 1 campaigns + 2 batch queries), e toda navegação multiplica isso. A camada de resiliência (`supabaseResilience.ts`) existe mas **não está sendo usada** em nenhuma página — é apenas código morto.
+### Issue 3: No free checkout path
+When total = R$0 (100% coupon), the system still tries to create a Mercado Pago payment, which either fails or charges R$1.
 
-**Correções**:
-- Reduzir queries na Home: consolidar as 3 contagens em uma única chamada e limitar as fotos retornadas
-- Aplicar a camada de resiliência (`resilientQuery`) nas queries críticas da Home
-- Adicionar retry automático no `fetchData` da Home em caso de erro de conexão
+---
 
-### 3. Pagamento PIX — Estado atual
-Os logs mostram que o PIX **está funcionando** (criou PIX, webhook processou, email enviado). O erro anterior ocorreu durante o período de esgotamento de conexões. Após corrigir os itens 1 e 2, o PIX deve funcionar normalmente. Porém, vou adicionar:
-- Tratamento de erro mais robusto no `handleGeneratePix` com mensagens claras para o usuário
-- Retry automático caso a Edge Function falhe na criação de purchases (etapa que usa DB)
+## Plan
 
-## Arquivos a modificar
+### 1. Add free checkout flow (Cart.tsx + PaymentModal.tsx)
+When `finalTotal === 0` after all discounts, bypass the payment modal entirely:
+- In `Cart.tsx`: when `finalTotal <= 0`, the "Finalizar Compra" button triggers a direct "free purchase" flow instead of opening the PaymentModal
+- Create purchase records directly with status `completed`, register coupon usage, and redirect to success
 
-1. **`src/integrations/supabase/client.ts`** — Corrigir chave anon fallback
-2. **`src/pages/Home.tsx`** — Reduzir queries simultâneas, usar resilientQuery, adicionar retry
-3. **`src/components/checkout/TransparentCheckout.tsx`** — Adicionar retry no handleGeneratePix em caso de erro transitório
+### 2. Display coupon discount in PaymentModal
+Add the coupon discount line in PaymentModal's price summary (between progressive discount and total), showing the applied coupon amount. Also update `totalPrice` calculation to subtract coupon discount.
+
+### 3. Fix server-side minimum to allow R$0
+In `mercadopago-checkout/index.ts`, change the minimum from 1 to 0. When `finalTotal === 0`, create purchases as completed without calling Mercado Pago API. This serves as a backend safety net.
+
+### 4. Handle free purchase in the edge function
+Add a new code path in the edge function: if `finalTotal <= 0`, skip payment creation, mark purchases as `completed`, register coupon usage, and return success directly.
+
+### Files to modify:
+- `src/pages/Cart.tsx` - Add free checkout handler
+- `src/components/modals/PaymentModal.tsx` - Display coupon discount in summary + adjust total calculation
+- `supabase/functions/mercadopago-checkout/index.ts` - Support zero-total purchases
 
