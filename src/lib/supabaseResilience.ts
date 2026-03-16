@@ -56,7 +56,7 @@ function sleep(ms: number): Promise<void> {
  * Limits concurrency and retries on connection exhaustion errors.
  */
 export async function resilientQuery<T>(
-  operation: () => Promise<T>,
+  operation: () => PromiseLike<T>,
   label = 'query'
 ): Promise<T> {
   // Check if we're in a cooldown period
