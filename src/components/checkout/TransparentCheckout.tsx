@@ -210,6 +210,26 @@ export default function TransparentCheckout({
 
   // Verificar status do PIX - com backoff progressivo
   const pixPollCountRef = useRef(0);
+  const terminalPixFailureStatuses = new Set(['rejected', 'cancelled', 'refunded', 'charged_back']);
+
+  const getPixErrorMessage = (statusDetail?: string, fallback?: string) => {
+    const detail = (statusDetail || '').toLowerCase();
+
+    if (detail.includes('pixpp02') || detail.includes('cannot_receive_payment')) {
+      return 'A conta recebedora no Mercado Pago está temporariamente indisponível para PIX. Verifique a conta/chave PIX no painel do Mercado Pago.';
+    }
+
+    if (detail.includes('high_risk')) {
+      return 'Pagamento recusado por análise antifraude. Tente outro método de pagamento.';
+    }
+
+    if (detail.includes('payer') || detail.includes('insufficient')) {
+      return 'O banco do pagador recusou a transação PIX. Tente novamente ou use outro banco.';
+    }
+
+    return fallback || 'Pagamento PIX não foi aprovado. Tente novamente em instantes.';
+  };
+
   const checkPixStatus = async (paymentId: string) => {
     try {
       pixPollCountRef.current++;
@@ -222,7 +242,19 @@ export default function TransparentCheckout({
         setCheckingPix(false);
         toast({ title: "✅ Pagamento confirmado!", description: "PIX aprovado com sucesso." });
         onSuccess(data);
-      } else if (pixPollCountRef.current >= 40) {
+        return;
+      }
+
+      if (terminalPixFailureStatuses.has(data?.status)) {
+        if (pixIntervalRef.current) clearInterval(pixIntervalRef.current);
+        setCheckingPix(false);
+        const failureMessage = getPixErrorMessage(data?.statusDetail, 'PIX não aprovado pelo banco.');
+        toast({ title: "❌ PIX não aprovado", description: failureMessage, variant: "destructive" });
+        onError(failureMessage);
+        return;
+      }
+
+      if (pixPollCountRef.current >= 40) {
         // Timeout após ~3-4 minutos
         if (pixIntervalRef.current) clearInterval(pixIntervalRef.current);
         setCheckingPix(false);
@@ -273,44 +305,53 @@ export default function TransparentCheckout({
 
       if (error) {
         let errorMsg = 'Erro ao gerar PIX';
+        let statusDetail = '';
+
         try {
           if (error.context?.body) {
             const reader = error.context.body.getReader();
             const { value } = await reader.read();
             const bodyText = new TextDecoder().decode(value);
             const bodyJson = JSON.parse(bodyText);
-            errorMsg = bodyJson.error || errorMsg;
+            statusDetail = bodyJson.statusDetail || bodyJson.errorCode || '';
+            errorMsg = getPixErrorMessage(statusDetail, bodyJson.error || errorMsg);
           }
         } catch {
-          errorMsg = error.message || errorMsg;
+          errorMsg = getPixErrorMessage('', error.message || errorMsg);
         }
-        
+
         // Retry on connection/server errors
-        const isTransient = errorMsg.includes('connection') || errorMsg.includes('53300') || 
-                           errorMsg.includes('timeout') || errorMsg.includes('500') ||
-                           errorMsg.includes('PGRST');
+        const normalizedError = errorMsg.toLowerCase();
+        const isTransient = normalizedError.includes('connection') || normalizedError.includes('53300') ||
+          normalizedError.includes('timeout') || normalizedError.includes('500') ||
+          normalizedError.includes('pgrst');
+
         if (isTransient && retryAttempt < MAX_PIX_RETRIES - 1) {
           const delay = 2000 * Math.pow(2, retryAttempt);
           console.warn(`⚠️ Erro transitório no PIX, retentando em ${delay}ms...`);
-          toast({ title: "Tentando novamente...", description: `Aguarde ${Math.round(delay/1000)}s` });
+          toast({ title: "Tentando novamente...", description: `Aguarde ${Math.round(delay / 1000)}s` });
           await new Promise(r => setTimeout(r, delay));
           return handleGeneratePix(retryAttempt + 1);
         }
-        
+
         throw new Error(errorMsg);
       }
 
       if (data?.error) {
+        const errorMsg = getPixErrorMessage(data?.statusDetail, data.error);
+
         // Retry on server-side transient errors
-        const isTransient = data.error.includes('connection') || data.error.includes('53300') || 
-                           data.error.includes('timeout');
+        const normalizedError = errorMsg.toLowerCase();
+        const isTransient = normalizedError.includes('connection') || normalizedError.includes('53300') ||
+          normalizedError.includes('timeout');
+
         if (isTransient && retryAttempt < MAX_PIX_RETRIES - 1) {
           const delay = 2000 * Math.pow(2, retryAttempt);
           console.warn(`⚠️ Erro transitório no PIX (data.error), retentando em ${delay}ms...`);
           await new Promise(r => setTimeout(r, delay));
           return handleGeneratePix(retryAttempt + 1);
         }
-        throw new Error(data.error);
+        throw new Error(errorMsg);
       }
 
       if (data?.success && data.pix) {
@@ -328,7 +369,7 @@ export default function TransparentCheckout({
 
         toast({ title: "✅ PIX gerado!", description: "Escaneie o QR Code ou copie o código." });
       } else {
-        throw new Error(data?.error || 'Erro ao gerar PIX');
+        throw new Error(getPixErrorMessage(data?.statusDetail, data?.error || 'Erro ao gerar PIX'));
       }
     } catch (error: any) {
       console.error('Erro PIX:', error);
