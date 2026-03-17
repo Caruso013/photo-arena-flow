@@ -120,7 +120,7 @@ serve(async (req) => {
     }
 
     // ===== AÇÃO: VERIFICAR STATUS DO PAGAMENTO =====
-    // NOTA: Esta ação NÃO usa o banco de dados para reduzir conexões
+    // NOTA: Esta ação evita consultas desnecessárias no banco, mas sincroniza estados terminais
     if (action === 'check_status' && paymentId) {
       console.log('🔍 Verificando status do pagamento:', paymentId);
 
@@ -129,10 +129,27 @@ serve(async (req) => {
       });
 
       const mpResult = await mpResponse.json();
-      console.log('📋 Status MP:', mpResult.status);
+
+      if (!mpResponse.ok || mpResult.error) {
+        const errorMsg = mpResult?.cause?.[0]?.description || mpResult?.message || 'Erro ao verificar status do pagamento';
+        console.error('❌ Erro ao consultar Mercado Pago:', { paymentId, errorMsg, raw: mpResult });
+        return new Response(JSON.stringify({
+          success: false,
+          status: 'error',
+          statusDetail: mpResult?.status_detail || null,
+          error: errorMsg,
+        }), {
+          status: mpResponse.status >= 500 ? 502 : 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const status = mpResult.status;
+      const statusDetail = mpResult.status_detail;
+      console.log('📋 Status MP:', status, statusDetail || '');
 
       // Se aprovado, processar compra (única operação de banco)
-      if (mpResult.status === 'approved') {
+      if (status === 'approved') {
         try {
           await processApprovedPayment(supabaseAdmin, mpResult);
         } catch (dbError) {
@@ -141,10 +158,35 @@ serve(async (req) => {
         }
       }
 
+      // Se rejeitado/cancelado, sincronizar como failed para evitar pendências infinitas
+      const terminalFailureStatuses = ['rejected', 'cancelled', 'refunded', 'charged_back'];
+      if (terminalFailureStatuses.includes(status)) {
+        const externalRef = mpResult.external_reference?.split('|')[0];
+        if (externalRef) {
+          try {
+            const { data: purchases } = await supabaseAdmin
+              .from('purchases')
+              .select('id')
+              .like('stripe_payment_intent_id', `%${externalRef}%`);
+
+            if (purchases && purchases.length > 0) {
+              const purchaseIds = purchases.map((p: any) => p.id);
+              await supabaseAdmin
+                .from('purchases')
+                .update({ status: 'failed' })
+                .in('id', purchaseIds);
+              console.log('🛑 Purchases marcadas como failed:', purchaseIds.length);
+            }
+          } catch (syncError) {
+            console.warn('⚠️ Falha ao sincronizar status failed (será reconciliado):', syncError);
+          }
+        }
+      }
+
       return new Response(JSON.stringify({
         success: true,
-        status: mpResult.status,
-        statusDetail: mpResult.status_detail,
+        status,
+        statusDetail,
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
