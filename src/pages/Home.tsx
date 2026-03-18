@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getTransformedImageUrl } from '@/lib/supabaseImageTransform';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -250,7 +251,7 @@ const Home = () => {
                   <div className="aspect-video relative overflow-hidden bg-muted">
                     {campaign.cover_image_url ? (
                       <img
-                        src={campaign.cover_image_url}
+                        src={getTransformedImageUrl(campaign.cover_image_url, 'medium')}
                         alt={campaign.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         loading="lazy"

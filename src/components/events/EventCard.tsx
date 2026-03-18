@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { getTransformedImageUrl } from '@/lib/supabaseImageTransform';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -122,7 +123,7 @@ export const EventCard: React.FC<EventCardProps> = ({ campaign, index }) => {
             {campaign.cover_image_url ? (
               <>
                 <img
-                  src={campaign.cover_image_url}
+                  src={getTransformedImageUrl(campaign.cover_image_url, 'medium')}
                   alt={campaign.title}
                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                   loading="lazy"

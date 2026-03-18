@@ -16,10 +16,10 @@ interface TransformConfig {
 
 // Configurações otimizadas para cada contexto
 const TRANSFORM_CONFIGS: Record<TransformSize, TransformConfig | null> = {
-  tiny:      { width: 40,   quality: 20, format: 'webp' },   // ~1-2KB - blur placeholder
-  thumbnail: { width: 300,  quality: 50, format: 'webp' },   // ~10-20KB - grid de fotos
-  medium:    { width: 600,  quality: 65, format: 'webp' },   // ~30-60KB - visualização modal
-  large:     { width: 1200, quality: 75, format: 'webp' },   // ~80-150KB - zoom/detalhe
+  tiny:      { width: 40,   quality: 15, format: 'webp' },   // ~0.5-1KB - blur placeholder
+  thumbnail: { width: 250,  quality: 40, format: 'webp' },   // ~5-12KB - grid de fotos
+  medium:    { width: 500,  quality: 55, format: 'webp' },   // ~20-40KB - visualização modal
+  large:     { width: 900,  quality: 65, format: 'webp' },   // ~50-100KB - zoom/detalhe
   original:  null,                                             // Sem transformação (compra)
 };
 
@@ -33,9 +33,35 @@ export function getTransformedImageUrl(
   originalUrl: string,
   size: TransformSize = 'medium'
 ): string {
-  // Transformações de imagem desabilitadas - requer Supabase Pro
-  // Retorna URL original para garantir carregamento correto
-  return originalUrl;
+  if (!originalUrl || size === 'original') return originalUrl;
+
+  const config = TRANSFORM_CONFIGS[size];
+  if (!config) return originalUrl;
+
+  // Apenas URLs do Supabase Storage
+  if (!originalUrl.includes('supabase.co/storage/v1/object/')) {
+    return originalUrl;
+  }
+
+  try {
+    // Converter /object/public/ para /render/image/public/
+    const transformed = originalUrl.replace(
+      '/storage/v1/object/public/',
+      '/storage/v1/render/image/public/'
+    );
+
+    const url = new URL(transformed);
+    url.searchParams.set('width', config.width.toString());
+    url.searchParams.set('quality', config.quality.toString());
+    if (config.format) {
+      url.searchParams.set('format', config.format);
+    }
+
+    return url.toString();
+  } catch (error) {
+    console.error('Error generating transformed URL:', error);
+    return originalUrl;
+  }
 }
 
 /**

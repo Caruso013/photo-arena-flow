@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { getTransformedImageUrl } from '@/lib/supabaseImageTransform';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -262,7 +263,7 @@ const Index = () => {
                       <div className="aspect-[4/5] bg-gradient-dark relative overflow-hidden">
                         {campaign.cover_image_url ? (
                           <img
-                            src={campaign.cover_image_url}
+                            src={getTransformedImageUrl(campaign.cover_image_url, 'medium')}
                             alt={campaign.title}
                             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                             loading="lazy"
