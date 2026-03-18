@@ -16,10 +16,10 @@ interface TransformConfig {
 
 // Configurações otimizadas para cada contexto
 const TRANSFORM_CONFIGS: Record<TransformSize, TransformConfig | null> = {
-  tiny:      { width: 40,   quality: 20, format: 'webp' },   // ~1-2KB - blur placeholder
-  thumbnail: { width: 300,  quality: 50, format: 'webp' },   // ~10-20KB - grid de fotos
-  medium:    { width: 600,  quality: 65, format: 'webp' },   // ~30-60KB - visualização modal
-  large:     { width: 1200, quality: 75, format: 'webp' },   // ~80-150KB - zoom/detalhe
+  tiny:      { width: 40,   quality: 15, format: 'webp' },   // ~0.5-1KB - blur placeholder
+  thumbnail: { width: 250,  quality: 40, format: 'webp' },   // ~5-12KB - grid de fotos
+  medium:    { width: 500,  quality: 55, format: 'webp' },   // ~20-40KB - visualização modal
+  large:     { width: 900,  quality: 65, format: 'webp' },   // ~50-100KB - zoom/detalhe
   original:  null,                                             // Sem transformação (compra)
 };
 
