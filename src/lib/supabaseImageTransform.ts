@@ -33,9 +33,35 @@ export function getTransformedImageUrl(
   originalUrl: string,
   size: TransformSize = 'medium'
 ): string {
-  // Transformações de imagem desabilitadas - requer Supabase Pro
-  // Retorna URL original para garantir carregamento correto
-  return originalUrl;
+  if (!originalUrl || size === 'original') return originalUrl;
+
+  const config = TRANSFORM_CONFIGS[size];
+  if (!config) return originalUrl;
+
+  // Apenas URLs do Supabase Storage
+  if (!originalUrl.includes('supabase.co/storage/v1/object/')) {
+    return originalUrl;
+  }
+
+  try {
+    // Converter /object/public/ para /render/image/public/
+    const transformed = originalUrl.replace(
+      '/storage/v1/object/public/',
+      '/storage/v1/render/image/public/'
+    );
+
+    const url = new URL(transformed);
+    url.searchParams.set('width', config.width.toString());
+    url.searchParams.set('quality', config.quality.toString());
+    if (config.format) {
+      url.searchParams.set('format', config.format);
+    }
+
+    return url.toString();
+  } catch (error) {
+    console.error('Error generating transformed URL:', error);
+    return originalUrl;
+  }
 }
 
 /**
