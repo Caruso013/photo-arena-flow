@@ -93,6 +93,7 @@ const MesarioManager = lazy(() => import("./pages/dashboard/admin/MesarioManager
 
 // Mesario pages (lazy)
 const MesarioLogin = lazy(() => import("./pages/MesarioLogin"));
+const MesarioGameSelect = lazy(() => import("./pages/MesarioGameSelect"));
 const MesarioScanner = lazy(() => import("./pages/MesarioScanner"));
 
 // Organization routes

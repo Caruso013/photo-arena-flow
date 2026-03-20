@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
-import { QrCode, LogOut, Camera } from 'lucide-react';
+import { QrCode, LogOut, Camera, ArrowLeft } from 'lucide-react';
 import QRScanner from '@/components/mesario/QRScanner';
 import PhotographerConfirmation from '@/components/mesario/PhotographerConfirmation';
 import AttendanceResult from '@/components/mesario/AttendanceResult';
@@ -11,18 +11,18 @@ import AttendanceResult from '@/components/mesario/AttendanceResult';
 interface MesarioSession {
   id: string;
   mesario_name: string;
-  expires_at: string;
-  campaign: {
+  organization_id: string | null;
+  organization?: {
+    id: string;
+    name: string;
+    logo_url?: string;
+  };
+  campaign?: {
     id: string;
     title: string;
     event_date: string;
     location: string;
     cover_image_url?: string;
-  };
-  organization?: {
-    id: string;
-    name: string;
-    logo_url?: string;
   };
 }
 
@@ -60,10 +60,9 @@ const MesarioScanner = () => {
 
     const parsed = JSON.parse(sessionData);
     
-    // Verificar se expirou
-    if (new Date(parsed.expires_at) < new Date()) {
-      sessionStorage.removeItem('mesario_session');
-      navigate('/mesario');
+    // Must have a campaign selected
+    if (!parsed.campaign) {
+      navigate('/mesario/jogos');
       return;
     }
 
@@ -75,8 +74,12 @@ const MesarioScanner = () => {
     navigate('/mesario');
   };
 
+  const handleBackToGames = () => {
+    navigate('/mesario/jogos');
+  };
+
   const handleQRScanned = useCallback(async (qrCode: string) => {
-    if (!session || loading) return;
+    if (!session?.campaign || loading) return;
     
     setLoading(true);
 
@@ -114,7 +117,7 @@ const MesarioScanner = () => {
         setViewState('result');
       } else if (!data.approved) {
         setResultType('error');
-        setResultMessage('Este fotógrafo NÃO está aprovado para participar deste evento');
+        setResultMessage('Este fotógrafo NÃO está aprovado para este jogo');
         setViewState('result');
       } else {
         setViewState('confirmation');
@@ -130,7 +133,7 @@ const MesarioScanner = () => {
   }, [session, loading]);
 
   const handleConfirmAttendance = async () => {
-    if (!session || !photographerData) return;
+    if (!session?.campaign || !photographerData) return;
 
     setLoading(true);
 
@@ -183,9 +186,12 @@ const MesarioScanner = () => {
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b">
         <div className="container flex items-center justify-between h-14 px-4">
           <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleBackToGames}>
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
             <QrCode className="h-5 w-5 text-primary" />
             <span className="font-semibold text-sm truncate max-w-[200px]">
-              {session.campaign.title}
+              {session.campaign?.title}
             </span>
           </div>
           <Button variant="ghost" size="sm" onClick={handleLogout}>
@@ -212,7 +218,7 @@ const MesarioScanner = () => {
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <p className="font-medium truncate">{session.campaign.title}</p>
+                <p className="font-medium truncate">{session.campaign?.title}</p>
                 <p className="text-sm text-muted-foreground">
                   Mesário: {session.mesario_name}
                 </p>
