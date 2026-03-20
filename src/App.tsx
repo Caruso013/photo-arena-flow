@@ -93,6 +93,7 @@ const MesarioManager = lazy(() => import("./pages/dashboard/admin/MesarioManager
 
 // Mesario pages (lazy)
 const MesarioLogin = lazy(() => import("./pages/MesarioLogin"));
+const MesarioGameSelect = lazy(() => import("./pages/MesarioGameSelect"));
 const MesarioScanner = lazy(() => import("./pages/MesarioScanner"));
 
 // Organization routes
@@ -205,6 +206,7 @@ const AppContent = () => {
           <Route path="/tutorial" element={<Tutorial />} />
           <Route path="/payment-test" element={<PaymentTest />} />
           <Route path="/mesario" element={<MesarioLogin />} />
+          <Route path="/mesario/jogos" element={<MesarioGameSelect />} />
           <Route path="/mesario/scanner" element={<MesarioScanner />} />
           <Route path="/checkout/processando" element={<CheckoutProcessing />} />
           <Route path="/checkout/sucesso" element={<CheckoutSuccess />} />

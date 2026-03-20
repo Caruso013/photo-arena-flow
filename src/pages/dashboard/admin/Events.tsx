@@ -11,26 +11,46 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import BulkPriceUpdateModal from '@/components/dashboard/BulkPriceUpdateModal';
 
+const PAGE_SIZE = 20;
+
 const AdminEvents = () => {
   const { profile } = useAuth();
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [bulkPriceOpen, setBulkPriceOpen] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [page, setPage] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(() => {
-    fetchCampaigns();
+    fetchCampaigns(0, true);
   }, []);
 
-  const fetchCampaigns = async () => {
+  const fetchCampaigns = async (pageNum: number = 0, reset: boolean = false) => {
     try {
-      setLoading(true);
+      if (reset) setLoading(true);
+      else setLoadingMore(true);
+
+      const from = pageNum * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+
       const { data, error } = await supabase
         .from('campaigns')
         .select('*, organizations(name)')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(from, to);
 
       if (error) throw error;
-      setCampaigns(data || []);
+
+      const newData = data || [];
+      setHasMore(newData.length === PAGE_SIZE);
+
+      if (reset) {
+        setCampaigns(newData);
+      } else {
+        setCampaigns(prev => [...prev, ...newData]);
+      }
+      setPage(pageNum);
     } catch (error) {
       console.error('Error fetching campaigns:', error);
       toast({
@@ -40,6 +60,13 @@ const AdminEvents = () => {
       });
     } finally {
       setLoading(false);
+      setLoadingMore(false);
+    }
+  };
+
+  const handleLoadMore = () => {
+    if (!loadingMore && hasMore) {
+      fetchCampaigns(page + 1, false);
     }
   };
 
@@ -93,7 +120,13 @@ const AdminEvents = () => {
           </TabsList>
 
           <TabsContent value="campaigns">
-            <CampaignManager campaigns={campaigns} onRefresh={fetchCampaigns} />
+            <CampaignManager 
+              campaigns={campaigns} 
+              onRefresh={() => fetchCampaigns(0, true)} 
+              hasMore={hasMore}
+              loadingMore={loadingMore}
+              onLoadMore={handleLoadMore}
+            />
           </TabsContent>
 
           <TabsContent value="applications">

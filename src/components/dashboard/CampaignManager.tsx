@@ -2,14 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/use-toast';
 import { 
   Camera, Edit, Power, PowerOff, MapPin, Calendar, Trash2, 
-  ClipboardList, Users, Search, Filter, UserCheck, FileText
+  ClipboardList, Search, UserCheck, Loader2
 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import CreateCampaignModal from '../modals/CreateCampaignModal';
@@ -39,6 +39,9 @@ interface Campaign {
 interface CampaignManagerProps {
   campaigns: Campaign[];
   onRefresh: () => void;
+  hasMore?: boolean;
+  loadingMore?: boolean;
+  onLoadMore?: () => void;
 }
 
 interface CampaignStats {
@@ -48,7 +51,9 @@ interface CampaignStats {
   };
 }
 
-export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onRefresh }) => {
+export const CampaignManager: React.FC<CampaignManagerProps> = ({ 
+  campaigns, onRefresh, hasMore = false, loadingMore = false, onLoadMore 
+}) => {
   const navigate = useNavigate();
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -64,10 +69,7 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
   }, [campaigns]);
 
   const fetchOrganizations = async () => {
-    const { data } = await supabase
-      .from('organizations')
-      .select('id, name')
-      .order('name');
+    const { data } = await supabase.from('organizations').select('id, name').order('name');
     if (data) setOrganizations(data);
   };
 
@@ -76,16 +78,8 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
     const ids = campaigns.map(c => c.id);
 
     const [photosRes, appsRes] = await Promise.all([
-      supabase
-        .from('campaign_photographers')
-        .select('campaign_id')
-        .in('campaign_id', ids)
-        .eq('is_active', true),
-      supabase
-        .from('event_applications')
-        .select('campaign_id')
-        .in('campaign_id', ids)
-        .eq('status', 'pending'),
+      supabase.from('campaign_photographers').select('campaign_id').in('campaign_id', ids).eq('is_active', true),
+      supabase.from('event_applications').select('campaign_id').in('campaign_id', ids).eq('status', 'pending'),
     ]);
 
     const newStats: CampaignStats = {};
@@ -100,60 +94,35 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
 
   const handleToggleActive = async (campaign: Campaign) => {
     try {
-      const { error } = await supabase
-        .from('campaigns')
-        .update({ is_active: !campaign.is_active })
-        .eq('id', campaign.id);
+      const { error } = await supabase.from('campaigns').update({ is_active: !campaign.is_active }).eq('id', campaign.id);
       if (error) throw error;
       toast({ title: campaign.is_active ? "Evento desativado!" : "Evento ativado!" });
       onRefresh();
-    } catch (error) {
-      console.error('Error toggling campaign:', error);
-      toast({ title: "Erro ao atualizar", variant: "destructive" });
-    }
+    } catch { toast({ title: "Erro ao atualizar", variant: "destructive" }); }
   };
 
   const handleToggleApplications = async (campaign: Campaign) => {
     try {
-      const { error } = await supabase
-        .from('campaigns')
-        .update({ applications_open: !campaign.applications_open })
-        .eq('id', campaign.id);
+      const { error } = await supabase.from('campaigns').update({ applications_open: !campaign.applications_open }).eq('id', campaign.id);
       if (error) throw error;
       toast({ title: campaign.applications_open ? "Inscrições fechadas" : "Inscrições abertas" });
       onRefresh();
-    } catch (error) {
-      console.error('Error toggling applications:', error);
-      toast({ title: "Erro ao atualizar", variant: "destructive" });
-    }
+    } catch { toast({ title: "Erro ao atualizar", variant: "destructive" }); }
   };
 
-  const openEditModal = (campaign: Campaign) => {
-    setSelectedCampaign(campaign);
-    setEditModalOpen(true);
-  };
-
-  const openDeleteDialog = (campaign: Campaign) => {
-    setSelectedCampaign(campaign);
-    setDeleteDialogOpen(true);
-  };
+  const openEditModal = (campaign: Campaign) => { setSelectedCampaign(campaign); setEditModalOpen(true); };
+  const openDeleteDialog = (campaign: Campaign) => { setSelectedCampaign(campaign); setDeleteDialogOpen(true); };
 
   const handleDelete = async () => {
     if (!selectedCampaign) return;
     try {
-      const { error } = await supabase
-        .from('campaigns')
-        .delete()
-        .eq('id', selectedCampaign.id);
+      const { error } = await supabase.from('campaigns').delete().eq('id', selectedCampaign.id);
       if (error) throw error;
       toast({ title: "Evento excluído!" });
       setDeleteDialogOpen(false);
       setSelectedCampaign(null);
       onRefresh();
-    } catch (error) {
-      console.error('Error deleting campaign:', error);
-      toast({ title: "Erro ao excluir", variant: "destructive" });
-    }
+    } catch { toast({ title: "Erro ao excluir", variant: "destructive" }); }
   };
 
   const filtered = campaigns.filter(c => {
@@ -168,7 +137,6 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
 
   return (
     <div className="space-y-4">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold flex items-center gap-2">
@@ -176,25 +144,17 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
             Gerenciar Eventos
           </h2>
           <p className="text-sm text-muted-foreground">
-            {campaigns.length} evento{campaigns.length !== 1 ? 's' : ''} cadastrado{campaigns.length !== 1 ? 's' : ''}
+            {campaigns.length} evento{campaigns.length !== 1 ? 's' : ''} carregado{campaigns.length !== 1 ? 's' : ''}
           </p>
         </div>
-        <CreateCampaignModal 
-          organizations={organizations}
-          onCampaignCreated={onRefresh}
-        />
+        <CreateCampaignModal organizations={organizations} onCampaignCreated={onRefresh} />
       </div>
 
       {/* Search + Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por nome ou local..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
+          <Input placeholder="Buscar por nome ou local..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-10" />
         </div>
         <Tabs value={filter} onValueChange={(v) => setFilter(v as any)} className="w-auto">
           <TabsList className="h-10">
@@ -221,29 +181,20 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
         <div className="space-y-3">
           {filtered.map((campaign) => {
             const campaignStats = stats[campaign.id] || { photographers: 0, pendingApplications: 0 };
-
             return (
               <Card key={campaign.id} className="overflow-hidden">
                 <CardContent className="p-0">
                   <div className="flex gap-0">
-                    {/* Thumbnail */}
                     <div className="hidden sm:block w-32 h-auto shrink-0 bg-muted">
                       {campaign.cover_image_url ? (
-                        <img
-                          src={campaign.cover_image_url}
-                          alt={campaign.title}
-                          className="w-full h-full object-cover min-h-[120px]"
-                        />
+                        <img src={campaign.cover_image_url} alt={campaign.title} className="w-full h-full object-cover min-h-[120px]" />
                       ) : (
                         <div className="w-full h-full min-h-[120px] flex items-center justify-center bg-gradient-to-br from-primary/10 to-primary/5">
                           <Camera className="h-8 w-8 text-primary/30" />
                         </div>
                       )}
                     </div>
-
-                    {/* Content */}
                     <div className="flex-1 p-4 space-y-3">
-                      {/* Title + Badges */}
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div className="space-y-1">
                           <h4 className="font-semibold text-base leading-tight">{campaign.title}</h4>
@@ -251,81 +202,49 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
                             <Badge variant={campaign.is_active ? 'default' : 'secondary'} className="text-xs">
                               {campaign.is_active ? 'Ativa' : 'Inativa'}
                             </Badge>
-                            <Badge 
-                              variant="outline" 
-                              className={`text-xs ${campaign.applications_open ? 'border-green-500/50 text-green-700 dark:text-green-400' : 'border-muted-foreground/30'}`}
-                            >
+                            <Badge variant="outline" className={`text-xs ${campaign.applications_open ? 'border-green-500/50 text-green-700 dark:text-green-400' : 'border-muted-foreground/30'}`}>
                               {campaign.applications_open ? '📋 Inscrições Abertas' : 'Inscrições Fechadas'}
                             </Badge>
                             {campaignStats.pendingApplications > 0 && (
                               <Badge variant="destructive" className="text-xs">
-                                {campaignStats.pendingApplications} candidatura{campaignStats.pendingApplications > 1 ? 's' : ''} pendente{campaignStats.pendingApplications > 1 ? 's' : ''}
+                                {campaignStats.pendingApplications} pendente{campaignStats.pendingApplications > 1 ? 's' : ''}
                               </Badge>
                             )}
                           </div>
                         </div>
                       </div>
-
-                      {/* Meta info */}
                       <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
                         {campaign.location && (
-                          <span className="flex items-center gap-1">
-                            <MapPin className="h-3.5 w-3.5" />
-                            {campaign.location}
-                          </span>
+                          <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{campaign.location}</span>
                         )}
                         {campaign.event_date && (
-                          <span className="flex items-center gap-1">
-                            <Calendar className="h-3.5 w-3.5" />
-                            {new Date(campaign.event_date).toLocaleDateString('pt-BR')}
-                          </span>
+                          <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />{new Date(campaign.event_date).toLocaleDateString('pt-BR')}</span>
                         )}
-                        <span className="flex items-center gap-1">
-                          <UserCheck className="h-3.5 w-3.5" />
-                          {campaignStats.photographers} fotógrafo{campaignStats.photographers !== 1 ? 's' : ''}
-                        </span>
+                        <span className="flex items-center gap-1"><UserCheck className="h-3.5 w-3.5" />{campaignStats.photographers} fotógrafo{campaignStats.photographers !== 1 ? 's' : ''}</span>
                       </div>
-
-                      {/* Percentages */}
                       <div className="flex gap-2 text-xs">
                         <Badge variant="outline" className="font-normal">Plat: {campaign.platform_percentage}%</Badge>
                         <Badge variant="outline" className="font-normal">Fot: {campaign.photographer_percentage}%</Badge>
-                        {campaign.organization_id && (
-                          <Badge variant="outline" className="font-normal">Org: {campaign.organization_percentage}%</Badge>
-                        )}
+                        {campaign.organization_id && <Badge variant="outline" className="font-normal">Org: {campaign.organization_percentage}%</Badge>}
                       </div>
-
-                      {/* Actions row */}
                       <div className="flex flex-wrap items-center gap-2 pt-1 border-t">
-                        {/* Applications toggle */}
                         <div className="flex items-center gap-2 mr-2">
-                          <Switch
-                            checked={campaign.applications_open ?? false}
-                            onCheckedChange={() => handleToggleApplications(campaign)}
-                          />
+                          <Switch checked={campaign.applications_open ?? false} onCheckedChange={() => handleToggleApplications(campaign)} />
                           <span className="text-xs text-muted-foreground">Inscrições</span>
                         </div>
-
                         <div className="flex-1" />
-
-                        <Button size="sm" variant="outline" className="h-8 gap-1 text-xs"
-                          onClick={() => navigate(`/dashboard/admin/events/${campaign.id}/attendance`)}>
-                          <ClipboardList className="h-3.5 w-3.5" />
-                          Presença
+                        <Button size="sm" variant="outline" className="h-8 gap-1 text-xs" onClick={() => navigate(`/dashboard/admin/events/${campaign.id}/attendance`)}>
+                          <ClipboardList className="h-3.5 w-3.5" />Presença
                         </Button>
                         <CampaignPhotographersManager campaignId={campaign.id} campaignTitle={campaign.title} />
-                        <Button size="sm" variant="outline" className="h-8 gap-1 text-xs"
-                          onClick={() => openEditModal(campaign)}>
-                          <Edit className="h-3.5 w-3.5" />
-                          Editar
+                        <Button size="sm" variant="outline" className="h-8 gap-1 text-xs" onClick={() => openEditModal(campaign)}>
+                          <Edit className="h-3.5 w-3.5" />Editar
                         </Button>
-                        <Button size="sm" variant={campaign.is_active ? 'destructive' : 'default'} className="h-8 gap-1 text-xs"
-                          onClick={() => handleToggleActive(campaign)}>
+                        <Button size="sm" variant={campaign.is_active ? 'destructive' : 'default'} className="h-8 gap-1 text-xs" onClick={() => handleToggleActive(campaign)}>
                           {campaign.is_active ? <PowerOff className="h-3.5 w-3.5" /> : <Power className="h-3.5 w-3.5" />}
                           {campaign.is_active ? 'Desativar' : 'Ativar'}
                         </Button>
-                        <Button size="sm" variant="destructive" className="h-8 gap-1 text-xs"
-                          onClick={() => openDeleteDialog(campaign)}>
+                        <Button size="sm" variant="destructive" className="h-8 gap-1 text-xs" onClick={() => openDeleteDialog(campaign)}>
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
@@ -338,7 +257,16 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
         </div>
       )}
 
-      {/* Edit Modal */}
+      {/* Load More */}
+      {hasMore && (
+        <div className="flex justify-center pt-4">
+          <Button variant="outline" onClick={onLoadMore} disabled={loadingMore} className="gap-2">
+            {loadingMore && <Loader2 className="h-4 w-4 animate-spin" />}
+            {loadingMore ? 'Carregando...' : 'Carregar mais eventos'}
+          </Button>
+        </div>
+      )}
+
       {selectedCampaign && (
         <EditEventModal
           campaignId={selectedCampaign.id}
@@ -359,29 +287,21 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({ campaigns, onR
           }}
           organizations={organizations}
           open={editModalOpen}
-          onClose={() => {
-            setEditModalOpen(false);
-            setSelectedCampaign(null);
-          }}
+          onClose={() => { setEditModalOpen(false); setSelectedCampaign(null); }}
           onEventUpdated={onRefresh}
           isPhotographer={false}
         />
       )}
 
-      {/* Delete Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta ação não pode ser desfeita. O evento será permanentemente excluído.
-            </AlertDialogDescription>
+            <AlertDialogDescription>Esta ação não pode ser desfeita. O evento será permanentemente excluído.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
-              Excluir
-            </AlertDialogAction>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">Excluir</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

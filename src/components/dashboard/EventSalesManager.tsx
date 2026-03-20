@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Search, Download } from 'lucide-react';
+import { Loader2, Search } from 'lucide-react';
 
 interface SaleRecord {
   id: string;
@@ -34,6 +34,7 @@ export const EventSalesManager = () => {
   const [selectedCampaign, setSelectedCampaign] = useState('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   const [hasMore, setHasMore] = useState(false);
   const [page, setPage] = useState(0);
 
@@ -59,7 +60,6 @@ export const EventSalesManager = () => {
     try {
       setLoading(true);
 
-      // 1. Fetch purchases
       let query = supabase
         .from('purchases')
         .select('id, amount, created_at, photo_id, buyer_id, photographer_id, progressive_discount_amount')
@@ -80,38 +80,23 @@ export const EventSalesManager = () => {
 
       setHasMore(purchases.length === PAGE_SIZE);
 
-      // 2. Get unique photo_ids and fetch photos + campaigns
       const photoIds = [...new Set(purchases.map(p => p.photo_id))];
-      const { data: photos } = await supabase
-        .from('photos')
-        .select('id, title, campaign_id')
-        .in('id', photoIds);
+      const { data: photos } = await supabase.from('photos').select('id, title, campaign_id').in('id', photoIds);
 
       const campaignIds = [...new Set((photos || []).map(p => p.campaign_id))];
-      const { data: campaignsData } = await supabase
-        .from('campaigns')
-        .select('id, title')
-        .in('id', campaignIds);
+      const { data: campaignsData } = await supabase.from('campaigns').select('id, title').in('id', campaignIds);
 
-      // 3. Get unique user ids for buyers and photographers
-      const userIds = [...new Set([
-        ...purchases.map(p => p.buyer_id),
-        ...purchases.map(p => p.photographer_id),
-      ])];
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, full_name')
-        .in('id', userIds);
+      const userIds = [...new Set([...purchases.map(p => p.buyer_id), ...purchases.map(p => p.photographer_id)])];
+      const { data: profiles } = await supabase.from('profiles').select('id, full_name, email').in('id', userIds);
 
-      // Build lookup maps
       const photoMap = new Map((photos || []).map(p => [p.id, p]));
       const campaignMap = new Map((campaignsData || []).map(c => [c.id, c]));
       const profileMap = new Map((profiles || []).map(p => [p.id, p]));
 
-      // 4. Assemble records
       let records: SaleRecord[] = purchases.map(p => {
         const photo = photoMap.get(p.photo_id);
         const campaign = photo ? campaignMap.get(photo.campaign_id) : null;
+        const buyer = profileMap.get(p.buyer_id);
         return {
           id: p.id,
           amount: p.amount,
@@ -123,12 +108,11 @@ export const EventSalesManager = () => {
           photo_title: photo?.title || '—',
           campaign_title: campaign?.title || '—',
           campaign_id: photo?.campaign_id || '',
-          buyer_name: profileMap.get(p.buyer_id)?.full_name || 'Desconhecido',
+          buyer_name: buyer?.full_name || buyer?.email || 'Desconhecido',
           photographer_name: profileMap.get(p.photographer_id)?.full_name || 'Desconhecido',
         };
       });
 
-      // Filter by campaign client-side (since we can't join in the initial query)
       if (selectedCampaign !== 'all') {
         records = records.filter(r => r.campaign_id === selectedCampaign);
       }
@@ -152,7 +136,17 @@ export const EventSalesManager = () => {
     fetchSales(next);
   };
 
-  const totalRevenue = sales.reduce((sum, s) => sum + s.amount, 0);
+  // Client-side search by buyer/photographer name
+  const filteredSales = searchTerm.trim()
+    ? sales.filter(s => {
+        const term = searchTerm.toLowerCase();
+        return s.buyer_name.toLowerCase().includes(term) || 
+               s.photographer_name.toLowerCase().includes(term) ||
+               s.campaign_title.toLowerCase().includes(term);
+      })
+    : sales;
+
+  const totalRevenue = filteredSales.reduce((sum, s) => sum + s.amount, 0);
 
   return (
     <Card>
@@ -160,12 +154,21 @@ export const EventSalesManager = () => {
         <CardTitle className="flex items-center justify-between flex-wrap gap-4">
           <span>Vendas por Evento</span>
           <Badge variant="secondary" className="text-base">
-            {sales.length} vendas — {formatCurrency(totalRevenue)}
+            {filteredSales.length} vendas — {formatCurrency(totalRevenue)}
           </Badge>
         </CardTitle>
 
         {/* Filters */}
         <div className="flex flex-wrap gap-3 mt-4">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar comprador, fotógrafo ou evento..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
           <Select value={selectedCampaign} onValueChange={setSelectedCampaign}>
             <SelectTrigger className="w-[260px]">
               <SelectValue placeholder="Filtrar por evento" />
@@ -177,21 +180,8 @@ export const EventSalesManager = () => {
               ))}
             </SelectContent>
           </Select>
-
-          <Input
-            type="date"
-            value={startDate}
-            onChange={e => setStartDate(e.target.value)}
-            className="w-[160px]"
-            placeholder="Data início"
-          />
-          <Input
-            type="date"
-            value={endDate}
-            onChange={e => setEndDate(e.target.value)}
-            className="w-[160px]"
-            placeholder="Data fim"
-          />
+          <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-[160px]" placeholder="Data início" />
+          <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-[160px]" placeholder="Data fim" />
         </div>
       </CardHeader>
 
@@ -200,8 +190,10 @@ export const EventSalesManager = () => {
           <div className="flex justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
-        ) : sales.length === 0 ? (
-          <p className="text-center text-muted-foreground py-12">Nenhuma venda encontrada.</p>
+        ) : filteredSales.length === 0 ? (
+          <p className="text-center text-muted-foreground py-12">
+            {searchTerm ? `Nenhuma venda encontrada para "${searchTerm}"` : 'Nenhuma venda encontrada.'}
+          </p>
         ) : (
           <>
             <div className="overflow-x-auto">
@@ -217,7 +209,7 @@ export const EventSalesManager = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {sales.map(sale => (
+                  {filteredSales.map(sale => (
                     <TableRow key={sale.id}>
                       <TableCell className="font-medium max-w-[200px] truncate">{sale.campaign_title}</TableCell>
                       <TableCell className="max-w-[150px] truncate">{sale.photo_title}</TableCell>
