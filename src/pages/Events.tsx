@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useSearch } from '@/contexts/SearchContext';
 import { useSearchParams } from 'react-router-dom';
-import { Camera } from 'lucide-react';
+import { Camera, Search } from 'lucide-react';
 import MainLayout from '@/components/layout/MainLayout';
 import { SkeletonCard } from '@/components/ui/skeleton-card';
 import { EventFilters, FilterState } from '@/components/events/EventFilters';
@@ -11,6 +11,16 @@ import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { PullToRefreshIndicator } from '@/components/ui/PullToRefreshIndicator';
 import { useHapticFeedback } from '@/hooks/useHapticFeedback';
 import { resilientQuery } from '@/lib/supabaseResilience';
+import { Input } from '@/components/ui/input';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationEllipsis,
+} from '@/components/ui/pagination';
 
 interface Photographer {
   id: string;
@@ -54,9 +64,8 @@ const Events = () => {
   const haptic = useHapticFeedback();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-  const [page, setPage] = useState(0);
+  const [localSearch, setLocalSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [filters, setFilters] = useState<FilterState>({
     location: '',
     dateFrom: '',
@@ -66,19 +75,14 @@ const Events = () => {
     organizationId: '',
   });
 
-  // Pull to refresh
   const pullToRefresh = usePullToRefresh({
     onRefresh: async () => {
       haptic.light();
-      setPage(0);
-      setCampaigns([]);
-      setHasMore(true);
-      await fetchCampaigns(0, true);
+      await fetchAllCampaigns();
       haptic.success();
     }
   });
 
-  // Detectar filtro de fotógrafo na URL
   useEffect(() => {
     const photographerId = searchParams.get('photographer');
     if (photographerId) {
@@ -89,15 +93,16 @@ const Events = () => {
   const filteredCampaigns = useMemo(() => {
     let filtered = [...campaigns];
     
-    if (searchTerm.trim()) {
-      const term = searchTerm.toLowerCase();
+    const combinedSearch = (localSearch || searchTerm).trim().toLowerCase();
+    
+    if (combinedSearch) {
       filtered = filtered.filter((campaign) => {
-        if (campaign.title.toLowerCase().includes(term)) return true;
-        if (campaign.location.toLowerCase().includes(term)) return true;
-        if (campaign.photographer?.full_name.toLowerCase().includes(term)) return true;
+        if (campaign.title.toLowerCase().includes(combinedSearch)) return true;
+        if (campaign.location?.toLowerCase().includes(combinedSearch)) return true;
+        if (campaign.photographer?.full_name?.toLowerCase().includes(combinedSearch)) return true;
         if (campaign.campaign_photographers) {
           return campaign.campaign_photographers.some(
-            cp => cp.profiles?.full_name.toLowerCase().includes(term)
+            cp => cp.profiles?.full_name?.toLowerCase().includes(combinedSearch)
           );
         }
         return false;
@@ -124,7 +129,7 @@ const Events = () => {
     if (filters.location.trim()) {
       const location = filters.location.toLowerCase();
       filtered = filtered.filter((campaign) =>
-        campaign.location.toLowerCase().includes(location)
+        campaign.location?.toLowerCase().includes(location)
       );
     }
     
@@ -163,21 +168,25 @@ const Events = () => {
     });
     
     return filtered;
-  }, [campaigns, searchTerm, filters]);
+  }, [campaigns, searchTerm, localSearch, filters]);
 
   useEffect(() => {
-    fetchCampaigns(0, true);
+    setCurrentPage(1);
+  }, [localSearch, searchTerm, filters]);
+
+  const totalPages = Math.ceil(filteredCampaigns.length / PAGE_SIZE);
+  const paginatedCampaigns = filteredCampaigns.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
+
+  useEffect(() => {
+    fetchAllCampaigns();
   }, []);
 
-  const fetchCampaigns = async (pageNum: number = 0, reset: boolean = false) => {
-    if (reset) setLoading(true);
-    else setLoadingMore(true);
-
+  const fetchAllCampaigns = async () => {
+    setLoading(true);
     try {
-      const from = pageNum * PAGE_SIZE;
-      const to = from + PAGE_SIZE - 1;
-
-      // 1) Buscar campanhas paginadas
       const { data: campaignsData, error: campaignsError } = await resilientQuery(
         () => supabase
           .from('campaigns')
@@ -190,26 +199,19 @@ const Events = () => {
             )
           `)
           .eq('is_active', true)
-          .order('event_date', { ascending: false, nullsFirst: false })
-          .range(from, to),
+          .order('event_date', { ascending: false, nullsFirst: false }),
         'fetch-campaigns'
       );
 
       if (campaignsError) throw campaignsError;
 
       if (!campaignsData || campaignsData.length === 0) {
-        if (reset) setCampaigns([]);
-        setHasMore(false);
+        setCampaigns([]);
         return;
-      }
-
-      if (campaignsData.length < PAGE_SIZE) {
-        setHasMore(false);
       }
 
       const campaignIds = campaignsData.map(c => c.id);
 
-      // 2) Batch: photo counts, sub_events, fallback covers — ALL in parallel
       const [photoCounts, subEventsData, fallbackCovers] = await Promise.all([
         resilientQuery(
           () => supabase
@@ -242,20 +244,17 @@ const Events = () => {
         ),
       ]);
 
-      // Map photo counts
       const countMap: Record<string, number> = {};
       (photoCounts.data || []).forEach((p: any) => {
         countMap[p.campaign_id] = (countMap[p.campaign_id] || 0) + 1;
       });
 
-      // Map sub_events per campaign
       const subEventsMap: Record<string, SubEvent[]> = {};
       (subEventsData.data || []).forEach((se: any) => {
         if (!subEventsMap[se.campaign_id]) subEventsMap[se.campaign_id] = [];
         subEventsMap[se.campaign_id].push(se);
       });
 
-      // Map fallback covers (first photo per campaign)
       const coverMap: Record<string, string> = {};
       (fallbackCovers.data || []).forEach((p: any) => {
         if (!coverMap[p.campaign_id]) coverMap[p.campaign_id] = p.watermarked_url;
@@ -268,27 +267,29 @@ const Events = () => {
         sub_events: subEventsMap[campaign.id] || [],
       }));
 
-      // Filtrar campanhas com 5+ fotos
       const eligible = enriched.filter(c => (c.photo_count || 0) >= 5);
-
-      if (reset) {
-        setCampaigns(eligible);
-      } else {
-        setCampaigns(prev => [...prev, ...eligible]);
-      }
-      setPage(pageNum);
+      setCampaigns(eligible);
     } catch (error) {
       console.error('Error fetching campaigns:', error);
     } finally {
       setLoading(false);
-      setLoadingMore(false);
     }
   };
 
-  const handleLoadMore = () => {
-    if (!loadingMore && hasMore) {
-      fetchCampaigns(page + 1, false);
+  const getPageNumbers = () => {
+    const pages: (number | 'ellipsis')[] = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (currentPage > 3) pages.push('ellipsis');
+      for (let i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++) {
+        pages.push(i);
+      }
+      if (currentPage < totalPages - 2) pages.push('ellipsis');
+      pages.push(totalPages);
     }
+    return pages;
   };
 
   return (
@@ -312,6 +313,16 @@ const Events = () => {
             </p>
           </div>
 
+          <div className="relative max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por nome, local ou fotógrafo..."
+              value={localSearch}
+              onChange={(e) => setLocalSearch(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex items-center gap-2">
               {!loading && (
@@ -321,9 +332,9 @@ const Events = () => {
                     <span className="font-medium">{filteredCampaigns.length}</span>
                     <span>evento(s)</span>
                   </div>
-                  {searchTerm && (
+                  {(localSearch || searchTerm) && (
                     <div className="text-xs text-muted-foreground bg-primary/10 px-3 py-1.5 rounded-full">
-                      Busca: <span className="font-semibold">"{searchTerm}"</span>
+                      Busca: <span className="font-semibold">"{localSearch || searchTerm}"</span>
                     </div>
                   )}
                 </>
@@ -346,15 +357,15 @@ const Events = () => {
             </div>
             <h3 className="text-xl md:text-2xl font-bold mb-3">Nenhum evento encontrado</h3>
             <p className="text-sm md:text-base text-muted-foreground max-w-md mx-auto">
-              {searchTerm 
-                ? `Não encontramos resultados para "${searchTerm}". Tente outra busca.` 
+              {(localSearch || searchTerm)
+                ? `Não encontramos resultados para "${localSearch || searchTerm}". Tente outra busca.` 
                 : 'Ainda não há eventos disponíveis. Volte em breve!'}
             </p>
           </div>
         ) : (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-              {filteredCampaigns.map((campaign, index) => (
+              {paginatedCampaigns.map((campaign, index) => (
                 <EventCard 
                   key={campaign.id}
                   campaign={campaign}
@@ -363,15 +374,43 @@ const Events = () => {
               ))}
             </div>
             
-            {hasMore && (
-              <div className="text-center mt-8">
-                <button
-                  onClick={handleLoadMore}
-                  disabled={loadingMore}
-                  className="px-8 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
-                >
-                  {loadingMore ? 'Carregando...' : 'Carregar mais eventos'}
-                </button>
+            {totalPages > 1 && (
+              <div className="mt-8">
+                <Pagination>
+                  <PaginationContent>
+                    {currentPage > 1 && (
+                      <PaginationItem>
+                        <PaginationPrevious 
+                          href="#" 
+                          onClick={(e) => { e.preventDefault(); setCurrentPage(p => p - 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
+                        />
+                      </PaginationItem>
+                    )}
+                    {getPageNumbers().map((p, i) => (
+                      <PaginationItem key={i}>
+                        {p === 'ellipsis' ? (
+                          <PaginationEllipsis />
+                        ) : (
+                          <PaginationLink
+                            href="#"
+                            isActive={p === currentPage}
+                            onClick={(e) => { e.preventDefault(); setCurrentPage(p); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                          >
+                            {p}
+                          </PaginationLink>
+                        )}
+                      </PaginationItem>
+                    ))}
+                    {currentPage < totalPages && (
+                      <PaginationItem>
+                        <PaginationNext 
+                          href="#" 
+                          onClick={(e) => { e.preventDefault(); setCurrentPage(p => p + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
+                        />
+                      </PaginationItem>
+                    )}
+                  </PaginationContent>
+                </Pagination>
               </div>
             )}
           </>
