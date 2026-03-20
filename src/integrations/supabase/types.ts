@@ -598,6 +598,47 @@ export type Database = {
           },
         ]
       }
+      mesario_accounts: {
+        Row: {
+          created_at: string | null
+          full_name: string
+          id: string
+          is_active: boolean | null
+          organization_id: string | null
+          password_hash: string
+          updated_at: string | null
+          username: string
+        }
+        Insert: {
+          created_at?: string | null
+          full_name: string
+          id?: string
+          is_active?: boolean | null
+          organization_id?: string | null
+          password_hash: string
+          updated_at?: string | null
+          username: string
+        }
+        Update: {
+          created_at?: string | null
+          full_name?: string
+          id?: string
+          is_active?: boolean | null
+          organization_id?: string | null
+          password_hash?: string
+          updated_at?: string | null
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mesario_accounts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mesario_sessions: {
         Row: {
           access_code: string
@@ -2225,6 +2266,14 @@ export type Database = {
           discount_amount: number
           message: string
           valid: boolean
+        }[]
+      }
+      validate_mesario_credentials: {
+        Args: { p_password: string; p_username: string }
+        Returns: {
+          mesario_id: string
+          mesario_name: string
+          org_id: string
         }[]
       }
     }
