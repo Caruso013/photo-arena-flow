@@ -628,6 +628,8 @@ const ManageEvent = () => {
       setSavingEvent(false);
     }
   };
+
+  if (loading) {
     return (
       <div className="p-6 space-y-6">
         <SkeletonCard />
