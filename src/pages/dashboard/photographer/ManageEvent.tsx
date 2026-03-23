@@ -1058,6 +1058,101 @@ const ManageEvent = () => {
             </div>
           )}
         </TabsContent>
+
+        {/* Tab: Configurações */}
+        <TabsContent value="settings" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Settings className="h-5 w-5" />
+                Informações do Evento
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-title">Título do Evento *</Label>
+                  <Input
+                    id="edit-title"
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    placeholder="Nome do evento"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-location">Localização</Label>
+                  <Input
+                    id="edit-location"
+                    value={editLocation}
+                    onChange={(e) => setEditLocation(e.target.value)}
+                    placeholder="Ex: São Paulo, SP"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-date">Data do Evento</Label>
+                  <Input
+                    id="edit-date"
+                    type="date"
+                    value={editEventDate}
+                    onChange={(e) => setEditEventDate(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-price">
+                    Preço da Foto (R$)
+                    {!canEditPrice && (
+                      <span className="text-xs text-muted-foreground ml-2">
+                        (definido pelo admin)
+                      </span>
+                    )}
+                  </Label>
+                  <Input
+                    id="edit-price"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={editPhotoPrice}
+                    onChange={(e) => setEditPhotoPrice(e.target.value)}
+                    placeholder="10.00"
+                    disabled={!canEditPrice}
+                    className={!canEditPrice ? 'opacity-60 cursor-not-allowed' : ''}
+                  />
+                  {!canEditPrice && (
+                    <p className="text-xs text-muted-foreground">
+                      O valor da foto foi definido pelo administrador e não pode ser alterado.
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-description">Descrição</Label>
+                <Textarea
+                  id="edit-description"
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  placeholder="Descrição do evento..."
+                  rows={4}
+                />
+              </div>
+              <div className="flex justify-end">
+                <Button
+                  onClick={handleSaveEventSettings}
+                  disabled={savingEvent || !editTitle.trim()}
+                  className="gap-2"
+                >
+                  {savingEvent ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Salvando...
+                    </>
+                  ) : (
+                    'Salvar Alterações'
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
 
       {/* Upload Modal */}
