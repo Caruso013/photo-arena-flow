@@ -60,6 +60,7 @@ interface Campaign {
   cover_image_url: string | null;
   short_code: string | null;
   photographer_id: string;
+  photo_price_display: number | null;
 }
 
 interface Album {
