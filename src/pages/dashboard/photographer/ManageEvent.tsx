@@ -709,7 +709,7 @@ const ManageEvent = () => {
       </div>
 
       <Tabs defaultValue="photos" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="photos">
             <ImageIcon className="h-4 w-4 mr-2" />
             Fotos ({photos.length})
@@ -717,6 +717,10 @@ const ManageEvent = () => {
           <TabsTrigger value="albums">
             <FolderOpen className="h-4 w-4 mr-2" />
             Álbuns ({albums.length})
+          </TabsTrigger>
+          <TabsTrigger value="settings">
+            <Settings className="h-4 w-4 mr-2" />
+            Configurações
           </TabsTrigger>
         </TabsList>
 
