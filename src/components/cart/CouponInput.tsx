@@ -39,7 +39,7 @@ export const CouponInput: React.FC<CouponInputProps> = ({
       );
 
       if (result.valid) {
-        onCouponApplied(result);
+        onCouponApplied({ ...result, code: couponCode.trim().toUpperCase() });
         setCouponCode('');
       }
     } catch (error) {

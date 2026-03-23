@@ -227,20 +227,79 @@ serve(async (req) => {
       return errorResponse('Usuário não encontrado. Por favor, faça login.', 401);
     }
 
-    // ===== CALCULAR VALORES =====
-    const subtotal = photos.reduce((sum: number, p: any) => sum + (Number(p.price) || 0), 0);
-    const progressiveDiscountAmount = discount?.amount || 0;
-    const couponDiscountAmount = coupon?.amount || 0;
-    const totalDiscount = progressiveDiscountAmount + couponDiscountAmount;
-    const finalTotal = Math.max(subtotal - totalDiscount, 0); // Permitir R$ 0 para cupons 100%
+    // ===== CALCULAR VALORES (VALIDAÇÃO SERVER-SIDE) =====
+    // Buscar preços REAIS das fotos no banco (NUNCA confiar no frontend)
+    const photoIds = photos.map((p: any) => p.id);
+    const { data: dbPhotos, error: dbPhotosError } = await supabaseAdmin
+      .from('photos')
+      .select('id, price, campaign_id')
+      .in('id', photoIds);
 
-    console.log('💰 Valores:', { 
+    if (dbPhotosError || !dbPhotos || dbPhotos.length === 0) {
+      return errorResponse('Fotos não encontradas no banco de dados', 400);
+    }
+
+    const dbPhotoMap = new Map(dbPhotos.map((p: any) => [p.id, p]));
+    const subtotal = dbPhotos.reduce((sum: number, p: any) => sum + (Number(p.price) || 0), 0);
+    const photoCount = dbPhotos.length;
+
+    // Validar desconto progressivo SERVER-SIDE (recalcular, não confiar no frontend)
+    // Verificar se as campanhas têm desconto progressivo habilitado
+    const campaignIds = [...new Set(dbPhotos.map((p: any) => p.campaign_id))];
+    const { data: campaigns } = await supabaseAdmin
+      .from('campaigns')
+      .select('id, progressive_discount_enabled')
+      .in('id', campaignIds);
+
+    const allCampaignsHaveDiscount = campaigns?.every((c: any) => c.progressive_discount_enabled !== false) ?? false;
+
+    let serverProgressiveDiscountPercent = 0;
+    if (allCampaignsHaveDiscount) {
+      if (photoCount >= 5 && photoCount <= 10) serverProgressiveDiscountPercent = 5;
+      else if (photoCount >= 11 && photoCount <= 20) serverProgressiveDiscountPercent = 10;
+      else if (photoCount > 20) serverProgressiveDiscountPercent = 15;
+    }
+
+    const serverProgressiveDiscountAmount = Number((subtotal * serverProgressiveDiscountPercent / 100).toFixed(2));
+    const subtotalAfterProgressive = subtotal - serverProgressiveDiscountAmount;
+
+    // Validar cupom SERVER-SIDE (chamar função do banco)
+    let serverCouponDiscountAmount = 0;
+    let validatedCouponId: string | null = null;
+    if (coupon?.coupon_id) {
+      const { data: couponValidation } = await supabaseAdmin
+        .rpc('validate_coupon', {
+          p_code: coupon.code || '',
+          p_user_id: buyerId,
+          p_purchase_amount: subtotalAfterProgressive,
+        });
+
+      if (couponValidation && couponValidation.length > 0 && couponValidation[0].valid) {
+        serverCouponDiscountAmount = Number(couponValidation[0].discount_amount) || 0;
+        validatedCouponId = couponValidation[0].coupon_id;
+        console.log('✅ Cupom validado server-side:', { id: validatedCouponId, discount: serverCouponDiscountAmount });
+      } else {
+        console.warn('⚠️ Cupom inválido server-side, ignorando:', coupon.coupon_id);
+      }
+    }
+
+    const totalDiscount = serverProgressiveDiscountAmount + serverCouponDiscountAmount;
+    const finalTotal = Math.max(subtotal - totalDiscount, 0);
+
+    // SEGURANÇA: Compra gratuita SÓ é permitida com cupom válido
+    if (finalTotal <= 0 && !validatedCouponId) {
+      console.error('🚨 BLOQUEADO: Tentativa de compra gratuita sem cupom válido!', { subtotal, totalDiscount, buyerId });
+      return errorResponse('Compra gratuita requer cupom válido. Valor mínimo: R$ 1,00', 400);
+    }
+
+    console.log('💰 Valores (server-validated):', { 
       subtotal, 
-      progressiveDiscountAmount, 
-      couponDiscountAmount,
+      serverProgressiveDiscountPercent,
+      serverProgressiveDiscountAmount, 
+      serverCouponDiscountAmount,
       totalDiscount,
       finalTotal,
-      couponCode: coupon?.code || null
+      validatedCouponId
     });
 
     // ===== CRIAR REGISTROS DE PURCHASE =====
@@ -258,7 +317,6 @@ serve(async (req) => {
 
     // ===== VERIFICAR PAGAMENTO DUPLICADO =====
     // Buscar purchases recentes (últimos 2 minutos) do mesmo buyer com as mesmas fotos
-    const photoIds = photos.map((p: any) => p.id);
     const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
     
     const { data: recentPurchases } = await supabaseAdmin
@@ -325,6 +383,12 @@ serve(async (req) => {
     }
 
     for (const photo of photos) {
+      const dbPhoto = dbPhotoMap.get(photo.id);
+      if (!dbPhoto) {
+        console.warn('⚠️ Foto não encontrada no mapa:', photo.id);
+        continue;
+      }
+
       const { data: photoData } = await supabaseAdmin
         .from('photos')
         .select('photographer_id')
@@ -336,8 +400,8 @@ serve(async (req) => {
         continue;
       }
 
-      // Calcular valor proporcional com desconto
-      const originalPrice = Number(photo.price) || 0;
+      // Calcular valor proporcional com desconto (usando preço do BANCO, não do frontend)
+      const originalPrice = Number(dbPhoto.price) || 0;
       const discountedAmount = Number((originalPrice * discountFactor).toFixed(2));
       const photoDiscountAmount = Number((originalPrice - discountedAmount).toFixed(2));
 
@@ -349,7 +413,7 @@ serve(async (req) => {
           photographer_id: photoData.photographer_id,
           amount: discountedAmount,
           status: 'pending',
-          progressive_discount_percentage: discount?.percentage || 0,
+          progressive_discount_percentage: serverProgressiveDiscountPercent,
           progressive_discount_amount: photoDiscountAmount,
         })
         .select()
@@ -382,8 +446,9 @@ serve(async (req) => {
     console.log('📋 External Reference:', externalReference);
 
     // ===== COMPRA GRATUITA (finalTotal <= 0) =====
-    if (finalTotal <= 0 || action === 'free_purchase') {
-      console.log('🎁 Compra gratuita! Marcando purchases como completed...');
+    // SEGURANÇA: Já validado acima que free purchase requer cupom válido
+    if (finalTotal <= 0 && validatedCouponId) {
+      console.log('🎁 Compra gratuita com cupom válido! Marcando purchases como completed...');
 
       // Marcar todas as purchases como completed
       await supabaseAdmin
@@ -391,17 +456,15 @@ serve(async (req) => {
         .update({ status: 'completed' })
         .in('id', purchaseIds);
 
-      // Registrar uso do cupom se houver
-      if (coupon?.coupon_id && buyerId) {
-        await supabaseAdmin.from('coupon_uses').insert({
-          coupon_id: coupon.coupon_id,
-          user_id: buyerId,
-          original_amount: subtotal,
-          discount_amount: couponDiscountAmount,
-          final_amount: 0,
-        });
-        console.log('🎟️ Uso de cupom registrado:', coupon.coupon_id);
-      }
+      // Registrar uso do cupom
+      await supabaseAdmin.from('coupon_uses').insert({
+        coupon_id: validatedCouponId,
+        user_id: buyerId,
+        original_amount: subtotal,
+        discount_amount: serverCouponDiscountAmount,
+        final_amount: 0,
+      });
+      console.log('🎟️ Uso de cupom registrado:', validatedCouponId);
 
       return new Response(JSON.stringify({
         success: true,

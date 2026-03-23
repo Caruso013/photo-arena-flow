@@ -95,6 +95,7 @@ const Cart = () => {
           } : null,
           coupon: appliedCoupon?.valid ? {
             coupon_id: appliedCoupon.coupon_id,
+            code: appliedCoupon.code || '',
             amount: appliedCoupon.discount_amount,
           } : null,
         },

@@ -23,6 +23,7 @@ export interface CouponValidationResult {
   coupon_id: string | null;
   discount_amount: number;
   message: string;
+  code?: string;
 }
 
 export interface CouponStats {
