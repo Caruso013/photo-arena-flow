@@ -43,8 +43,8 @@ const Home = () => {
 
   const fetchData = async () => {
     try {
-      // Single batch: stats + campaigns
-      const [eventsCount, campaignsData] = await Promise.all([
+      // Single batch: stats + campaigns + organizations
+      const [eventsCount, campaignsData, orgsData] = await Promise.all([
         resilientQuery(
           () => supabase.from('campaigns').select('id', { count: 'exact', head: true }).eq('is_active', true),
           'home-events-count'
@@ -59,13 +59,41 @@ const Home = () => {
             .limit(6),
           'home-campaigns'
         ),
+        resilientQuery(
+          () => supabase
+            .from('organizations')
+            .select('id, name, logo_url, description')
+            .order('name'),
+          'home-organizations'
+        ),
       ]);
 
       setStats({
         events: eventsCount.count || 0,
-        photos: 0, // Will be set from photo counts below
+        photos: 0,
         photographers: 0,
       });
+
+      // Process organizations with event counts
+      if (orgsData.data && orgsData.data.length > 0) {
+        const orgIds = orgsData.data.map((o: any) => o.id);
+        const { data: orgCampaigns } = await supabase
+          .from('campaigns')
+          .select('organization_id')
+          .in('organization_id', orgIds)
+          .eq('is_active', true);
+
+        const orgCountMap: Record<string, number> = {};
+        (orgCampaigns || []).forEach((c: any) => {
+          orgCountMap[c.organization_id] = (orgCountMap[c.organization_id] || 0) + 1;
+        });
+
+        setOrganizations(
+          orgsData.data
+            .map((org: any) => ({ ...org, event_count: orgCountMap[org.id] || 0 }))
+            .filter((org: Organization) => org.event_count > 0)
+        );
+      }
 
       if (campaignsData.data && campaignsData.data.length > 0) {
         const campaigns = campaignsData.data;
