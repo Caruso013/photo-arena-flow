@@ -227,20 +227,79 @@ serve(async (req) => {
       return errorResponse('Usuário não encontrado. Por favor, faça login.', 401);
     }
 
-    // ===== CALCULAR VALORES =====
-    const subtotal = photos.reduce((sum: number, p: any) => sum + (Number(p.price) || 0), 0);
-    const progressiveDiscountAmount = discount?.amount || 0;
-    const couponDiscountAmount = coupon?.amount || 0;
-    const totalDiscount = progressiveDiscountAmount + couponDiscountAmount;
-    const finalTotal = Math.max(subtotal - totalDiscount, 0); // Permitir R$ 0 para cupons 100%
+    // ===== CALCULAR VALORES (VALIDAÇÃO SERVER-SIDE) =====
+    // Buscar preços REAIS das fotos no banco (NUNCA confiar no frontend)
+    const photoIds = photos.map((p: any) => p.id);
+    const { data: dbPhotos, error: dbPhotosError } = await supabaseAdmin
+      .from('photos')
+      .select('id, price, campaign_id')
+      .in('id', photoIds);
 
-    console.log('💰 Valores:', { 
+    if (dbPhotosError || !dbPhotos || dbPhotos.length === 0) {
+      return errorResponse('Fotos não encontradas no banco de dados', 400);
+    }
+
+    const dbPhotoMap = new Map(dbPhotos.map((p: any) => [p.id, p]));
+    const subtotal = dbPhotos.reduce((sum: number, p: any) => sum + (Number(p.price) || 0), 0);
+    const photoCount = dbPhotos.length;
+
+    // Validar desconto progressivo SERVER-SIDE (recalcular, não confiar no frontend)
+    // Verificar se as campanhas têm desconto progressivo habilitado
+    const campaignIds = [...new Set(dbPhotos.map((p: any) => p.campaign_id))];
+    const { data: campaigns } = await supabaseAdmin
+      .from('campaigns')
+      .select('id, progressive_discount_enabled')
+      .in('id', campaignIds);
+
+    const allCampaignsHaveDiscount = campaigns?.every((c: any) => c.progressive_discount_enabled !== false) ?? false;
+
+    let serverProgressiveDiscountPercent = 0;
+    if (allCampaignsHaveDiscount) {
+      if (photoCount >= 5 && photoCount <= 10) serverProgressiveDiscountPercent = 5;
+      else if (photoCount >= 11 && photoCount <= 20) serverProgressiveDiscountPercent = 10;
+      else if (photoCount > 20) serverProgressiveDiscountPercent = 15;
+    }
+
+    const serverProgressiveDiscountAmount = Number((subtotal * serverProgressiveDiscountPercent / 100).toFixed(2));
+    const subtotalAfterProgressive = subtotal - serverProgressiveDiscountAmount;
+
+    // Validar cupom SERVER-SIDE (chamar função do banco)
+    let serverCouponDiscountAmount = 0;
+    let validatedCouponId: string | null = null;
+    if (coupon?.coupon_id) {
+      const { data: couponValidation } = await supabaseAdmin
+        .rpc('validate_coupon', {
+          p_code: coupon.code || '',
+          p_user_id: buyerId,
+          p_purchase_amount: subtotalAfterProgressive,
+        });
+
+      if (couponValidation && couponValidation.length > 0 && couponValidation[0].valid) {
+        serverCouponDiscountAmount = Number(couponValidation[0].discount_amount) || 0;
+        validatedCouponId = couponValidation[0].coupon_id;
+        console.log('✅ Cupom validado server-side:', { id: validatedCouponId, discount: serverCouponDiscountAmount });
+      } else {
+        console.warn('⚠️ Cupom inválido server-side, ignorando:', coupon.coupon_id);
+      }
+    }
+
+    const totalDiscount = serverProgressiveDiscountAmount + serverCouponDiscountAmount;
+    const finalTotal = Math.max(subtotal - totalDiscount, 0);
+
+    // SEGURANÇA: Compra gratuita SÓ é permitida com cupom válido
+    if (finalTotal <= 0 && !validatedCouponId) {
+      console.error('🚨 BLOQUEADO: Tentativa de compra gratuita sem cupom válido!', { subtotal, totalDiscount, buyerId });
+      return errorResponse('Compra gratuita requer cupom válido. Valor mínimo: R$ 1,00', 400);
+    }
+
+    console.log('💰 Valores (server-validated):', { 
       subtotal, 
-      progressiveDiscountAmount, 
-      couponDiscountAmount,
+      serverProgressiveDiscountPercent,
+      serverProgressiveDiscountAmount, 
+      serverCouponDiscountAmount,
       totalDiscount,
       finalTotal,
-      couponCode: coupon?.code || null
+      validatedCouponId
     });
 
     // ===== CRIAR REGISTROS DE PURCHASE =====
