@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Camera, Search, MapPin, Calendar, ArrowRight, Users, Trophy, Star, Sparkles } from 'lucide-react';
+import { Camera, Search, MapPin, Calendar, ArrowRight, Users, Trophy, Star, Sparkles, Building2 } from 'lucide-react';
 import MainLayout from '@/components/layout/MainLayout';
 import { resilientQuery } from '@/lib/supabaseResilience';
 
@@ -355,7 +355,52 @@ const Home = () => {
         </div>
       </section>
 
-      {/* CTA Section */}
+      {/* Organizations Section */}
+      {organizations.length > 0 && (
+        <section className="py-20 bg-muted/30">
+          <div className="container mx-auto px-4">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl md:text-4xl font-bold mb-4 text-foreground">Organizações</h2>
+              <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+                Confira os eventos das organizações parceiras
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              {organizations.map((org) => (
+                <Card 
+                  key={org.id}
+                  className="overflow-hidden hover:shadow-lg transition-all duration-300 cursor-pointer group border-border/50 hover:border-primary/40"
+                  onClick={() => navigate(`/events?org=${org.id}`)}
+                >
+                  <CardContent className="p-6 text-center flex flex-col items-center gap-3">
+                    {org.logo_url ? (
+                      <img 
+                        src={org.logo_url} 
+                        alt={org.name} 
+                        className="h-16 w-16 rounded-full object-cover border-2 border-border group-hover:border-primary/50 transition-colors"
+                      />
+                    ) : (
+                      <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                        <Building2 className="h-8 w-8 text-primary" />
+                      </div>
+                    )}
+                    <div>
+                      <h3 className="font-semibold text-sm text-foreground group-hover:text-primary transition-colors line-clamp-2">
+                        {org.name}
+                      </h3>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {org.event_count} {org.event_count === 1 ? 'evento' : 'eventos'}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       <section className="py-20">
         <div className="container mx-auto px-4">
           <Card className="overflow-hidden bg-gradient-to-br from-primary via-primary/90 to-primary/80 text-white border-0">
