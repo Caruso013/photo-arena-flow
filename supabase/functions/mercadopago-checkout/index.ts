@@ -474,7 +474,6 @@ serve(async (req) => {
         paymentId: null,
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
-    }
 
     return await processPayment(action, externalReference, purchaseIds, finalTotal, photos, buyer, cleanCpf, deviceId, mpAccessToken, supabaseUrl, corsHeaders, cardToken, cardPaymentMethodId, cardIssuerId, installments, idempotencyKey);
 
