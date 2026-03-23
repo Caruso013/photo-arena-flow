@@ -116,6 +116,16 @@ const ManageEvent = () => {
   const [selectedUserForRelease, setSelectedUserForRelease] = useState<{id: string; full_name: string; email: string} | null>(null);
   const [releasingPhoto, setReleasingPhoto] = useState(false);
 
+  // Event editing states
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editLocation, setEditLocation] = useState('');
+  const [editEventDate, setEditEventDate] = useState('');
+  const [editPhotoPrice, setEditPhotoPrice] = useState('');
+  const [savingEvent, setSavingEvent] = useState(false);
+  const isOwner = campaign?.photographer_id === user?.id;
+  const canEditPrice = isAdmin || isOwner; // Photographer can't edit price if admin created the event
+
   useEffect(() => {
     if (id && user) {
       fetchEventData();
