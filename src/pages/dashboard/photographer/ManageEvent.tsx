@@ -60,6 +60,7 @@ interface Campaign {
   cover_image_url: string | null;
   short_code: string | null;
   photographer_id: string;
+  photo_price_display: number | null;
 }
 
 interface Album {
@@ -115,6 +116,16 @@ const ManageEvent = () => {
   const [selectedUserForRelease, setSelectedUserForRelease] = useState<{id: string; full_name: string; email: string} | null>(null);
   const [releasingPhoto, setReleasingPhoto] = useState(false);
 
+  // Event editing states
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editLocation, setEditLocation] = useState('');
+  const [editEventDate, setEditEventDate] = useState('');
+  const [editPhotoPrice, setEditPhotoPrice] = useState('');
+  const [savingEvent, setSavingEvent] = useState(false);
+  const isOwner = campaign?.photographer_id === user?.id;
+  const canEditPrice = isAdmin || isOwner; // Photographer can't edit price if admin created the event
+
   useEffect(() => {
     if (id && user) {
       fetchEventData();
@@ -166,6 +177,13 @@ const ManageEvent = () => {
       }
 
       setCampaign(campaignData);
+      
+      // Initialize edit states
+      setEditTitle(campaignData.title || '');
+      setEditDescription(campaignData.description || '');
+      setEditLocation(campaignData.location || '');
+      setEditEventDate(campaignData.event_date || '');
+      setEditPhotoPrice(campaignData.photo_price_display?.toString() || '');
 
       // Buscar TODOS os álbuns (incluindo inativos)
       const { data: albumsData, error: albumsError } = await supabase
@@ -268,16 +286,26 @@ const ManageEvent = () => {
     try {
       setDeletingAlbum(albumId);
 
-      // Verificar se há fotos
       const album = albums.find(a => a.id === albumId);
+      
       if (album && album.photo_count > 0) {
-        toast({
-          title: "⚠️ Álbum contém fotos",
-          description: "Remova ou mova todas as fotos antes de excluir o álbum",
-          variant: "destructive",
-        });
-        setDeletingAlbum(null);
-        return;
+        if (isAdmin) {
+          // Admin pode forçar exclusão: mover fotos para "sem álbum" primeiro
+          const { error: moveError } = await supabase
+            .from('photos')
+            .update({ sub_event_id: null })
+            .eq('sub_event_id', albumId);
+
+          if (moveError) throw moveError;
+        } else {
+          toast({
+            title: "⚠️ Álbum contém fotos",
+            description: "Remova ou mova todas as fotos antes de excluir o álbum",
+            variant: "destructive",
+          });
+          setDeletingAlbum(null);
+          return;
+        }
       }
 
       const { error } = await supabase
@@ -289,7 +317,9 @@ const ManageEvent = () => {
 
       toast({
         title: "✅ Álbum excluído",
-        description: `"${albumTitle}" foi removido com sucesso`,
+        description: isAdmin && album && album.photo_count > 0
+          ? `"${albumTitle}" foi removido. ${album.photo_count} foto(s) movidas para "Sem álbum".`
+          : `"${albumTitle}" foi removido com sucesso`,
       });
 
       if (selectedAlbum === albumId) {
@@ -559,6 +589,46 @@ const ManageEvent = () => {
     }
   };
 
+  const handleSaveEventSettings = async () => {
+    if (!campaign) return;
+    try {
+      setSavingEvent(true);
+      const updates: Record<string, any> = {
+        title: editTitle.trim(),
+        description: editDescription.trim() || null,
+        location: editLocation.trim() || null,
+        event_date: editEventDate || null,
+      };
+      
+      // Only allow price editing if admin or owner
+      if (canEditPrice && editPhotoPrice) {
+        updates.photo_price_display = parseFloat(editPhotoPrice);
+      }
+
+      const { error } = await supabase
+        .from('campaigns')
+        .update(updates)
+        .eq('id', campaign.id);
+
+      if (error) throw error;
+
+      setCampaign({ ...campaign, ...updates });
+      toast({
+        title: "✅ Evento atualizado",
+        description: "As informações do evento foram salvas com sucesso.",
+      });
+    } catch (error: any) {
+      console.error('Error saving event:', error);
+      toast({
+        title: "Erro ao salvar",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSavingEvent(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-6 space-y-6">
@@ -639,7 +709,7 @@ const ManageEvent = () => {
       </div>
 
       <Tabs defaultValue="photos" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="photos">
             <ImageIcon className="h-4 w-4 mr-2" />
             Fotos ({photos.length})
@@ -647,6 +717,10 @@ const ManageEvent = () => {
           <TabsTrigger value="albums">
             <FolderOpen className="h-4 w-4 mr-2" />
             Álbuns ({albums.length})
+          </TabsTrigger>
+          <TabsTrigger value="settings">
+            <Settings className="h-4 w-4 mr-2" />
+            Configurações
           </TabsTrigger>
         </TabsList>
 
@@ -944,8 +1018,10 @@ const ManageEvent = () => {
                               Tem certeza que deseja excluir o álbum "{album.title}"?
                               {album.photo_count > 0 && (
                                 <span className="block mt-2 text-destructive font-medium">
-                                  ⚠️ Este álbum contém {album.photo_count} foto(s). 
-                                  Remova ou mova todas antes de excluir.
+                                  {isAdmin 
+                                    ? `⚠️ Este álbum contém ${album.photo_count} foto(s). As fotos serão movidas para "Sem álbum".`
+                                    : `⚠️ Este álbum contém ${album.photo_count} foto(s). Remova ou mova todas antes de excluir.`
+                                  }
                                 </span>
                               )}
                             </AlertDialogDescription>
@@ -954,7 +1030,7 @@ const ManageEvent = () => {
                             <AlertDialogCancel>Cancelar</AlertDialogCancel>
                             <AlertDialogAction
                               onClick={() => handleDeleteAlbum(album.id, album.title)}
-                              disabled={album.photo_count > 0}
+                              disabled={album.photo_count > 0 && !isAdmin}
                               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                             >
                               Excluir
@@ -981,6 +1057,101 @@ const ManageEvent = () => {
               ))}
             </div>
           )}
+        </TabsContent>
+
+        {/* Tab: Configurações */}
+        <TabsContent value="settings" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Settings className="h-5 w-5" />
+                Informações do Evento
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-title">Título do Evento *</Label>
+                  <Input
+                    id="edit-title"
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    placeholder="Nome do evento"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-location">Localização</Label>
+                  <Input
+                    id="edit-location"
+                    value={editLocation}
+                    onChange={(e) => setEditLocation(e.target.value)}
+                    placeholder="Ex: São Paulo, SP"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-date">Data do Evento</Label>
+                  <Input
+                    id="edit-date"
+                    type="date"
+                    value={editEventDate}
+                    onChange={(e) => setEditEventDate(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-price">
+                    Preço da Foto (R$)
+                    {!canEditPrice && (
+                      <span className="text-xs text-muted-foreground ml-2">
+                        (definido pelo admin)
+                      </span>
+                    )}
+                  </Label>
+                  <Input
+                    id="edit-price"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={editPhotoPrice}
+                    onChange={(e) => setEditPhotoPrice(e.target.value)}
+                    placeholder="10.00"
+                    disabled={!canEditPrice}
+                    className={!canEditPrice ? 'opacity-60 cursor-not-allowed' : ''}
+                  />
+                  {!canEditPrice && (
+                    <p className="text-xs text-muted-foreground">
+                      O valor da foto foi definido pelo administrador e não pode ser alterado.
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-description">Descrição</Label>
+                <Textarea
+                  id="edit-description"
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  placeholder="Descrição do evento..."
+                  rows={4}
+                />
+              </div>
+              <div className="flex justify-end">
+                <Button
+                  onClick={handleSaveEventSettings}
+                  disabled={savingEvent || !editTitle.trim()}
+                  className="gap-2"
+                >
+                  {savingEvent ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Salvando...
+                    </>
+                  ) : (
+                    'Salvar Alterações'
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 

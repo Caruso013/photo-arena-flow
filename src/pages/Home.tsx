@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Camera, Search, MapPin, Calendar, ArrowRight, Users, Trophy, Star, Sparkles } from 'lucide-react';
+import { Camera, Search, MapPin, Calendar, ArrowRight, Users, Trophy, Star, Sparkles, Building2 } from 'lucide-react';
 import MainLayout from '@/components/layout/MainLayout';
 import { resilientQuery } from '@/lib/supabaseResilience';
 
@@ -21,10 +21,19 @@ interface FeaturedCampaign {
   photographer_name: string;
 }
 
+interface Organization {
+  id: string;
+  name: string;
+  logo_url: string | null;
+  description: string | null;
+  event_count: number;
+}
+
 const Home = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [featuredCampaigns, setFeaturedCampaigns] = useState<FeaturedCampaign[]>([]);
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ events: 0, photos: 0, photographers: 0 });
 
@@ -34,8 +43,8 @@ const Home = () => {
 
   const fetchData = async () => {
     try {
-      // Single batch: stats + campaigns
-      const [eventsCount, campaignsData] = await Promise.all([
+      // Single batch: stats + campaigns + organizations
+      const [eventsCount, campaignsData, orgsData] = await Promise.all([
         resilientQuery(
           () => supabase.from('campaigns').select('id', { count: 'exact', head: true }).eq('is_active', true),
           'home-events-count'
@@ -50,13 +59,41 @@ const Home = () => {
             .limit(6),
           'home-campaigns'
         ),
+        resilientQuery(
+          () => supabase
+            .from('organizations')
+            .select('id, name, logo_url, description')
+            .order('name'),
+          'home-organizations'
+        ),
       ]);
 
       setStats({
         events: eventsCount.count || 0,
-        photos: 0, // Will be set from photo counts below
+        photos: 0,
         photographers: 0,
       });
+
+      // Process organizations with event counts
+      if (orgsData.data && orgsData.data.length > 0) {
+        const orgIds = orgsData.data.map((o: any) => o.id);
+        const { data: orgCampaigns } = await supabase
+          .from('campaigns')
+          .select('organization_id')
+          .in('organization_id', orgIds)
+          .eq('is_active', true);
+
+        const orgCountMap: Record<string, number> = {};
+        (orgCampaigns || []).forEach((c: any) => {
+          orgCountMap[c.organization_id] = (orgCountMap[c.organization_id] || 0) + 1;
+        });
+
+        setOrganizations(
+          orgsData.data
+            .map((org: any) => ({ ...org, event_count: orgCountMap[org.id] || 0 }))
+            .filter((org: Organization) => org.event_count > 0)
+        );
+      }
 
       if (campaignsData.data && campaignsData.data.length > 0) {
         const campaigns = campaignsData.data;
@@ -318,7 +355,52 @@ const Home = () => {
         </div>
       </section>
 
-      {/* CTA Section */}
+      {/* Organizations Section */}
+      {organizations.length > 0 && (
+        <section className="py-20 bg-muted/30">
+          <div className="container mx-auto px-4">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl md:text-4xl font-bold mb-4 text-foreground">Organizações</h2>
+              <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+                Confira os eventos das organizações parceiras
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              {organizations.map((org) => (
+                <Card 
+                  key={org.id}
+                  className="overflow-hidden hover:shadow-lg transition-all duration-300 cursor-pointer group border-border/50 hover:border-primary/40"
+                  onClick={() => navigate(`/events?org=${org.id}`)}
+                >
+                  <CardContent className="p-6 text-center flex flex-col items-center gap-3">
+                    {org.logo_url ? (
+                      <img 
+                        src={org.logo_url} 
+                        alt={org.name} 
+                        className="h-16 w-16 rounded-full object-cover border-2 border-border group-hover:border-primary/50 transition-colors"
+                      />
+                    ) : (
+                      <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                        <Building2 className="h-8 w-8 text-primary" />
+                      </div>
+                    )}
+                    <div>
+                      <h3 className="font-semibold text-sm text-foreground group-hover:text-primary transition-colors line-clamp-2">
+                        {org.name}
+                      </h3>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {org.event_count} {org.event_count === 1 ? 'evento' : 'eventos'}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       <section className="py-20">
         <div className="container mx-auto px-4">
           <Card className="overflow-hidden bg-gradient-to-br from-primary via-primary/90 to-primary/80 text-white border-0">

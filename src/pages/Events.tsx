@@ -85,8 +85,12 @@ const Events = () => {
 
   useEffect(() => {
     const photographerId = searchParams.get('photographer');
+    const orgId = searchParams.get('org');
     if (photographerId) {
       setFilters(prev => ({ ...prev, photographer: photographerId }));
+    }
+    if (orgId) {
+      setFilters(prev => ({ ...prev, organizationId: orgId }));
     }
   }, [searchParams]);
 
