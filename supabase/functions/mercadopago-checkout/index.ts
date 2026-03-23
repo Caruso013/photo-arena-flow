@@ -383,6 +383,12 @@ serve(async (req) => {
     }
 
     for (const photo of photos) {
+      const dbPhoto = dbPhotoMap.get(photo.id);
+      if (!dbPhoto) {
+        console.warn('⚠️ Foto não encontrada no mapa:', photo.id);
+        continue;
+      }
+
       const { data: photoData } = await supabaseAdmin
         .from('photos')
         .select('photographer_id')
@@ -394,8 +400,8 @@ serve(async (req) => {
         continue;
       }
 
-      // Calcular valor proporcional com desconto
-      const originalPrice = Number(photo.price) || 0;
+      // Calcular valor proporcional com desconto (usando preço do BANCO, não do frontend)
+      const originalPrice = Number(dbPhoto.price) || 0;
       const discountedAmount = Number((originalPrice * discountFactor).toFixed(2));
       const photoDiscountAmount = Number((originalPrice - discountedAmount).toFixed(2));
 
@@ -407,7 +413,7 @@ serve(async (req) => {
           photographer_id: photoData.photographer_id,
           amount: discountedAmount,
           status: 'pending',
-          progressive_discount_percentage: discount?.percentage || 0,
+          progressive_discount_percentage: serverProgressiveDiscountPercent,
           progressive_discount_amount: photoDiscountAmount,
         })
         .select()
