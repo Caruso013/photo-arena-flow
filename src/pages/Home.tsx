@@ -21,10 +21,19 @@ interface FeaturedCampaign {
   photographer_name: string;
 }
 
+interface Organization {
+  id: string;
+  name: string;
+  logo_url: string | null;
+  description: string | null;
+  event_count: number;
+}
+
 const Home = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [featuredCampaigns, setFeaturedCampaigns] = useState<FeaturedCampaign[]>([]);
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ events: 0, photos: 0, photographers: 0 });
 
