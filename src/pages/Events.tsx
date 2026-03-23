@@ -212,14 +212,13 @@ const Events = () => {
 
       const campaignIds = campaignsData.map(c => c.id);
 
-      const [photoCounts, subEventsData, fallbackCovers] = await Promise.all([
+      const [campaignStats, subEventsData, fallbackCovers] = await Promise.all([
         resilientQuery(
           () => supabase
-            .from('photos')
-            .select('campaign_id')
-            .in('campaign_id', campaignIds)
-            .eq('is_available', true),
-          'photo-counts'
+            .from('campaigns_for_home')
+            .select('id, photo_count, cover_image_url')
+            .in('id', campaignIds),
+          'campaign-stats'
         ),
         resilientQuery(
           () => supabase
@@ -245,8 +244,14 @@ const Events = () => {
       ]);
 
       const countMap: Record<string, number> = {};
-      (photoCounts.data || []).forEach((p: any) => {
-        countMap[p.campaign_id] = (countMap[p.campaign_id] || 0) + 1;
+      const coverMap: Record<string, string> = {};
+
+      (campaignStats.data || []).forEach((stat: any) => {
+        if (!stat?.id) return;
+        countMap[stat.id] = Number(stat.photo_count || 0);
+        if (stat.cover_image_url) {
+          coverMap[stat.id] = stat.cover_image_url;
+        }
       });
 
       const subEventsMap: Record<string, SubEvent[]> = {};
@@ -255,7 +260,6 @@ const Events = () => {
         subEventsMap[se.campaign_id].push(se);
       });
 
-      const coverMap: Record<string, string> = {};
       (fallbackCovers.data || []).forEach((p: any) => {
         if (!coverMap[p.campaign_id]) coverMap[p.campaign_id] = p.watermarked_url;
       });
