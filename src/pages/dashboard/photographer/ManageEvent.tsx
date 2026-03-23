@@ -268,16 +268,26 @@ const ManageEvent = () => {
     try {
       setDeletingAlbum(albumId);
 
-      // Verificar se há fotos
       const album = albums.find(a => a.id === albumId);
+      
       if (album && album.photo_count > 0) {
-        toast({
-          title: "⚠️ Álbum contém fotos",
-          description: "Remova ou mova todas as fotos antes de excluir o álbum",
-          variant: "destructive",
-        });
-        setDeletingAlbum(null);
-        return;
+        if (isAdmin) {
+          // Admin pode forçar exclusão: mover fotos para "sem álbum" primeiro
+          const { error: moveError } = await supabase
+            .from('photos')
+            .update({ sub_event_id: null })
+            .eq('sub_event_id', albumId);
+
+          if (moveError) throw moveError;
+        } else {
+          toast({
+            title: "⚠️ Álbum contém fotos",
+            description: "Remova ou mova todas as fotos antes de excluir o álbum",
+            variant: "destructive",
+          });
+          setDeletingAlbum(null);
+          return;
+        }
       }
 
       const { error } = await supabase
@@ -289,7 +299,9 @@ const ManageEvent = () => {
 
       toast({
         title: "✅ Álbum excluído",
-        description: `"${albumTitle}" foi removido com sucesso`,
+        description: isAdmin && album && album.photo_count > 0
+          ? `"${albumTitle}" foi removido. ${album.photo_count} foto(s) movidas para "Sem álbum".`
+          : `"${albumTitle}" foi removido com sucesso`,
       });
 
       if (selectedAlbum === albumId) {
@@ -944,8 +956,10 @@ const ManageEvent = () => {
                               Tem certeza que deseja excluir o álbum "{album.title}"?
                               {album.photo_count > 0 && (
                                 <span className="block mt-2 text-destructive font-medium">
-                                  ⚠️ Este álbum contém {album.photo_count} foto(s). 
-                                  Remova ou mova todas antes de excluir.
+                                  {isAdmin 
+                                    ? `⚠️ Este álbum contém ${album.photo_count} foto(s). As fotos serão movidas para "Sem álbum".`
+                                    : `⚠️ Este álbum contém ${album.photo_count} foto(s). Remova ou mova todas antes de excluir.`
+                                  }
                                 </span>
                               )}
                             </AlertDialogDescription>
@@ -954,7 +968,7 @@ const ManageEvent = () => {
                             <AlertDialogCancel>Cancelar</AlertDialogCancel>
                             <AlertDialogAction
                               onClick={() => handleDeleteAlbum(album.id, album.title)}
-                              disabled={album.photo_count > 0}
+                              disabled={album.photo_count > 0 && !isAdmin}
                               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                             >
                               Excluir
