@@ -177,6 +177,13 @@ const ManageEvent = () => {
       }
 
       setCampaign(campaignData);
+      
+      // Initialize edit states
+      setEditTitle(campaignData.title || '');
+      setEditDescription(campaignData.description || '');
+      setEditLocation(campaignData.location || '');
+      setEditEventDate(campaignData.event_date || '');
+      setEditPhotoPrice(campaignData.photo_price_display?.toString() || '');
 
       // Buscar TODOS os álbuns (incluindo inativos)
       const { data: albumsData, error: albumsError } = await supabase
@@ -582,7 +589,45 @@ const ManageEvent = () => {
     }
   };
 
-  if (loading) {
+  const handleSaveEventSettings = async () => {
+    if (!campaign) return;
+    try {
+      setSavingEvent(true);
+      const updates: Record<string, any> = {
+        title: editTitle.trim(),
+        description: editDescription.trim() || null,
+        location: editLocation.trim() || null,
+        event_date: editEventDate || null,
+      };
+      
+      // Only allow price editing if admin or owner
+      if (canEditPrice && editPhotoPrice) {
+        updates.photo_price_display = parseFloat(editPhotoPrice);
+      }
+
+      const { error } = await supabase
+        .from('campaigns')
+        .update(updates)
+        .eq('id', campaign.id);
+
+      if (error) throw error;
+
+      setCampaign({ ...campaign, ...updates });
+      toast({
+        title: "✅ Evento atualizado",
+        description: "As informações do evento foram salvas com sucesso.",
+      });
+    } catch (error: any) {
+      console.error('Error saving event:', error);
+      toast({
+        title: "Erro ao salvar",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSavingEvent(false);
+    }
+  };
     return (
       <div className="p-6 space-y-6">
         <SkeletonCard />
