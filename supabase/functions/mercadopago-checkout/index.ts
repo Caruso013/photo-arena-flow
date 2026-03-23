@@ -317,7 +317,6 @@ serve(async (req) => {
 
     // ===== VERIFICAR PAGAMENTO DUPLICADO =====
     // Buscar purchases recentes (últimos 2 minutos) do mesmo buyer com as mesmas fotos
-    const photoIds = photos.map((p: any) => p.id);
     const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
     
     const { data: recentPurchases } = await supabaseAdmin
