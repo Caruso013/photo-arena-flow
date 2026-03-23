@@ -446,8 +446,9 @@ serve(async (req) => {
     console.log('📋 External Reference:', externalReference);
 
     // ===== COMPRA GRATUITA (finalTotal <= 0) =====
-    if (finalTotal <= 0 || action === 'free_purchase') {
-      console.log('🎁 Compra gratuita! Marcando purchases como completed...');
+    // SEGURANÇA: Já validado acima que free purchase requer cupom válido
+    if (finalTotal <= 0 && validatedCouponId) {
+      console.log('🎁 Compra gratuita com cupom válido! Marcando purchases como completed...');
 
       // Marcar todas as purchases como completed
       await supabaseAdmin
@@ -455,17 +456,15 @@ serve(async (req) => {
         .update({ status: 'completed' })
         .in('id', purchaseIds);
 
-      // Registrar uso do cupom se houver
-      if (coupon?.coupon_id && buyerId) {
-        await supabaseAdmin.from('coupon_uses').insert({
-          coupon_id: coupon.coupon_id,
-          user_id: buyerId,
-          original_amount: subtotal,
-          discount_amount: couponDiscountAmount,
-          final_amount: 0,
-        });
-        console.log('🎟️ Uso de cupom registrado:', coupon.coupon_id);
-      }
+      // Registrar uso do cupom
+      await supabaseAdmin.from('coupon_uses').insert({
+        coupon_id: validatedCouponId,
+        user_id: buyerId,
+        original_amount: subtotal,
+        discount_amount: serverCouponDiscountAmount,
+        final_amount: 0,
+      });
+      console.log('🎟️ Uso de cupom registrado:', validatedCouponId);
 
       return new Response(JSON.stringify({
         success: true,
@@ -474,6 +473,7 @@ serve(async (req) => {
         purchaseIds,
         paymentId: null,
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
     }
 
     return await processPayment(action, externalReference, purchaseIds, finalTotal, photos, buyer, cleanCpf, deviceId, mpAccessToken, supabaseUrl, corsHeaders, cardToken, cardPaymentMethodId, cardIssuerId, installments, idempotencyKey);
