@@ -329,20 +329,20 @@ serve(async (req) => {
 
     if (recentPurchases && recentPurchases.length >= photoIds.length) {
       console.warn('⚠️ Possível pagamento duplicado detectado! Purchases recentes:', recentPurchases.length);
-      
+
       // Verificar se TODAS as fotos já têm purchase recente
       const existingPhotoIds = new Set(recentPurchases.map(p => p.photo_id));
       const allPhotosHavePurchase = photoIds.every((id: string) => existingPhotoIds.has(id));
-      
+
       if (allPhotosHavePurchase) {
         const existingIds = recentPurchases.map(p => p.id);
         const existingRef = recentPurchases[0]?.stripe_payment_intent_id;
-        
-        // Se já tem um payment_id associado (mp:XXXXX), extrair e retornar
+
+        // Se já existe pagamento MP associado, tentar reaproveitar o QR em vez de bloquear o cliente
         if (existingRef && existingRef.includes('mp:')) {
           const mpId = existingRef.split('mp:')[1];
-          console.log('🔄 Retornando pagamento existente:', mpId);
-          
+          console.log('🔄 Pagamento MP existente detectado:', mpId);
+
           if (action === 'create_card') {
             return new Response(JSON.stringify({
               success: false,
@@ -352,29 +352,82 @@ serve(async (req) => {
               headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             });
           }
-          
+
           if (action === 'create_pix') {
-            return new Response(JSON.stringify({
-              success: false,
-              error: 'Um PIX já foi gerado para estas fotos. Verifique o código PIX anterior ou aguarde 2 minutos.',
-              status: 'duplicate',
-            }), {
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            });
+            try {
+              const existingMpResponse = await fetch(`https://api.mercadopago.com/v1/payments/${mpId}`, {
+                headers: { 'Authorization': `Bearer ${mpAccessToken}` },
+              });
+              const existingMpResult = await existingMpResponse.json();
+
+              if (existingMpResponse.ok && !existingMpResult.error) {
+                const existingStatus = existingMpResult.status;
+                const existingStatusDetail = existingMpResult.status_detail;
+                const existingPixInfo = existingMpResult.point_of_interaction?.transaction_data;
+                const terminalFailureStatuses = ['rejected', 'cancelled', 'refunded', 'charged_back'];
+
+                if (existingStatus === 'approved') {
+                  await supabaseAdmin
+                    .from('purchases')
+                    .update({ status: 'completed' })
+                    .in('id', existingIds);
+
+                  return new Response(JSON.stringify({
+                    success: true,
+                    status: 'approved',
+                    statusDetail: existingStatusDetail,
+                    paymentId: Number(mpId),
+                    purchaseIds: existingIds,
+                    purchase_ids: existingIds,
+                    reused: true,
+                  }), {
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                  });
+                }
+
+                if ((existingStatus === 'pending' || existingStatus === 'in_process') && existingPixInfo?.qr_code) {
+                  return new Response(JSON.stringify({
+                    success: true,
+                    status: existingStatus,
+                    statusDetail: existingStatusDetail,
+                    paymentId: Number(mpId),
+                    purchaseIds: existingIds,
+                    purchase_ids: existingIds,
+                    reused: true,
+                    pix: {
+                      qrCode: existingPixInfo.qr_code,
+                      qrCodeBase64: existingPixInfo.qr_code_base64,
+                      expirationDate: existingMpResult.date_of_expiration,
+                    },
+                  }), {
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                  });
+                }
+
+                if (terminalFailureStatuses.includes(existingStatus)) {
+                  console.warn('⚠️ PIX existente em status terminal, gerando novo PIX:', existingStatus);
+                  await supabaseAdmin
+                    .from('purchases')
+                    .update({ status: 'failed' })
+                    .in('id', existingIds);
+                }
+              }
+            } catch (existingPixError) {
+              console.warn('⚠️ Falha ao reaproveitar PIX existente, tentando gerar novo:', existingPixError);
+            }
           }
         }
-        
-        // Se purchases existem mas sem payment_id, são de uma tentativa anterior que não completou
-        // Reusar essas purchases em vez de criar novas
-        console.log('♻️ Reusando purchases existentes:', existingIds);
-        
+
+        // Reusar purchases existentes para nova tentativa (evita duplicidade e destrava o checkout)
+        console.log('♻️ Reusando purchases existentes para nova tentativa:', existingIds);
+
         const externalReference = existingIds.length === 1
           ? existingIds[0]
           : `batch_${existingIds[0].slice(0, 8)}_${existingIds.length}_${Date.now().toString(36)}`;
-        
+
         await supabaseAdmin
           .from('purchases')
-          .update({ stripe_payment_intent_id: externalReference })
+          .update({ stripe_payment_intent_id: externalReference, status: 'pending' })
           .in('id', existingIds);
 
         // Pular criação de novas purchases e ir direto para o pagamento
