@@ -486,6 +486,17 @@ serve(async (req) => {
 
 // ===== FUNÇÕES AUXILIARES =====
 
+async function createIdempotencyKey(base: string) {
+  const bytes = new TextEncoder().encode(base);
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  const hashHex = Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+
+  // Mercado Pago aceita chaves alfanuméricas de tamanho limitado
+  return `mp-${hashHex.substring(0, 56)}`;
+}
+
 function errorResponse(message: string, status: number) {
   return new Response(JSON.stringify({ success: false, error: message }), {
     status,
