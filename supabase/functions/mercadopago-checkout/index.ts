@@ -198,35 +198,15 @@ serve(async (req) => {
       return errorResponse('Nenhuma foto selecionada', 400);
     }
 
-    // Para compra gratuita, buyer pode ser simplificado
-    if (action !== 'free_purchase') {
-      if (!buyer || !buyer.email || !buyer.cpf) {
-        return errorResponse('Dados do comprador incompletos (email e CPF são obrigatórios)', 400);
-      }
+    if (!buyer || !buyer.email) {
+      return errorResponse('Dados do comprador incompletos (email é obrigatório)', 400);
     }
 
-    // Limpar CPF
+    // Limpar CPF - obrigatório para pagamentos reais
     const cleanCpf = (buyer?.cpf || '').replace(/\D/g, '');
-    if (action !== 'free_purchase' && cleanCpf.length !== 11) {
-      return errorResponse('CPF deve ter 11 dígitos', 400);
-    }
+    // CPF validation happens below after we know if it's a free purchase
 
-    // Buscar usuário por email se não autenticado
-    if (!buyerId) {
-      const { data: profileData } = await supabaseAdmin
-        .from('profiles')
-        .select('id')
-        .eq('email', buyer.email.toLowerCase())
-        .maybeSingle();
-
-      if (profileData) {
-        buyerId = profileData.id;
-      }
-    }
-
-    if (!buyerId) {
-      return errorResponse('Usuário não encontrado. Por favor, faça login.', 401);
-    }
+    // (buyer lookup already done above)
 
     // ===== CALCULAR VALORES (VALIDAÇÃO SERVER-SIDE) =====
     // Buscar preços REAIS das fotos no banco (NUNCA confiar no frontend)
@@ -244,8 +224,13 @@ serve(async (req) => {
     const subtotal = dbPhotos.reduce((sum: number, p: any) => sum + (Number(p.price) || 0), 0);
     const photoCount = dbPhotos.length;
 
+    // 🚨 SEGURANÇA CRÍTICA: subtotal DEVE ser > 0
+    if (subtotal <= 0) {
+      console.error('🚨 BLOQUEADO: Subtotal zero ou negativo!', { subtotal, photoCount, buyerId });
+      return errorResponse('Erro: valor das fotos inválido', 400);
+    }
+
     // Validar desconto progressivo SERVER-SIDE (recalcular, não confiar no frontend)
-    // Verificar se as campanhas têm desconto progressivo habilitado
     const campaignIds = [...new Set(dbPhotos.map((p: any) => p.campaign_id))];
     const { data: campaigns } = await supabaseAdmin
       .from('campaigns')
@@ -267,10 +252,10 @@ serve(async (req) => {
     // Validar cupom SERVER-SIDE (chamar função do banco)
     let serverCouponDiscountAmount = 0;
     let validatedCouponId: string | null = null;
-    if (coupon?.coupon_id) {
+    if (coupon?.coupon_id && coupon?.code) {
       const { data: couponValidation } = await supabaseAdmin
         .rpc('validate_coupon', {
-          p_code: coupon.code || '',
+          p_code: coupon.code,
           p_user_id: buyerId,
           p_purchase_amount: subtotalAfterProgressive,
         });
@@ -287,10 +272,25 @@ serve(async (req) => {
     const totalDiscount = serverProgressiveDiscountAmount + serverCouponDiscountAmount;
     const finalTotal = Math.max(subtotal - totalDiscount, 0);
 
-    // SEGURANÇA: Compra gratuita SÓ é permitida com cupom válido
+    // 🚨🚨🚨 SEGURANÇA CRÍTICA: Compra gratuita SÓ é permitida com cupom VÁLIDO
+    // NUNCA permitir amount=0 sem cupom validado pelo servidor
     if (finalTotal <= 0 && !validatedCouponId) {
-      console.error('🚨 BLOQUEADO: Tentativa de compra gratuita sem cupom válido!', { subtotal, totalDiscount, buyerId });
-      return errorResponse('Compra gratuita requer cupom válido. Valor mínimo: R$ 1,00', 400);
+      console.error('🚨🚨🚨 BLOQUEADO: Tentativa de compra gratuita sem cupom válido!', { 
+        subtotal, totalDiscount, finalTotal, buyerId, 
+        action, hasCoupon: !!coupon, hasValidatedCoupon: !!validatedCouponId 
+      });
+      return errorResponse('Compra gratuita não permitida. Cupom inválido ou ausente.', 403);
+    }
+
+    // Para pagamentos reais (não-gratuitos), CPF é obrigatório
+    if (finalTotal > 0 && cleanCpf.length !== 11) {
+      return errorResponse('CPF deve ter 11 dígitos', 400);
+    }
+
+    // 🚨 SEGURANÇA: Garantir valor mínimo de R$ 1,00 para pagamentos reais
+    if (finalTotal > 0 && finalTotal < 1) {
+      console.error('🚨 BLOQUEADO: Valor final abaixo do mínimo!', { finalTotal, buyerId });
+      return errorResponse('Valor mínimo para pagamento: R$ 1,00', 400);
     }
 
     console.log('💰 Valores (server-validated):', { 
