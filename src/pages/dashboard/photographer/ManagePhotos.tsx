@@ -58,12 +58,11 @@ const ManagePhotos = () => {
     if (!user?.id) return;
     setLoading(true);
     try {
-      // Count query
+      // Count query - show ALL photos (including unavailable)
       let countQuery = supabase
         .from('photos')
         .select('id', { count: 'exact', head: true })
-        .eq('photographer_id', user.id)
-        .eq('is_available', true);
+        .eq('photographer_id', user.id);
 
       if (filterCampaign !== 'all') countQuery = countQuery.eq('campaign_id', filterCampaign);
       if (filterAlbum !== 'all') {
@@ -84,12 +83,11 @@ const ManagePhotos = () => {
       let query = supabase
         .from('photos')
         .select(`
-          id, title, watermarked_url, thumbnail_url, price, created_at, campaign_id, sub_event_id,
+          id, title, watermarked_url, thumbnail_url, price, created_at, campaign_id, sub_event_id, is_available,
           campaign:campaigns(title),
           sub_event:sub_events(title)
         `)
         .eq('photographer_id', user.id)
-        .eq('is_available', true)
         .order('created_at', { ascending: false })
         .range(from, to);
 
@@ -134,23 +132,15 @@ const ManagePhotos = () => {
 
   const fetchCampaigns = useCallback(async () => {
     if (!user?.id) return;
-    const { data: assignments } = await supabase
-      .from('campaign_photographers')
+    // Fetch ALL campaigns that have photos from this photographer
+    const { data: photoCampaigns } = await supabase
+      .from('photos')
       .select('campaign_id, campaign:campaigns(id, title)')
-      .eq('photographer_id', user.id)
-      .eq('is_active', true);
-
-    const { data: ownedCampaigns } = await supabase
-      .from('campaigns')
-      .select('id, title')
       .eq('photographer_id', user.id);
 
     const uniqueCampaigns = new Map<string, Campaign>();
-    (assignments || []).forEach((a: any) => {
-      if (a.campaign?.id) uniqueCampaigns.set(a.campaign.id, { id: a.campaign.id, title: a.campaign.title });
-    });
-    (ownedCampaigns || []).forEach((c: any) => {
-      if (c.id) uniqueCampaigns.set(c.id, { id: c.id, title: c.title });
+    (photoCampaigns || []).forEach((p: any) => {
+      if (p.campaign?.id) uniqueCampaigns.set(p.campaign.id, { id: p.campaign.id, title: p.campaign.title });
     });
     setCampaigns(Array.from(uniqueCampaigns.values()));
   }, [user?.id]);
