@@ -152,6 +152,17 @@ export default function PaymentModal({
   }, [showCheckout, preferenceId]);
 
   const handlePayment = async () => {
+    if (!user) {
+      toast({
+        title: "Sessão expirada",
+        description: "Faça login novamente para finalizar a compra.",
+        variant: "destructive",
+      });
+      handleModalClose();
+      navigate('/auth');
+      return;
+    }
+
     if (itemsToProcess.length === 0 || !isFormValid()) {
       toast({
         title: "Dados incompletos",
@@ -561,6 +572,13 @@ export default function PaymentModal({
                   // Determinar tipo de erro para mensagem mais clara
                   let title = "Erro no pagamento";
                   let description = error;
+
+                  if (error.toLowerCase().includes('sessão') || error.toLowerCase().includes('login') || error.toLowerCase().includes('autentica')) {
+                    title = "Sessão expirada";
+                    description = "Faça login novamente para concluir sua compra.";
+                    handleModalClose();
+                    navigate('/auth');
+                  }
                   
                   if (error.includes('CPF') || error.includes('documento')) {
                     title = "CPF inválido";
