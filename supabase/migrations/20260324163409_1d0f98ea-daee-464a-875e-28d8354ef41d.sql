@@ -1,0 +1,5 @@
+UPDATE purchases SET status = 'failed' WHERE amount = 0 AND status = 'completed' AND stripe_payment_intent_id NOT LIKE 'FREE_RELEASE%' AND id NOT IN (SELECT cu.purchase_id FROM coupon_uses cu WHERE cu.purchase_id IS NOT NULL);
+
+DELETE FROM revenue_shares WHERE purchase_id IN (SELECT id FROM purchases WHERE amount = 0 AND status = 'failed' AND stripe_payment_intent_id NOT LIKE 'FREE_RELEASE%') AND photographer_amount = 0 AND platform_amount = 0;
+
+INSERT INTO revenue_shares (purchase_id, photographer_id, organization_id, platform_amount, photographer_amount, organization_amount) SELECT p.id, p.photographer_id, c.organization_id, -ROUND(ph.price * COALESCE(c.platform_percentage, 9) / 100, 2), -ROUND(ph.price * COALESCE(c.photographer_percentage, 91) / 100, 2), -ROUND(ph.price * COALESCE(c.organization_percentage, 0) / 100, 2) FROM purchases p JOIN photos ph ON p.photo_id = ph.id JOIN campaigns c ON ph.campaign_id = c.id WHERE p.amount = 0 AND p.status = 'failed' AND p.stripe_payment_intent_id NOT LIKE 'FREE_RELEASE%' AND p.id NOT IN (SELECT purchase_id FROM revenue_shares WHERE purchase_id IS NOT NULL) ON CONFLICT DO NOTHING;
