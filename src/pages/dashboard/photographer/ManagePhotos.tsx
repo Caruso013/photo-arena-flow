@@ -91,16 +91,29 @@ const ManagePhotos = () => {
 
   const fetchCampaigns = useCallback(async () => {
     if (!user?.id) return;
-    const { data } = await supabase
-      .from('photos')
+    
+    // Buscar campanhas diretamente via campaign_photographers (mais eficiente)
+    const { data: assignments } = await supabase
+      .from('campaign_photographers')
       .select('campaign_id, campaign:campaigns(id, title)')
       .eq('photographer_id', user.id)
-      .eq('is_available', true);
+      .eq('is_active', true);
+
+    // Também buscar campanhas onde é photographer_id direto
+    const { data: ownedCampaigns } = await supabase
+      .from('campaigns')
+      .select('id, title')
+      .eq('photographer_id', user.id);
 
     const uniqueCampaigns = new Map<string, Campaign>();
-    (data || []).forEach((p: any) => {
-      if (p.campaign?.id) {
-        uniqueCampaigns.set(p.campaign.id, { id: p.campaign.id, title: p.campaign.title });
+    (assignments || []).forEach((a: any) => {
+      if (a.campaign?.id) {
+        uniqueCampaigns.set(a.campaign.id, { id: a.campaign.id, title: a.campaign.title });
+      }
+    });
+    (ownedCampaigns || []).forEach((c: any) => {
+      if (c.id) {
+        uniqueCampaigns.set(c.id, { id: c.id, title: c.title });
       }
     });
     setCampaigns(Array.from(uniqueCampaigns.values()));
