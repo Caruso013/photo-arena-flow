@@ -230,6 +230,28 @@ export default function TransparentCheckout({
     return fallback || 'Pagamento PIX não foi aprovado. Tente novamente em instantes.';
   };
 
+  const parseEdgeFunctionError = async (fnError: any) => {
+    let parsedBody: any = null;
+
+    try {
+      if (typeof fnError?.context?.json === 'function') {
+        parsedBody = await fnError.context.json();
+      }
+    } catch {
+      parsedBody = null;
+    }
+
+    const statusCode = Number(parsedBody?.statusCode || fnError?.context?.status || 0);
+    const retryable = Boolean(parsedBody?.retryable) || statusCode === 429 || statusCode >= 500;
+    const statusDetail = parsedBody?.statusDetail || parsedBody?.errorCode || '';
+    const errorMsg = getPixErrorMessage(
+      statusDetail,
+      parsedBody?.error || fnError?.message || 'Erro ao gerar PIX',
+    );
+
+    return { errorMsg, retryable };
+  };
+
   const checkPixStatus = async (paymentId: string) => {
     try {
       pixPollCountRef.current++;
@@ -304,29 +326,9 @@ export default function TransparentCheckout({
       });
 
       if (error) {
-        let errorMsg = 'Erro ao gerar PIX';
-        let statusDetail = '';
+        const { errorMsg, retryable } = await parseEdgeFunctionError(error);
 
-        try {
-          if (error.context?.body) {
-            const reader = error.context.body.getReader();
-            const { value } = await reader.read();
-            const bodyText = new TextDecoder().decode(value);
-            const bodyJson = JSON.parse(bodyText);
-            statusDetail = bodyJson.statusDetail || bodyJson.errorCode || '';
-            errorMsg = getPixErrorMessage(statusDetail, bodyJson.error || errorMsg);
-          }
-        } catch {
-          errorMsg = getPixErrorMessage('', error.message || errorMsg);
-        }
-
-        // Retry on connection/server errors
-        const normalizedError = errorMsg.toLowerCase();
-        const isTransient = normalizedError.includes('connection') || normalizedError.includes('53300') ||
-          normalizedError.includes('timeout') || normalizedError.includes('500') ||
-          normalizedError.includes('pgrst');
-
-        if (isTransient && retryAttempt < MAX_PIX_RETRIES - 1) {
+        if (retryable && retryAttempt < MAX_PIX_RETRIES - 1) {
           const delay = 2000 * Math.pow(2, retryAttempt);
           console.warn(`⚠️ Erro transitório no PIX, retentando em ${delay}ms...`);
           toast({ title: "Tentando novamente...", description: `Aguarde ${Math.round(delay / 1000)}s` });
@@ -342,8 +344,11 @@ export default function TransparentCheckout({
 
         // Retry on server-side transient errors
         const normalizedError = errorMsg.toLowerCase();
-        const isTransient = normalizedError.includes('connection') || normalizedError.includes('53300') ||
-          normalizedError.includes('timeout');
+        const statusCode = Number(data?.statusCode || 0);
+        const isTransient = Boolean(data?.retryable) || statusCode === 429 || statusCode >= 500 ||
+          normalizedError.includes('connection') || normalizedError.includes('53300') ||
+          normalizedError.includes('timeout') || normalizedError.includes('500') ||
+          normalizedError.includes('pgrst');
 
         if (isTransient && retryAttempt < MAX_PIX_RETRIES - 1) {
           const delay = 2000 * Math.pow(2, retryAttempt);
