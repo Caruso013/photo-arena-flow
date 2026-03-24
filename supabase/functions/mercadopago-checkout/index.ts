@@ -308,10 +308,10 @@ serve(async (req) => {
 
     console.log('📊 Fator de desconto:', { discountFactor, subtotal, finalTotal });
 
-    // Gerar idempotency key ANTES de criar purchases (baseado nos IDs das fotos + buyer)
+    // Gerar idempotency key ANTES de criar purchases (hash completo para evitar colisões)
     const photoIdsSorted = photos.map((p: any) => p.id).sort().join(',');
-    const idempotencyBase = `${buyerId}_${photoIdsSorted}_${finalTotal}`;
-    const idempotencyKey = `${action}-${btoa(idempotencyBase).replace(/[^a-zA-Z0-9]/g, '').substring(0, 40)}`;
+    const idempotencyBase = `${action}|${buyerId}|${photoIdsSorted}|${Number(finalTotal).toFixed(2)}`;
+    const idempotencyKey = await createIdempotencyKey(idempotencyBase);
     
     console.log('🔑 Idempotency key:', idempotencyKey);
 
@@ -486,6 +486,17 @@ serve(async (req) => {
 
 // ===== FUNÇÕES AUXILIARES =====
 
+async function createIdempotencyKey(base: string) {
+  const bytes = new TextEncoder().encode(base);
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  const hashHex = Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+
+  // Mercado Pago aceita chaves alfanuméricas de tamanho limitado
+  return `mp-${hashHex.substring(0, 56)}`;
+}
+
 function errorResponse(message: string, status: number) {
   return new Response(JSON.stringify({ success: false, error: message }), {
     status,
@@ -534,8 +545,38 @@ async function processPayment(
 
     if (!mpResponse.ok || mpResult.error) {
       await supabaseAdmin.from('purchases').delete().in('id', purchaseIds);
-      const errorMsg = mpResult.cause?.[0]?.description || mpResult.message || 'Erro ao gerar PIX';
-      return new Response(JSON.stringify({ success: false, error: errorMsg, status: 'error' }), {
+
+      const mpStatusCode = Number(mpResponse.status || 0);
+      const statusDetail = mpResult?.status_detail || null;
+      const errorCode = mpResult?.error || null;
+      const mpDescription = mpResult?.cause?.[0]?.description
+        || mpResult?.message
+        || mpResult?.error_description
+        || statusDetail;
+
+      const errorMsg = mpDescription || (mpStatusCode >= 500
+        ? `Erro temporário no Mercado Pago (${mpStatusCode})`
+        : 'Erro ao gerar PIX');
+
+      const retryable = mpStatusCode === 429 || mpStatusCode >= 500;
+
+      console.error('❌ Erro MP PIX:', {
+        statusCode: mpStatusCode,
+        retryable,
+        errorCode,
+        statusDetail,
+        response: mpResult,
+      });
+
+      return new Response(JSON.stringify({
+        success: false,
+        error: errorMsg,
+        status: 'error',
+        statusCode: mpStatusCode,
+        retryable,
+        statusDetail,
+        errorCode,
+      }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
