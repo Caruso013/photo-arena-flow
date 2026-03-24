@@ -297,13 +297,14 @@ export default function TransparentCheckout({
     }
 
     const MAX_PIX_RETRIES = 3;
+    const isFreeCheckout = totalAmount <= 0;
 
     try {
-      console.log(`🔄 Gerando PIX (tentativa ${retryAttempt + 1}/${MAX_PIX_RETRIES}) deviceId:`, deviceId);
+      console.log(`🔄 ${isFreeCheckout ? 'Finalizando compra grátis' : 'Gerando PIX'} (tentativa ${retryAttempt + 1}/${MAX_PIX_RETRIES}) deviceId:`, deviceId);
 
       const { data, error } = await supabase.functions.invoke('mercadopago-checkout', {
         body: {
-          action: 'create_pix',
+          action: isFreeCheckout ? 'free_purchase' : 'create_pix',
           deviceId,
           photos: photos.map(p => ({ id: p.id, title: p.title || 'Foto', price: p.price || 0 })),
           buyer: {
@@ -357,6 +358,13 @@ export default function TransparentCheckout({
           return handleGeneratePix(retryAttempt + 1);
         }
         throw new Error(errorMsg);
+      }
+
+      if (data?.success && (data?.statusDetail === 'free_purchase' || (isFreeCheckout && !data?.pix))) {
+        const purchaseIds = data?.purchase_ids || data?.purchaseIds || [];
+        toast({ title: "✅ Compra gratuita concluída!", description: "Suas fotos já estão disponíveis." });
+        onSuccess({ ...data, purchase_ids: purchaseIds, purchaseIds });
+        return;
       }
 
       if (data?.success && data.pix) {
