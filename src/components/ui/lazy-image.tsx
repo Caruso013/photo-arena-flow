@@ -14,6 +14,7 @@ interface LazyImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
 /**
  * LazyImage - Carregamento lazy otimizado
  * Usa IntersectionObserver para carregar imagens apenas quando visíveis
+ * Fallback automático para URL original se CDN falhar
  */
 export const LazyImage = memo(({ 
   src, 
@@ -24,10 +25,11 @@ export const LazyImage = memo(({
   ...props 
 }: LazyImageProps) => {
   const [status, setStatus] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle');
+  const [useFallbackUrl, setUseFallbackUrl] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   
-  // Otimizar URL via CDN
-  const optimizedSrc = getOptimizedImageUrlWithCdn(src, size);
+  // Otimizar URL via CDN (ou usar original como fallback)
+  const optimizedSrc = useFallbackUrl ? src : getOptimizedImageUrlWithCdn(src, size);
 
   useEffect(() => {
     if (!containerRef.current || !src) return;
@@ -52,8 +54,15 @@ export const LazyImage = memo(({
   }, []);
 
   const handleError = useCallback(() => {
+    // Se CDN falhou, tentar URL original do Supabase
+    if (!useFallbackUrl && src) {
+      console.warn('LazyImage: CDN failed, falling back to original URL');
+      setUseFallbackUrl(true);
+      setStatus('loading');
+      return;
+    }
     setStatus('error');
-  }, []);
+  }, [useFallbackUrl, src]);
 
   return (
     <div className="relative w-full h-full" ref={containerRef}>
@@ -91,5 +100,4 @@ export const LazyImage = memo(({
     </div>
   );
 });
-
 LazyImage.displayName = 'LazyImage';

@@ -10,25 +10,31 @@ export interface ProgressiveDiscount {
   isEnabled: boolean;
 }
 
+/**
+ * Calcula desconto progressivo.
+ * IMPORTANTE: As faixas DEVEM ser idênticas às do servidor (Edge Function + DB function calculate_progressive_discount):
+ *   - 5 a 10 fotos → 5%
+ *   - 11 a 20 fotos → 10%
+ *   - Acima de 20 fotos → 15%
+ *   - Menos de 5 → sem desconto
+ */
 export function useProgressiveDiscount(
   quantity: number, 
   unitPrice: number,
-  isEnabled: boolean = true // Fotógrafo decide se ativa ou não
+  isEnabled: boolean = true
 ): ProgressiveDiscount {
   return useMemo(() => {
     const subtotal = quantity * unitPrice;
     
-    // Calcular porcentagem de desconto baseado na quantidade
-    // SOMENTE se o fotógrafo ativou os descontos progressivos
     let discountPercentage = 0;
     
     if (isEnabled) {
-      if (quantity >= 10) {
-        discountPercentage = 20; // 20% para 10+ fotos
+      if (quantity > 20) {
+        discountPercentage = 15;
+      } else if (quantity >= 11) {
+        discountPercentage = 10;
       } else if (quantity >= 5) {
-        discountPercentage = 10; // 10% para 5-9 fotos
-      } else if (quantity >= 2) {
-        discountPercentage = 5; // 5% para 2-4 fotos
+        discountPercentage = 5;
       }
     }
     
@@ -48,25 +54,25 @@ export function useProgressiveDiscount(
 }
 
 export function getDiscountMessage(quantity: number): string | null {
-  if (quantity >= 10) {
-    return '🎉 Desconto de 20% aplicado! (10+ fotos)';
+  if (quantity > 20) {
+    return '🎉 Desconto de 15% aplicado! (20+ fotos)';
+  } else if (quantity >= 11) {
+    return '🎉 Desconto de 10% aplicado! (11-20 fotos)';
   } else if (quantity >= 5) {
-    return '🎉 Desconto de 10% aplicado! (5-9 fotos)';
-  } else if (quantity >= 2) {
-    return '🎉 Desconto de 5% aplicado! (2-4 fotos)';
-  } else if (quantity === 1) {
-    return '💡 Adicione mais 1 foto para ganhar 5% de desconto!';
+    return '🎉 Desconto de 5% aplicado! (5-10 fotos)';
+  } else if (quantity >= 1 && quantity < 5) {
+    return `💡 Adicione mais ${5 - quantity} foto(s) para ganhar 5% de desconto!`;
   }
   return null;
 }
 
 export function getNextDiscountThreshold(quantity: number): { threshold: number; percentage: number } | null {
-  if (quantity < 2) {
-    return { threshold: 2, percentage: 5 };
-  } else if (quantity < 5) {
-    return { threshold: 5, percentage: 10 };
-  } else if (quantity < 10) {
-    return { threshold: 10, percentage: 20 };
+  if (quantity < 5) {
+    return { threshold: 5, percentage: 5 };
+  } else if (quantity < 11) {
+    return { threshold: 11, percentage: 10 };
+  } else if (quantity <= 20) {
+    return { threshold: 21, percentage: 15 };
   }
   return null;
 }
