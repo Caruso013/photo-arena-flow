@@ -65,9 +65,19 @@ const Cart = () => {
       return;
     }
 
-    // Se o total é R$0 (cupom 100%), fazer compra gratuita direto
-    if (finalTotal <= 0) {
+    // Se o total é R$0 (cupom 100% validado), fazer compra gratuita direto
+    if (finalTotal <= 0 && appliedCoupon?.valid && appliedCoupon?.coupon_id) {
       await handleFreeCheckout();
+      return;
+    }
+
+    // Segurança: Nunca abrir checkout com valor zero sem cupom
+    if (finalTotal <= 0) {
+      toast({
+        title: "Erro",
+        description: "Não é possível finalizar compra com valor R$ 0,00 sem cupom válido.",
+        variant: "destructive"
+      });
       return;
     }
 
