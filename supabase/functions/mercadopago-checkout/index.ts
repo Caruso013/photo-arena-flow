@@ -308,10 +308,10 @@ serve(async (req) => {
 
     console.log('📊 Fator de desconto:', { discountFactor, subtotal, finalTotal });
 
-    // Gerar idempotency key ANTES de criar purchases (baseado nos IDs das fotos + buyer)
+    // Gerar idempotency key ANTES de criar purchases (hash completo para evitar colisões)
     const photoIdsSorted = photos.map((p: any) => p.id).sort().join(',');
-    const idempotencyBase = `${buyerId}_${photoIdsSorted}_${finalTotal}`;
-    const idempotencyKey = `${action}-${btoa(idempotencyBase).replace(/[^a-zA-Z0-9]/g, '').substring(0, 40)}`;
+    const idempotencyBase = `${action}|${buyerId}|${photoIdsSorted}|${Number(finalTotal).toFixed(2)}`;
+    const idempotencyKey = await createIdempotencyKey(idempotencyBase);
     
     console.log('🔑 Idempotency key:', idempotencyKey);
 
