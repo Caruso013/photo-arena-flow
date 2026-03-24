@@ -534,8 +534,38 @@ async function processPayment(
 
     if (!mpResponse.ok || mpResult.error) {
       await supabaseAdmin.from('purchases').delete().in('id', purchaseIds);
-      const errorMsg = mpResult.cause?.[0]?.description || mpResult.message || 'Erro ao gerar PIX';
-      return new Response(JSON.stringify({ success: false, error: errorMsg, status: 'error' }), {
+
+      const mpStatusCode = Number(mpResponse.status || 0);
+      const statusDetail = mpResult?.status_detail || null;
+      const errorCode = mpResult?.error || null;
+      const mpDescription = mpResult?.cause?.[0]?.description
+        || mpResult?.message
+        || mpResult?.error_description
+        || statusDetail;
+
+      const errorMsg = mpDescription || (mpStatusCode >= 500
+        ? `Erro temporário no Mercado Pago (${mpStatusCode})`
+        : 'Erro ao gerar PIX');
+
+      const retryable = mpStatusCode === 429 || mpStatusCode >= 500;
+
+      console.error('❌ Erro MP PIX:', {
+        statusCode: mpStatusCode,
+        retryable,
+        errorCode,
+        statusDetail,
+        response: mpResult,
+      });
+
+      return new Response(JSON.stringify({
+        success: false,
+        error: errorMsg,
+        status: 'error',
+        statusCode: mpStatusCode,
+        retryable,
+        statusDetail,
+        errorCode,
+      }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
