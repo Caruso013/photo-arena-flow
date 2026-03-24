@@ -1,0 +1,5 @@
+ALTER TABLE revenue_shares DROP CONSTRAINT check_revenue_amounts_positive;
+
+INSERT INTO revenue_shares (purchase_id, photographer_id, organization_id, platform_amount, photographer_amount, organization_amount) SELECT p.id, p.photographer_id, c.organization_id, -ROUND(ph.price * COALESCE(c.platform_percentage, 9) / 100, 2), -ROUND(ph.price * COALESCE(c.photographer_percentage, 91) / 100, 2), -ROUND(ph.price * COALESCE(c.organization_percentage, 0) / 100, 2) FROM purchases p JOIN photos ph ON p.photo_id = ph.id JOIN campaigns c ON ph.campaign_id = c.id WHERE p.amount = 0 AND p.status = 'failed' AND p.stripe_payment_intent_id NOT LIKE 'FREE_RELEASE%' AND p.id NOT IN (SELECT purchase_id FROM revenue_shares WHERE purchase_id IS NOT NULL) ON CONFLICT DO NOTHING;
+
+UPDATE profiles SET is_banned = true WHERE id = 'd5018414-4ca6-49dc-8963-3ac2a6c8f3ba';
