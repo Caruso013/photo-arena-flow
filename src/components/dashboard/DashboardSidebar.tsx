@@ -25,6 +25,7 @@ import {
   QrCode,
   UserCheck,
   ClipboardList,
+  Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
@@ -66,6 +67,7 @@ const DashboardSidebar = ({ isOpen, onToggle }: DashboardSidebarProps) => {
     { title: 'Meus Eventos', url: '/dashboard/events', icon: Calendar },
     
     { title: 'Minhas Fotos', url: '/dashboard/photos', icon: Image },
+    { title: 'Gerenciar Fotos', url: '/dashboard/photographer/manage-photos', icon: Trash2 },
     { title: 'Fotos em Destaque', url: '/dashboard/photographer/featured', icon: Star },
     { title: 'Solicitar Saque', url: '/dashboard/photographer/payout', icon: DollarSign },
     { title: 'Financeiro', url: '/dashboard/financial', icon: DollarSign },
