@@ -202,6 +202,12 @@ serve(async (req) => {
       return errorResponse('Dados do comprador incompletos (email é obrigatório)', 400);
     }
 
+    // Compras precisam estar vinculadas a um usuário autenticado
+    if (!buyerId) {
+      console.warn('⚠️ Tentativa de checkout sem autenticação válida');
+      return errorResponse('Sessão expirada. Faça login novamente para finalizar a compra.', 401);
+    }
+
     // Limpar CPF - obrigatório para pagamentos reais
     const cleanCpf = (buyer?.cpf || '').replace(/\D/g, '');
     // CPF validation happens below after we know if it's a free purchase
@@ -554,7 +560,12 @@ async function createIdempotencyKey(base: string) {
 function errorResponse(message: string, status: number) {
   return new Response(JSON.stringify({ success: false, error: message }), {
     status,
-    headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version, x-connection-pool, x-supabase-api-version',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+      'Content-Type': 'application/json',
+    },
   });
 }
 
