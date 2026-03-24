@@ -70,6 +70,7 @@ const PixSettings = lazy(() => import("./pages/dashboard/photographer/PixSetting
 const MyQRCode = lazy(() => import("./pages/dashboard/photographer/MyQRCode"));
 const EventApplications = lazy(() => import("./pages/dashboard/photographer/EventApplications"));
 const EventApplicationDetail = lazy(() => import("./pages/dashboard/photographer/EventApplicationDetail"));
+const ManagePhotos = lazy(() => import("./pages/dashboard/photographer/ManagePhotos"));
 
 // Admin routes (lazy)
 const AdminOverview = lazy(() => import("./pages/dashboard/admin/Overview"));
@@ -186,6 +187,7 @@ const AppContent = () => {
             <Route path="photographer/pix" element={<PixSettings />} />
             <Route path="photographer/qrcode" element={<MyQRCode />} />
             <Route path="photographer/applications" element={<EventApplications />} />
+            <Route path="photographer/manage-photos" element={<ManagePhotos />} />
             <Route path="photographer/apply/:id" element={<EventApplicationDetail />} />
             <Route path="organization/revenue" element={<OrganizationRevenue />} />
             <Route path="admin/events/:id/attendance" element={<EventAttendance />} />

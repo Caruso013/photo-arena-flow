@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -164,7 +164,7 @@ const ManagePhotos = () => {
   };
 
   const selectedCount = selectedPhotos.size;
-  const hasSalesSelected = photos.some(p => selectedPhotos.has(p.id) && p.has_sales);
+  
 
   return (
     <div className="space-y-6">
