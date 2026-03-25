@@ -363,7 +363,7 @@ const Cart = () => {
         isOpen={showPayment}
         onClose={() => setShowPayment(false)}
         photos={items}
-        onPaymentSuccess={(paymentData) => {
+        onPaymentSuccess={() => {
           clearCart();
           setShowPayment(false);
           // O PaymentModal já lida com o redirecionamento internamente
