@@ -16,7 +16,6 @@ import { formatCurrency } from "@/lib/utils";
 import AntiScreenshotProtection from "@/components/security/AntiScreenshotProtection";
 import WatermarkedPhoto from "@/components/WatermarkedPhoto";
 import { useHapticFeedback } from "@/hooks/useHapticFeedback";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 const Cart = () => {
@@ -27,7 +26,6 @@ const Cart = () => {
   const { items, removeFromCart, clearCart, totalItems, totalPrice } = useCart();
   const [showPayment, setShowPayment] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState<CouponValidationResult | null>(null);
-  const [processingFree, setProcessingFree] = useState(false);
 
   // Calcular desconto progressivo
   // IMPORTANTE: Se pelo menos UMA foto do carrinho tem desconto progressivo habilitado,
@@ -76,50 +74,6 @@ const Cart = () => {
     }
 
     setShowPayment(true);
-  };
-
-  const handleFreeCheckout = async () => {
-    if (processingFree) return;
-    setProcessingFree(true);
-
-    try {
-      // Chamar edge function com action especial para compra gratuita
-      const { data, error } = await supabase.functions.invoke('mercadopago-checkout', {
-        body: {
-          action: 'free_purchase',
-          photos: items.map(item => ({
-            id: item.id,
-            title: item.title || 'Foto',
-            price: Number(item.price),
-          })),
-          buyer: { email: user.email, cpf: '00000000000' },
-          discount: progressiveDiscountPercent > 0 ? {
-            percentage: progressiveDiscountPercent,
-            amount: progressiveDiscountAmount,
-          } : null,
-          coupon: appliedCoupon?.valid ? {
-            coupon_id: appliedCoupon.coupon_id,
-            code: appliedCoupon.code || '',
-            amount: appliedCoupon.discount_amount,
-          } : null,
-        },
-      });
-
-      if (error) throw error;
-
-      if (data?.success) {
-        toast({ title: "✅ Compra gratuita realizada!", description: "Suas fotos já estão disponíveis." });
-        clearCart();
-        navigate('/dashboard/purchases');
-      } else {
-        throw new Error(data?.error || 'Erro ao processar compra gratuita');
-      }
-    } catch (err: any) {
-      console.error('Erro na compra gratuita:', err);
-      toast({ title: "Erro", description: err.message || "Erro ao processar compra gratuita", variant: "destructive" });
-    } finally {
-      setProcessingFree(false);
-    }
   };
 
   const handleContinueShopping = () => {
