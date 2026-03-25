@@ -339,7 +339,36 @@ serve(async (req) => {
       return errorResponse('Valor mínimo para pagamento: R$ 1,00', 400);
     }
 
-    console.log('💰 Valores (server-validated):', { 
+    // 🚨 SEGURANÇA: Comparar desconto enviado pelo frontend com o calculado no servidor
+    // Se o frontend enviou um desconto MAIOR que o permitido, bloquear imediatamente
+    if (discount) {
+      const frontendDiscountPercent = Number(discount.percentage) || 0;
+      const frontendDiscountAmount = Number(discount.amount) || 0;
+
+      if (frontendDiscountPercent > serverProgressiveDiscountPercent) {
+        console.error('🚨 FRAUDE DETECTADA: desconto progressivo inflado!', {
+          frontendDiscountPercent,
+          serverProgressiveDiscountPercent,
+          frontendDiscountAmount,
+          serverProgressiveDiscountAmount,
+          buyerId,
+          photoCount,
+        });
+        return errorResponse('Desconto inválido detectado. A compra foi bloqueada por segurança.', 403);
+      }
+
+      if (frontendDiscountAmount > serverProgressiveDiscountAmount + 0.02) {
+        console.error('🚨 FRAUDE DETECTADA: valor de desconto inflado!', {
+          frontendDiscountAmount,
+          serverProgressiveDiscountAmount,
+          diff: frontendDiscountAmount - serverProgressiveDiscountAmount,
+          buyerId,
+        });
+        return errorResponse('Valor de desconto inválido detectado. A compra foi bloqueada por segurança.', 403);
+      }
+    }
+
+    console.log('💰 Valores (server-validated, pass 1):', { 
       subtotal, 
       serverProgressiveDiscountPercent,
       serverProgressiveDiscountAmount, 
@@ -347,6 +376,81 @@ serve(async (req) => {
       totalDiscount,
       finalTotal,
       validatedCouponId
+    });
+
+    // ===== SEGUNDA VALIDAÇÃO INDEPENDENTE (Double-Check) =====
+    // Re-buscar preços das fotos em uma segunda query para garantir integridade
+    const { data: dbPhotosVerify, error: dbPhotosVerifyError } = await supabaseAdmin
+      .from('photos')
+      .select('id, price, campaign_id')
+      .in('id', photoIds);
+
+    if (dbPhotosVerifyError || !dbPhotosVerify || dbPhotosVerify.length !== dbPhotos.length) {
+      console.error('🚨 BLOQUEADO: segunda verificação de fotos falhou', {
+        originalCount: dbPhotos.length,
+        verifyCount: dbPhotosVerify?.length,
+        error: dbPhotosVerifyError,
+      });
+      return errorResponse('Erro na verificação de integridade dos preços. Tente novamente.', 500);
+    }
+
+    // Recalcular subtotal independentemente
+    const subtotalVerify = dbPhotosVerify.reduce((sum: number, p: any) => sum + (Number(p.price) || 0), 0);
+    const photoCountVerify = dbPhotosVerify.length;
+
+    // Recalcular desconto progressivo independentemente
+    let verifyDiscountPercent = 0;
+    const verifyCampaignIds = [...new Set(dbPhotosVerify.map((p: any) => p.campaign_id))];
+    const { data: campaignsVerify } = await supabaseAdmin
+      .from('campaigns')
+      .select('id, progressive_discount_enabled')
+      .in('id', verifyCampaignIds);
+
+    const verifyAllDiscount = campaignsVerify?.every((c: any) => c.progressive_discount_enabled !== false) ?? false;
+    if (verifyAllDiscount) {
+      if (photoCountVerify >= 5 && photoCountVerify <= 10) verifyDiscountPercent = 5;
+      else if (photoCountVerify >= 11 && photoCountVerify <= 20) verifyDiscountPercent = 10;
+      else if (photoCountVerify > 20) verifyDiscountPercent = 15;
+    }
+
+    const verifyDiscountAmount = Number((subtotalVerify * verifyDiscountPercent / 100).toFixed(2));
+    const verifySubtotalAfterProg = subtotalVerify - verifyDiscountAmount;
+
+    // Recalcular cupom
+    let verifyCouponDiscount = 0;
+    if (validatedCouponId && coupon?.code) {
+      const { data: couponVerify } = await supabaseAdmin
+        .rpc('validate_coupon', {
+          p_code: coupon.code,
+          p_user_id: buyerId,
+          p_purchase_amount: verifySubtotalAfterProg,
+        });
+      if (couponVerify && couponVerify.length > 0 && couponVerify[0].valid) {
+        verifyCouponDiscount = Number(couponVerify[0].discount_amount) || 0;
+      }
+    }
+
+    const verifyFinalTotal = Math.max(Number((subtotalVerify - verifyDiscountAmount - verifyCouponDiscount).toFixed(2)), 0);
+
+    // Comparar os dois cálculos — tolerância de R$ 0.02 por arredondamento
+    const tolerance = 0.02;
+    if (Math.abs(finalTotal - verifyFinalTotal) > tolerance) {
+      console.error('🚨 BLOQUEADO: divergência entre cálculos de preço!', {
+        pass1: { subtotal, finalTotal, discountPercent: serverProgressiveDiscountPercent },
+        pass2: { subtotalVerify, verifyFinalTotal, verifyDiscountPercent },
+        diff: Math.abs(finalTotal - verifyFinalTotal),
+        buyerId,
+      });
+      return errorResponse('Erro de integridade nos valores. Tente novamente.', 400);
+    }
+
+    console.log('✅ Segunda validação OK (pass 2):', {
+      subtotalVerify,
+      verifyDiscountPercent,
+      verifyDiscountAmount,
+      verifyCouponDiscount,
+      verifyFinalTotal,
+      diffFromPass1: Math.abs(finalTotal - verifyFinalTotal),
     });
 
     // ===== CRIAR REGISTROS DE PURCHASE =====
