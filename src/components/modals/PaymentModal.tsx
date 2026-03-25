@@ -9,7 +9,7 @@ import { MaskedInput, masks, validateCPF } from '@/components/ui/masked-input';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { CreditCard, Loader2, ShoppingCart, ArrowLeft, AlertCircle, Percent, Tag, CheckCircle } from 'lucide-react';
+import { CreditCard, Loader2, ShoppingCart, ArrowLeft, AlertCircle, Percent, Tag } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { useProgressiveDiscount, getNextDiscountThreshold } from '@/hooks/useProgressiveDiscount';
 import TransparentCheckout from '@/components/checkout/TransparentCheckout';
@@ -99,6 +99,7 @@ export default function PaymentModal({
 
   // Preço final com desconto aplicado
   const totalPrice = progressiveDiscount.total;
+  const finalAmountForCheckout = Math.max(0, totalPrice - (appliedCoupon?.discount_amount || 0));
   
   // Próximo threshold de desconto
   const nextThreshold = getNextDiscountThreshold(totalItems);
@@ -521,7 +522,7 @@ export default function PaymentModal({
                   phone: buyerData.phone,
                   document: buyerData.document,
                 }}
-                totalAmount={totalPrice - (appliedCoupon?.discount_amount || 0)}
+                totalAmount={finalAmountForCheckout}
                 progressiveDiscount={progressiveDiscountEnabled && progressiveDiscount.discountPercentage > 0 ? {
                   enabled: true,
                   percentage: progressiveDiscount.discountPercentage,
@@ -549,7 +550,7 @@ export default function PaymentModal({
                   
                   // Se temos purchase_ids, ir para página de processamento para garantir
                   // que o webhook processou tudo corretamente antes de mostrar as fotos
-                  const purchaseIds = paymentData.purchase_ids || [];
+                  const purchaseIds = paymentData.purchase_ids || paymentData.purchaseIds || [];
                   
                   if (purchaseIds.length > 0) {
                     // PIX pendente ou cartão aprovado - ir para processamento para confirmar

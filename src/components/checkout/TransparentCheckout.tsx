@@ -71,6 +71,7 @@ export default function TransparentCheckout({
   onCancel,
 }: TransparentCheckoutProps) {
   const { toast } = useToast();
+  const safeTotalAmount = Math.max(0, Number(totalAmount) || 0);
   const [loading, setLoading] = useState(false);
   const [mpReady, setMpReady] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'pix' | 'card'>('pix');
@@ -180,7 +181,7 @@ export default function TransparentCheckout({
 
           // Buscar parcelas
           const installmentData = await mpRef.current.getInstallments({
-            amount: totalAmount.toString(),
+            amount: safeTotalAmount.toString(),
             bin,
             paymentTypeId: 'credit_card',
           });
@@ -297,7 +298,7 @@ export default function TransparentCheckout({
     }
 
     const MAX_PIX_RETRIES = 3;
-    const isFreeCheckout = totalAmount <= 0;
+    const isFreeCheckout = safeTotalAmount <= 0;
 
     try {
       console.log(`🔄 ${isFreeCheckout ? 'Finalizando compra grátis' : 'Gerando PIX'} (tentativa ${retryAttempt + 1}/${MAX_PIX_RETRIES}) deviceId:`, deviceId);
@@ -462,19 +463,7 @@ export default function TransparentCheckout({
       });
 
       if (error) {
-        // Tentar extrair mensagem real do erro da edge function
-        let errorMsg = 'Erro no pagamento';
-        try {
-          if (error.context?.body) {
-            const reader = error.context.body.getReader();
-            const { value } = await reader.read();
-            const bodyText = new TextDecoder().decode(value);
-            const bodyJson = JSON.parse(bodyText);
-            errorMsg = bodyJson.error || errorMsg;
-          }
-        } catch {
-          errorMsg = error.message || errorMsg;
-        }
+        const { errorMsg } = await parseEdgeFunctionError(error);
         throw new Error(errorMsg);
       }
 
@@ -497,6 +486,7 @@ export default function TransparentCheckout({
     } catch (error: any) {
       console.error('Erro cartão:', error);
       toast({ title: "Erro no pagamento", description: error.message, variant: "destructive" });
+      onError(error.message || 'Erro no pagamento com cartão');
     } finally {
       setLoading(false);
       isProcessingRef.current = false;
@@ -519,7 +509,7 @@ export default function TransparentCheckout({
         <CardContent className="p-4">
           <div className="flex justify-between items-center">
             <span className="text-sm text-muted-foreground">{photos.length} foto(s)</span>
-            <span className="text-lg font-bold">{formatCurrency(totalAmount)}</span>
+            <span className="text-lg font-bold">{formatCurrency(safeTotalAmount)}</span>
           </div>
           {progressiveDiscount && progressiveDiscount.percentage > 0 && (
             <div className="text-xs text-green-600 mt-1">
@@ -671,7 +661,7 @@ export default function TransparentCheckout({
 
             <Button type="submit" disabled={loading || !cardBrand} className="w-full">
               {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CreditCard className="h-4 w-4 mr-2" />}
-              Pagar {formatCurrency(totalAmount)}
+              Pagar {formatCurrency(safeTotalAmount)}
             </Button>
           </form>
         </TabsContent>
