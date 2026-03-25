@@ -99,6 +99,7 @@ export default function PaymentModal({
 
   // Preço final com desconto aplicado
   const totalPrice = progressiveDiscount.total;
+  const finalAmountForCheckout = Math.max(0, totalPrice - (appliedCoupon?.discount_amount || 0));
   
   // Próximo threshold de desconto
   const nextThreshold = getNextDiscountThreshold(totalItems);
@@ -522,6 +523,7 @@ export default function PaymentModal({
                   document: buyerData.document,
                 }}
                 totalAmount={totalPrice - (appliedCoupon?.discount_amount || 0)}
+                totalAmount={finalAmountForCheckout}
                 progressiveDiscount={progressiveDiscountEnabled && progressiveDiscount.discountPercentage > 0 ? {
                   enabled: true,
                   percentage: progressiveDiscount.discountPercentage,
@@ -549,7 +551,7 @@ export default function PaymentModal({
                   
                   // Se temos purchase_ids, ir para página de processamento para garantir
                   // que o webhook processou tudo corretamente antes de mostrar as fotos
-                  const purchaseIds = paymentData.purchase_ids || [];
+                  const purchaseIds = paymentData.purchase_ids || paymentData.purchaseIds || [];
                   
                   if (purchaseIds.length > 0) {
                     // PIX pendente ou cartão aprovado - ir para processamento para confirmar
