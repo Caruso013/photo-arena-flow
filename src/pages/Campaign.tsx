@@ -634,6 +634,13 @@ const Campaign = () => {
   const handleReleasePhoto = async () => {
     if (!releasePhotoId || !selectedUserForRelease || !user || !campaign) return;
 
+    toast({
+      title: "Liberação gratuita desativada",
+      description: "Por segurança, fotos gratuitas foram bloqueadas neste ambiente.",
+      variant: "destructive",
+    });
+    return;
+
     try {
       setReleasingPhoto(true);
 
@@ -717,6 +724,13 @@ const Campaign = () => {
 
   // Abrir modal de liberação
   const openReleasePhotoDialog = (photoId: string) => {
+    toast({
+      title: "Função indisponível",
+      description: "A liberação gratuita foi desativada por segurança.",
+      variant: "destructive",
+    });
+    return;
+
     setReleasePhotoId(photoId);
     setShowReleasePhotoDialog(true);
     setReleaseSearch('');

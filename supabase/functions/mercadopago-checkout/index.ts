@@ -77,7 +77,7 @@ serve(async (req) => {
       deviceId,         // Device Session ID para anti-fraude (obrigatório)
     } = body;
 
-    const allowedCheckoutActions = new Set(['create_pix', 'create_card', 'free_purchase']);
+    const allowedCheckoutActions = new Set(['create_pix', 'create_card']);
 
     console.log('📥 Request:', JSON.stringify({ 
       action, 
@@ -289,26 +289,19 @@ serve(async (req) => {
     const totalDiscount = serverProgressiveDiscountAmount + serverCouponDiscountAmount;
     const finalTotal = Math.max(subtotal - totalDiscount, 0);
 
-    // 🚨🚨🚨 SEGURANÇA CRÍTICA: Compra gratuita SÓ é permitida com cupom VÁLIDO
-    // NUNCA permitir amount=0 sem cupom validado pelo servidor
-    if (finalTotal <= 0 && !validatedCouponId) {
-      console.error('🚨🚨🚨 BLOQUEADO: Tentativa de compra gratuita sem cupom válido!', { 
-        subtotal, totalDiscount, finalTotal, buyerId, 
-        action, hasCoupon: !!coupon, hasValidatedCoupon: !!validatedCouponId 
-      });
-      return errorResponse('Compra gratuita não permitida. Cupom inválido ou ausente.', 403);
-    }
-
-    // Se o frontend pediu compra gratuita, mas o servidor calculou valor > 0,
-    // bloquear antes de criar purchases pendentes para evitar estado inconsistente.
-    if (action === 'free_purchase' && finalTotal > 0) {
-      console.warn('⚠️ Free purchase bloqueada: cupom não cobre 100% do total', {
+    // 🚨 SEGURANÇA CRÍTICA: bloquear qualquer checkout com total zerado
+    // (mesmo com cupom) para evitar liberação gratuita de fotos.
+    if (finalTotal <= 0) {
+      console.error('🚨 BLOQUEADO: tentativa de checkout com valor zero', {
         subtotal,
+        totalDiscount,
         finalTotal,
+        buyerId,
+        action,
         hasCoupon: !!coupon,
         hasValidatedCoupon: !!validatedCouponId,
       });
-      return errorResponse('O cupom não cobre 100% do valor. Atualize o carrinho e finalize pelo checkout normal.', 400);
+      return errorResponse('Não é permitido finalizar compra com valor R$ 0,00.', 400);
     }
 
     // Para pagamentos reais (não-gratuitos), CPF é obrigatório
@@ -527,36 +520,6 @@ serve(async (req) => {
       .in('id', purchaseIds);
 
     console.log('📋 External Reference:', externalReference);
-
-    // ===== COMPRA GRATUITA (finalTotal <= 0) =====
-    // SEGURANÇA: Já validado acima que free purchase requer cupom válido
-    if (finalTotal <= 0 && validatedCouponId) {
-      console.log('🎁 Compra gratuita com cupom válido! Marcando purchases como completed...');
-
-      // Marcar todas as purchases como completed
-      await supabaseAdmin
-        .from('purchases')
-        .update({ status: 'completed' })
-        .in('id', purchaseIds);
-
-      // Registrar uso do cupom
-      await supabaseAdmin.from('coupon_uses').insert({
-        coupon_id: validatedCouponId,
-        user_id: buyerId,
-        original_amount: subtotal,
-        discount_amount: serverCouponDiscountAmount,
-        final_amount: 0,
-      });
-      console.log('🎟️ Uso de cupom registrado:', validatedCouponId);
-
-      return new Response(JSON.stringify({
-        success: true,
-        status: 'approved',
-        statusDetail: 'free_purchase',
-        purchaseIds,
-        paymentId: null,
-      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
 
     return await processPayment(action, externalReference, purchaseIds, finalTotal, photos, buyer, cleanCpf, deviceId, mpAccessToken, supabaseUrl, corsHeaders, cardToken, cardPaymentMethodId, cardIssuerId, installments, idempotencyKey);
 
