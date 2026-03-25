@@ -72,6 +72,8 @@ serve(async (req) => {
       deviceId,         // Device Session ID para anti-fraude (obrigatório)
     } = body;
 
+    const allowedCheckoutActions = new Set(['create_pix', 'create_card', 'free_purchase']);
+
     console.log('📥 Request:', JSON.stringify({ 
       action, 
       paymentId, 
@@ -208,6 +210,10 @@ serve(async (req) => {
       return errorResponse('Sessão expirada. Faça login novamente para finalizar a compra.', 401);
     }
 
+    if (!allowedCheckoutActions.has(action)) {
+      return errorResponse('Ação inválida para checkout', 400);
+    }
+
     // Limpar CPF - obrigatório para pagamentos reais
     const cleanCpf = (buyer?.cpf || '').replace(/\D/g, '');
     // CPF validation happens below after we know if it's a free purchase
@@ -286,6 +292,18 @@ serve(async (req) => {
         action, hasCoupon: !!coupon, hasValidatedCoupon: !!validatedCouponId 
       });
       return errorResponse('Compra gratuita não permitida. Cupom inválido ou ausente.', 403);
+    }
+
+    // Se o frontend pediu compra gratuita, mas o servidor calculou valor > 0,
+    // bloquear antes de criar purchases pendentes para evitar estado inconsistente.
+    if (action === 'free_purchase' && finalTotal > 0) {
+      console.warn('⚠️ Free purchase bloqueada: cupom não cobre 100% do total', {
+        subtotal,
+        finalTotal,
+        hasCoupon: !!coupon,
+        hasValidatedCoupon: !!validatedCouponId,
+      });
+      return errorResponse('O cupom não cobre 100% do valor. Atualize o carrinho e finalize pelo checkout normal.', 400);
     }
 
     // Para pagamentos reais (não-gratuitos), CPF é obrigatório
