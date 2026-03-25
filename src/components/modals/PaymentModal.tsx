@@ -9,7 +9,7 @@ import { MaskedInput, masks, validateCPF } from '@/components/ui/masked-input';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { CreditCard, Loader2, ShoppingCart, ArrowLeft, AlertCircle, Percent, Tag, CheckCircle } from 'lucide-react';
+import { CreditCard, Loader2, ShoppingCart, ArrowLeft, AlertCircle, Percent, Tag } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { useProgressiveDiscount, getNextDiscountThreshold } from '@/hooks/useProgressiveDiscount';
 import TransparentCheckout from '@/components/checkout/TransparentCheckout';
@@ -522,7 +522,6 @@ export default function PaymentModal({
                   phone: buyerData.phone,
                   document: buyerData.document,
                 }}
-                totalAmount={totalPrice - (appliedCoupon?.discount_amount || 0)}
                 totalAmount={finalAmountForCheckout}
                 progressiveDiscount={progressiveDiscountEnabled && progressiveDiscount.discountPercentage > 0 ? {
                   enabled: true,
