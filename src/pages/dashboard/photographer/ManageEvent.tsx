@@ -364,112 +364,22 @@ const ManageEvent = () => {
     }
   };
 
-  // Liberar foto gratuitamente para usuário
-  const handleReleasePhoto = async () => {
-    if (!releasePhotoId || !selectedUserForRelease || !user || !campaign) return;
-
+  // Liberação gratuita removida por segurança
+  const handleReleasePhoto = () => {
     toast({
       title: "Liberação gratuita desativada",
-      description: "Por segurança, fotos gratuitas foram bloqueadas neste ambiente.",
+      description: "Por segurança, não existe mais compra grátis neste ambiente.",
       variant: "destructive",
     });
-    return;
-
-    try {
-      setReleasingPhoto(true);
-
-      // Verificar se já existe compra desta foto para este usuário
-      const { data: existingPurchase, error: checkError } = await supabase
-        .from('purchases')
-        .select('id')
-        .eq('photo_id', releasePhotoId)
-        .eq('buyer_id', selectedUserForRelease.id)
-        .eq('status', 'completed')
-        .maybeSingle();
-
-      if (checkError) throw checkError;
-
-      if (existingPurchase) {
-        toast({
-          title: "⚠️ Foto já liberada",
-          description: `${selectedUserForRelease.full_name || selectedUserForRelease.email} já possui esta foto.`,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Buscar photographer_id da foto (fallback se campaign.photographer_id for null)
-      let photographerId = campaign.photographer_id;
-      if (!photographerId) {
-        const { data: photoData } = await supabase
-          .from('photos')
-          .select('photographer_id')
-          .eq('id', releasePhotoId)
-          .maybeSingle();
-        photographerId = photoData?.photographer_id || null;
-      }
-
-      if (!photographerId) {
-        toast({
-          title: "Erro",
-          description: "Não foi possível identificar o fotógrafo desta foto.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Criar compra gratuita (amount = 0)
-      const { error: purchaseError } = await supabase
-        .from('purchases')
-        .insert({
-          photo_id: releasePhotoId,
-          buyer_id: selectedUserForRelease.id,
-          photographer_id: photographerId,
-          amount: 0,
-          status: 'completed',
-          stripe_payment_intent_id: `FREE_RELEASE_${Date.now()}`,
-        });
-
-      if (purchaseError) throw purchaseError;
-
-      toast({
-        title: "🎁 Foto liberada com sucesso!",
-        description: `Foto liberada gratuitamente para ${selectedUserForRelease.full_name || selectedUserForRelease.email}`,
-      });
-
-      // Resetar estados
-      setShowReleasePhotoDialog(false);
-      setReleasePhotoId(null);
-      setReleaseSearch('');
-      setReleaseSearchResults([]);
-      setSelectedUserForRelease(null);
-
-    } catch (error: any) {
-      console.error('Error releasing photo:', error);
-      toast({
-        title: "Erro ao liberar foto",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setReleasingPhoto(false);
-    }
   };
 
   // Abrir modal de liberação
-  const openReleasePhotoDialog = (photoId: string) => {
+  const openReleasePhotoDialog = (_photoId: string) => {
     toast({
       title: "Função indisponível",
       description: "A liberação gratuita foi desativada por segurança.",
       variant: "destructive",
     });
-    return;
-
-    setReleasePhotoId(photoId);
-    setShowReleasePhotoDialog(true);
-    setReleaseSearch('');
-    setReleaseSearchResults([]);
-    setSelectedUserForRelease(null);
   };
 
   const handleTogglePhotoAvailability = async (photoId: string, currentValue: boolean) => {
