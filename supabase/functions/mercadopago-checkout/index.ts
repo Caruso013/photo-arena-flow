@@ -46,13 +46,18 @@ serve(async (req) => {
     let buyerId: string | null = null;
 
     if (authHeader) {
-      const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
-        global: { headers: { Authorization: authHeader } }
-      });
-      const { data: { user } } = await supabaseClient.auth.getUser();
-      if (user) {
-        buyerId = user.id;
-        console.log('✅ Usuário autenticado:', user.id);
+      const token = authHeader.replace('Bearer ', '');
+      try {
+        // Método 1: getUser com token direto (mais confiável)
+        const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+        if (user && !userError) {
+          buyerId = user.id;
+          console.log('✅ Usuário autenticado:', user.id);
+        } else {
+          console.warn('⚠️ getUser falhou:', userError?.message || 'user null');
+        }
+      } catch (authErr) {
+        console.warn('⚠️ Erro na autenticação:', authErr);
       }
     }
 
