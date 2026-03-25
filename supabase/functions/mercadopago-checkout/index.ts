@@ -287,7 +287,19 @@ serve(async (req) => {
     }
 
     const totalDiscount = serverProgressiveDiscountAmount + serverCouponDiscountAmount;
-    const finalTotal = Math.max(subtotal - totalDiscount, 0);
+    const rawFinalTotal = Number((subtotal - totalDiscount).toFixed(2));
+    const finalTotal = Math.max(rawFinalTotal, 0);
+
+    if (validatedCouponId && serverCouponDiscountAmount >= subtotalAfterProgressive) {
+      console.error('🚨 BLOQUEADO: cupom zerando total da compra', {
+        subtotal,
+        subtotalAfterProgressive,
+        serverCouponDiscountAmount,
+        validatedCouponId,
+        buyerId,
+      });
+      return errorResponse('Este cupom zera o valor da compra e não é permitido.', 400);
+    }
 
     // 🚨 SEGURANÇA CRÍTICA: bloquear qualquer checkout com total zerado
     // (mesmo com cupom) para evitar liberação gratuita de fotos.
@@ -302,6 +314,18 @@ serve(async (req) => {
         hasValidatedCoupon: !!validatedCouponId,
       });
       return errorResponse('Não é permitido finalizar compra com valor R$ 0,00.', 400);
+    }
+
+    // Segurança extra: evitar cenários de arredondamento que geram fotos com amount = 0
+    const minimumTotalForPerPhotoCharge = Number((photoCount * 0.01).toFixed(2));
+    if (finalTotal < minimumTotalForPerPhotoCharge) {
+      console.error('🚨 BLOQUEADO: total insuficiente para manter valor mínimo por foto', {
+        finalTotal,
+        photoCount,
+        minimumTotalForPerPhotoCharge,
+        buyerId,
+      });
+      return errorResponse('Valor final insuficiente para cobrança mínima por foto.', 400);
     }
 
     // Para pagamentos reais (não-gratuitos), CPF é obrigatório
@@ -327,9 +351,18 @@ serve(async (req) => {
 
     // ===== CRIAR REGISTROS DE PURCHASE =====
     const purchaseIds: string[] = [];
-    const discountFactor = subtotal > 0 ? finalTotal / subtotal : 1;
+    const allocatedAmountsByPhotoId = allocatePurchaseAmounts(dbPhotos, finalTotal);
 
-    console.log('📊 Fator de desconto:', { discountFactor, subtotal, finalTotal });
+    if (!allocatedAmountsByPhotoId) {
+      console.error('🚨 BLOQUEADO: não foi possível distribuir valores por foto com mínimo de R$ 0,01');
+      return errorResponse('Não foi possível calcular valores individuais das fotos para o checkout.', 400);
+    }
+
+    console.log('📊 Distribuição de valores por foto concluída:', {
+      photos: dbPhotos.length,
+      subtotal,
+      finalTotal,
+    });
 
     // Gerar idempotency key ANTES de criar purchases (hash completo para evitar colisões)
     const photoIdsSorted = photos.map((p: any) => p.id).sort().join(',');
@@ -476,9 +509,19 @@ serve(async (req) => {
         continue;
       }
 
-      // Calcular valor proporcional com desconto (usando preço do BANCO, não do frontend)
+      // Valor calculado no servidor com distribuição em centavos e mínimo de R$ 0,01 por foto
       const originalPrice = Number(dbPhoto.price) || 0;
-      const discountedAmount = Number((originalPrice * discountFactor).toFixed(2));
+      const discountedAmount = allocatedAmountsByPhotoId.get(photo.id) ?? 0;
+
+      if (discountedAmount <= 0) {
+        console.error('🚨 BLOQUEADO: tentativa de criar purchase com amount <= 0', {
+          photoId: photo.id,
+          originalPrice,
+          discountedAmount,
+        });
+        return errorResponse('Erro interno de cálculo do valor da compra.', 500);
+      }
+
       const photoDiscountAmount = Number((originalPrice - discountedAmount).toFixed(2));
 
       const { data: purchase, error: purchaseError } = await supabaseAdmin
@@ -541,6 +584,49 @@ async function createIdempotencyKey(base: string) {
 
   // Mercado Pago aceita chaves alfanuméricas de tamanho limitado
   return `mp-${hashHex.substring(0, 56)}`;
+}
+
+function allocatePurchaseAmounts(dbPhotos: any[], finalTotal: number): Map<string, number> | null {
+  const totalCents = Math.round(finalTotal * 100);
+  const photoCount = dbPhotos.length;
+
+  if (!photoCount || totalCents < photoCount) {
+    return null;
+  }
+
+  const prices = dbPhotos.map((photo: any) => Number(photo.price) || 0);
+  const subtotal = prices.reduce((sum: number, price: number) => sum + price, 0);
+
+  if (subtotal <= 0) {
+    return null;
+  }
+
+  // Reserva 1 centavo para cada foto para garantir que nenhuma fique gratuita.
+  const baseCents = new Array(photoCount).fill(1);
+  let remainingCents = totalCents - photoCount;
+
+  const weightedShares = prices.map((price: number) => (price / subtotal) * remainingCents);
+  const extraCents = weightedShares.map((value: number) => Math.floor(value));
+
+  const distributedExtra = extraCents.reduce((sum: number, value: number) => sum + value, 0);
+  let leftoverCents = remainingCents - distributedExtra;
+
+  const orderByFraction = weightedShares
+    .map((value: number, index: number) => ({ index, fraction: value - extraCents[index] }))
+    .sort((a, b) => b.fraction - a.fraction);
+
+  for (let i = 0; i < leftoverCents; i++) {
+    const targetIndex = orderByFraction[i % orderByFraction.length].index;
+    extraCents[targetIndex] += 1;
+  }
+
+  const allocation = new Map<string, number>();
+  dbPhotos.forEach((photo: any, index: number) => {
+    const cents = baseCents[index] + extraCents[index];
+    allocation.set(photo.id, Number((cents / 100).toFixed(2)));
+  });
+
+  return allocation;
 }
 
 function errorResponse(message: string, status: number) {

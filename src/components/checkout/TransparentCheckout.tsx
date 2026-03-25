@@ -72,6 +72,7 @@ export default function TransparentCheckout({
 }: TransparentCheckoutProps) {
   const { toast } = useToast();
   const safeTotalAmount = Math.max(0, Number(totalAmount) || 0);
+  const isZeroAmountCheckout = safeTotalAmount <= 0;
   const [loading, setLoading] = useState(false);
   const [mpReady, setMpReady] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'pix' | 'card'>('pix');
@@ -290,6 +291,13 @@ export default function TransparentCheckout({
 
   // Gerar PIX com retry automático
   const handleGeneratePix = async (retryAttempt = 0) => {
+    if (isZeroAmountCheckout) {
+      const message = 'Não é permitido finalizar compra com valor R$ 0,00.';
+      toast({ title: 'Compra bloqueada', description: message, variant: 'destructive' });
+      onError(message);
+      return;
+    }
+
     if (isProcessingRef.current && retryAttempt === 0) return;
     if (retryAttempt === 0) {
       isProcessingRef.current = true;
@@ -298,14 +306,13 @@ export default function TransparentCheckout({
     }
 
     const MAX_PIX_RETRIES = 3;
-    const isFreeCheckout = safeTotalAmount <= 0;
 
     try {
-      console.log(`🔄 ${isFreeCheckout ? 'Finalizando compra grátis' : 'Gerando PIX'} (tentativa ${retryAttempt + 1}/${MAX_PIX_RETRIES}) deviceId:`, deviceId);
+      console.log(`🔄 Gerando PIX (tentativa ${retryAttempt + 1}/${MAX_PIX_RETRIES}) deviceId:`, deviceId);
 
       const { data, error } = await supabase.functions.invoke('mercadopago-checkout', {
         body: {
-          action: isFreeCheckout ? 'free_purchase' : 'create_pix',
+          action: 'create_pix',
           deviceId,
           photos: photos.map(p => ({ id: p.id, title: p.title || 'Foto', price: p.price || 0 })),
           buyer: {
@@ -361,13 +368,6 @@ export default function TransparentCheckout({
         throw new Error(errorMsg);
       }
 
-      if (data?.success && (data?.statusDetail === 'free_purchase' || (isFreeCheckout && !data?.pix))) {
-        const purchaseIds = data?.purchase_ids || data?.purchaseIds || [];
-        toast({ title: "✅ Compra gratuita concluída!", description: "Suas fotos já estão disponíveis." });
-        onSuccess({ ...data, purchase_ids: purchaseIds, purchaseIds });
-        return;
-      }
-
       if (data?.success && data.pix) {
         setPixData({
           qrCode: data.pix.qrCode,
@@ -398,6 +398,13 @@ export default function TransparentCheckout({
   // Pagar com Cartão
   const handleCardPayment = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (isZeroAmountCheckout) {
+      const message = 'Não é permitido finalizar compra com valor R$ 0,00.';
+      toast({ title: 'Compra bloqueada', description: message, variant: 'destructive' });
+      onError(message);
+      return;
+    }
 
     // Guard contra duplo clique / dupla submissão
     if (isProcessingRef.current) {
@@ -549,6 +556,12 @@ export default function TransparentCheckout({
                 {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <QrCode className="h-4 w-4 mr-2" />}
                 Gerar QR Code PIX
               </Button>
+
+              {isZeroAmountCheckout && (
+                <div className="text-sm text-destructive text-center">
+                  Compras com valor R$ 0,00 estão bloqueadas.
+                </div>
+              )}
             </>
           ) : (
             <div className="space-y-4">
@@ -659,7 +672,7 @@ export default function TransparentCheckout({
               </div>
             )}
 
-            <Button type="submit" disabled={loading || !cardBrand} className="w-full">
+            <Button type="submit" disabled={loading || !cardBrand || isZeroAmountCheckout} className="w-full">
               {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CreditCard className="h-4 w-4 mr-2" />}
               Pagar {formatCurrency(safeTotalAmount)}
             </Button>

@@ -99,7 +99,9 @@ export default function PaymentModal({
 
   // Preço final com desconto aplicado
   const totalPrice = progressiveDiscount.total;
-  const finalAmountForCheckout = Math.max(0, totalPrice - (appliedCoupon?.discount_amount || 0));
+  const finalAmountForCheckout = Number(
+    Math.max(0, totalPrice - (appliedCoupon?.discount_amount || 0)).toFixed(2)
+  );
   
   // Próximo threshold de desconto
   const nextThreshold = getNextDiscountThreshold(totalItems);
@@ -168,6 +170,15 @@ export default function PaymentModal({
       toast({
         title: "Dados incompletos",
         description: "Por favor, preencha todos os campos obrigatórios.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (finalAmountForCheckout <= 0) {
+      toast({
+        title: "Compra bloqueada",
+        description: "Não é permitido finalizar compra com valor R$ 0,00.",
         variant: "destructive",
       });
       return;
@@ -363,8 +374,8 @@ export default function PaymentModal({
                   {/* Total Final */}
                   <div className="flex justify-between items-center pt-2 border-t border-border">
                     <span className="font-bold">Total:</span>
-                    <span className="text-2xl font-bold text-primary">
-                      {formatCurrency(Math.max(0, totalPrice - (appliedCoupon?.discount_amount || 0)))}
+                     <span className="text-2xl font-bold text-primary">
+                       {formatCurrency(finalAmountForCheckout)}
                     </span>
                   </div>
                 </div>
@@ -487,7 +498,7 @@ export default function PaymentModal({
               </Button>
               <Button 
                 onClick={handlePayment} 
-                disabled={!isFormValid() || loading}
+                disabled={!isFormValid() || loading || finalAmountForCheckout <= 0}
                 className="flex-1 min-h-[48px] text-base font-semibold"
                 size="lg"
               >
