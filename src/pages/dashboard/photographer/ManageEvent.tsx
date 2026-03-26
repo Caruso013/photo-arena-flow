@@ -106,16 +106,6 @@ const ManageEvent = () => {
   // Deleting states
   const [deletingPhoto, setDeletingPhoto] = useState<string | null>(null);
   const [deletingAlbum, setDeletingAlbum] = useState<string | null>(null);
-
-  // Liberar foto states
-  const [showReleasePhotoDialog, setShowReleasePhotoDialog] = useState(false);
-  const [releasePhotoId, setReleasePhotoId] = useState<string | null>(null);
-  const [releaseSearch, setReleaseSearch] = useState('');
-  const [releaseSearchResults, setReleaseSearchResults] = useState<{id: string; full_name: string; email: string}[]>([]);
-  const [searchingUsers, setSearchingUsers] = useState(false);
-  const [selectedUserForRelease, setSelectedUserForRelease] = useState<{id: string; full_name: string; email: string} | null>(null);
-  const [releasingPhoto, setReleasingPhoto] = useState(false);
-
   // Event editing states
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
@@ -337,49 +327,6 @@ const ManageEvent = () => {
     } finally {
       setDeletingAlbum(null);
     }
-  };
-
-  // Buscar usuários para liberar foto
-  const searchUsersForRelease = async (query: string) => {
-    if (query.length < 2) {
-      setReleaseSearchResults([]);
-      return;
-    }
-
-    try {
-      setSearchingUsers(true);
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, full_name, email')
-        .or(`email.ilike.%${query}%,full_name.ilike.%${query}%`)
-        .limit(10);
-
-      if (error) throw error;
-      setReleaseSearchResults(data || []);
-    } catch (error) {
-      console.error('Error searching users:', error);
-      setReleaseSearchResults([]);
-    } finally {
-      setSearchingUsers(false);
-    }
-  };
-
-  // Liberação gratuita removida por segurança
-  const handleReleasePhoto = () => {
-    toast({
-      title: "Liberação gratuita desativada",
-      description: "Por segurança, não existe mais compra grátis neste ambiente.",
-      variant: "destructive",
-    });
-  };
-
-  // Abrir modal de liberação
-  const openReleasePhotoDialog = (_photoId: string) => {
-    toast({
-      title: "Função indisponível",
-      description: "A liberação gratuita foi desativada por segurança.",
-      variant: "destructive",
-    });
   };
 
   const handleTogglePhotoAvailability = async (photoId: string, currentValue: boolean) => {
@@ -1089,128 +1036,6 @@ const ManageEvent = () => {
         />
       )}
 
-      {/* Modal de Liberar Foto Gratuitamente */}
-      <Dialog open={showReleasePhotoDialog} onOpenChange={setShowReleasePhotoDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Gift className="h-5 w-5 text-green-600" />
-              Liberar Foto Gratuitamente
-            </DialogTitle>
-            <DialogDescription>
-              Busque um usuário pelo email ou nome para liberar esta foto sem custo.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            {/* Campo de busca */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por email ou nome..."
-                value={releaseSearch}
-                onChange={(e) => {
-                  setReleaseSearch(e.target.value);
-                  searchUsersForRelease(e.target.value);
-                }}
-                className="pl-9"
-              />
-              {searchingUsers && (
-                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
-              )}
-            </div>
-
-            {/* Resultados da busca */}
-            {releaseSearchResults.length > 0 && !selectedUserForRelease && (
-              <div className="max-h-48 overflow-y-auto border rounded-md divide-y">
-                {releaseSearchResults.map((user) => (
-                  <button
-                    key={user.id}
-                    className="w-full px-3 py-2 text-left hover:bg-muted transition-colors flex items-center gap-3"
-                    onClick={() => {
-                      setSelectedUserForRelease(user);
-                      setReleaseSearch('');
-                      setReleaseSearchResults([]);
-                    }}
-                  >
-                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                      <User className="h-4 w-4 text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{user.full_name || 'Sem nome'}</p>
-                      <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Mensagem quando não encontra resultados */}
-            {releaseSearch.length >= 2 && releaseSearchResults.length === 0 && !searchingUsers && !selectedUserForRelease && (
-              <p className="text-sm text-muted-foreground text-center py-4">
-                Nenhum usuário encontrado
-              </p>
-            )}
-
-            {/* Usuário selecionado */}
-            {selectedUserForRelease && (
-              <div className="p-4 border rounded-md bg-green-50 dark:bg-green-950/30">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-green-600 flex items-center justify-center">
-                    <User className="h-5 w-5 text-white" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium">{selectedUserForRelease.full_name || 'Sem nome'}</p>
-                    <p className="text-sm text-muted-foreground flex items-center gap-1">
-                      <Mail className="h-3 w-3" />
-                      {selectedUserForRelease.email}
-                    </p>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setSelectedUserForRelease(null)}
-                  >
-                    Alterar
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* Botão de confirmação */}
-            <div className="flex gap-2 pt-2">
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={() => {
-                  setShowReleasePhotoDialog(false);
-                  setReleasePhotoId(null);
-                  setSelectedUserForRelease(null);
-                }}
-              >
-                Cancelar
-              </Button>
-              <Button
-                className="flex-1 bg-green-600 hover:bg-green-700"
-                onClick={handleReleasePhoto}
-                disabled={!selectedUserForRelease || releasingPhoto}
-              >
-                {releasingPhoto ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Liberando...
-                  </>
-                ) : (
-                  <>
-                    <Gift className="h-4 w-4 mr-2" />
-                    Liberar Foto
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
