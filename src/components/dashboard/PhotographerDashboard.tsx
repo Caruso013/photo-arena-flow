@@ -24,6 +24,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import UploadPhotoModal from '@/components/modals/UploadPhotoModal';
 import CreateCampaignModal from '@/components/modals/CreateCampaignModal';
 import PhotographerGoals from './PhotographerGoals';
+import PhotographerEventsTab from './PhotographerEventsTab';
 import { ProfileEditor } from '../profile/ProfileEditor';
 import { SalesChart } from './SalesChart';
 import { useSalesData } from '@/hooks/useSalesData';
@@ -338,41 +339,7 @@ const PhotographerDashboard = () => {
               </TabsContent>
 
               <TabsContent value="events" className="space-y-4">
-                <div className="grid gap-4">
-                  {campaigns.length === 0 ? (
-                    <Card className="p-8 text-center">
-                      <Camera className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                      <p className="text-muted-foreground">Nenhum evento ainda</p>
-                      <p className="text-sm text-muted-foreground mt-1">Crie seu primeiro evento para começar!</p>
-                    </Card>
-                  ) : (
-                    campaigns.slice(0, 4).map((campaign) => (
-                      <Card key={campaign.id} className="overflow-hidden hover:shadow-md transition-shadow">
-                        <CardContent className="p-4 flex items-center gap-4">
-                          <div className="h-16 w-16 rounded-lg bg-muted flex-shrink-0 overflow-hidden">
-                            {campaign.cover_image_url ? (
-                              <img src={campaign.cover_image_url} alt={campaign.title} className="h-full w-full object-cover" />
-                            ) : (
-                              <div className="h-full w-full flex items-center justify-center">
-                                <Camera className="h-6 w-6 text-muted-foreground" />
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-medium truncate">{campaign.title}</h4>
-                            <p className="text-sm text-muted-foreground">{campaign.photos?.[0]?.count || 0} fotos</p>
-                          </div>
-                          <Link 
-                            to={`/dashboard/photographer/events/${campaign.id}`}
-                            className="text-sm text-primary hover:underline"
-                          >
-                            Gerenciar
-                          </Link>
-                        </CardContent>
-                      </Card>
-                    ))
-                  )}
-                </div>
+                <PhotographerEventsTab />
               </TabsContent>
 
               <TabsContent value="goals" className="space-y-4">
