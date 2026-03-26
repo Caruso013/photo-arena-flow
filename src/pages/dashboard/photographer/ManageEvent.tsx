@@ -741,16 +741,6 @@ const ManageEvent = () => {
                         <Star className={`h-4 w-4 ${photo.is_featured ? 'fill-yellow-500 text-yellow-500' : ''}`} />
                       </Button>
 
-                      {/* Liberar foto gratuitamente */}
-                      <Button
-                        size="icon"
-                        variant="secondary"
-                        onClick={() => openReleasePhotoDialog(photo.id)}
-                        title="Liberar foto gratuitamente"
-                        className="bg-green-600 hover:bg-green-700 text-white"
-                      >
-                        <Gift className="h-4 w-4" />
-                      </Button>
 
                       {/* Mover para álbum */}
                       <Dialog>
