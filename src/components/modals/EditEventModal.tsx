@@ -174,28 +174,34 @@ const EditEventModal: React.FC<EditEventModalProps> = ({
         coverImageUrl = urlData.publicUrl;
       }
 
+      // Build update object - photographers CANNOT change percentages
+      const updateData: Record<string, any> = {
+        title: title.trim(),
+        description: description.trim() || null,
+        location: location.trim() || null,
+        event_date: eventDate?.split('T')[0] || null,
+        is_active: isActive,
+        progressive_discount_enabled: progressiveDiscountEnabled,
+        cover_image_url: coverImageUrl,
+        applications_open: applicationsOpen,
+        event_start_time: eventStartTime || null,
+        event_end_time: eventEndTime || null,
+        photo_price_display: priceAlreadySet ? campaignData.photo_price_display : (photoPriceDisplay ? parseFloat(photoPriceDisplay) : null),
+        available_slots: availableSlots ? parseInt(availableSlots) : null,
+      };
+
+      // Only admins can change percentages and organization
+      if (!isPhotographer) {
+        updateData.organization_id = organizerData.organizationType === 'organization' ? organizerData.organizationId : null;
+        updateData.photographer_percentage = organizerData.photographerPercentage;
+        updateData.organization_percentage = organizerData.organizationPercentage;
+        updateData.platform_percentage = platformPercentage;
+      }
+
       // Update campaign
       const { error: updateError } = await supabase
         .from('campaigns')
-        .update({
-          title: title.trim(),
-          description: description.trim() || null,
-          location: location.trim() || null,
-          event_date: eventDate?.split('T')[0] || null,
-          is_active: isActive,
-          progressive_discount_enabled: progressiveDiscountEnabled,
-          cover_image_url: coverImageUrl,
-          organization_id: organizerData.organizationType === 'organization' ? organizerData.organizationId : null,
-          photographer_percentage: organizerData.photographerPercentage,
-          organization_percentage: organizerData.organizationPercentage,
-          platform_percentage: platformPercentage,
-          applications_open: applicationsOpen,
-          
-          event_start_time: eventStartTime || null,
-          event_end_time: eventEndTime || null,
-          photo_price_display: priceAlreadySet ? campaignData.photo_price_display : (photoPriceDisplay ? parseFloat(photoPriceDisplay) : null),
-          available_slots: availableSlots ? parseInt(availableSlots) : null,
-        })
+        .update(updateData)
         .eq('id', campaignId);
 
       if (updateError) throw updateError;
@@ -403,17 +409,45 @@ const EditEventModal: React.FC<EditEventModalProps> = ({
             )}
           </TabsContent>
 
-          {/* Tab: Organizador */}
+          {/* Tab: Organizador - Only admins can change percentages */}
           <TabsContent value="organizer" className="space-y-4">
-            <OrganizerSelector
-              organizationType={organizerData.organizationType}
-              organizationId={organizerData.organizationId}
-              photographerPercentage={organizerData.photographerPercentage}
-              organizationPercentage={organizerData.organizationPercentage}
-              platformPercentage={platformPercentage}
-              organizations={organizations}
-              onChange={setOrganizerData}
-            />
+            {isPhotographer ? (
+              <div className="space-y-4">
+                <Alert>
+                  <Building2 className="h-4 w-4" />
+                  <AlertDescription>
+                    <p className="font-medium mb-2">Divisão de Receita (somente leitura)</p>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      As porcentagens são definidas pelo administrador e não podem ser alteradas pelo fotógrafo.
+                    </p>
+                    <div className="grid grid-cols-3 gap-2 text-sm">
+                      <div className="p-2 rounded bg-muted text-center">
+                        <p className="text-xs text-muted-foreground">Plataforma</p>
+                        <p className="font-bold">{platformPercentage}%</p>
+                      </div>
+                      <div className="p-2 rounded bg-muted text-center">
+                        <p className="text-xs text-muted-foreground">Fotógrafo</p>
+                        <p className="font-bold text-green-600">{organizerData.photographerPercentage}%</p>
+                      </div>
+                      <div className="p-2 rounded bg-muted text-center">
+                        <p className="text-xs text-muted-foreground">Organização</p>
+                        <p className="font-bold">{organizerData.organizationPercentage}%</p>
+                      </div>
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              </div>
+            ) : (
+              <OrganizerSelector
+                organizationType={organizerData.organizationType}
+                organizationId={organizerData.organizationId}
+                photographerPercentage={organizerData.photographerPercentage}
+                organizationPercentage={organizerData.organizationPercentage}
+                platformPercentage={platformPercentage}
+                organizations={organizations}
+                onChange={setOrganizerData}
+              />
+            )}
           </TabsContent>
 
           {/* Tab: Capa */}
