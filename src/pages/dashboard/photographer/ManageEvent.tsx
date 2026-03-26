@@ -22,10 +22,6 @@ import {
   Eye,
   EyeOff,
   Star,
-  Gift,
-  Search,
-  User,
-  Mail,
   Loader2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
