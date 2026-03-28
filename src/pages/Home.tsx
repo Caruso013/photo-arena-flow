@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Camera, Search, MapPin, Calendar, ArrowRight, Users, Trophy, Star, Sparkles, Building2 } from 'lucide-react';
+import { Camera, Search, MapPin, Calendar, ArrowRight, Star, Sparkles, Building2 } from 'lucide-react';
 import MainLayout from '@/components/layout/MainLayout';
 import { resilientQuery } from '@/lib/supabaseResilience';
 
@@ -30,12 +30,10 @@ interface Organization {
 }
 
 const Home = () => {
-  const { user } = useAuth();
   const navigate = useNavigate();
   const [featuredCampaigns, setFeaturedCampaigns] = useState<FeaturedCampaign[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({ events: 0, photos: 0, photographers: 0 });
 
   useEffect(() => {
     fetchData();
