@@ -41,7 +41,7 @@ const Home = () => {
   const fetchData = async () => {
     try {
       // Single batch: stats + campaigns + organizations
-      const [eventsCount, campaignsData, orgsData] = await Promise.all([
+      const [, campaignsData, orgsData] = await Promise.all([
         resilientQuery(
           () => supabase.from('campaigns').select('id', { count: 'exact', head: true }).eq('is_active', true),
           'home-events-count'
@@ -125,10 +125,8 @@ const Home = () => {
         ]);
 
         const countMap: Record<string, number> = {};
-        let totalPhotos = 0;
         (photoCounts.data || []).forEach((p: any) => {
           countMap[p.campaign_id] = (countMap[p.campaign_id] || 0) + 1;
-          totalPhotos++;
         });
 
         const photographerMap: Record<string, string> = {};
