@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getTransformedImageUrl } from '@/lib/supabaseImageTransform';
-import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Camera, Search, MapPin, Calendar, ArrowRight, Users, Trophy, Star, Sparkles, Building2 } from 'lucide-react';
+import { Camera, Search, MapPin, Calendar, ArrowRight, Star, Sparkles, Building2 } from 'lucide-react';
 import MainLayout from '@/components/layout/MainLayout';
 import { resilientQuery } from '@/lib/supabaseResilience';
 
@@ -30,12 +29,10 @@ interface Organization {
 }
 
 const Home = () => {
-  const { user } = useAuth();
   const navigate = useNavigate();
   const [featuredCampaigns, setFeaturedCampaigns] = useState<FeaturedCampaign[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({ events: 0, photos: 0, photographers: 0 });
 
   useEffect(() => {
     fetchData();
@@ -44,7 +41,7 @@ const Home = () => {
   const fetchData = async () => {
     try {
       // Single batch: stats + campaigns + organizations
-      const [eventsCount, campaignsData, orgsData] = await Promise.all([
+      const [, campaignsData, orgsData] = await Promise.all([
         resilientQuery(
           () => supabase.from('campaigns').select('id', { count: 'exact', head: true }).eq('is_active', true),
           'home-events-count'
@@ -68,11 +65,7 @@ const Home = () => {
         ),
       ]);
 
-      setStats({
-        events: eventsCount.count || 0,
-        photos: 0,
-        photographers: 0,
-      });
+      // eventsCount not needed for display anymore
 
       // Process organizations with event counts
       if (orgsData.data && orgsData.data.length > 0) {
@@ -132,10 +125,8 @@ const Home = () => {
         ]);
 
         const countMap: Record<string, number> = {};
-        let totalPhotos = 0;
         (photoCounts.data || []).forEach((p: any) => {
           countMap[p.campaign_id] = (countMap[p.campaign_id] || 0) + 1;
-          totalPhotos++;
         });
 
         const photographerMap: Record<string, string> = {};
@@ -148,11 +139,6 @@ const Home = () => {
           if (!coverMap[p.campaign_id]) coverMap[p.campaign_id] = p.watermarked_url;
         });
 
-        setStats(prev => ({
-          ...prev,
-          photos: totalPhotos,
-          photographers: photographerIds.length,
-        }));
 
         const campaignsWithDetails = campaigns.map(campaign => ({
           ...campaign,
@@ -214,40 +200,12 @@ const Home = () => {
             </div>
             
             <p className="text-sm text-muted-foreground">
-              Mais de {stats.photos.toLocaleString()} fotos disponíveis em {stats.events} eventos
+              Encontre suas fotos nos melhores eventos esportivos
             </p>
           </div>
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="py-16 bg-muted/30">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-            <Card className="text-center border-primary/20 hover:border-primary/40 transition-all">
-              <CardContent className="pt-8 pb-6">
-                <Trophy className="h-12 w-12 text-primary mx-auto mb-4" />
-                <div className="text-4xl font-bold mb-2 text-foreground">{stats.events}+</div>
-                <div className="text-muted-foreground font-medium">Eventos Realizados</div>
-              </CardContent>
-            </Card>
-            <Card className="text-center border-primary/20 hover:border-primary/40 transition-all">
-              <CardContent className="pt-8 pb-6">
-                <Camera className="h-12 w-12 text-primary mx-auto mb-4" />
-                <div className="text-4xl font-bold mb-2 text-foreground">{stats.photos.toLocaleString()}+</div>
-                <div className="text-muted-foreground font-medium">Fotos Disponíveis</div>
-              </CardContent>
-            </Card>
-            <Card className="text-center border-primary/20 hover:border-primary/40 transition-all">
-              <CardContent className="pt-8 pb-6">
-                <Users className="h-12 w-12 text-primary mx-auto mb-4" />
-                <div className="text-4xl font-bold mb-2 text-foreground">{stats.photographers}+</div>
-                <div className="text-muted-foreground font-medium">Fotógrafos</div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
 
       {/* Featured Events */}
       <section className="py-20">
