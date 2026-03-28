@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getTransformedImageUrl } from '@/lib/supabaseImageTransform';
-import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -66,11 +65,7 @@ const Home = () => {
         ),
       ]);
 
-      setStats({
-        events: eventsCount.count || 0,
-        photos: 0,
-        photographers: 0,
-      });
+      // eventsCount not needed for display anymore
 
       // Process organizations with event counts
       if (orgsData.data && orgsData.data.length > 0) {
@@ -146,11 +141,6 @@ const Home = () => {
           if (!coverMap[p.campaign_id]) coverMap[p.campaign_id] = p.watermarked_url;
         });
 
-        setStats(prev => ({
-          ...prev,
-          photos: totalPhotos,
-          photographers: photographerIds.length,
-        }));
 
         const campaignsWithDetails = campaigns.map(campaign => ({
           ...campaign,
