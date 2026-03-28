@@ -75,43 +75,56 @@ const OrganizerDashboard = () => {
 
       if (error) throw error;
 
-      const campaignsWithStats = await Promise.all(
-        (campaignsData || []).map(async (campaign) => {
-          const { count: photosCount } = await supabase
-            .from('photos')
-            .select('*', { count: 'exact', head: true })
-            .eq('campaign_id', campaign.id);
+      // Use revenue_shares for accurate financial data
+      const campaignIds = (campaignsData || []).map(c => c.id);
+      
+      if (campaignIds.length === 0) {
+        setCampaigns([]);
+        return;
+      }
 
-          const { data: photosInCampaign } = await supabase
-            .from('photos')
-            .select('id')
-            .eq('campaign_id', campaign.id);
+      // Fetch photo counts in batch
+      const { data: photoCountData } = await supabase
+        .from('photos')
+        .select('campaign_id')
+        .in('campaign_id', campaignIds)
+        .eq('is_available', true);
 
-          const photoIds = photosInCampaign?.map(p => p.id) || [];
+      const photoCountMap: Record<string, number> = {};
+      (photoCountData || []).forEach((p: any) => {
+        photoCountMap[p.campaign_id] = (photoCountMap[p.campaign_id] || 0) + 1;
+      });
 
-          let totalSales = 0;
-          if (photoIds.length > 0) {
-            const { data: purchasesData } = await supabase
-              .from('purchases')
-              .select('amount')
-              .in('photo_id', photoIds)
-              .eq('status', 'completed');
+      // Fetch revenue shares for all campaigns in batch
+      const { data: revenueData } = await supabase
+        .from('revenue_shares')
+        .select('organization_amount, photographer_amount, platform_amount, purchase_id, purchases!inner(photo_id, photos!inner(campaign_id))')
+        .in('organization_id', orgIds);
 
-            totalSales = purchasesData?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
-          }
+      // Group revenue by campaign
+      const revenueMap: Record<string, { org: number; photographer: number; total: number; count: number }> = {};
+      (revenueData || []).forEach((r: any) => {
+        const campaignId = r.purchases?.photos?.campaign_id;
+        if (!campaignId) return;
+        if (!revenueMap[campaignId]) {
+          revenueMap[campaignId] = { org: 0, photographer: 0, total: 0, count: 0 };
+        }
+        revenueMap[campaignId].org += Number(r.organization_amount);
+        revenueMap[campaignId].photographer += Number(r.photographer_amount);
+        revenueMap[campaignId].total += Number(r.organization_amount) + Number(r.photographer_amount) + Number(r.platform_amount);
+        revenueMap[campaignId].count += 1;
+      });
 
-          const organizationRevenue = totalSales * (campaign.organization_percentage / 100);
-          const photographerRevenue = totalSales - organizationRevenue;
-
-          return {
-            ...campaign,
-            photos_count: photosCount || 0,
-            total_sales: totalSales,
-            organization_revenue: organizationRevenue,
-            photographer_revenue: photographerRevenue
-          };
-        })
-      );
+      const campaignsWithStats = (campaignsData || []).map(campaign => {
+        const rev = revenueMap[campaign.id] || { org: 0, photographer: 0, total: 0, count: 0 };
+        return {
+          ...campaign,
+          photos_count: photoCountMap[campaign.id] || 0,
+          total_sales: rev.total,
+          organization_revenue: rev.org,
+          photographer_revenue: rev.photographer
+        };
+      });
 
       setCampaigns(campaignsWithStats);
     } catch (error) {
@@ -121,7 +134,6 @@ const OrganizerDashboard = () => {
 
   const fetchStats = async () => {
     try {
-      // Buscar organizações do usuário
       const { data: orgMemberships } = await supabase
         .from('organization_members')
         .select('organization_id')
@@ -131,12 +143,7 @@ const OrganizerDashboard = () => {
       const orgIds = orgMemberships?.map(m => m.organization_id) || [];
 
       if (orgIds.length === 0) {
-        setStats({
-          totalCampaigns: 0,
-          totalPhotos: 0,
-          totalRevenue: 0,
-          totalOrganizationRevenue: 0
-        });
+        setStats({ totalCampaigns: 0, totalPhotos: 0, totalRevenue: 0, totalOrganizationRevenue: 0 });
         return;
       }
 
@@ -147,7 +154,7 @@ const OrganizerDashboard = () => {
 
       const { data: campaignsData } = await supabase
         .from('campaigns')
-        .select('id, organization_percentage')
+        .select('id')
         .in('organization_id', orgIds);
 
       const campaignIds = campaignsData?.map(c => c.id) || [];
@@ -161,28 +168,36 @@ const OrganizerDashboard = () => {
         photosCount = count || 0;
       }
 
+      // Use revenue_shares for accurate totals
       let totalRevenue = 0;
       let organizationRevenue = 0;
 
-      for (const campaign of campaignsData || []) {
-        const { data: photosInCampaign } = await supabase
-          .from('photos')
-          .select('id')
-          .eq('campaign_id', campaign.id);
+      if (orgIds.length > 0) {
+        // Paginate revenue_shares
+        let allRevenue: any[] = [];
+        let page = 0;
+        const pageSize = 1000;
+        let hasMore = true;
 
-        const photoIds = photosInCampaign?.map(p => p.id) || [];
+        while (hasMore) {
+          const { data } = await supabase
+            .from('revenue_shares')
+            .select('organization_amount, photographer_amount, platform_amount')
+            .in('organization_id', orgIds)
+            .range(page * pageSize, (page + 1) * pageSize - 1);
 
-        if (photoIds.length > 0) {
-          const { data: purchasesData } = await supabase
-            .from('purchases')
-            .select('amount')
-            .in('photo_id', photoIds)
-            .eq('status', 'completed');
-
-          const salesForCampaign = purchasesData?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
-          totalRevenue += salesForCampaign;
-          organizationRevenue += salesForCampaign * (campaign.organization_percentage / 100);
+          if (data && data.length > 0) {
+            allRevenue = [...allRevenue, ...data];
+            page++;
+            hasMore = data.length === pageSize;
+          } else {
+            hasMore = false;
+          }
         }
+
+        totalRevenue = allRevenue.reduce((sum, r) => 
+          sum + Number(r.organization_amount) + Number(r.photographer_amount) + Number(r.platform_amount), 0);
+        organizationRevenue = allRevenue.reduce((sum, r) => sum + Number(r.organization_amount), 0);
       }
 
       setStats({
@@ -300,8 +315,8 @@ const OrganizerDashboard = () => {
                   {campaigns.map((campaign) => (
                     <TableRow key={campaign.id}>
                       <TableCell className="font-medium">{campaign.title}</TableCell>
-                      <TableCell>{new Date(campaign.event_date).toLocaleDateString()}</TableCell>
-                      <TableCell>{campaign.location}</TableCell>
+                      <TableCell>{campaign.event_date ? new Date(campaign.event_date).toLocaleDateString() : '-'}</TableCell>
+                      <TableCell>{campaign.location || '-'}</TableCell>
                       <TableCell className="text-center">
                         <Badge variant="outline">{campaign.photos_count}</Badge>
                       </TableCell>

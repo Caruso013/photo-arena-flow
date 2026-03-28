@@ -214,40 +214,12 @@ const Home = () => {
             </div>
             
             <p className="text-sm text-muted-foreground">
-              Mais de {stats.photos.toLocaleString()} fotos disponíveis em {stats.events} eventos
+              Encontre suas fotos nos melhores eventos esportivos
             </p>
           </div>
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="py-16 bg-muted/30">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-            <Card className="text-center border-primary/20 hover:border-primary/40 transition-all">
-              <CardContent className="pt-8 pb-6">
-                <Trophy className="h-12 w-12 text-primary mx-auto mb-4" />
-                <div className="text-4xl font-bold mb-2 text-foreground">{stats.events}+</div>
-                <div className="text-muted-foreground font-medium">Eventos Realizados</div>
-              </CardContent>
-            </Card>
-            <Card className="text-center border-primary/20 hover:border-primary/40 transition-all">
-              <CardContent className="pt-8 pb-6">
-                <Camera className="h-12 w-12 text-primary mx-auto mb-4" />
-                <div className="text-4xl font-bold mb-2 text-foreground">{stats.photos.toLocaleString()}+</div>
-                <div className="text-muted-foreground font-medium">Fotos Disponíveis</div>
-              </CardContent>
-            </Card>
-            <Card className="text-center border-primary/20 hover:border-primary/40 transition-all">
-              <CardContent className="pt-8 pb-6">
-                <Users className="h-12 w-12 text-primary mx-auto mb-4" />
-                <div className="text-4xl font-bold mb-2 text-foreground">{stats.photographers}+</div>
-                <div className="text-muted-foreground font-medium">Fotógrafos</div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
 
       {/* Featured Events */}
       <section className="py-20">
