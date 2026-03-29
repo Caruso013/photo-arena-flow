@@ -262,10 +262,12 @@ const OrganizationRevenue = () => {
       const photographerMap = new Map((photographersResult.data || []).map(p => [p.id, p.full_name]));
       const buyerMap = new Map((buyersResult.data || []).map(b => [b.id, b.full_name]));
 
-      // Processar todas as vendas
+      // Processar todas as vendas (usar data da compra para ciclos)
       const processedAllSales: SaleData[] = [];
       for (const sale of allSalesData || []) {
         const purchase = sale.purchases as any;
+        if (!purchase) continue; // Skip if no purchase (shouldn't happen with !inner)
+        
         const photographerName = sale.photographer_id 
           ? (photographerMap.get(sale.photographer_id) || 'Fotógrafo')
           : null;
@@ -283,7 +285,8 @@ const OrganizationRevenue = () => {
           id: sale.id,
           organization_amount: Number(sale.organization_amount),
           photographer_amount: Number(sale.photographer_amount),
-          created_at: sale.created_at,
+          // Usar data da compra (não do revenue_share) para agrupar em ciclos
+          created_at: purchase.created_at || sale.created_at,
           purchase_id: sale.purchase_id,
           photographer_name: photographerName,
           buyer_name: buyerName,
