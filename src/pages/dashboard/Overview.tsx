@@ -17,11 +17,7 @@ const Overview = () => {
     case 'organizer':
       return <OrganizerDashboard />;
     case 'organization':
-      return (
-        <DashboardLayout>
-          <OrganizationRevenue />
-        </DashboardLayout>
-      );
+      return <OrganizationRevenue />;
     case 'user':
     default:
       return <UserDashboard />;
