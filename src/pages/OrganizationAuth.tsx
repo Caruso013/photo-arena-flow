@@ -41,13 +41,15 @@ const OrganizationAuth = () => {
         return;
       }
 
+      // Aguardar um breve momento para garantir que o profile foi carregado
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       toast({
         title: "Login realizado com sucesso!",
         description: "Redirecionando para o dashboard...",
       });
 
-      // O redirecionamento será feito pelo DashboardLayout automaticamente
-      navigate('/dashboard');
+      navigate('/dashboard/organization/revenue');
     } catch (error) {
       console.error('Login error:', error);
       toast({

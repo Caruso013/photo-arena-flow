@@ -1,8 +1,17 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
 
+const ProfileTimeout = ({ onTimeout }: { onTimeout: () => void }) => {
+  useEffect(() => {
+    const timer = setTimeout(onTimeout, 10000); // 10 seconds
+    return () => clearTimeout(timer);
+  }, [onTimeout]);
+  return null;
+};
 const Dashboard = () => {
   const { user, profile, loading } = useAuth();
   const location = useLocation();
@@ -33,6 +42,10 @@ const Dashboard = () => {
           <p className="text-sm text-muted-foreground mt-2">
             Se isso demorar mais de alguns segundos, faça logout e entre novamente.
           </p>
+          <ProfileTimeout onTimeout={() => {
+            supabase.auth.signOut();
+            window.location.replace('/auth');
+          }} />
         </div>
       </div>
     );

@@ -4,7 +4,7 @@ import PhotographerDashboard from '@/components/dashboard/PhotographerDashboard'
 import AdminDashboard from '@/components/dashboard/AdminDashboard';
 import OrganizerDashboard from '@/components/dashboard/OrganizerDashboard';
 import OrganizationRevenue from '@/pages/dashboard/OrganizationRevenue';
-import DashboardLayout from '@/components/dashboard/DashboardLayout';
+
 
 const Overview = () => {
   const { profile } = useAuth();
@@ -17,11 +17,7 @@ const Overview = () => {
     case 'organizer':
       return <OrganizerDashboard />;
     case 'organization':
-      return (
-        <DashboardLayout>
-          <OrganizationRevenue />
-        </DashboardLayout>
-      );
+      return <OrganizationRevenue />;
     case 'user':
     default:
       return <UserDashboard />;
