@@ -33,6 +33,10 @@ const Dashboard = () => {
           <p className="text-sm text-muted-foreground mt-2">
             Se isso demorar mais de alguns segundos, faça logout e entre novamente.
           </p>
+          <ProfileTimeout onTimeout={() => {
+            supabase.auth.signOut();
+            window.location.replace('/auth');
+          }} />
         </div>
       </div>
     );
