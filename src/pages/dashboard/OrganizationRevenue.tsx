@@ -207,7 +207,7 @@ const OrganizationRevenue = () => {
 
       console.log('📊 Buscando dados da organização:', org.name, 'ID:', org.id);
 
-      // 2. Buscar TODAS as vendas COM PAGINAÇÃO
+      // 2. Buscar TODAS as vendas COM PAGINAÇÃO (apenas compras completed)
       const allSalesData = await fetchAllFromTable((from, to) =>
         supabase
           .from('revenue_shares')
@@ -219,8 +219,10 @@ const OrganizationRevenue = () => {
             created_at,
             purchase_id,
             photographer_id,
-            purchases (
+            purchases!inner (
               amount,
+              status,
+              created_at,
               buyer_id,
               photo_id,
               photos (
@@ -234,6 +236,8 @@ const OrganizationRevenue = () => {
             )
           `)
           .eq('organization_id', org.id)
+          .eq('purchases.status', 'completed')
+          .gt('organization_amount', 0)
           .order('created_at', { ascending: false })
           .range(from, to)
       );
