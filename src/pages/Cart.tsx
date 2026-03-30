@@ -65,7 +65,13 @@ const Cart = () => {
       return;
     }
 
-    // Segurança: bloquear qualquer tentativa de checkout com valor zerado
+    // Se o total é zero E há um cupom válido, processar compra gratuita
+    if (finalTotal <= 0 && appliedCoupon?.valid && appliedCoupon.coupon_id) {
+      await handleFreeCheckout();
+      return;
+    }
+
+    // Bloquear checkout com valor zero SEM cupom válido
     if (finalTotal <= 0) {
       toast({
         title: "Erro",
@@ -76,6 +82,57 @@ const Cart = () => {
     }
 
     setShowPayment(true);
+  };
+
+  const handleFreeCheckout = async () => {
+    if (!user || !appliedCoupon?.valid || !appliedCoupon.coupon_id) return;
+
+    setProcessingFree(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('mercadopago-checkout', {
+        body: {
+          action: 'free_purchase',
+          photos: items.map(item => ({
+            id: item.id,
+            title: item.title || 'Foto',
+            price: item.price,
+          })),
+          buyer: { email: user.email },
+          coupon: {
+            coupon_id: appliedCoupon.coupon_id,
+            code: appliedCoupon.code,
+            amount: appliedCoupon.discount_amount,
+          },
+          discount: progressiveDiscountPercent > 0 ? {
+            percentage: progressiveDiscountPercent,
+            amount: progressiveDiscountAmount,
+          } : null,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        toast({
+          title: "Compra realizada com sucesso! 🎉",
+          description: "Suas fotos foram liberadas gratuitamente com o cupom aplicado.",
+        });
+        clearCart();
+        setAppliedCoupon(null);
+        navigate('/checkout/sucesso');
+      } else {
+        throw new Error(data?.error || 'Erro ao processar compra gratuita');
+      }
+    } catch (error: any) {
+      console.error('Erro no checkout gratuito:', error);
+      toast({
+        title: "Erro ao processar",
+        description: error.message || "Não foi possível processar a compra gratuita. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setProcessingFree(false);
+    }
   };
 
   const handleContinueShopping = () => {
