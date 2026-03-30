@@ -200,6 +200,153 @@ serve(async (req) => {
       });
     }
 
+    // ===== AÇÃO: COMPRA GRATUITA COM CUPOM =====
+    if (action === 'free_purchase') {
+      console.log('🎁 Processando compra gratuita com cupom...');
+
+      if (!photos || !Array.isArray(photos) || photos.length === 0) {
+        return errorResponse('Nenhuma foto selecionada', 400);
+      }
+
+      if (!buyerId) {
+        return errorResponse('Sessão expirada. Faça login novamente.', 401);
+      }
+
+      if (!coupon?.coupon_id || !coupon?.code) {
+        return errorResponse('Cupom obrigatório para compra gratuita', 400);
+      }
+
+      // Buscar preços reais das fotos
+      const freePhotoIds = photos.map((p: any) => p.id);
+      const { data: freeDbPhotos, error: freeDbError } = await supabaseAdmin
+        .from('photos')
+        .select('id, price, campaign_id, photographer_id')
+        .in('id', freePhotoIds);
+
+      if (freeDbError || !freeDbPhotos || freeDbPhotos.length === 0) {
+        return errorResponse('Fotos não encontradas', 400);
+      }
+
+      const freeSubtotal = freeDbPhotos.reduce((sum: number, p: any) => sum + (Number(p.price) || 0), 0);
+      const freePhotoCount = freeDbPhotos.length;
+
+      if (freeSubtotal <= 0) {
+        return errorResponse('Valor das fotos inválido', 400);
+      }
+
+      // Calcular desconto progressivo server-side
+      const freeCampaignIds = [...new Set(freeDbPhotos.map((p: any) => p.campaign_id))];
+      const { data: freeCampaigns } = await supabaseAdmin
+        .from('campaigns')
+        .select('id, progressive_discount_enabled')
+        .in('id', freeCampaignIds);
+
+      const freeAllDiscount = freeCampaigns?.every((c: any) => c.progressive_discount_enabled !== false) ?? false;
+      let freeProgressivePercent = 0;
+      if (freeAllDiscount) {
+        if (freePhotoCount >= 5 && freePhotoCount <= 10) freeProgressivePercent = 5;
+        else if (freePhotoCount >= 11 && freePhotoCount <= 20) freeProgressivePercent = 10;
+        else if (freePhotoCount > 20) freeProgressivePercent = 15;
+      }
+
+      const freeProgressiveAmount = Number((freeSubtotal * freeProgressivePercent / 100).toFixed(2));
+      const freeSubtotalAfterProg = freeSubtotal - freeProgressiveAmount;
+
+      // Validar cupom server-side
+      const { data: freeCouponValidation } = await supabaseAdmin
+        .rpc('validate_coupon', {
+          p_code: coupon.code,
+          p_user_id: buyerId,
+          p_purchase_amount: freeSubtotalAfterProg,
+        });
+
+      if (!freeCouponValidation || freeCouponValidation.length === 0 || !freeCouponValidation[0].valid) {
+        return errorResponse('Cupom inválido ou expirado', 400);
+      }
+
+      const freeCouponDiscount = Number(freeCouponValidation[0].discount_amount) || 0;
+      const freeCouponId = freeCouponValidation[0].coupon_id;
+      const freeFinalTotal = Number((freeSubtotalAfterProg - freeCouponDiscount).toFixed(2));
+
+      // SEGURANÇA: o cupom DEVE cobrir 100% do valor
+      if (freeFinalTotal > 0) {
+        console.error('🚨 BLOQUEADO: cupom não cobre 100% do valor para compra gratuita', {
+          freeSubtotalAfterProg, freeCouponDiscount, freeFinalTotal, buyerId,
+        });
+        return errorResponse('O cupom não cobre o valor total. Use o checkout normal.', 400);
+      }
+
+      console.log('✅ Cupom cobre 100%:', { freeSubtotal, freeProgressiveAmount, freeSubtotalAfterProg, freeCouponDiscount });
+
+      // Criar purchases como completed (service role bypassa RLS)
+      const freePurchaseIds: string[] = [];
+      const freeExternalRef = `free_coupon_${Date.now().toString(36)}_${buyerId.slice(0, 8)}`;
+
+      for (const freePhoto of freeDbPhotos) {
+        const { data: freePurchase, error: freePurchaseError } = await supabaseAdmin
+          .from('purchases')
+          .insert({
+            photo_id: freePhoto.id,
+            buyer_id: buyerId,
+            photographer_id: freePhoto.photographer_id,
+            amount: 0.01, // Mínimo simbólico para triggers funcionarem
+            status: 'completed',
+            stripe_payment_intent_id: freeExternalRef,
+            progressive_discount_percentage: freeProgressivePercent,
+            progressive_discount_amount: Number(freePhoto.price) || 0,
+          })
+          .select()
+          .single();
+
+        if (freePurchaseError) {
+          console.error('❌ Erro ao criar purchase gratuita:', freePurchaseError);
+          continue;
+        }
+
+        freePurchaseIds.push(freePurchase.id);
+        console.log(`🎁 Purchase gratuita criada: foto ${freePhoto.id}`);
+      }
+
+      if (freePurchaseIds.length === 0) {
+        return errorResponse('Não foi possível processar as fotos', 500);
+      }
+
+      // Registrar uso do cupom
+      for (const fpId of freePurchaseIds) {
+        await supabaseAdmin
+          .from('coupon_uses')
+          .insert({
+            coupon_id: freeCouponId,
+            user_id: buyerId,
+            purchase_id: fpId,
+            original_amount: freeSubtotal / freePhotoCount,
+            discount_amount: freeCouponDiscount / freePhotoCount,
+            final_amount: 0,
+          });
+      }
+
+      // Incrementar uso do cupom
+      await supabaseAdmin
+        .from('coupons')
+        .update({ 
+          current_uses: (await supabaseAdmin.from('coupons').select('current_uses').eq('id', freeCouponId).single()).data?.current_uses + 1 || 1,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', freeCouponId);
+
+      console.log('🎉 Compra gratuita concluída:', { purchaseIds: freePurchaseIds, couponId: freeCouponId });
+
+      return new Response(JSON.stringify({
+        success: true,
+        purchaseIds: freePurchaseIds,
+        purchase_ids: freePurchaseIds,
+        status: 'approved',
+        free: true,
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // ===== VALIDAÇÕES COMUNS =====
     if (!photos || !Array.isArray(photos) || photos.length === 0) {
       return errorResponse('Nenhuma foto selecionada', 400);
