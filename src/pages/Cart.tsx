@@ -17,6 +17,7 @@ import AntiScreenshotProtection from "@/components/security/AntiScreenshotProtec
 import WatermarkedPhoto from "@/components/WatermarkedPhoto";
 import { useHapticFeedback } from "@/hooks/useHapticFeedback";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const Cart = () => {
   const navigate = useNavigate();
