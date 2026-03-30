@@ -1,0 +1,1 @@
+UPDATE profiles SET is_banned = false WHERE id = 'd5018414-4ca6-49dc-8963-3ac2a6c8f3ba';
