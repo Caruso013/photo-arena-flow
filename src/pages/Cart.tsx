@@ -27,6 +27,7 @@ const Cart = () => {
   const { items, removeFromCart, clearCart, totalItems, totalPrice } = useCart();
   const [showPayment, setShowPayment] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState<CouponValidationResult | null>(null);
+  const [processingFree, setProcessingFree] = useState(false);
 
   // Calcular desconto progressivo
   // IMPORTANTE: Se pelo menos UMA foto do carrinho tem desconto progressivo habilitado,
