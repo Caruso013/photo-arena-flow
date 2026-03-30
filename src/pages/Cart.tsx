@@ -425,9 +425,24 @@ const Cart = () => {
             }}
             className="w-full min-h-[48px]" 
             size="lg"
+            disabled={processingFree}
           >
-            <ShoppingBag className="h-5 w-5 mr-2" />
-            Finalizar Compra
+            {processingFree ? (
+              <>
+                <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                Processando...
+              </>
+            ) : finalTotal <= 0 && appliedCoupon?.valid ? (
+              <>
+                <ShoppingBag className="h-5 w-5 mr-2" />
+                Resgatar com Cupom (Grátis)
+              </>
+            ) : (
+              <>
+                <ShoppingBag className="h-5 w-5 mr-2" />
+                Finalizar Compra
+              </>
+            )}
           </Button>
         </div>
       </div>
