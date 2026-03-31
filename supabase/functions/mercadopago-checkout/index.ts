@@ -325,14 +325,7 @@ serve(async (req) => {
           });
       }
 
-      // Incrementar uso do cupom
-      await supabaseAdmin
-        .from('coupons')
-        .update({ 
-          current_uses: (await supabaseAdmin.from('coupons').select('current_uses').eq('id', freeCouponId).single()).data?.current_uses + 1 || 1,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', freeCouponId);
+      // O trigger 'increment_coupon_usage' no coupon_uses já incrementa current_uses automaticamente
 
       console.log('🎉 Compra gratuita concluída:', { purchaseIds: freePurchaseIds, couponId: freeCouponId });
 
