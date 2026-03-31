@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ShoppingCart, ArrowLeft, Trash2, ShoppingBag } from "lucide-react";
+import { ShoppingCart, ArrowLeft, Trash2, ShoppingBag, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -17,6 +17,7 @@ import AntiScreenshotProtection from "@/components/security/AntiScreenshotProtec
 import WatermarkedPhoto from "@/components/WatermarkedPhoto";
 import { useHapticFeedback } from "@/hooks/useHapticFeedback";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const Cart = () => {
   const navigate = useNavigate();
@@ -26,6 +27,7 @@ const Cart = () => {
   const { items, removeFromCart, clearCart, totalItems, totalPrice } = useCart();
   const [showPayment, setShowPayment] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState<CouponValidationResult | null>(null);
+  const [processingFree, setProcessingFree] = useState(false);
 
   // Calcular desconto progressivo
   // IMPORTANTE: Se pelo menos UMA foto do carrinho tem desconto progressivo habilitado,
@@ -63,7 +65,13 @@ const Cart = () => {
       return;
     }
 
-    // Segurança: bloquear qualquer tentativa de checkout com valor zerado
+    // Se o total é zero E há um cupom válido, processar compra gratuita
+    if (finalTotal <= 0 && appliedCoupon?.valid && appliedCoupon.coupon_id) {
+      await handleFreeCheckout();
+      return;
+    }
+
+    // Bloquear checkout com valor zero SEM cupom válido
     if (finalTotal <= 0) {
       toast({
         title: "Erro",
@@ -74,6 +82,57 @@ const Cart = () => {
     }
 
     setShowPayment(true);
+  };
+
+  const handleFreeCheckout = async () => {
+    if (!user || !appliedCoupon?.valid || !appliedCoupon.coupon_id) return;
+
+    setProcessingFree(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('mercadopago-checkout', {
+        body: {
+          action: 'free_purchase',
+          photos: items.map(item => ({
+            id: item.id,
+            title: item.title || 'Foto',
+            price: item.price,
+          })),
+          buyer: { email: user.email },
+          coupon: {
+            coupon_id: appliedCoupon.coupon_id,
+            code: appliedCoupon.code,
+            amount: appliedCoupon.discount_amount,
+          },
+          discount: progressiveDiscountPercent > 0 ? {
+            percentage: progressiveDiscountPercent,
+            amount: progressiveDiscountAmount,
+          } : null,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        toast({
+          title: "Compra realizada com sucesso! 🎉",
+          description: "Suas fotos foram liberadas gratuitamente com o cupom aplicado.",
+        });
+        clearCart();
+        setAppliedCoupon(null);
+        navigate('/checkout/sucesso');
+      } else {
+        throw new Error(data?.error || 'Erro ao processar compra gratuita');
+      }
+    } catch (error: any) {
+      console.error('Erro no checkout gratuito:', error);
+      toast({
+        title: "Erro ao processar",
+        description: error.message || "Não foi possível processar a compra gratuita. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setProcessingFree(false);
+    }
   };
 
   const handleContinueShopping = () => {
@@ -289,9 +348,24 @@ const Cart = () => {
                   }}
                   className="w-full min-h-[44px]" 
                   size="lg"
+                  disabled={processingFree}
                 >
-                  <ShoppingBag className="h-5 w-5 mr-2" />
-                  Finalizar Compra
+                  {processingFree ? (
+                    <>
+                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                      Processando...
+                    </>
+                  ) : finalTotal <= 0 && appliedCoupon?.valid ? (
+                    <>
+                      <ShoppingBag className="h-5 w-5 mr-2" />
+                      Resgatar com Cupom (Grátis)
+                    </>
+                  ) : (
+                    <>
+                      <ShoppingBag className="h-5 w-5 mr-2" />
+                      Finalizar Compra
+                    </>
+                  )}
                 </Button>
 
                 <Button 
@@ -351,9 +425,24 @@ const Cart = () => {
             }}
             className="w-full min-h-[48px]" 
             size="lg"
+            disabled={processingFree}
           >
-            <ShoppingBag className="h-5 w-5 mr-2" />
-            Finalizar Compra
+            {processingFree ? (
+              <>
+                <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                Processando...
+              </>
+            ) : finalTotal <= 0 && appliedCoupon?.valid ? (
+              <>
+                <ShoppingBag className="h-5 w-5 mr-2" />
+                Resgatar com Cupom (Grátis)
+              </>
+            ) : (
+              <>
+                <ShoppingBag className="h-5 w-5 mr-2" />
+                Finalizar Compra
+              </>
+            )}
           </Button>
         </div>
       </div>
