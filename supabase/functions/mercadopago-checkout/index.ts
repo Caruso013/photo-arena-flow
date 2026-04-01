@@ -203,12 +203,14 @@ serve(async (req) => {
     // ===== AÇÃO: COMPRA GRATUITA COM CUPOM =====
     if (action === 'free_purchase') {
       console.log('🎁 Processando compra gratuita com cupom...');
+      console.log('🎁 buyerId:', buyerId, '| coupon:', JSON.stringify(coupon));
 
       if (!photos || !Array.isArray(photos) || photos.length === 0) {
         return errorResponse('Nenhuma foto selecionada', 400);
       }
 
       if (!buyerId) {
+        console.error('🚨 free_purchase sem buyerId! Auth header presente:', !!authHeader);
         return errorResponse('Sessão expirada. Faça login novamente.', 401);
       }
 
@@ -261,6 +263,7 @@ serve(async (req) => {
         });
 
       if (!freeCouponValidation || freeCouponValidation.length === 0 || !freeCouponValidation[0].valid) {
+        console.error('🚨 Cupom inválido:', JSON.stringify(freeCouponValidation));
         return errorResponse('Cupom inválido ou expirado', 400);
       }
 
@@ -300,6 +303,7 @@ serve(async (req) => {
 
         if (freePurchaseError) {
           console.error('❌ Erro ao criar purchase gratuita:', freePurchaseError);
+          console.error('❌ Detalhe:', JSON.stringify(freePurchaseError));
           continue;
         }
 
