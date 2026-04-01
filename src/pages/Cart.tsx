@@ -87,6 +87,17 @@ const Cart = () => {
   const handleFreeCheckout = async () => {
     if (!user || !appliedCoupon?.valid || !appliedCoupon.coupon_id) return;
 
+    // Verificar sessão antes de chamar
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      toast({
+        title: "Sessão expirada",
+        description: "Faça login novamente para resgatar com cupom.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setProcessingFree(true);
     try {
       const { data, error } = await supabase.functions.invoke('mercadopago-checkout', {
@@ -112,22 +123,25 @@ const Cart = () => {
 
       if (error) throw error;
 
-      if (data?.success) {
+      if (data?.success || data?.status === 'approved') {
         toast({
           title: "Compra realizada com sucesso! 🎉",
           description: "Suas fotos foram liberadas gratuitamente com o cupom aplicado.",
         });
         clearCart();
         setAppliedCoupon(null);
-        navigate('/checkout/sucesso');
+        navigate('/checkout/sucesso', { state: { purchaseIds: data?.purchaseIds || data?.purchase_ids } });
       } else {
         throw new Error(data?.error || 'Erro ao processar compra gratuita');
       }
     } catch (error: any) {
       console.error('Erro no checkout gratuito:', error);
+      const msg = error?.context?.body
+        ? (typeof error.context.body === 'string' ? error.context.body : JSON.stringify(error.context.body))
+        : error.message;
       toast({
         title: "Erro ao processar",
-        description: error.message || "Não foi possível processar a compra gratuita. Tente novamente.",
+        description: msg || "Não foi possível processar a compra gratuita. Tente novamente.",
         variant: "destructive",
       });
     } finally {
