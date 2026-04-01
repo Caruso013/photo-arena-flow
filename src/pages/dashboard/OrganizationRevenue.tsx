@@ -95,9 +95,21 @@ const OrganizationRevenue = () => {
   const [selectedCycle, setSelectedCycle] = useState<string>('0');
 
   useEffect(() => {
-    if (user && profile?.role === 'organization') {
-      fetchOrganizationData();
+    if (!user) {
+      setLoading(false);
+      return;
     }
+
+    if (!profile) {
+      return;
+    }
+
+    if (profile.role !== 'organization') {
+      setLoading(false);
+      return;
+    }
+
+    fetchOrganizationData();
   }, [user, profile]);
 
   const calculateCycles = (): Omit<CycleData, 'sales'>[] => {
@@ -409,6 +421,20 @@ const OrganizationRevenue = () => {
           <Building2 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-6 w-6 text-primary" />
         </div>
         <p className="text-muted-foreground animate-pulse">Carregando dados da organização...</p>
+      </div>
+    );
+  }
+
+  if (profile && profile.role !== 'organization') {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-4">
+        <div className="p-6 rounded-full bg-destructive/10">
+          <Building2 className="h-12 w-12 text-destructive" />
+        </div>
+        <h2 className="text-2xl font-bold">Acesso restrito</h2>
+        <p className="text-muted-foreground text-center max-w-md">
+          Esta área é exclusiva para contas de organização.
+        </p>
       </div>
     );
   }
