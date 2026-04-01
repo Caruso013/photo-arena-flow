@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -10,10 +10,53 @@ import { Building2 } from 'lucide-react';
 
 const OrganizationAuth = () => {
   const navigate = useNavigate();
-  const { signIn } = useAuth();
+  const { signIn, user, profile, loading: authLoading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [pendingRedirect, setPendingRedirect] = useState(false);
+
+  useEffect(() => {
+    if (!pendingRedirect || authLoading || !user || !profile) {
+      return;
+    }
+
+    if (profile.role !== 'organization') {
+      toast({
+        title: 'Acesso redirecionado',
+        description: 'Esta conta não está vinculada ao dashboard de organização.',
+        variant: 'destructive',
+      });
+      setLoading(false);
+      setPendingRedirect(false);
+      navigate('/dashboard', { replace: true });
+      return;
+    }
+
+    toast({
+      title: 'Login realizado com sucesso!',
+      description: 'Redirecionando para o dashboard...',
+    });
+    navigate('/dashboard/organization/revenue', { replace: true });
+  }, [pendingRedirect, authLoading, user, profile, navigate]);
+
+  useEffect(() => {
+    if (!pendingRedirect || authLoading || !user || profile) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      toast({
+        title: 'Perfil não carregado',
+        description: 'Não foi possível validar a conta da organização. Tente novamente.',
+        variant: 'destructive',
+      });
+      setLoading(false);
+      setPendingRedirect(false);
+    }, 4000);
+
+    return () => window.clearTimeout(timer);
+  }, [pendingRedirect, authLoading, user, profile]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,6 +71,7 @@ const OrganizationAuth = () => {
     }
 
     setLoading(true);
+    setPendingRedirect(false);
 
     try {
       const { error } = await signIn(email, password.trim());
@@ -38,18 +82,11 @@ const OrganizationAuth = () => {
           description: "Verifique suas credenciais e tente novamente.",
           variant: "destructive",
         });
+        setLoading(false);
         return;
       }
 
-      // Aguardar um breve momento para garantir que o profile foi carregado
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      toast({
-        title: "Login realizado com sucesso!",
-        description: "Redirecionando para o dashboard...",
-      });
-
-      navigate('/dashboard/organization/revenue');
+      setPendingRedirect(true);
     } catch (error) {
       console.error('Login error:', error);
       toast({
@@ -57,7 +94,6 @@ const OrganizationAuth = () => {
         description: "Ocorreu um erro ao fazer login. Tente novamente.",
         variant: "destructive",
       });
-    } finally {
       setLoading(false);
     }
   };
@@ -117,7 +153,7 @@ const OrganizationAuth = () => {
             <Button
               type="submit"
               className="w-full"
-              disabled={loading}
+              disabled={loading || authLoading}
             >
               {loading ? (
                 <>
