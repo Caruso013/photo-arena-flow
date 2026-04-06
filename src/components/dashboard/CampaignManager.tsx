@@ -233,6 +233,9 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({
                           <span className="text-xs text-muted-foreground">Inscrições</span>
                         </div>
                         <div className="flex-1" />
+                        <Button size="sm" variant="outline" className="h-8 gap-1 text-xs" onClick={() => navigate(`/dashboard/photographer/manage-event/${campaign.id}`)}>
+                          <Camera className="h-3.5 w-3.5" />Gerenciar
+                        </Button>
                         <Button size="sm" variant="outline" className="h-8 gap-1 text-xs" onClick={() => navigate(`/dashboard/admin/events/${campaign.id}/attendance`)}>
                           <ClipboardList className="h-3.5 w-3.5" />Presença
                         </Button>

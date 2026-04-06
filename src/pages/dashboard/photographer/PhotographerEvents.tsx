@@ -330,6 +330,12 @@ const PhotographerEvents = () => {
                     <Image className="h-4 w-4" />
                     <span>{campaign.photo_count || 0} fotos</span>
                   </div>
+                  {(campaign.revenue ?? 0) > 0 && (
+                    <div className="flex items-center gap-2 text-green-600 dark:text-green-400 font-medium">
+                      <DollarSign className="h-4 w-4" />
+                      <span>{formatCurrency(campaign.revenue!)} ({campaign.sales_count} venda{campaign.sales_count !== 1 ? 's' : ''})</span>
+                    </div>
+                  )}
                 </div>
               </CardHeader>
               <CardContent className="flex flex-col gap-3">
