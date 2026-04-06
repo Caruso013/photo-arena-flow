@@ -318,39 +318,49 @@ const Home = () => {
         <section className="py-20 bg-muted/30">
           <div className="container mx-auto px-4">
             <div className="text-center mb-12">
+              <Badge variant="outline" className="mb-4 px-4 py-1 text-sm font-medium border-primary/30 text-primary">
+                <Building2 className="h-3.5 w-3.5 mr-1.5" />
+                Parceiros Oficiais
+              </Badge>
               <h2 className="text-3xl md:text-4xl font-bold mb-4 text-foreground">Organizações</h2>
-              <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
                 Confira os eventos das organizações parceiras
               </p>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {organizations.map((org) => (
                 <Card 
                   key={org.id}
-                  className="overflow-hidden hover:shadow-lg transition-all duration-300 cursor-pointer group border-border/50 hover:border-primary/40"
+                  className="overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer group border-border/50 hover:border-primary/40 hover:-translate-y-1"
                   onClick={() => navigate(`/events?org=${org.id}`)}
                 >
-                  <CardContent className="p-6 text-center flex flex-col items-center gap-3">
-                    {org.logo_url ? (
-                      <img 
-                        src={org.logo_url} 
-                        alt={org.name} 
-                        className="h-16 w-16 rounded-full object-cover border-2 border-border group-hover:border-primary/50 transition-colors"
-                      />
-                    ) : (
-                      <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                        <Building2 className="h-8 w-8 text-primary" />
-                      </div>
-                    )}
-                    <div>
-                      <h3 className="font-semibold text-sm text-foreground group-hover:text-primary transition-colors line-clamp-2">
-                        {org.name}
-                      </h3>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {org.event_count} {org.event_count === 1 ? 'evento' : 'eventos'}
-                      </p>
+                  <div className="h-24 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent relative overflow-hidden">
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_30%,hsl(var(--primary)/0.15),transparent_50%)]" />
+                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2">
+                      {org.logo_url ? (
+                        <img 
+                          src={org.logo_url} 
+                          alt={org.name} 
+                          className="h-20 w-20 rounded-2xl object-cover border-4 border-background shadow-lg group-hover:shadow-xl transition-shadow"
+                        />
+                      ) : (
+                        <div className="h-20 w-20 rounded-2xl bg-background border-4 border-background shadow-lg flex items-center justify-center group-hover:shadow-xl transition-shadow">
+                          <Building2 className="h-9 w-9 text-primary" />
+                        </div>
+                      )}
                     </div>
+                  </div>
+                  <CardContent className="pt-14 pb-6 text-center">
+                    <h3 className="font-bold text-base text-foreground group-hover:text-primary transition-colors line-clamp-2 mb-2">
+                      {org.name}
+                    </h3>
+                    {org.description && (
+                      <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{org.description}</p>
+                    )}
+                    <Badge variant="secondary" className="text-xs">
+                      {org.event_count} {org.event_count === 1 ? 'evento' : 'eventos'}
+                    </Badge>
                   </CardContent>
                 </Card>
               ))}
