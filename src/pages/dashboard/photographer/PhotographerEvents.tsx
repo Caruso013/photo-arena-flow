@@ -2,13 +2,15 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, MapPin, Image, Trash2, Plus, Settings, Link2 } from 'lucide-react';
+import { Calendar, MapPin, Image, Trash2, Plus, Settings, Link2, DollarSign, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
 import { SkeletonCard } from '@/components/ui/skeleton-card';
 import { useToast } from '@/hooks/use-toast';
 import CreateEventDialog from '@/components/modals/CreateEventDialog';
 import { copyShareLink } from '@/lib/shareUtils';
+import { formatCurrency } from '@/lib/utils';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,6 +32,8 @@ interface Campaign {
   location: string;
   cover_image_url: string;
   photo_count?: number;
+  revenue?: number;
+  sales_count?: number;
 }
 
 const PhotographerEvents = () => {
