@@ -20,6 +20,7 @@ interface SaleRecord {
   photographer_id: string;
   progressive_discount_amount: number | null;
   photo_title: string | null;
+  photo_original_url: string | null;
   campaign_title: string;
   campaign_id: string;
   buyer_name: string;
@@ -82,7 +83,7 @@ export const EventSalesManager = () => {
       setHasMore(purchases.length === PAGE_SIZE);
 
       const photoIds = [...new Set(purchases.map(p => p.photo_id))];
-      const { data: photos } = await supabase.from('photos').select('id, title, campaign_id').in('id', photoIds);
+      const { data: photos } = await supabase.from('photos').select('id, title, campaign_id, original_url').in('id', photoIds);
 
       const campaignIds = [...new Set((photos || []).map(p => p.campaign_id))];
       const { data: campaignsData } = await supabase.from('campaigns').select('id, title').in('id', campaignIds);
@@ -107,6 +108,7 @@ export const EventSalesManager = () => {
           photographer_id: p.photographer_id,
           progressive_discount_amount: p.progressive_discount_amount,
           photo_title: photo?.title || '—',
+          photo_original_url: photo?.original_url || null,
           campaign_title: campaign?.title || '—',
           campaign_id: photo?.campaign_id || '',
           buyer_name: buyer?.full_name || buyer?.email || 'Desconhecido',
