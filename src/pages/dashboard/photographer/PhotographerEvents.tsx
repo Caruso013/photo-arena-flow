@@ -104,6 +104,57 @@ const PhotographerEvents = () => {
         ...campaign,
         photo_count: campaign.photos?.[0]?.count || 0
       }));
+
+      // Fetch revenue data for each campaign
+      const campaignIds = campaignsWithCount.map(c => c.id);
+      if (campaignIds.length > 0) {
+        const { data: revenueData } = await supabase
+          .from('revenue_shares')
+          .select('photographer_amount, purchase_id')
+          .eq('photographer_id', user!.id)
+          .in('purchase_id', 
+            (await supabase
+              .from('purchases')
+              .select('id, photo_id')
+              .eq('status', 'completed')
+              .eq('photographer_id', user!.id)
+            ).data?.map(p => p.id) || []
+          );
+
+        // Get photo->campaign mapping
+        const { data: photosCampaignMap } = await supabase
+          .from('photos')
+          .select('id, campaign_id')
+          .in('campaign_id', campaignIds);
+
+        const { data: purchasesData } = await supabase
+          .from('purchases')
+          .select('id, photo_id')
+          .eq('status', 'completed')
+          .eq('photographer_id', user!.id);
+
+        const photoToCampaign = new Map((photosCampaignMap || []).map(p => [p.id, p.campaign_id]));
+        const purchaseToPhoto = new Map((purchasesData || []).map(p => [p.id, p.photo_id]));
+        
+        const revenueMap: Record<string, { amount: number; count: number }> = {};
+        (revenueData || []).forEach(rs => {
+          const photoId = purchaseToPhoto.get(rs.purchase_id);
+          const campaignId = photoId ? photoToCampaign.get(photoId) : null;
+          if (campaignId) {
+            if (!revenueMap[campaignId]) revenueMap[campaignId] = { amount: 0, count: 0 };
+            revenueMap[campaignId].amount += Number(rs.photographer_amount);
+            revenueMap[campaignId].count += 1;
+          }
+        });
+
+        campaignsWithCount.forEach(c => {
+          const rev = revenueMap[c.id];
+          if (rev) {
+            c.revenue = rev.amount;
+            c.sales_count = rev.count;
+          }
+        });
+      }
       
       setCampaigns(campaignsWithCount);
     } catch (error) {
