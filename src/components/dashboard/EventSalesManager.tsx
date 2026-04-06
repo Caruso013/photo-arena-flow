@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Search } from 'lucide-react';
+import { Loader2, Search, Download } from 'lucide-react';
+import { getSignedPhotoUrl } from '@/lib/photoDownload';
 
 interface SaleRecord {
   id: string;
@@ -19,6 +20,7 @@ interface SaleRecord {
   photographer_id: string;
   progressive_discount_amount: number | null;
   photo_title: string | null;
+  photo_original_url: string | null;
   campaign_title: string;
   campaign_id: string;
   buyer_name: string;
@@ -81,7 +83,7 @@ export const EventSalesManager = () => {
       setHasMore(purchases.length === PAGE_SIZE);
 
       const photoIds = [...new Set(purchases.map(p => p.photo_id))];
-      const { data: photos } = await supabase.from('photos').select('id, title, campaign_id').in('id', photoIds);
+      const { data: photos } = await supabase.from('photos').select('id, title, campaign_id, original_url').in('id', photoIds);
 
       const campaignIds = [...new Set((photos || []).map(p => p.campaign_id))];
       const { data: campaignsData } = await supabase.from('campaigns').select('id, title').in('id', campaignIds);
@@ -106,6 +108,7 @@ export const EventSalesManager = () => {
           photographer_id: p.photographer_id,
           progressive_discount_amount: p.progressive_discount_amount,
           photo_title: photo?.title || '—',
+          photo_original_url: photo?.original_url || null,
           campaign_title: campaign?.title || '—',
           campaign_id: photo?.campaign_id || '',
           buyer_name: buyer?.full_name || buyer?.email || 'Desconhecido',
@@ -198,7 +201,7 @@ export const EventSalesManager = () => {
           <>
             <div className="overflow-x-auto">
               <Table>
-                <TableHeader>
+                 <TableHeader>
                   <TableRow>
                     <TableHead>Evento</TableHead>
                     <TableHead>Foto</TableHead>
@@ -206,6 +209,7 @@ export const EventSalesManager = () => {
                     <TableHead>Fotógrafo</TableHead>
                     <TableHead className="text-right">Valor</TableHead>
                     <TableHead>Data</TableHead>
+                    <TableHead className="text-center">Baixar</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -225,6 +229,28 @@ export const EventSalesManager = () => {
                       </TableCell>
                       <TableCell className="whitespace-nowrap">
                         {new Date(sale.created_at).toLocaleDateString('pt-BR')}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 w-8 p-0"
+                          title="Baixar foto original"
+                          onClick={async () => {
+                            if (!sale.photo_original_url) {
+                              toast({ title: 'Foto original não encontrada', variant: 'destructive' });
+                              return;
+                            }
+                            const url = await getSignedPhotoUrl(sale.photo_original_url);
+                            if (url) {
+                              window.open(url, '_blank');
+                            } else {
+                              toast({ title: 'Erro ao gerar link de download', variant: 'destructive' });
+                            }
+                          }}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}

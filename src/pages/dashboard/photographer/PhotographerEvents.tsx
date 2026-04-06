@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, MapPin, Image, Trash2, Plus, Settings, Link2 } from 'lucide-react';
+import { Calendar, MapPin, Image, Trash2, Plus, Settings, Link2, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { SkeletonCard } from '@/components/ui/skeleton-card';
 import { useToast } from '@/hooks/use-toast';
 import CreateEventDialog from '@/components/modals/CreateEventDialog';
 import { copyShareLink } from '@/lib/shareUtils';
+import { formatCurrency } from '@/lib/utils';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,6 +31,8 @@ interface Campaign {
   location: string;
   cover_image_url: string;
   photo_count?: number;
+  revenue?: number;
+  sales_count?: number;
 }
 
 const PhotographerEvents = () => {
@@ -100,6 +103,57 @@ const PhotographerEvents = () => {
         ...campaign,
         photo_count: campaign.photos?.[0]?.count || 0
       }));
+
+      // Fetch revenue data for each campaign
+      const campaignIds = campaignsWithCount.map(c => c.id);
+      if (campaignIds.length > 0) {
+        const { data: revenueData } = await supabase
+          .from('revenue_shares')
+          .select('photographer_amount, purchase_id')
+          .eq('photographer_id', user!.id)
+          .in('purchase_id', 
+            (await supabase
+              .from('purchases')
+              .select('id, photo_id')
+              .eq('status', 'completed')
+              .eq('photographer_id', user!.id)
+            ).data?.map(p => p.id) || []
+          );
+
+        // Get photo->campaign mapping
+        const { data: photosCampaignMap } = await supabase
+          .from('photos')
+          .select('id, campaign_id')
+          .in('campaign_id', campaignIds);
+
+        const { data: purchasesData } = await supabase
+          .from('purchases')
+          .select('id, photo_id')
+          .eq('status', 'completed')
+          .eq('photographer_id', user!.id);
+
+        const photoToCampaign = new Map((photosCampaignMap || []).map(p => [p.id, p.campaign_id]));
+        const purchaseToPhoto = new Map((purchasesData || []).map(p => [p.id, p.photo_id]));
+        
+        const revenueMap: Record<string, { amount: number; count: number }> = {};
+        (revenueData || []).forEach(rs => {
+          const photoId = purchaseToPhoto.get(rs.purchase_id);
+          const campaignId = photoId ? photoToCampaign.get(photoId) : null;
+          if (campaignId) {
+            if (!revenueMap[campaignId]) revenueMap[campaignId] = { amount: 0, count: 0 };
+            revenueMap[campaignId].amount += Number(rs.photographer_amount);
+            revenueMap[campaignId].count += 1;
+          }
+        });
+
+        campaignsWithCount.forEach(c => {
+          const rev = revenueMap[c.id];
+          if (rev) {
+            c.revenue = rev.amount;
+            c.sales_count = rev.count;
+          }
+        });
+      }
       
       setCampaigns(campaignsWithCount);
     } catch (error) {
@@ -275,6 +329,12 @@ const PhotographerEvents = () => {
                     <Image className="h-4 w-4" />
                     <span>{campaign.photo_count || 0} fotos</span>
                   </div>
+                  {(campaign.revenue ?? 0) > 0 && (
+                    <div className="flex items-center gap-2 text-green-600 dark:text-green-400 font-medium">
+                      <DollarSign className="h-4 w-4" />
+                      <span>{formatCurrency(campaign.revenue!)} ({campaign.sales_count} venda{campaign.sales_count !== 1 ? 's' : ''})</span>
+                    </div>
+                  )}
                 </div>
               </CardHeader>
               <CardContent className="flex flex-col gap-3">
