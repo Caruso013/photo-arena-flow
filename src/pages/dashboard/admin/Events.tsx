@@ -3,9 +3,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { CampaignManager } from '@/components/dashboard/CampaignManager';
 import { ApplicationsManager } from '@/components/dashboard/ApplicationsManager';
 import { EventSalesManager } from '@/components/dashboard/EventSalesManager';
+import { AdminEventRevenue } from '@/components/dashboard/AdminEventRevenue';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Calendar, UserCheck, ShoppingCart, DollarSign } from 'lucide-react';
+import { Calendar, UserCheck, ShoppingCart, DollarSign, TrendingUp } from 'lucide-react';
 import AdminLayout from '@/components/dashboard/AdminLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
@@ -117,6 +118,10 @@ const AdminEvents = () => {
               <ShoppingCart className="h-4 w-4" />
               Vendas
             </TabsTrigger>
+            <TabsTrigger value="revenue" className="gap-2">
+              <TrendingUp className="h-4 w-4" />
+              Receita
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="campaigns">
@@ -135,6 +140,10 @@ const AdminEvents = () => {
 
           <TabsContent value="sales">
             <EventSalesManager />
+          </TabsContent>
+
+          <TabsContent value="revenue">
+            <AdminEventRevenue />
           </TabsContent>
         </Tabs>
 
