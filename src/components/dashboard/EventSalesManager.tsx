@@ -201,7 +201,7 @@ export const EventSalesManager = () => {
           <>
             <div className="overflow-x-auto">
               <Table>
-                <TableHeader>
+                 <TableHeader>
                   <TableRow>
                     <TableHead>Evento</TableHead>
                     <TableHead>Foto</TableHead>
@@ -209,6 +209,7 @@ export const EventSalesManager = () => {
                     <TableHead>Fotógrafo</TableHead>
                     <TableHead className="text-right">Valor</TableHead>
                     <TableHead>Data</TableHead>
+                    <TableHead className="text-center">Baixar</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -228,6 +229,28 @@ export const EventSalesManager = () => {
                       </TableCell>
                       <TableCell className="whitespace-nowrap">
                         {new Date(sale.created_at).toLocaleDateString('pt-BR')}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 w-8 p-0"
+                          title="Baixar foto original"
+                          onClick={async () => {
+                            if (!sale.photo_original_url) {
+                              toast({ title: 'Foto original não encontrada', variant: 'destructive' });
+                              return;
+                            }
+                            const url = await getSignedPhotoUrl(sale.photo_original_url);
+                            if (url) {
+                              window.open(url, '_blank');
+                            } else {
+                              toast({ title: 'Erro ao gerar link de download', variant: 'destructive' });
+                            }
+                          }}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
