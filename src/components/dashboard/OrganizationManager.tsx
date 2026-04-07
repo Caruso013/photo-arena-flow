@@ -46,32 +46,25 @@ export const OrganizationManager: React.FC<OrganizationManagerProps> = ({ organi
   });
 
   const generateCredentials = (orgName: string, createdAt?: string) => {
-    // Nome limpo para o email (sem acentos e caracteres especiais)
     let login = orgName
       .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
       .replace(/[^a-z0-9\s-]/g, '')
       .trim();
-    
-    // Se o nome tem mais de 15 caracteres, usar apenas as iniciais ou abreviar
+
     if (login.replace(/\s+/g, '').length > 15) {
-      // Tentar pegar a primeira palavra (sigla se existir, ex: "apf")
       const words = login.split(/[\s-]+/).filter(w => w.length > 0);
-      
-      // Se a primeira palavra parece ser uma sigla (até 6 chars), usar ela
+
       if (words[0] && words[0].length <= 6) {
         login = words[0];
       } else {
-        // Senão, criar sigla das primeiras letras (max 8 letras)
         login = words.map(w => w.charAt(0)).join('').substring(0, 8);
       }
     }
-    
-    // Remover espaços restantes
+
     login = login.replace(/\s+/g, '');
-    
-    // Garantir mínimo de 3 caracteres
+
     if (login.length < 3) {
       login = orgName.toLowerCase()
         .normalize('NFD')
@@ -79,20 +72,59 @@ export const OrganizationManager: React.FC<OrganizationManagerProps> = ({ organi
         .replace(/[^a-z0-9]/g, '')
         .substring(0, 10);
     }
-    
-    // Senha determinística: Login@DataCriação (DDMMYYYY)
-    // Capitaliza primeira letra para atender requisito de maiúscula do Supabase
+
     const date = createdAt ? new Date(createdAt) : new Date();
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = date.getFullYear();
     const dateString = `${day}${month}${year}`;
     const capitalizedLogin = login.charAt(0).toUpperCase() + login.slice(1);
-    
+
     return {
       email: `${login}@stafotos.com`,
       password: `${capitalizedLogin}@${dateString}`
     };
+  };
+
+  const createOrganizationAccess = async (org: Organization, email: string, password: string) => {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      throw new Error('Sua sessão de admin expirou. Faça login novamente para criar o acesso da organização.');
+    }
+
+    const { data, error } = await supabase.functions.invoke('create-organization-user', {
+      body: {
+        organizationId: org.id,
+        organizationName: org.name,
+        email,
+        password,
+      },
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      },
+    });
+
+    if (error) {
+      console.error('Edge Function transport error:', error);
+      const isUnauthorized = error.message?.includes('401') || error.message?.toLowerCase().includes('authorization');
+      throw new Error(
+        isUnauthorized
+          ? 'Sua sessão de admin expirou. Saia e entre novamente para continuar.'
+          : `Erro na Edge Function: ${error.message || 'Falha de comunicação'}`
+      );
+    }
+
+    if (data?.error) {
+      console.error('Edge Function application error:', data.error);
+      throw new Error(`Erro ao criar usuário: ${data.error}${data.details ? ' - ' + data.details : ''}`);
+    }
+
+    if (!data?.success) {
+      throw new Error('Resposta inesperada ao criar o acesso da organização.');
+    }
+
+    return data;
   };
 
   const handleCreateCredentials = async (org: Organization) => {
@@ -100,33 +132,7 @@ export const OrganizationManager: React.FC<OrganizationManagerProps> = ({ organi
     try {
       const { email, password } = generateCredentials(org.name, org.created_at);
 
-      const { data, error } = await supabase.functions.invoke(
-        'create-organization-user',
-        { 
-          body: { 
-            organizationId: org.id,
-            organizationName: org.name,
-            email,
-            password
-          } 
-        }
-      );
-
-      // Verificar erro de transporte
-      if (error) {
-        console.error('Edge Function transport error:', error);
-        throw new Error(`Erro na Edge Function: ${error.message || 'Falha de comunicação'}`);
-      }
-
-      // Verificar erro no corpo da resposta
-      if (data?.error) {
-        console.error('Edge Function application error:', data.error);
-        throw new Error(`Erro ao criar usuário: ${data.error}${data.details ? ' - ' + data.details : ''}`);
-      }
-
-      if (!data?.success) {
-        throw new Error('Resposta inesperada da Edge Function. Verifique os logs.');
-      }
+      await createOrganizationAccess(org, email, password);
 
       toast({
         title: "✅ Credenciais criadas com sucesso!",
@@ -144,15 +150,13 @@ export const OrganizationManager: React.FC<OrganizationManagerProps> = ({ organi
         ),
         duration: 15000,
       });
-      
-      setCredentialsDialogOpen(false);
 
-      // Fallback removido - Edge Function é obrigatória para criar usuários confirmados
+      setCredentialsDialogOpen(false);
     } catch (error: any) {
       console.error('Error creating credentials:', error);
       toast({
         title: "Erro ao criar credenciais",
-        description: error.message || "Não foi possível criar as credenciais. O usuário pode já existir.",
+        description: error.message || "Não foi possível criar as credenciais.",
         variant: "destructive",
       });
     } finally {
