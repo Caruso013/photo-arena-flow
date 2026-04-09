@@ -1,6 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.74.0";
 
+const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -12,9 +15,21 @@ serve(async (req) => {
   }
 
   try {
+    if (!supabaseUrl || !serviceRoleKey) {
+      console.error('Missing Supabase environment variables', {
+        hasSupabaseUrl: Boolean(supabaseUrl),
+        hasServiceRoleKey: Boolean(serviceRoleKey),
+      });
+
+      return new Response(
+        JSON.stringify({ error: 'Configuração interna inválida para criar usuários da organização' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      supabaseUrl,
+      serviceRoleKey,
       {
         auth: {
           autoRefreshToken: false,
@@ -46,11 +61,19 @@ serve(async (req) => {
     }
 
     // Verificar se é admin
-    const { data: profile } = await supabaseClient
+    const { data: profile, error: profileError } = await supabaseClient
       .from('profiles')
       .select('role')
       .eq('id', user.id)
       .single();
+
+    if (profileError) {
+      console.error('Error loading admin profile:', profileError);
+      return new Response(
+        JSON.stringify({ error: 'Não foi possível validar as permissões do administrador' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     if (profile?.role !== 'admin') {
       console.warn(`Acesso negado para usuário ${user.id} com role ${profile?.role}`);
@@ -121,7 +144,7 @@ serve(async (req) => {
           id: userId,
           email: email,
           full_name: organizationName,
-          role: 'organization'
+          role: 'user'
         }, { onConflict: 'id' });
 
       if (profileUpsertError) {
@@ -161,7 +184,7 @@ serve(async (req) => {
           id: userId,
           email: email,
           full_name: organizationName,
-          role: 'organization'
+          role: 'user'
         }, { onConflict: 'id' });
 
       if (profileUpsertError) {
