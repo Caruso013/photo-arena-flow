@@ -194,27 +194,7 @@ export const OrganizationManager: React.FC<OrganizationManagerProps> = ({ organi
       const { email, password } = generateCredentials(formData.name);
 
       // 3. Criar usuário via Edge Function
-      const { data, error: funcError } = await supabase.functions.invoke(
-        'create-organization-user',
-        { 
-          body: { 
-            organizationId: orgData.id,
-            organizationName: formData.name,
-            email,
-            password
-          } 
-        }
-      );
-
-      if (funcError) {
-        console.error('Edge Function error:', funcError);
-        throw new Error(`Erro ao criar credenciais: ${funcError.message || 'Falha de comunicação'}`);
-      }
-
-      if (data?.error) {
-        console.error('Edge Function application error:', data.error);
-        throw new Error(`Erro ao criar usuário: ${data.error}`);
-      }
+      await createOrganizationAccess(orgData, email, password);
 
       // 4. Mostrar credenciais em toast com instruções
       toast({
