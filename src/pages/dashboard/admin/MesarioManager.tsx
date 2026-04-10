@@ -118,7 +118,7 @@ const MesarioManager: React.FC = () => {
           username: newUsername.trim().toLowerCase(),
           password_hash: newPassword, // trigger will hash it
           full_name: newFullName.trim(),
-          organization_id: newOrgId || null,
+          organization_id: newOrgId && newOrgId !== 'none' ? newOrgId : null,
         } as any);
 
       if (error) {
