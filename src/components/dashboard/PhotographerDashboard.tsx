@@ -286,7 +286,7 @@ const PhotographerDashboard = () => {
         </div>
 
         {/* Content Grid */}
-        <div className="grid lg:grid-cols-3 gap-6">
+        <div className="grid lg:grid-cols-3 gap-4 sm:gap-6">
           {/* Recent Sales */}
           <div className="lg:col-span-1">
             <RecentActivity 
@@ -299,22 +299,22 @@ const PhotographerDashboard = () => {
           {/* Tabs */}
           <div className="lg:col-span-2">
             <Tabs defaultValue="analytics" className="space-y-4">
-              <TabsList className="grid w-full grid-cols-4 h-auto sm:h-10 p-1">
-                <TabsTrigger value="analytics" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1 py-2 sm:py-0 h-12 sm:h-9">
-                  <BarChart3 className="h-4 w-4" />
-                  <span className="text-[10px] sm:text-xs">Analytics</span>
+              <TabsList className="grid w-full grid-cols-4 h-auto sm:h-10 p-0.5 sm:p-1">
+                <TabsTrigger value="analytics" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1 py-1.5 sm:py-0 h-10 sm:h-9">
+                  <BarChart3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  <span className="text-[9px] sm:text-xs">Analytics</span>
                 </TabsTrigger>
-                <TabsTrigger value="events" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1 py-2 sm:py-0 h-12 sm:h-9">
-                  <Camera className="h-4 w-4" />
-                  <span className="text-[10px] sm:text-xs">Eventos</span>
+                <TabsTrigger value="events" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1 py-1.5 sm:py-0 h-10 sm:h-9">
+                  <Camera className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  <span className="text-[9px] sm:text-xs">Eventos</span>
                 </TabsTrigger>
-                <TabsTrigger value="goals" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1 py-2 sm:py-0 h-12 sm:h-9">
-                  <Target className="h-4 w-4" />
-                  <span className="text-[10px] sm:text-xs">Metas</span>
+                <TabsTrigger value="goals" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1 py-1.5 sm:py-0 h-10 sm:h-9">
+                  <Target className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  <span className="text-[9px] sm:text-xs">Metas</span>
                 </TabsTrigger>
-                <TabsTrigger value="profile" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1 py-2 sm:py-0 h-12 sm:h-9">
-                  <User className="h-4 w-4" />
-                  <span className="text-[10px] sm:text-xs">Perfil</span>
+                <TabsTrigger value="profile" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1 py-1.5 sm:py-0 h-10 sm:h-9">
+                  <User className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  <span className="text-[9px] sm:text-xs">Perfil</span>
                 </TabsTrigger>
               </TabsList>
 
