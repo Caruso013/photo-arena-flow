@@ -234,12 +234,12 @@ const PhotographerDashboard = () => {
         {/* Quick Actions with Create Event Modal */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-foreground">Ações Rápidas</h3>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
             {/* Create Event Card - Special handling for modal */}
-            <Card className="cursor-pointer hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 border hover:border-primary/30 bg-card group overflow-hidden">
-              <CardContent className="p-4 sm:p-6 flex flex-col items-center justify-center text-center h-[140px] sm:h-[160px]">
-                <div className="h-12 w-12 sm:h-14 sm:w-14 mx-auto rounded-xl bg-primary flex items-center justify-center shadow-md group-hover:shadow-lg group-hover:scale-110 transition-all duration-300 mb-3">
-                  <CalendarPlus className="h-6 w-6 sm:h-7 sm:w-7 text-primary-foreground" />
+            <Card className="cursor-pointer hover:shadow-lg active:scale-[0.97] transition-all duration-200 border hover:border-primary/30 bg-card group overflow-hidden">
+              <CardContent className="p-3 sm:p-4 lg:p-6 flex flex-col items-center justify-center text-center h-[100px] sm:h-[130px] lg:h-[160px]">
+                <div className="h-10 w-10 sm:h-12 sm:w-12 mx-auto rounded-lg sm:rounded-xl bg-primary flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300 mb-2 sm:mb-3">
+                  <CalendarPlus className="h-5 w-5 sm:h-6 sm:w-6 text-primary-foreground" />
                 </div>
                 <CreateCampaignModal onCampaignCreated={fetchData} />
               </CardContent>
@@ -247,38 +247,38 @@ const PhotographerDashboard = () => {
 
             {/* Upload Photos */}
             <Card 
-              className="cursor-pointer hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 border hover:border-primary/30 bg-card group overflow-hidden"
+              className="cursor-pointer hover:shadow-lg active:scale-[0.97] transition-all duration-200 border hover:border-primary/30 bg-card group overflow-hidden"
               onClick={() => setShowUploadModal(true)}
             >
-              <CardContent className="p-4 sm:p-6 flex flex-col items-center justify-center text-center h-[140px] sm:h-[160px]">
-                <div className="h-12 w-12 sm:h-14 sm:w-14 mx-auto rounded-xl bg-primary flex items-center justify-center shadow-md group-hover:shadow-lg group-hover:scale-110 transition-all duration-300 mb-3">
-                  <Upload className="h-6 w-6 sm:h-7 sm:w-7 text-primary-foreground" />
+              <CardContent className="p-3 sm:p-4 lg:p-6 flex flex-col items-center justify-center text-center h-[100px] sm:h-[130px] lg:h-[160px]">
+                <div className="h-10 w-10 sm:h-12 sm:w-12 mx-auto rounded-lg sm:rounded-xl bg-primary flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300 mb-2 sm:mb-3">
+                  <Upload className="h-5 w-5 sm:h-6 sm:w-6 text-primary-foreground" />
                 </div>
-                <h4 className="font-semibold text-sm sm:text-base text-foreground">Upload Fotos</h4>
+                <h4 className="font-semibold text-xs sm:text-sm text-foreground">Upload Fotos</h4>
               </CardContent>
             </Card>
 
             {/* Request Payout */}
             <Link to="/dashboard/photographer/payout">
-              <Card className="cursor-pointer hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 border hover:border-primary/30 bg-card group overflow-hidden">
-                <CardContent className="p-4 sm:p-6 flex flex-col items-center justify-center text-center h-[140px] sm:h-[160px]">
-                  <div className="h-12 w-12 sm:h-14 sm:w-14 mx-auto rounded-xl bg-primary flex items-center justify-center shadow-md group-hover:shadow-lg group-hover:scale-110 transition-all duration-300 mb-3">
-                    <Wallet className="h-6 w-6 sm:h-7 sm:w-7 text-primary-foreground" />
+              <Card className="cursor-pointer hover:shadow-lg active:scale-[0.97] transition-all duration-200 border hover:border-primary/30 bg-card group overflow-hidden">
+                <CardContent className="p-3 sm:p-4 lg:p-6 flex flex-col items-center justify-center text-center h-[100px] sm:h-[130px] lg:h-[160px]">
+                  <div className="h-10 w-10 sm:h-12 sm:w-12 mx-auto rounded-lg sm:rounded-xl bg-primary flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300 mb-2 sm:mb-3">
+                    <Wallet className="h-5 w-5 sm:h-6 sm:w-6 text-primary-foreground" />
                   </div>
-                  <h4 className="font-semibold text-sm sm:text-base text-foreground">Solicitar Saque</h4>
-                  <p className="text-xs text-muted-foreground mt-1">{formatCurrency(balance.availableAmount)}</p>
+                  <h4 className="font-semibold text-xs sm:text-sm text-foreground">Solicitar Saque</h4>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">{formatCurrency(balance.availableAmount)}</p>
                 </CardContent>
               </Card>
             </Link>
 
             {/* Reports */}
             <Link to="/dashboard/photographer/album-reports">
-              <Card className="cursor-pointer hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 border hover:border-primary/30 bg-card group overflow-hidden">
-                <CardContent className="p-4 sm:p-6 flex flex-col items-center justify-center text-center h-[140px] sm:h-[160px]">
-                  <div className="h-12 w-12 sm:h-14 sm:w-14 mx-auto rounded-xl bg-primary flex items-center justify-center shadow-md group-hover:shadow-lg group-hover:scale-110 transition-all duration-300 mb-3">
-                    <BarChart3 className="h-6 w-6 sm:h-7 sm:w-7 text-primary-foreground" />
+              <Card className="cursor-pointer hover:shadow-lg active:scale-[0.97] transition-all duration-200 border hover:border-primary/30 bg-card group overflow-hidden">
+                <CardContent className="p-3 sm:p-4 lg:p-6 flex flex-col items-center justify-center text-center h-[100px] sm:h-[130px] lg:h-[160px]">
+                  <div className="h-10 w-10 sm:h-12 sm:w-12 mx-auto rounded-lg sm:rounded-xl bg-primary flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300 mb-2 sm:mb-3">
+                    <BarChart3 className="h-5 w-5 sm:h-6 sm:w-6 text-primary-foreground" />
                   </div>
-                  <h4 className="font-semibold text-sm sm:text-base text-foreground">Relatórios</h4>
+                  <h4 className="font-semibold text-xs sm:text-sm text-foreground">Relatórios</h4>
                 </CardContent>
               </Card>
             </Link>
