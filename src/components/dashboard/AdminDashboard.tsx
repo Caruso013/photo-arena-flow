@@ -387,7 +387,7 @@ const AdminDashboard = () => {
         onApplicationResponse={() => {}}
       />
       
-      <main className="container mx-auto px-4 py-6 sm:py-8 space-y-6 sm:space-y-8">
+      <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-8 space-y-4 sm:space-y-8 pb-24 sm:pb-8">
         {/* Welcome Header */}
         <WelcomeHeader
           title="Painel Administrativo"
@@ -398,7 +398,7 @@ const AdminDashboard = () => {
         />
 
         {/* Metric Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
           <MetricCard
             title="Receita Total Bruta"
             value={formatCurrency(stats.totalRevenue)}
@@ -449,7 +449,7 @@ const AdminDashboard = () => {
         />
 
         {/* Recent Activity and Reconciliation */}
-        <div className="grid lg:grid-cols-3 gap-6">
+        <div className="grid lg:grid-cols-3 gap-4 sm:gap-6">
           {/* Recent Activity */}
           <div className="lg:col-span-1 space-y-4">
             {/* Botão de Reconciliação */}
@@ -501,32 +501,34 @@ const AdminDashboard = () => {
           {/* Management Tabs */}
           <div className="lg:col-span-2">
             <Tabs defaultValue="photographer-apps" className="space-y-4">
-              <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 text-xs gap-1 h-auto sm:h-10 p-1">
-                <TabsTrigger value="photographer-apps" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1 py-2 sm:py-0 h-12 sm:h-9">
-                  <Camera className="h-4 w-4 flex-shrink-0" />
-                  <span className="text-[10px] sm:text-xs">Fotógrafos</span>
-                </TabsTrigger>
-                <TabsTrigger value="financial" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1 py-2 sm:py-0 h-12 sm:h-9">
-                  <TrendingUp className="h-4 w-4 flex-shrink-0" />
-                  <span className="text-[10px] sm:text-xs">Financeiro</span>
-                </TabsTrigger>
-                <TabsTrigger value="organizations" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1 py-2 sm:py-0 h-12 sm:h-9">
-                  <Building2 className="h-4 w-4 flex-shrink-0" />
-                  <span className="text-[10px] sm:text-xs">Orgs</span>
-                </TabsTrigger>
-                <TabsTrigger value="campaigns" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1 py-2 sm:py-0 h-12 sm:h-9 hidden sm:flex">
-                  <Activity className="h-4 w-4 flex-shrink-0" />
-                  <span className="text-[10px] sm:text-xs">Eventos</span>
-                </TabsTrigger>
-                <TabsTrigger value="users" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1 py-2 sm:py-0 h-12 sm:h-9 hidden sm:flex">
-                  <Users className="h-4 w-4 flex-shrink-0" />
-                  <span className="text-[10px] sm:text-xs">Usuários</span>
-                </TabsTrigger>
-                <TabsTrigger value="profile" className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1 py-2 sm:py-0 h-12 sm:h-9 hidden sm:flex">
-                  <Settings className="h-4 w-4 flex-shrink-0" />
-                  <span className="text-[10px] sm:text-xs">Perfil</span>
-                </TabsTrigger>
-              </TabsList>
+              <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
+                <TabsList className="inline-flex w-auto min-w-full sm:grid sm:w-full sm:grid-cols-6 text-xs gap-0.5 h-auto sm:h-10 p-1">
+                  <TabsTrigger value="photographer-apps" className="flex items-center gap-1 px-3 py-2 h-9 whitespace-nowrap">
+                    <Camera className="h-4 w-4 flex-shrink-0" />
+                    <span className="text-[10px] sm:text-xs">Fotógrafos</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="financial" className="flex items-center gap-1 px-3 py-2 h-9 whitespace-nowrap">
+                    <TrendingUp className="h-4 w-4 flex-shrink-0" />
+                    <span className="text-[10px] sm:text-xs">Financeiro</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="organizations" className="flex items-center gap-1 px-3 py-2 h-9 whitespace-nowrap">
+                    <Building2 className="h-4 w-4 flex-shrink-0" />
+                    <span className="text-[10px] sm:text-xs">Orgs</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="campaigns" className="flex items-center gap-1 px-3 py-2 h-9 whitespace-nowrap">
+                    <Activity className="h-4 w-4 flex-shrink-0" />
+                    <span className="text-[10px] sm:text-xs">Eventos</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="users" className="flex items-center gap-1 px-3 py-2 h-9 whitespace-nowrap">
+                    <Users className="h-4 w-4 flex-shrink-0" />
+                    <span className="text-[10px] sm:text-xs">Usuários</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="profile" className="flex items-center gap-1 px-3 py-2 h-9 whitespace-nowrap">
+                    <Settings className="h-4 w-4 flex-shrink-0" />
+                    <span className="text-[10px] sm:text-xs">Perfil</span>
+                  </TabsTrigger>
+                </TabsList>
+              </div>
 
               <TabsContent value="photographer-apps" className="space-y-4">
                 <PhotographerApplicationsManager />
