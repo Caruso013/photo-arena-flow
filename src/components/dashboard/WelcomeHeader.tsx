@@ -27,27 +27,27 @@ const WelcomeHeader = ({
   };
 
   return (
-    <div className={`relative overflow-hidden rounded-2xl p-6 sm:p-8 bg-gradient-to-br ${gradient} text-white shadow-2xl`}>
+    <div className={`relative overflow-hidden rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 bg-gradient-to-br ${gradient} text-white shadow-xl sm:shadow-2xl`}>
       <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS1vcGFjaXR5PSIwLjA1IiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-20"></div>
       
-      <div className="relative z-10 flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6">
+      <div className="relative z-10 flex items-center gap-3 sm:gap-6">
         {(avatarUrl || Icon) && (
-          <Avatar className="h-16 w-16 sm:h-20 sm:w-20 border-4 border-white/30 shadow-xl ring-4 ring-white/10">
+          <Avatar className="h-12 w-12 sm:h-16 sm:w-16 lg:h-20 lg:w-20 border-2 sm:border-4 border-white/30 shadow-xl ring-2 sm:ring-4 ring-white/10 shrink-0">
             {avatarUrl ? (
               <AvatarImage src={avatarUrl} alt={userName || 'Avatar'} className="object-cover" />
             ) : null}
-            <AvatarFallback className="text-2xl bg-white/20 backdrop-blur-sm">
-              {Icon && <Icon className="h-8 w-8 sm:h-10 sm:w-10 text-white" />}
+            <AvatarFallback className="text-lg sm:text-2xl bg-white/20 backdrop-blur-sm">
+              {Icon && <Icon className="h-6 w-6 sm:h-8 sm:w-8 lg:h-10 lg:w-10 text-white" />}
             </AvatarFallback>
           </Avatar>
         )}
 
-        <div className="flex-1 text-center sm:text-left">
-          <p className="text-sm sm:text-base opacity-90 mb-1">{getGreeting()}{userName ? `, ${userName}` : ''}!</p>
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-2 drop-shadow-lg">
+        <div className="flex-1 min-w-0">
+          <p className="text-xs sm:text-sm lg:text-base opacity-90 mb-0.5 sm:mb-1">{getGreeting()}{userName ? `, ${userName}` : ''}!</p>
+          <h1 className="text-lg sm:text-2xl lg:text-4xl font-bold mb-0.5 sm:mb-2 drop-shadow-lg truncate">
             {title}
           </h1>
-          <p className="text-sm sm:text-base opacity-90 max-w-2xl drop-shadow-md">
+          <p className="text-xs sm:text-sm lg:text-base opacity-90 max-w-2xl drop-shadow-md line-clamp-1 sm:line-clamp-none">
             {subtitle}
           </p>
         </div>

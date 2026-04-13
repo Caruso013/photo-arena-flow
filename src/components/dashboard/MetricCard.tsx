@@ -62,14 +62,13 @@ const MetricCard = ({
   if (loading) {
     return (
       <Card className={`${styles.bg} animate-pulse`}>
-        <CardContent className="p-4 sm:p-6">
-          <div className="flex items-center justify-between">
-            <div className="space-y-2">
-              <div className="h-4 w-20 bg-muted rounded"></div>
-              <div className="h-8 w-24 bg-muted rounded"></div>
+        <CardContent className="p-3 sm:p-4 lg:p-6">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="h-9 w-9 sm:h-11 sm:w-11 bg-muted rounded-lg sm:rounded-xl shrink-0"></div>
+            <div className="space-y-1.5 flex-1 min-w-0">
               <div className="h-3 w-16 bg-muted rounded"></div>
+              <div className="h-5 w-20 bg-muted rounded"></div>
             </div>
-            <div className="h-12 w-12 bg-muted rounded-xl"></div>
           </div>
         </CardContent>
       </Card>
@@ -78,25 +77,25 @@ const MetricCard = ({
 
   return (
     <Card className={`${styles.bg} hover:shadow-lg transition-all duration-300 border-border/50`}>
-      <CardContent className="p-4 sm:p-6">
-        <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            <p className="text-xs sm:text-sm font-medium text-muted-foreground">{title}</p>
-            <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">{value}</p>
-            <div className="flex items-center gap-2">
+      <CardContent className="p-3 sm:p-4 lg:p-6">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className={`h-9 w-9 sm:h-11 sm:w-11 rounded-lg sm:rounded-xl ${styles.iconBg} flex items-center justify-center shadow-md shrink-0`}>
+            <Icon className={`h-4 w-4 sm:h-5 sm:w-5 ${styles.iconColor}`} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] sm:text-xs font-medium text-muted-foreground truncate">{title}</p>
+            <p className="text-sm sm:text-lg lg:text-2xl font-bold text-foreground truncate">{value}</p>
+            <div className="flex items-center gap-1">
               {subtitle && (
-                <p className="text-xs text-muted-foreground">{subtitle}</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{subtitle}</p>
               )}
               {trend && (
-                <span className={`flex items-center gap-0.5 text-xs font-medium ${trend.isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                <span className={`flex items-center gap-0.5 text-[10px] sm:text-xs font-medium shrink-0 ${trend.isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                   {trend.isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
                   {trend.value}%
                 </span>
               )}
             </div>
-          </div>
-          <div className={`h-11 w-11 sm:h-12 sm:w-12 rounded-xl ${styles.iconBg} flex items-center justify-center shadow-lg`}>
-            <Icon className={`h-5 w-5 sm:h-6 sm:w-6 ${styles.iconColor}`} />
           </div>
         </div>
       </CardContent>

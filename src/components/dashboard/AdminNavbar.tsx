@@ -130,16 +130,16 @@ export default function AdminNavbar({
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center justify-between px-4">
+      <div className="container flex h-14 sm:h-16 items-center justify-between px-3 sm:px-4">
         {/* Logo e Título */}
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-              <Camera className="h-5 w-5 text-primary-foreground" />
+        <div className="flex items-center gap-2 sm:space-x-4 min-w-0">
+          <div className="flex items-center gap-1.5 sm:space-x-2 min-w-0">
+            <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-primary shrink-0">
+              <Camera className="h-4 w-4 sm:h-5 sm:w-5 text-primary-foreground" />
             </div>
-            <div>
-              <h1 className="text-xl font-bold">STA Fotos</h1>
-              <Badge variant="outline" className="text-xs">
+            <div className="min-w-0">
+              <h1 className="text-base sm:text-xl font-bold truncate">STA Fotos</h1>
+              <Badge variant="outline" className="text-[10px] sm:text-xs hidden sm:inline-flex">
                 <Shield className="mr-1 h-3 w-3" />
                 Admin Panel
               </Badge>
@@ -147,8 +147,8 @@ export default function AdminNavbar({
           </div>
         </div>
 
-        {/* Stats Rápidas */}
-        <div className="hidden md:flex items-center space-x-4">
+        {/* Stats Rápidas - desktop only */}
+        <div className="hidden lg:flex items-center space-x-4">
           <div className="flex items-center space-x-1 text-sm text-muted-foreground">
             <Building2 className="h-4 w-4" />
             <span>Organizações</span>
@@ -164,7 +164,7 @@ export default function AdminNavbar({
         </div>
 
         {/* Actions */}
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center gap-1 sm:space-x-4">
           {/* Notifications */}
           <Button 
             variant="ghost" 
@@ -195,10 +195,10 @@ export default function AdminNavbar({
           {/* User Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="flex items-center space-x-2 px-3">
-                <Avatar className="h-8 w-8">
+              <Button variant="ghost" className="flex items-center gap-1.5 sm:space-x-2 px-2 sm:px-3">
+                <Avatar className="h-7 w-7 sm:h-8 sm:w-8">
                   <AvatarImage src={currentUser?.avatar_url} />
-                  <AvatarFallback className="bg-primary text-primary-foreground">
+                  <AvatarFallback className="bg-primary text-primary-foreground text-xs">
                     {getUserInitials(currentUser?.full_name, currentUser?.email)}
                   </AvatarFallback>
                 </Avatar>
@@ -210,7 +210,7 @@ export default function AdminNavbar({
                     {currentUser?.email}
                   </p>
                 </div>
-                <ChevronDown className="h-4 w-4" />
+                <ChevronDown className="h-4 w-4 hidden sm:block" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
@@ -245,7 +245,7 @@ export default function AdminNavbar({
 
       {/* Notifications Sheet */}
       <Sheet open={notificationsOpen} onOpenChange={setNotificationsOpen}>
-        <SheetContent side="right" className="w-96">
+        <SheetContent side="right" className="w-[85vw] sm:w-96">
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
               <Bell className="h-5 w-5" />
