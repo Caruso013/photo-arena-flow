@@ -6,9 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Search, DollarSign, TrendingUp, Building2, Filter, ArrowUpDown, Download } from 'lucide-react';
+import { Loader2, Search, DollarSign, TrendingUp, Building2, Filter, ArrowUpDown } from 'lucide-react';
 
 interface EventRevenue {
   campaign_id: string;
