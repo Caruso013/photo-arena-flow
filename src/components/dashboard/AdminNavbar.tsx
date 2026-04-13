@@ -245,7 +245,7 @@ export default function AdminNavbar({
 
       {/* Notifications Sheet */}
       <Sheet open={notificationsOpen} onOpenChange={setNotificationsOpen}>
-        <SheetContent side="right" className="w-96">
+        <SheetContent side="right" className="w-[85vw] sm:w-96">
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
               <Bell className="h-5 w-5" />
