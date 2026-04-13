@@ -3,7 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-connection-pool, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version, x-supabase-api-version',
 };
 
 Deno.serve(async (req: Request) => {
@@ -25,7 +25,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Validate credentials using the database function
     const { data, error } = await supabase.rpc('validate_mesario_credentials', {
       p_username: username,
       p_password: password
@@ -48,7 +47,6 @@ Deno.serve(async (req: Request) => {
 
     const mesario = data[0];
 
-    // Get organization info
     let organization = null;
     if (mesario.org_id) {
       const { data: orgData } = await supabase
