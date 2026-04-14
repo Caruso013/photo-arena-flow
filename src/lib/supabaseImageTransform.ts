@@ -33,10 +33,24 @@ export function getTransformedImageUrl(
   originalUrl: string,
   size: TransformSize = 'medium'
 ): string {
-  // Image Transformations require Supabase Pro with the feature enabled.
-  // Since this project doesn't have it, always return the original URL
-  // to avoid 400 errors from the /render/image/ endpoint.
-  return originalUrl || '';
+  if (!originalUrl) return '';
+
+  // Use Vercel Image Optimization CDN to reduce Supabase Cached Egress
+  // This proxies and caches images through Vercel's edge network
+  const config = TRANSFORM_CONFIGS[size];
+  if (!config) return originalUrl;
+
+  // Only optimize Supabase storage URLs
+  if (!originalUrl.includes('supabase.co')) {
+    return originalUrl;
+  }
+
+  try {
+    const encodedUrl = encodeURIComponent(originalUrl);
+    return `/_vercel/image?url=${encodedUrl}&w=${config.width}&q=${config.quality}`;
+  } catch {
+    return originalUrl;
+  }
 }
 
 /**
