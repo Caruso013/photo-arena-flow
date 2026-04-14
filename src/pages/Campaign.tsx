@@ -59,6 +59,7 @@ import { useFavorites } from '@/hooks/useFavorites';
 import { FaceRecognitionModal } from '@/components/FaceRecognitionModal';
 import EditEventModal from '@/components/modals/EditEventModal';
 import { useHapticFeedback } from '@/hooks/useHapticFeedback';
+import { getTransformedImageUrl } from '@/lib/supabaseImageTransform';
 
 interface Campaign {
   id: string;
