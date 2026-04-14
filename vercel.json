@@ -3,8 +3,8 @@
     "domains": [
       "gtpqppvyjrnnuhlsbpqd.supabase.co"
     ],
-    "formats": ["image/webp", "image/avif"],
-    "sizes": [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    "formats": ["image/avif", "image/webp"],
+    "sizes": [40, 250, 500, 900, 1200],
     "minimumCacheTTL": 31536000,
     "dangerouslyAllowSVG": false,
     "contentSecurityPolicy": "default-src 'self'; script-src 'none'; sandbox;"
@@ -15,7 +15,7 @@
       "headers": [
         {
           "key": "Cache-Control",
-          "value": "public, max-age=31536000, immutable"
+          "value": "public, max-age=31536000, s-maxage=31536000, immutable"
         }
       ]
     },
