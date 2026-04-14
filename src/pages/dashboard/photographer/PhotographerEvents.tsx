@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { getTransformedImageUrl } from '@/lib/supabaseImageTransform';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar, MapPin, Image, Trash2, Plus, Settings, Link2, DollarSign } from 'lucide-react';
@@ -304,7 +305,7 @@ const PhotographerEvents = () => {
               <div className="relative h-48 bg-muted">
                 {campaign.cover_image_url ? (
                   <img
-                    src={campaign.cover_image_url}
+                    src={getTransformedImageUrl(campaign.cover_image_url, 'medium')}
                     alt={campaign.title}
                     className="w-full h-full object-cover"
                   />
