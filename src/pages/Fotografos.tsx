@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { getTransformedImageUrl } from '@/lib/supabaseImageTransform';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -179,7 +180,7 @@ const Fotografos = () => {
                           >
                             {campaign.cover_image_url ? (
                               <img
-                                src={campaign.cover_image_url}
+                                src={getTransformedImageUrl(campaign.cover_image_url, 'thumbnail')}
                                 alt={campaign.title}
                                 className="w-full h-full object-cover transition-transform group-hover:scale-105"
                               />
