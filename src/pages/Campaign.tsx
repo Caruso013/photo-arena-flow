@@ -59,6 +59,7 @@ import { useFavorites } from '@/hooks/useFavorites';
 import { FaceRecognitionModal } from '@/components/FaceRecognitionModal';
 import EditEventModal from '@/components/modals/EditEventModal';
 import { useHapticFeedback } from '@/hooks/useHapticFeedback';
+import { getTransformedImageUrl } from '@/lib/supabaseImageTransform';
 
 interface Campaign {
   id: string;
@@ -776,7 +777,7 @@ const Campaign = () => {
           <div className="relative rounded-xl overflow-hidden mb-4 sm:mb-6">
             {campaign.cover_image_url ? (
               <img
-                src={campaign.cover_image_url}
+                src={getTransformedImageUrl(campaign.cover_image_url, 'large')}
                 alt={campaign.title}
                 className="w-full h-48 sm:h-64 object-cover"
               />
@@ -1024,7 +1025,7 @@ const Campaign = () => {
                   {(subEvent.cover_image_url || albumPreviews[subEvent.id]) && (
                     <div className="aspect-[4/5] relative">
                       <img 
-                        src={subEvent.cover_image_url || albumPreviews[subEvent.id]} 
+                        src={getTransformedImageUrl(subEvent.cover_image_url || albumPreviews[subEvent.id], 'thumbnail')} 
                         alt={subEvent.title}
                         className="w-full h-full object-cover"
                       />

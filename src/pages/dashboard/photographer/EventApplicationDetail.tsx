@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { getTransformedImageUrl } from '@/lib/supabaseImageTransform';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -174,7 +175,7 @@ export default function EventApplicationDetail() {
       <Card className="overflow-hidden border-2">
         <div className="relative aspect-[16/9] bg-muted overflow-hidden">
           {campaign.cover_image_url ? (
-            <img src={campaign.cover_image_url} alt={campaign.title} className="w-full h-full object-cover" />
+            <img src={getTransformedImageUrl(campaign.cover_image_url, 'medium')} alt={campaign.title} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
               <Camera className="h-16 w-16 text-primary/40" />

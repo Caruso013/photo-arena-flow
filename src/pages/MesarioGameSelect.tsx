@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
+import { getTransformedImageUrl } from '@/lib/supabaseImageTransform';
 import { QrCode, LogOut, MapPin, Calendar, Camera, Clock, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -176,7 +177,7 @@ const MesarioGameSelect = () => {
                     <div className="w-20 h-20 shrink-0 bg-muted">
                       {game.cover_image_url ? (
                         <img
-                          src={game.cover_image_url}
+                          src={getTransformedImageUrl(game.cover_image_url, 'thumbnail')}
                           alt={game.title}
                           className="w-full h-full object-cover"
                         />
