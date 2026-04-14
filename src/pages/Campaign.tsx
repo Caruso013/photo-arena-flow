@@ -1025,7 +1025,7 @@ const Campaign = () => {
                   {(subEvent.cover_image_url || albumPreviews[subEvent.id]) && (
                     <div className="aspect-[4/5] relative">
                       <img 
-                        src={subEvent.cover_image_url || albumPreviews[subEvent.id]} 
+                        src={getTransformedImageUrl(subEvent.cover_image_url || albumPreviews[subEvent.id], 'thumbnail')} 
                         alt={subEvent.title}
                         className="w-full h-full object-cover"
                       />
