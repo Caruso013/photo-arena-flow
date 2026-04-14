@@ -776,7 +776,7 @@ const Campaign = () => {
           <div className="relative rounded-xl overflow-hidden mb-4 sm:mb-6">
             {campaign.cover_image_url ? (
               <img
-                src={campaign.cover_image_url}
+                src={getTransformedImageUrl(campaign.cover_image_url, 'large')}
                 alt={campaign.title}
                 className="w-full h-48 sm:h-64 object-cover"
               />
