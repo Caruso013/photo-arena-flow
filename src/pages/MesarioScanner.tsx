@@ -181,45 +181,45 @@ const MesarioScanner = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background">
+    <div className="min-h-[100dvh] bg-gradient-to-br from-background via-muted/30 to-background flex flex-col overflow-x-hidden">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b">
-        <div className="container flex items-center justify-between h-14 px-4">
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleBackToGames}>
+      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b shrink-0">
+        <div className="flex items-center justify-between h-14 px-3 sm:px-4 max-w-lg mx-auto w-full">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={handleBackToGames}>
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <QrCode className="h-5 w-5 text-primary" />
-            <span className="font-semibold text-sm truncate max-w-[200px]">
+            <QrCode className="h-5 w-5 text-primary shrink-0" />
+            <span className="font-semibold text-sm truncate">
               {session.campaign?.title}
             </span>
           </div>
-          <Button variant="ghost" size="sm" onClick={handleLogout}>
+          <Button variant="ghost" size="sm" onClick={handleLogout} className="shrink-0 ml-2">
             <LogOut className="h-4 w-4 mr-1" />
             Sair
           </Button>
         </div>
       </header>
 
-      <main className="container px-4 py-6 max-w-lg mx-auto">
-        {/* Event Info */}
-        <Card className="mb-6">
-          <CardContent className="p-4">
+      <main className="flex-1 px-3 sm:px-4 py-4 sm:py-6 max-w-lg mx-auto w-full">
+        {/* Event Info - Compact */}
+        <Card className="mb-4 sm:mb-6">
+          <CardContent className="p-3 sm:p-4">
             <div className="flex items-center gap-3">
               {session.organization?.logo_url ? (
                 <img 
                   src={session.organization.logo_url} 
                   alt={session.organization.name}
-                  className="w-12 h-12 rounded-lg object-cover"
+                  className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg object-cover shrink-0"
                 />
               ) : (
-                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Camera className="h-6 w-6 text-primary" />
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                  <Camera className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
                 </div>
               )}
-              <div className="flex-1 min-w-0">
-                <p className="font-medium truncate">{session.campaign?.title}</p>
-                <p className="text-sm text-muted-foreground">
+              <div className="min-w-0 flex-1">
+                <p className="font-medium truncate text-sm sm:text-base">{session.campaign?.title}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground truncate">
                   Mesário: {session.mesario_name}
                 </p>
               </div>
@@ -229,15 +229,15 @@ const MesarioScanner = () => {
 
         {/* Main Content */}
         {viewState === 'scanner' && (
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg flex items-center gap-2">
+              <CardHeader className="pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
+                <CardTitle className="text-base sm:text-lg flex items-center gap-2">
                   <Camera className="h-5 w-5" />
                   Escanear QR Code
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
                 <QRScanner 
                   key={scannerKey}
                   onScan={handleQRScanned} 
@@ -246,7 +246,7 @@ const MesarioScanner = () => {
               </CardContent>
             </Card>
 
-            <p className="text-center text-sm text-muted-foreground">
+            <p className="text-center text-xs sm:text-sm text-muted-foreground px-4">
               Aponte a câmera para o QR Code do fotógrafo
             </p>
           </div>

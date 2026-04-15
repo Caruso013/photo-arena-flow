@@ -104,39 +104,39 @@ const MesarioGameSelect = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background">
+    <div className="min-h-[100dvh] bg-gradient-to-br from-background via-muted/30 to-background flex flex-col overflow-x-hidden">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b">
-        <div className="container flex items-center justify-between h-14 px-4">
-          <div className="flex items-center gap-2">
+      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b shrink-0">
+        <div className="flex items-center justify-between h-14 px-3 sm:px-4 max-w-lg mx-auto w-full">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
             {session.organization?.logo_url ? (
               <img 
                 src={session.organization.logo_url} 
                 alt={session.organization.name}
-                className="w-8 h-8 rounded-lg object-cover"
+                className="w-8 h-8 rounded-lg object-cover shrink-0"
               />
             ) : (
-              <QrCode className="h-5 w-5 text-primary" />
+              <QrCode className="h-5 w-5 text-primary shrink-0" />
             )}
-            <div>
-              <span className="font-semibold text-sm block leading-tight">
+            <div className="min-w-0">
+              <span className="font-semibold text-sm block leading-tight truncate">
                 {session.organization?.name || 'Mesário'}
               </span>
-              <span className="text-xs text-muted-foreground">{session.mesario_name}</span>
+              <span className="text-xs text-muted-foreground truncate block">{session.mesario_name}</span>
             </div>
           </div>
-          <Button variant="ghost" size="sm" onClick={handleLogout}>
+          <Button variant="ghost" size="sm" onClick={handleLogout} className="shrink-0 ml-2">
             <LogOut className="h-4 w-4 mr-1" />
             Sair
           </Button>
         </div>
       </header>
 
-      <main className="container px-4 py-6 max-w-lg mx-auto">
+      <main className="flex-1 px-3 sm:px-4 py-4 sm:py-6 max-w-lg mx-auto w-full">
         {/* Title */}
-        <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold mb-1">Qual seu jogo?</h1>
-          <p className="text-muted-foreground text-sm">
+        <div className="text-center mb-5 sm:mb-6">
+          <h1 className="text-xl sm:text-2xl font-bold mb-1">Qual seu jogo?</h1>
+          <p className="text-muted-foreground text-xs sm:text-sm px-2">
             Selecione o jogo de hoje para validar fotógrafos
           </p>
           <Badge variant="outline" className="mt-2">
@@ -149,15 +149,15 @@ const MesarioGameSelect = () => {
         {loading ? (
           <div className="space-y-3">
             {[1, 2, 3].map(i => (
-              <div key={i} className="h-24 bg-muted animate-pulse rounded-xl" />
+              <div key={i} className="h-20 sm:h-24 bg-muted animate-pulse rounded-xl" />
             ))}
           </div>
         ) : games.length === 0 ? (
           <Card className="border-dashed">
-            <CardContent className="text-center py-12">
-              <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="font-semibold mb-1">Nenhum jogo hoje</h3>
-              <p className="text-sm text-muted-foreground">
+            <CardContent className="text-center py-10 sm:py-12 px-4">
+              <Calendar className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mx-auto mb-3 sm:mb-4" />
+              <h3 className="font-semibold mb-1 text-sm sm:text-base">Nenhum jogo hoje</h3>
+              <p className="text-xs sm:text-sm text-muted-foreground">
                 Não há jogos agendados para hoje
                 {session.organization ? ` na ${session.organization.name}` : ''}.
               </p>
@@ -174,7 +174,7 @@ const MesarioGameSelect = () => {
                 <CardContent className="p-0">
                   <div className="flex gap-0">
                     {/* Thumbnail */}
-                    <div className="w-20 h-20 shrink-0 bg-muted">
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 shrink-0 bg-muted">
                       {game.cover_image_url ? (
                         <img
                           src={getTransformedImageUrl(game.cover_image_url, 'thumbnail')}
@@ -183,25 +183,25 @@ const MesarioGameSelect = () => {
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-primary/5">
-                          <Camera className="h-6 w-6 text-primary/30" />
+                          <Camera className="h-5 w-5 sm:h-6 sm:w-6 text-primary/30" />
                         </div>
                       )}
                     </div>
 
                     {/* Content */}
-                    <div className="flex-1 p-3 flex items-center justify-between gap-2">
-                      <div className="min-w-0">
-                        <h3 className="font-semibold text-sm leading-tight truncate">{game.title}</h3>
-                        <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-xs text-muted-foreground">
+                    <div className="flex-1 p-2.5 sm:p-3 flex items-center justify-between gap-2 min-w-0">
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-semibold text-xs sm:text-sm leading-tight truncate">{game.title}</h3>
+                        <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-[10px] sm:text-xs text-muted-foreground">
                           {game.location && (
-                            <span className="flex items-center gap-1">
-                              <MapPin className="h-3 w-3" />
-                              {game.location}
+                            <span className="flex items-center gap-1 truncate">
+                              <MapPin className="h-3 w-3 shrink-0" />
+                              <span className="truncate">{game.location}</span>
                             </span>
                           )}
                           {game.event_start_time && (
                             <span className="flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
+                              <Clock className="h-3 w-3 shrink-0" />
                               {game.event_start_time}
                               {game.event_end_time && ` - ${game.event_end_time}`}
                             </span>
