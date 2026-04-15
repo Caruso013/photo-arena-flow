@@ -39,14 +39,14 @@ interface PhotographerData {
   };
 }
 
-type ViewState = 'scanner' | 'confirmation' | 'result';
+type ViewState = 'scanner' | 'confirmation' | 'result' | 'denied';
 
 const MesarioScanner = () => {
   const navigate = useNavigate();
   const [session, setSession] = useState<MesarioSession | null>(null);
   const [viewState, setViewState] = useState<ViewState>('scanner');
   const [photographerData, setPhotographerData] = useState<PhotographerData | null>(null);
-  const [resultType, setResultType] = useState<'success' | 'error' | 'already_confirmed'>('success');
+  const [resultType, setResultType] = useState<'success' | 'error' | 'already_confirmed' | 'denied'>('success');
   const [resultMessage, setResultMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [scannerKey, setScannerKey] = useState(0);
@@ -116,8 +116,8 @@ const MesarioScanner = () => {
         setResultMessage(`Presença já confirmada às ${new Date(data.confirmed_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`);
         setViewState('result');
       } else if (!data.approved) {
-        setResultType('error');
-        setResultMessage('Este fotógrafo NÃO está aprovado para este jogo');
+        setResultType('denied');
+        setResultMessage('Este fotógrafo NÃO está autorizado para este evento');
         setViewState('result');
       } else {
         setViewState('confirmation');

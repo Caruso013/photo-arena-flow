@@ -198,6 +198,7 @@ Deno.serve(async (req: Request) => {
       JSON.stringify({
         valid: true,
         approved: isApproved,
+        approval_source: approvalSource,
         already_confirmed: !!existingAttendance,
         confirmed_at: existingAttendance?.confirmed_at || null,
         photographer: {
