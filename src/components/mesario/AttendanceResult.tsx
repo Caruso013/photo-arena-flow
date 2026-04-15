@@ -1,10 +1,10 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { CheckCircle2, XCircle, AlertCircle, Camera } from 'lucide-react';
+import { CheckCircle2, XCircle, AlertCircle, ShieldX, Camera } from 'lucide-react';
 
 interface AttendanceResultProps {
-  type: 'success' | 'error' | 'already_confirmed';
+  type: 'success' | 'error' | 'already_confirmed' | 'denied';
   message: string;
   photographerName?: string;
   photographerAvatar?: string;
@@ -33,6 +33,14 @@ const AttendanceResult = ({
       borderColor: 'border-red-500/50',
       bgLight: 'bg-red-500/5',
       textColor: 'text-red-600',
+      title: 'ERRO'
+    },
+    denied: {
+      icon: ShieldX,
+      bgColor: 'bg-orange-500',
+      borderColor: 'border-orange-500/50',
+      bgLight: 'bg-orange-500/5',
+      textColor: 'text-orange-600',
       title: 'ACESSO NEGADO'
     },
     already_confirmed: {
@@ -62,14 +70,14 @@ const AttendanceResult = ({
 
         {/* Photographer Info */}
         {photographerName && (
-          <div className="flex items-center justify-center gap-3 my-3 sm:my-4">
-            <Avatar className="h-10 w-10 sm:h-12 sm:w-12">
+          <div className="flex flex-col items-center gap-2 my-3 sm:my-4">
+            <Avatar className={`h-14 w-14 sm:h-16 sm:w-16 border-4 ${type === 'denied' ? 'border-orange-500/30' : type === 'success' ? 'border-green-500/30' : type === 'already_confirmed' ? 'border-yellow-500/30' : 'border-red-500/30'}`}>
               <AvatarImage src={photographerAvatar} />
-              <AvatarFallback>
+              <AvatarFallback className={`text-lg ${type === 'denied' ? 'bg-orange-500/10 text-orange-600' : ''}`}>
                 {photographerName.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <span className="font-medium text-base sm:text-lg">{photographerName}</span>
+            <span className="font-semibold text-base sm:text-lg">{photographerName}</span>
           </div>
         )}
 
@@ -77,6 +85,13 @@ const AttendanceResult = ({
         <p className="text-sm sm:text-base text-muted-foreground mb-6 sm:mb-8 break-words">
           {message}
         </p>
+
+        {/* Denied hint */}
+        {type === 'denied' && (
+          <p className="text-xs text-muted-foreground mb-4 -mt-4 px-2">
+            O fotógrafo precisa estar atribuído ou ter candidatura aprovada para este evento.
+          </p>
+        )}
 
         {/* Action Button */}
         <Button 
