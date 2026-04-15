@@ -116,7 +116,7 @@ const QRScanner = ({ onScan, loading = false }: QRScannerProps) => {
   }, [loading, onScan, stopScanner]);
 
   useEffect(() => {
-    // Small delay to ensure DOM is ready
+    // Small delay to ensure DOM element #qr-reader is mounted before initializing Html5Qrcode
     const timer = setTimeout(() => startScanner(), 300);
 
     return () => {
