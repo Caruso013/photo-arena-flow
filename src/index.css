@@ -339,3 +339,37 @@ html {
     padding: 0.875rem;
   }
 }
+
+/* Bottom navigation spacer - prevent content from being hidden behind fixed bottom nav */
+@media (max-width: 768px) {
+  main {
+    padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* Responsive container padding on small screens */
+@media (max-width: 640px) {
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
+/* Fix tables on mobile - horizontal scroll */
+@media (max-width: 768px) {
+  table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+  }
+}
+
+/* Responsive cards grid */
+@media (max-width: 640px) {
+  .grid.md\:grid-cols-2,
+  .grid.md\:grid-cols-3,
+  .grid.md\:grid-cols-4 {
+    gap: 0.75rem;
+  }
+}

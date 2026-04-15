@@ -43,15 +43,6 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
   const { user } = useAuth();
   const { toast } = useToast();
   const { currentGoal, progress } = usePhotographerGoals();
-
-  // Se view é payouts ou earnings, mostrar componentes específicos
-  if (view === 'payouts' && userRole === 'admin') {
-    return <PayoutRequestsManager />;
-  }
-
-  if (view === 'earnings' && userRole === 'photographer') {
-    return <PhotographerEarnings />;
-  }
   const [photographerStats, setPhotographerStats] = useState<PhotographerStats[]>([]);
   const [revenueData, setRevenueData] = useState<RevenueData[]>([]);
   const [totalRevenue, setTotalRevenue] = useState(0);
@@ -63,8 +54,19 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
   const [generatingReport, setGeneratingReport] = useState(false);
 
   useEffect(() => {
-    fetchFinancialData();
-  }, [user, userRole]);
+    if (view === 'overview') {
+      fetchFinancialData();
+    }
+  }, [user, userRole, view]);
+
+  // Se view é payouts ou earnings, mostrar componentes específicos
+  if (view === 'payouts' && userRole === 'admin') {
+    return <PayoutRequestsManager />;
+  }
+
+  if (view === 'earnings' && userRole === 'photographer') {
+    return <PhotographerEarnings />;
+  }
 
   // Helper para paginação (evitar limite de 1000 registros do Supabase)
   const fetchAllFromTable = async (buildQuery: (from: number, to: number) => any) => {

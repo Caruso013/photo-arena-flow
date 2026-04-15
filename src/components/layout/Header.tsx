@@ -137,7 +137,7 @@ const Header = () => {
                 <Menu className="h-6 w-6" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="bg-header text-header-foreground w-80">
+            <SheetContent side="right" className="bg-header text-header-foreground w-[85vw] max-w-80">
               <SheetHeader>
                 <SheetTitle className="text-primary">Menu</SheetTitle>
               </SheetHeader>

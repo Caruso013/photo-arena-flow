@@ -136,7 +136,7 @@ const Index = () => {
   return (
     <MainLayout>
       {/* Hero Section */}
-      <section className="relative min-h-[85vh] flex items-center justify-center px-4 bg-gradient-to-br from-black via-primary/10 to-black overflow-hidden">
+      <section className="relative min-h-[70vh] sm:min-h-[85vh] flex items-center justify-center px-4 bg-gradient-to-br from-black via-primary/10 to-black overflow-hidden">
         {/* Background Effects */}
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS1vcGFjaXR5PSIwLjA1IiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-30" />
         <div className="absolute top-20 left-10 w-72 h-72 bg-primary/20 rounded-full blur-[120px] animate-pulse" />
@@ -150,7 +150,7 @@ const Index = () => {
                 Reconhecimento Facial Inteligente
               </div>
               
-              <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-tight">
+              <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight leading-tight">
                 <span className="bg-gradient-to-r from-white via-primary to-white bg-clip-text text-transparent">
                   Reviva seus
                 </span>
@@ -158,7 +158,7 @@ const Index = () => {
                 <span className="text-primary animate-pulse">melhores momentos</span>
               </h1>
               
-              <p className="text-xl sm:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
+              <p className="text-lg sm:text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed px-2">
                 Encontre suas fotos instantaneamente com IA, compre em segundos 
                 e receba digitalmente. Simples, rápido e mágico.
               </p>
@@ -183,48 +183,47 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="py-16 sm:py-24 bg-gradient-to-b from-background to-muted/20">
+       <section className="py-12 sm:py-16 md:py-24 bg-gradient-to-b from-background to-muted/20">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-16 scroll-animate">
-            <h2 className="text-3xl sm:text-5xl font-bold mb-4">Por que escolher STA Fotos?</h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+          <div className="text-center mb-8 sm:mb-16 scroll-animate">
+            <h2 className="text-2xl sm:text-3xl md:text-5xl font-bold mb-3 sm:mb-4">Por que escolher STA Fotos?</h2>
+            <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto">
               Tecnologia de ponta para encontrar suas fotos de forma instantânea
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-8 max-w-6xl mx-auto">
             <Card className="group scroll-animate border-2 hover:border-primary/50 transition-all duration-500 hover:shadow-2xl hover:-translate-y-2" style={{ animationDelay: '0ms' }}>
-              <CardContent className="p-8 text-center space-y-4">
-                <div className="w-16 h-16 mx-auto bg-primary/10 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                  <Zap className="h-8 w-8 text-primary" />
+              <CardContent className="p-5 sm:p-8 text-center space-y-3 sm:space-y-4">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto bg-primary/10 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                  <Zap className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
                 </div>
-                <h3 className="text-xl font-bold">IA de Reconhecimento</h3>
-                <p className="text-muted-foreground">
+                <h3 className="text-lg sm:text-xl font-bold">IA de Reconhecimento</h3>
+                <p className="text-sm sm:text-base text-muted-foreground">
                   Tecnologia de ponta identifica você automaticamente em milhares de fotos em segundos
                 </p>
               </CardContent>
             </Card>
 
             <Card className="group scroll-animate border-2 hover:border-primary/50 transition-all duration-500 hover:shadow-2xl hover:-translate-y-2" style={{ animationDelay: '100ms' }}>
-              <CardContent className="p-8 text-center space-y-4">
-                <div className="w-16 h-16 mx-auto bg-primary/10 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                  <Shield className="h-8 w-8 text-primary" />
+              <CardContent className="p-5 sm:p-8 text-center space-y-3 sm:space-y-4">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto bg-primary/10 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                  <Shield className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
                 </div>
-                <h3 className="text-xl font-bold">Compra Segura</h3>
-                <p className="text-muted-foreground">
+                <h3 className="text-lg sm:text-xl font-bold">Compra Segura</h3>
+                <p className="text-sm sm:text-base text-muted-foreground">
                   Pagamento protegido com cartão de crédito e PIX. Suas fotos são suas para sempre
                 </p>
               </CardContent>
             </Card>
 
             <Card className="group scroll-animate border-2 hover:border-primary/50 transition-all duration-500 hover:shadow-2xl hover:-translate-y-2" style={{ animationDelay: '200ms' }}>
-              <CardContent className="p-8 text-center space-y-4">
-                <div className="w-16 h-16 mx-auto bg-primary/10 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                  <Heart className="h-8 w-8 text-primary" />
+              <CardContent className="p-5 sm:p-8 text-center space-y-3 sm:space-y-4">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto bg-primary/10 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                  <Heart className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
                 </div>
-                <h3 className="text-xl font-bold">Entrega Instantânea</h3>
-                <p className="text-muted-foreground">
+                <h3 className="text-lg sm:text-xl font-bold">Entrega Instantânea</h3>
+                <p className="text-sm sm:text-base text-muted-foreground">
                   Receba suas fotos em alta qualidade direto no email, sem espera e sem complicação
                 </p>
               </CardContent>
