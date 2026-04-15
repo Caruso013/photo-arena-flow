@@ -1,10 +1,6 @@
 // @ts-nocheck - Deno Edge Function
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-connection-pool, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version, x-supabase-api-version',
-};
+import { corsHeaders } from '../_shared/cors.ts';
 
 // Função para verificar HMAC
 async function verifyHMAC(data: string, signature: string, secret: string): Promise<boolean> {
