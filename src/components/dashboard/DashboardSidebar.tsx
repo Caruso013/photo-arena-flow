@@ -133,7 +133,7 @@ const DashboardSidebar = ({ isOpen, onToggle }: DashboardSidebarProps) => {
           'fixed top-0 left-0 h-screen bg-card border-r z-50 flex flex-col',
           'transition-all duration-300 ease-in-out',
           isOpen 
-            ? 'translate-x-0 w-60 shadow-2xl' 
+            ? 'translate-x-0 w-[75vw] max-w-60 shadow-2xl' 
             : '-translate-x-full w-0',
           // Desktop: sticky e sempre visível (colapsado ou expandido)
           'md:sticky md:translate-x-0',

@@ -83,7 +83,7 @@ const BottomNavigation = () => {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-lg border-t shadow-lg md:hidden safe-area-bottom">
-      <div className="flex items-center justify-around h-16 px-1">
+      <div className="flex items-center justify-around h-16 px-1 pb-[env(safe-area-inset-bottom,0px)]">
         {navItems.map((item, index) => {
           const Icon = item.icon;
           const isActive = location.pathname === item.path || 
