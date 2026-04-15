@@ -192,6 +192,22 @@ All colors MUST be HSL.
       linear-gradient(to bottom, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
     background-size: 40px 40px;
   }
+
+  /* QR Scanner scanning line animation */
+  @keyframes scan-line {
+    0%, 100% {
+      transform: translateY(0);
+      opacity: 0.5;
+    }
+    50% {
+      transform: translateY(calc(100% + 200px));
+      opacity: 1;
+    }
+  }
+
+  .animate-scan-line {
+    animation: scan-line 2.5s ease-in-out infinite;
+  }
 }
 
 /* Mobile-specific optimizations */

@@ -51,28 +51,28 @@ const MesarioLogin = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background flex items-center justify-center p-4">
-      <div className="w-full max-w-md space-y-6">
+    <div className="min-h-[100dvh] bg-gradient-to-br from-background via-muted/30 to-background flex items-center justify-center p-3 sm:p-4 overflow-x-hidden">
+      <div className="w-full max-w-md space-y-5 sm:space-y-6">
         {/* Header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
-            <QrCode className="h-8 w-8 text-primary" />
+          <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-primary/10 mb-3 sm:mb-4">
+            <QrCode className="h-7 w-7 sm:h-8 sm:w-8 text-primary" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">Validação de Fotógrafos</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Validação de Fotógrafos</h1>
+          <p className="text-sm text-muted-foreground px-2">
             Acesso exclusivo para mesários de eventos
           </p>
         </div>
 
         {/* Login Card */}
         <Card className="border-2">
-          <CardHeader className="text-center pb-4">
-            <CardTitle className="text-lg">Login do Mesário</CardTitle>
-            <CardDescription>
+          <CardHeader className="text-center pb-3 sm:pb-4 px-4 sm:px-6">
+            <CardTitle className="text-base sm:text-lg">Login do Mesário</CardTitle>
+            <CardDescription className="text-sm">
               Entre com seu usuário e senha fornecidos pela organização
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-4 sm:px-6">
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="username">Usuário</Label>
@@ -113,7 +113,7 @@ const MesarioLogin = () => {
 
               {error && (
                 <Alert variant="destructive">
-                  <AlertDescription>{error}</AlertDescription>
+                  <AlertDescription className="text-sm">{error}</AlertDescription>
                 </Alert>
               )}
 
@@ -138,11 +138,11 @@ const MesarioLogin = () => {
 
         {/* Info */}
         <div className="flex items-center gap-2 justify-center p-3 rounded-lg bg-muted/50">
-          <Shield className="h-5 w-5 text-primary" />
+          <Shield className="h-5 w-5 text-primary shrink-0" />
           <span className="text-sm text-muted-foreground">Acesso seguro e temporário</span>
         </div>
 
-        <p className="text-center text-xs text-muted-foreground">
+        <p className="text-center text-xs text-muted-foreground px-4">
           Não tem uma conta? Entre em contato com a organização do evento.
         </p>
       </div>

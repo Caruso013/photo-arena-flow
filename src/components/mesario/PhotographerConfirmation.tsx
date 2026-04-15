@@ -29,27 +29,27 @@ const PhotographerConfirmation = ({
 }: PhotographerConfirmationProps) => {
   return (
     <Card className="border-2 border-green-500/50 bg-green-500/5">
-      <CardContent className="p-6 text-center">
+      <CardContent className="p-4 sm:p-6 text-center">
         {/* Avatar */}
-        <Avatar className="h-24 w-24 mx-auto mb-4 border-4 border-green-500/30">
+        <Avatar className="h-20 w-20 sm:h-24 sm:w-24 mx-auto mb-3 sm:mb-4 border-4 border-green-500/30">
           <AvatarImage src={photographer.avatar_url} />
-          <AvatarFallback className="text-2xl bg-green-500/10 text-green-600">
+          <AvatarFallback className="text-xl sm:text-2xl bg-green-500/10 text-green-600">
             {photographer.full_name.charAt(0).toUpperCase()}
           </AvatarFallback>
         </Avatar>
 
         {/* Name */}
-        <h2 className="text-xl font-bold mb-2">{photographer.full_name}</h2>
+        <h2 className="text-lg sm:text-xl font-bold mb-2 break-words">{photographer.full_name}</h2>
 
         {/* Status Badge */}
-        <Badge className="bg-green-500/10 text-green-600 border-green-500/30 mb-4">
+        <Badge className="bg-green-500/10 text-green-600 border-green-500/30 mb-3 sm:mb-4">
           <CheckCircle2 className="h-3 w-3 mr-1" />
           Aprovado para este evento
         </Badge>
 
         {/* Application Info */}
         {photographer.application && (
-          <p className="text-sm text-muted-foreground mb-6">
+          <p className="text-sm text-muted-foreground mb-4 sm:mb-6">
             Candidatura aprovada em{' '}
             {format(new Date(photographer.application.processed_at), "dd/MM/yyyy", { locale: ptBR })}
           </p>

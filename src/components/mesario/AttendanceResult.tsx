@@ -49,39 +49,39 @@ const AttendanceResult = ({
 
   return (
     <Card className={`border-2 ${borderColor} ${bgLight}`}>
-      <CardContent className="p-8 text-center">
+      <CardContent className="p-5 sm:p-8 text-center">
         {/* Icon */}
-        <div className={`w-20 h-20 rounded-full ${bgColor} mx-auto mb-6 flex items-center justify-center`}>
-          <Icon className="h-10 w-10 text-white" />
+        <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full ${bgColor} mx-auto mb-4 sm:mb-6 flex items-center justify-center`}>
+          <Icon className="h-8 w-8 sm:h-10 sm:w-10 text-white" />
         </div>
 
         {/* Title */}
-        <h2 className={`text-2xl font-bold mb-2 ${textColor}`}>
+        <h2 className={`text-xl sm:text-2xl font-bold mb-2 ${textColor}`}>
           {title}
         </h2>
 
         {/* Photographer Info */}
         {photographerName && (
-          <div className="flex items-center justify-center gap-3 my-4">
-            <Avatar className="h-12 w-12">
+          <div className="flex items-center justify-center gap-3 my-3 sm:my-4">
+            <Avatar className="h-10 w-10 sm:h-12 sm:w-12">
               <AvatarImage src={photographerAvatar} />
               <AvatarFallback>
                 {photographerName.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <span className="font-medium text-lg">{photographerName}</span>
+            <span className="font-medium text-base sm:text-lg">{photographerName}</span>
           </div>
         )}
 
         {/* Message */}
-        <p className="text-muted-foreground mb-8">
+        <p className="text-sm sm:text-base text-muted-foreground mb-6 sm:mb-8 break-words">
           {message}
         </p>
 
         {/* Action Button */}
         <Button 
           size="lg" 
-          className="w-full"
+          className="w-full text-sm sm:text-base"
           onClick={onScanAnother}
         >
           <Camera className="mr-2 h-4 w-4" />

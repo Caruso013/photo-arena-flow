@@ -3,7 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-connection-pool, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version, x-supabase-api-version',
 };
 
 // Função para verificar HMAC
@@ -44,30 +44,51 @@ Deno.serve(async (req: Request) => {
     }
 
     // Verificar se sessão do mesário é válida
+    // Primeiro tenta mesario_sessions (fluxo legado com código de acesso)
     const { data: mesarioSession } = await supabase
       .from('mesario_sessions')
       .select('id, campaign_id, expires_at, is_active')
       .eq('id', mesario_session_id)
       .single();
 
-    if (!mesarioSession || !mesarioSession.is_active || new Date(mesarioSession.expires_at) < new Date()) {
-      return new Response(
-        JSON.stringify({ 
-          valid: false, 
-          error: 'Sessão de mesário inválida ou expirada' 
-        }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    if (mesarioSession) {
+      // Validar sessão legada
+      if (!mesarioSession.is_active || new Date(mesarioSession.expires_at) < new Date()) {
+        return new Response(
+          JSON.stringify({ 
+            valid: false, 
+            error: 'Sessão de mesário inválida ou expirada' 
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
 
-    if (mesarioSession.campaign_id !== campaign_id) {
-      return new Response(
-        JSON.stringify({ 
-          valid: false, 
-          error: 'Esta sessão não é válida para este evento' 
-        }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      if (mesarioSession.campaign_id !== campaign_id) {
+        return new Response(
+          JSON.stringify({ 
+            valid: false, 
+            error: 'Esta sessão não é válida para este evento' 
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } else {
+      // Fallback: verificar mesario_accounts (fluxo com login por usuário/senha)
+      const { data: mesarioAccount } = await supabase
+        .from('mesario_accounts')
+        .select('id, is_active')
+        .eq('id', mesario_session_id)
+        .single();
+
+      if (!mesarioAccount || !mesarioAccount.is_active) {
+        return new Response(
+          JSON.stringify({ 
+            valid: false, 
+            error: 'Sessão de mesário inválida ou expirada' 
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     // Extrair token do formato STA-PHOTO:xxx
