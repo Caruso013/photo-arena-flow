@@ -14,9 +14,10 @@ const MyQRCode = () => {
   const [loading, setLoading] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
   const [qrSize, setQrSize] = useState(248);
+  const [cardQrSize, setCardQrSize] = useState(() => Math.min(248, (typeof window !== 'undefined' ? window.innerWidth : 400) - 120));
   const qrRef = useRef<HTMLDivElement>(null);
 
-  // Recalculate QR size on window resize (for fullscreen mode)
+  // Recalculate QR sizes on window resize
   useEffect(() => {
     const updateSize = () => {
       if (fullscreen) {
@@ -24,6 +25,7 @@ const MyQRCode = () => {
         const maxH = window.innerHeight * 0.55;
         setQrSize(Math.min(maxW, maxH, 400));
       }
+      setCardQrSize(Math.min(248, window.innerWidth - 120));
     };
     updateSize();
     window.addEventListener('resize', updateSize);
@@ -216,7 +218,7 @@ const MyQRCode = () => {
                 >
                   <QRCodeSVG
                     value={qrValue}
-                    size={Math.min(248, window.innerWidth - 120)}
+                    size={cardQrSize}
                     level="H"
                     includeMargin={true}
                     bgColor="#ffffff"
