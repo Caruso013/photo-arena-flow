@@ -54,14 +54,55 @@ Deno.serve(async (req: Request) => {
       }
       mesarioName = mesarioSession.mesario_name;
     } else {
-      // Fallback: verificar mesario_accounts (fluxo com login por usuário/senha)
+      // Fallback 1: verificar mesario_accounts (fluxo com login por usuário/senha)
       const { data: mesarioAccount } = await supabase
         .from('mesario_accounts')
         .select('id, full_name, is_active')
         .eq('id', mesario_session_id)
-        .single();
+        .maybeSingle();
 
-      if (!mesarioAccount || !mesarioAccount.is_active) {
+      let hasValidMesarioIdentity = !!(mesarioAccount && mesarioAccount.is_active);
+      if (mesarioAccount?.full_name) {
+        mesarioName = mesarioAccount.full_name;
+      }
+
+      // Fallback 2: compatibilidade com sessões antigas que armazenam profile.id
+      if (!hasValidMesarioIdentity) {
+        const { data: profileIdentity } = await supabase
+          .from('profiles')
+          .select('id, role, full_name')
+          .eq('id', mesario_session_id)
+          .maybeSingle();
+
+        if (profileIdentity?.full_name) {
+          mesarioName = profileIdentity.full_name;
+        }
+
+        if (profileIdentity?.role === 'admin') {
+          hasValidMesarioIdentity = true;
+        } else if (profileIdentity?.role === 'organization') {
+          const { data: campaignOrg } = await supabase
+            .from('campaigns')
+            .select('organization_id')
+            .eq('id', campaign_id)
+            .maybeSingle();
+
+          if (campaignOrg?.organization_id) {
+            const { data: membership } = await supabase
+              .from('organization_members')
+              .select('id')
+              .eq('organization_id', campaignOrg.organization_id)
+              .eq('user_id', mesario_session_id)
+              .eq('is_active', true)
+              .in('role', ['owner', 'admin'])
+              .limit(1);
+
+            hasValidMesarioIdentity = !!(membership && membership.length > 0);
+          }
+        }
+      }
+
+      if (!hasValidMesarioIdentity) {
         return new Response(
           JSON.stringify({ 
             success: false, 
@@ -70,7 +111,6 @@ Deno.serve(async (req: Request) => {
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      mesarioName = mesarioAccount.full_name;
     }
 
     // Verificar aprovação por múltiplas fontes
