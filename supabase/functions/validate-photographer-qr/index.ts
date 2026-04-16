@@ -87,16 +87,14 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Extrair token do formato STA-PHOTO:xxx
-    let tokenData: string;
-    if (qr_token.startsWith('STA-PHOTO:')) {
-      tokenData = qr_token.replace('STA-PHOTO:', '');
-    } else {
-      tokenData = qr_token;
-    }
+    // Extrair token do formato STA-PHOTO:xxx e normalizar espaços/quebras de linha
+    const normalizedQr = String(qr_token || '').trim();
+    const tokenData = normalizedQr.startsWith('STA-PHOTO:')
+      ? normalizedQr.replace('STA-PHOTO:', '').trim()
+      : normalizedQr;
 
-    // Buscar token no banco
-    const { data: qrToken, error: tokenError } = await supabase
+    // Buscar token no banco (formato principal)
+    let { data: qrToken } = await supabase
       .from('photographer_qr_tokens')
       .select(`
         id,
@@ -111,9 +109,27 @@ Deno.serve(async (req: Request) => {
         )
       `)
       .eq('token', tokenData)
-      .single();
+      .maybeSingle();
 
-    if (tokenError || !qrToken) {
+    // Compatibilidade: aceitar QR de fallback com UUID do fotógrafo
+    if (!qrToken && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(tokenData)) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url, email, role')
+        .eq('id', tokenData)
+        .maybeSingle();
+
+      if (profile) {
+        qrToken = {
+          id: null,
+          photographer_id: profile.id,
+          token: tokenData,
+          photographer: profile,
+        };
+      }
+    }
+
+    if (!qrToken) {
       return new Response(
         JSON.stringify({ 
           valid: false, 
@@ -154,16 +170,17 @@ Deno.serve(async (req: Request) => {
     }
 
     // 2. Verificar se está atribuído via campaign_photographers
+    // Compatibilidade: considerar NULL como ativo em dados legados.
     if (!isApproved) {
       const { data: assignment } = await supabase
         .from('campaign_photographers')
-        .select('id, assigned_at')
+        .select('id, assigned_at, is_active')
         .eq('campaign_id', campaign_id)
         .eq('photographer_id', qrToken.photographer_id)
-        .eq('is_active', true)
-        .single();
+        .or('is_active.is.null,is_active.eq.true')
+        .limit(1);
 
-      if (assignment) {
+      if (assignment && assignment.length > 0) {
         isApproved = true;
         approvalSource = 'assigned';
       }
@@ -192,7 +209,9 @@ Deno.serve(async (req: Request) => {
       .select('id, confirmed_at')
       .eq('campaign_id', campaign_id)
       .eq('photographer_id', qrToken.photographer_id)
-      .single();
+      .order('confirmed_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
     return new Response(
       JSON.stringify({

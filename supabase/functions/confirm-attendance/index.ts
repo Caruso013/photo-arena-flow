@@ -88,16 +88,17 @@ Deno.serve(async (req: Request) => {
     }
 
     // 2. Verificar se está atribuído via campaign_photographers
+    // Compatibilidade: considerar NULL como ativo em dados legados.
     if (!isApproved) {
       const { data: assignment } = await supabase
         .from('campaign_photographers')
-        .select('id')
+        .select('id, is_active')
         .eq('campaign_id', campaign_id)
         .eq('photographer_id', photographer_id)
-        .eq('is_active', true)
-        .single();
+        .or('is_active.is.null,is_active.eq.true')
+        .limit(1);
 
-      if (assignment) {
+      if (assignment && assignment.length > 0) {
         isApproved = true;
       }
     }
@@ -133,7 +134,9 @@ Deno.serve(async (req: Request) => {
       .select('id, confirmed_at')
       .eq('campaign_id', campaign_id)
       .eq('photographer_id', photographer_id)
-      .single();
+      .order('confirmed_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
     if (existingAttendance) {
       return new Response(
