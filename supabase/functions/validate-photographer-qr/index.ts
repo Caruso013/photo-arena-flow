@@ -41,11 +41,19 @@ Deno.serve(async (req: Request) => {
 
     // Verificar se sessão do mesário é válida
     // Primeiro tenta mesario_sessions (fluxo legado com código de acesso)
-    const { data: mesarioSession } = await supabase
+    const { data: mesarioSession, error: mesarioSessionError } = await supabase
       .from('mesario_sessions')
       .select('id, campaign_id, expires_at, is_active')
       .eq('id', mesario_session_id)
-      .single();
+      .maybeSingle();
+
+    if (mesarioSessionError) {
+      console.error('Erro ao consultar mesario_sessions:', mesarioSessionError);
+      return new Response(
+        JSON.stringify({ valid: false, error: 'Erro ao validar sessão do mesário' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     if (mesarioSession) {
       // Validar sessão legada

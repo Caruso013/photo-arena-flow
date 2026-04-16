@@ -25,11 +25,20 @@ Deno.serve(async (req: Request) => {
     // Verificar se sessão do mesário é válida
     // Primeiro tenta mesario_sessions (fluxo legado com código de acesso)
     let mesarioName: string | null = null;
-    const { data: mesarioSession } = await supabase
+    let confirmedByMesarioSessionId: string | null = null;
+    const { data: mesarioSession, error: mesarioSessionError } = await supabase
       .from('mesario_sessions')
       .select('id, campaign_id, expires_at, is_active, mesario_name')
       .eq('id', mesario_session_id)
-      .single();
+      .maybeSingle();
+
+    if (mesarioSessionError) {
+      console.error('Erro ao consultar mesario_sessions:', mesarioSessionError);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Erro ao validar sessão do mesário' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     if (mesarioSession) {
       // Validar sessão legada
@@ -53,6 +62,7 @@ Deno.serve(async (req: Request) => {
         );
       }
       mesarioName = mesarioSession.mesario_name;
+      confirmedByMesarioSessionId = mesarioSession.id;
     } else {
       // Fallback 1: verificar mesario_accounts (fluxo com login por usuário/senha)
       const { data: mesarioAccount } = await supabase
@@ -195,7 +205,8 @@ Deno.serve(async (req: Request) => {
       .insert({
         campaign_id,
         photographer_id,
-        confirmed_by: mesario_session_id,
+        // Keep FK integrity: confirmed_by references mesario_sessions.id only.
+        confirmed_by: confirmedByMesarioSessionId,
         confirmed_at: new Date().toISOString()
       })
       .select(`

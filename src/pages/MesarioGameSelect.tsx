@@ -50,7 +50,7 @@ const MesarioGameSelect = () => {
 
   const fetchTodaysGames = async (organizationId: string | null) => {
     try {
-      const today = new Date().toISOString().split('T')[0];
+        const today = format(new Date(), 'yyyy-MM-dd');
 
       let query = supabase
         .from('campaigns')

@@ -26,7 +26,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     <div className="min-h-screen flex flex-col bg-background">
       <AdminHeader />
       
-      <main className="flex-1 container px-4 py-8">
+      <main className="flex-1 w-full max-w-7xl mx-auto px-3 py-4 sm:px-4 sm:py-6 md:px-6 pb-24 md:pb-6 overflow-x-hidden">
         {children}
       </main>
     </div>

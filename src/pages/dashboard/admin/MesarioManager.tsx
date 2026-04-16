@@ -231,22 +231,22 @@ const MesarioManager: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
+          <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
             <UserCheck className="h-6 w-6" />
             Gerenciamento de Mesários
           </h1>
-          <p className="text-muted-foreground">Crie contas e gerencie acessos para mesários</p>
+          <p className="text-sm sm:text-base text-muted-foreground">Crie contas e gerencie acessos para mesários</p>
         </div>
-        <Button variant="outline" onClick={fetchData} className="gap-2">
+        <Button variant="outline" onClick={fetchData} className="gap-2 w-full sm:w-auto">
           <RefreshCw className="h-4 w-4" />
           Atualizar
         </Button>
       </div>
 
       <Tabs defaultValue="accounts" className="space-y-4">
-        <TabsList>
+        <TabsList className="grid w-full grid-cols-2 h-auto p-1">
           <TabsTrigger value="accounts" className="gap-2">
             <KeyRound className="h-4 w-4" />
             Contas (User/Senha)
@@ -312,45 +312,47 @@ const MesarioManager: React.FC = () => {
               ) : accounts.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">Nenhuma conta criada.</div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Usuário</TableHead>
-                      <TableHead>Nome</TableHead>
-                      <TableHead>Organização</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Criado em</TableHead>
-                      <TableHead className="text-right">Ações</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {accounts.map(account => (
-                      <TableRow key={account.id}>
-                        <TableCell><code className="bg-muted px-2 py-1 rounded text-sm">{account.username}</code></TableCell>
-                        <TableCell className="font-medium">{account.full_name}</TableCell>
-                        <TableCell>{account.organization?.name || '—'}</TableCell>
-                        <TableCell>
-                          <Badge variant={account.is_active ? 'default' : 'secondary'}>
-                            {account.is_active ? 'Ativo' : 'Inativo'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {format(new Date(account.created_at), 'dd/MM/yyyy', { locale: ptBR })}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button variant="outline" size="sm" onClick={() => toggleAccountActive(account)}>
-                              {account.is_active ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
-                            </Button>
-                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => deleteAccount(account.id)}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
+                <div className="w-full overflow-x-auto">
+                  <Table className="min-w-[780px]">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Usuário</TableHead>
+                        <TableHead>Nome</TableHead>
+                        <TableHead>Organização</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Criado em</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {accounts.map(account => (
+                        <TableRow key={account.id}>
+                          <TableCell><code className="bg-muted px-2 py-1 rounded text-sm">{account.username}</code></TableCell>
+                          <TableCell className="font-medium">{account.full_name}</TableCell>
+                          <TableCell>{account.organization?.name || '—'}</TableCell>
+                          <TableCell>
+                            <Badge variant={account.is_active ? 'default' : 'secondary'}>
+                              {account.is_active ? 'Ativo' : 'Inativo'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {format(new Date(account.created_at), 'dd/MM/yyyy', { locale: ptBR })}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button variant="outline" size="sm" onClick={() => toggleAccountActive(account)}>
+                                {account.is_active ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
+                              </Button>
+                              <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => deleteAccount(account.id)}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -408,56 +410,58 @@ const MesarioManager: React.FC = () => {
               ) : sessions.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">Nenhuma sessão criada.</div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Código</TableHead>
-                      <TableHead>Nome</TableHead>
-                      <TableHead>Evento</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Tempo</TableHead>
-                      <TableHead className="text-right">Ações</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {sessions.map(session => {
-                      const timeInfo = getTimeRemaining(session.expires_at);
-                      const isExpired = timeInfo.expired;
-                      const isActive = session.is_active && !isExpired;
+                <div className="w-full overflow-x-auto">
+                  <Table className="min-w-[860px]">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Código</TableHead>
+                        <TableHead>Nome</TableHead>
+                        <TableHead>Evento</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Tempo</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {sessions.map(session => {
+                        const timeInfo = getTimeRemaining(session.expires_at);
+                        const isExpired = timeInfo.expired;
+                        const isActive = session.is_active && !isExpired;
 
-                      return (
-                        <TableRow key={session.id}>
-                          <TableCell>
-                            <div className="flex items-center gap-1">
-                              <code className="bg-muted px-2 py-1 rounded font-mono">{session.access_code}</code>
-                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => copyCode(session.access_code)}>
-                                <Copy className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                          <TableCell className="font-medium">{session.mesario_name}</TableCell>
-                          <TableCell>{session.campaign?.title || '—'}</TableCell>
-                          <TableCell>
-                            <Badge variant={isActive ? 'default' : isExpired ? 'destructive' : 'secondary'}>
-                              {isActive ? 'Ativo' : isExpired ? 'Expirado' : 'Inativo'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className={isExpired ? 'text-destructive' : 'text-muted-foreground'}>{timeInfo.text}</TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-1">
-                              {isActive && (
-                                <Button variant="outline" size="sm" onClick={() => deactivateSession(session.id)}>Desativar</Button>
-                              )}
-                              <Button variant="ghost" size="icon" className="text-destructive" onClick={() => deleteSession(session.id)}>
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
+                        return (
+                          <TableRow key={session.id}>
+                            <TableCell>
+                              <div className="flex items-center gap-1">
+                                <code className="bg-muted px-2 py-1 rounded font-mono">{session.access_code}</code>
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => copyCode(session.access_code)}>
+                                  <Copy className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                            <TableCell className="font-medium">{session.mesario_name}</TableCell>
+                            <TableCell>{session.campaign?.title || '—'}</TableCell>
+                            <TableCell>
+                              <Badge variant={isActive ? 'default' : isExpired ? 'destructive' : 'secondary'}>
+                                {isActive ? 'Ativo' : isExpired ? 'Expirado' : 'Inativo'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className={isExpired ? 'text-destructive' : 'text-muted-foreground'}>{timeInfo.text}</TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-1">
+                                {isActive && (
+                                  <Button variant="outline" size="sm" onClick={() => deactivateSession(session.id)}>Desativar</Button>
+                                )}
+                                <Button variant="ghost" size="icon" className="text-destructive" onClick={() => deleteSession(session.id)}>
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
             </CardContent>
           </Card>
