@@ -1,13 +1,15 @@
 // Email templates for STA Fotos / Photo Arena
 // All templates use the brand colors and styling
 
+import { getBrandLogoUrl } from './brandAssets';
+
 export interface EmailTemplateOptions {
   logoUrl?: string;
   baseUrl?: string;
 }
 
 const DEFAULT_OPTIONS: EmailTemplateOptions = {
-  logoUrl: 'https://gtpqppvyjrnnuhlsbpqd.supabase.co/storage/v1/object/public/campaign-covers/lovable-uploads/6fdfc5d2-230c-4142-bf7c-3a326e5e45a8.png',
+  logoUrl: getBrandLogoUrl('https://www.stafotos.com'),
   baseUrl: 'https://stafotos.com.br'
 };
 

@@ -3,6 +3,8 @@
  * Funções para otimização de carregamento de imagens
  */
 
+import { getTransformedImageUrl, TransformSize } from './supabaseImageTransform';
+
 export type ImageSize = 'blur' | 'thumbnail' | 'medium' | 'large' | 'original';
 
 export interface ImageSizeConfig {
@@ -31,24 +33,16 @@ export function getOptimizedImageUrl(
     return url;
   }
 
-  const config = IMAGE_SIZE_CONFIG[size];
-  if (!config) return url;
+  const transformSize: TransformSize = size === 'blur'
+    ? 'tiny'
+    : size === 'thumbnail'
+      ? 'thumbnail'
+      : size === 'medium'
+        ? 'medium'
+        : 'large';
 
   try {
-    // Adicionar parâmetros de transformação na URL + Cache headers
-    const urlObj = new URL(url);
-    const params = new URLSearchParams({
-      width: config.width.toString(),
-      height: config.height.toString(),
-      quality: config.quality.toString(),
-      format: 'webp', // WebP é ~30% menor que JPEG
-      resize: 'cover'
-    });
-
-    urlObj.search = params.toString();
-    
-    // URL com parâmetros otimizados
-    const optimizedUrl = urlObj.toString();
+    const optimizedUrl = getTransformedImageUrl(url, transformSize);
     
     // Cache no localStorage para evitar requisições duplicadas
     const cacheKey = `img_${size}_${url}`;

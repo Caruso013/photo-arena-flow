@@ -44,8 +44,11 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Apenas interceptar imagens
-  if (!request.url.match(/\.(jpg|jpeg|png|webp|gif)$/i)) {
+  // Apenas interceptar imagens e URLs de transformação do Supabase
+  const isImageExtension = request.url.match(/\.(jpg|jpeg|png|webp|gif)$/i);
+  const isSupabaseRenderImage = url.hostname.includes('supabase.co') && url.pathname.includes('/storage/v1/render/image/');
+
+  if (!isImageExtension && !isSupabaseRenderImage) {
     return;
   }
 

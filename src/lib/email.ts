@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { getBrandLogoUrl } from './brandAssets';
 
 interface EmailData {
   to: string;
@@ -11,6 +12,7 @@ interface EmailData {
 }
 
 const BASE_URL = window.location.origin || 'https://photo-arena-flow.vercel.app';
+const BRAND_LOGO_URL = getBrandLogoUrl(BASE_URL);
 
 // Template para compra individual
 const SINGLE_PURCHASE_TEMPLATE = `
@@ -132,7 +134,7 @@ const SINGLE_PURCHASE_TEMPLATE = `
 <body>
 <div class="email-container">
   <div class="header">
-    <img src="https://gtpqppvyjrnnuhlsbpqd.supabase.co/storage/v1/object/public/campaign-covers/lovable-uploads/6fdfc5d2-230c-4142-bf7c-3a326e5e45a8.png" alt="STA Fotos Logo" />
+    <img src="${BRAND_LOGO_URL}" alt="STA Fotos Logo" />
     <h1>Photo Arena - STA Fotos</h1>
     <p>Plataforma de Fotografia Esportiva</p>
   </div>
@@ -353,7 +355,7 @@ const MULTIPLE_PURCHASE_TEMPLATE = `
 <body>
 <div class="email-container">
   <div class="header">
-    <img src="https://gtpqppvyjrnnuhlsbpqd.supabase.co/storage/v1/object/public/campaign-covers/lovable-uploads/6fdfc5d2-230c-4142-bf7c-3a326e5e45a8.png" alt="STA Fotos Logo" />
+    <img src="${BRAND_LOGO_URL}" alt="STA Fotos Logo" />
     <h1>Photo Arena - STA Fotos</h1>
     <p>Plataforma de Fotografia Esportiva</p>
   </div>
@@ -646,7 +648,7 @@ const REGISTRATION_TEMPLATE = `
 <body>
 <div class="email-container">
   <div class="header">
-    <img src="https://gtpqppvyjrnnuhlsbpqd.supabase.co/storage/v1/object/public/campaign-covers/lovable-uploads/6fdfc5d2-230c-4142-bf7c-3a326e5e45a8.png" alt="STA Fotos Logo" />
+    <img src="${BRAND_LOGO_URL}" alt="STA Fotos Logo" />
     <h1>Photo Arena - STA Fotos</h1>
     <p>Plataforma de Fotografia Esportiva</p>
   </div>
@@ -944,7 +946,7 @@ const PHOTOGRAPHER_NOTIFICATION_TEMPLATE = `
 <body>
 <div class="email-container">
   <div class="header">
-    <img src="https://gtpqppvyjrnnuhlsbpqd.supabase.co/storage/v1/object/public/campaign-covers/lovable-uploads/6fdfc5d2-230c-4142-bf7c-3a326e5e45a8.png" alt="STA Fotos Logo" />
+    <img src="${BRAND_LOGO_URL}" alt="STA Fotos Logo" />
     <h1>💰 Nova Venda Realizada!</h1>
   </div>
   
@@ -1155,7 +1157,7 @@ const ORGANIZATION_REPORT_TEMPLATE = `
 <body>
 <div class="email-container">
   <div class="header">
-    <img src="https://gtpqppvyjrnnuhlsbpqd.supabase.co/storage/v1/object/public/campaign-covers/lovable-uploads/6fdfc5d2-230c-4142-bf7c-3a326e5e45a8.png" alt="STA Fotos Logo" />
+    <img src="${BRAND_LOGO_URL}" alt="STA Fotos Logo" />
     <h1>📊 Relatório de Receitas</h1>
   </div>
   

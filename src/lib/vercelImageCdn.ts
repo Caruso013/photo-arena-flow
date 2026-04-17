@@ -1,56 +1,41 @@
 /**
- * Vercel Image Optimization CDN
- * Usa o CDN da Vercel para servir imagens do Supabase
- * Reduz Cached Egress em ~80-90%
+ * Compat layer para URLs de imagem otimizadas.
+ * O nome do arquivo é histórico, mas a implementação usa o endpoint nativo
+ * de transformação do Supabase para evitar proxy intermediário.
  */
 
-import { ImageSize, IMAGE_SIZE_CONFIG } from './imageOptimization';
-
-// Vercel Image Optimization limits
-const VERCEL_IMAGE_LIMITS = {
-  maxWidth: 3840,
-  maxHeight: 2160,
-  maxFileSize: 10485760, // 10MB
-};
+import { ImageSize } from './imageOptimization';
+import { getTransformedImageUrl, TransformSize } from './supabaseImageTransform';
 
 /**
- * Gera URL otimizada via Vercel Image Optimization
- * https://vercel.com/docs/image-optimization
+ * Gera URL otimizada via transformação nativa do Supabase
  */
 export function getVercelImageUrl(
   supabaseUrl: string,
   size: ImageSize = 'medium',
   quality: number | null = null
 ): string {
-  // Se não for URL do Supabase, retornar original
   if (!supabaseUrl || !supabaseUrl.includes('supabase.co')) {
     return supabaseUrl;
   }
 
-  const config = IMAGE_SIZE_CONFIG[size];
-  if (!config && size !== 'original') {
-    return supabaseUrl;
-  }
-
-  // Para 'original', retornar direto do Supabase (apenas compras)
   if (size === 'original') {
     return supabaseUrl;
   }
 
+  const mappedSize: TransformSize = size === 'blur' ? 'tiny' : size;
+  const optimizedUrl = getTransformedImageUrl(supabaseUrl, mappedSize);
+
+  if (!quality || optimizedUrl === supabaseUrl) {
+    return optimizedUrl;
+  }
+
   try {
-    // Vercel Image Optimization endpoint
-    // Format: /_vercel/image?url=<encoded_url>&w=<width>&q=<quality>
-    const encodedUrl = encodeURIComponent(supabaseUrl);
-    const width = config!.width;
-    const imageQuality = quality || config!.quality;
-
-    // Construir URL otimizada
-    const vercelImageUrl = `/_vercel/image?url=${encodedUrl}&w=${width}&q=${imageQuality}`;
-
-    return vercelImageUrl;
-  } catch (error) {
-    console.error('Error generating Vercel CDN URL:', error);
-    return supabaseUrl; // Fallback para Supabase direto
+    const url = new URL(optimizedUrl);
+    url.searchParams.set('quality', String(quality));
+    return url.toString();
+  } catch {
+    return optimizedUrl;
   }
 }
 
@@ -58,12 +43,12 @@ export function getVercelImageUrl(
  * Determina se deve usar CDN ou Supabase direto
  */
 export function shouldUseCdn(url: string, size: ImageSize): boolean {
-  // Sempre usar CDN para thumbnails e medium (maior economia)
+  // Sempre usar transformação para thumbnails e medium (maior economia)
   if (size === 'thumbnail' || size === 'medium' || size === 'blur') {
     return true;
   }
 
-  // Para large, usar CDN também (cache agressivo)
+  // Para large, usar transformação também
   if (size === 'large') {
     return true;
   }
@@ -87,7 +72,7 @@ export function getOptimizedImageUrlWithCdn(
 }
 
 /**
- * Pré-carregar imagem via CDN
+ * Pré-carregar imagem otimizada
  */
 export function preloadImageViaCdn(url: string, size: ImageSize = 'thumbnail') {
   if (typeof window === 'undefined') return;

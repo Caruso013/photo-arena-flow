@@ -1,7 +1,8 @@
 /**
  * Supabase Storage Image Transformations
- * Usa o endpoint /render/image/ do Supabase Pro para servir imagens otimizadas
- * Reduz Cached Egress em ~70-80%
+ * Usa o endpoint nativo /render/image/ do Supabase para servir imagens otimizadas.
+ * Isso evita buscar o arquivo original por um proxy intermediário e reduz o volume
+ * transferido em listagens, cards e previews.
  * 
  * Documentação: https://supabase.com/docs/guides/storage/serving/image-transformations
  */
@@ -17,11 +18,43 @@ interface TransformConfig {
 // Configurações otimizadas para cada contexto
 const TRANSFORM_CONFIGS: Record<TransformSize, TransformConfig | null> = {
   tiny:      { width: 40,   quality: 15, format: 'webp' },   // ~0.5-1KB - blur placeholder
-  thumbnail: { width: 250,  quality: 40, format: 'webp' },   // ~5-12KB - grid de fotos
-  medium:    { width: 500,  quality: 55, format: 'webp' },   // ~20-40KB - visualização modal
-  large:     { width: 900,  quality: 65, format: 'webp' },   // ~50-100KB - zoom/detalhe
+  thumbnail: { width: 220,  quality: 38, format: 'webp' },   // ~5-12KB - grid de fotos
+  medium:    { width: 480,  quality: 52, format: 'webp' },   // ~20-40KB - visualização modal
+  large:     { width: 840,  quality: 60, format: 'webp' },   // ~50-100KB - zoom/detalhe
   original:  null,                                             // Sem transformação (compra)
 };
+
+const SUPABASE_STORAGE_OBJECT_RE = /\/storage\/v1\/object\/(public|sign)\/([^/]+)\/(.+)$/;
+
+function buildSupabaseRenderUrl(originalUrl: string, config: TransformConfig): string | null {
+  try {
+    const url = new URL(originalUrl);
+
+    if (!url.hostname.includes('supabase.co')) {
+      return null;
+    }
+
+    const match = url.pathname.match(SUPABASE_STORAGE_OBJECT_RE);
+    if (!match) {
+      return null;
+    }
+
+    const [, accessType, bucket, objectPath] = match;
+    const renderUrl = new URL(`${url.origin}/storage/v1/render/image/${accessType}/${bucket}/${objectPath}`);
+    const params = new URLSearchParams(url.search);
+    params.set('width', String(config.width));
+    params.set('quality', String(config.quality));
+
+    if (config.format) {
+      params.set('format', config.format);
+    }
+
+    renderUrl.search = params.toString();
+    return renderUrl.toString();
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Converte URL do Supabase Storage para usar transformações de imagem
@@ -35,8 +68,6 @@ export function getTransformedImageUrl(
 ): string {
   if (!originalUrl) return '';
 
-  // Use Vercel Image Optimization CDN to reduce Supabase Cached Egress
-  // This proxies and caches images through Vercel's edge network
   const config = TRANSFORM_CONFIGS[size];
   if (!config) return originalUrl;
 
@@ -45,12 +76,7 @@ export function getTransformedImageUrl(
     return originalUrl;
   }
 
-  try {
-    const encodedUrl = encodeURIComponent(originalUrl);
-    return `/_vercel/image?url=${encodedUrl}&w=${config.width}&q=${config.quality}`;
-  } catch {
-    return originalUrl;
-  }
+  return buildSupabaseRenderUrl(originalUrl, config) || originalUrl;
 }
 
 /**
