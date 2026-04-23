@@ -49,6 +49,7 @@ const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = memo(({
   // Watermark usa cache global - não bloqueia mais o render
   const [watermarkReady, setWatermarkReady] = useState(() => preloadWatermark(watermarkSrc));
   const [photoLoaded, setPhotoLoaded] = useState(false);
+  const canRevealPhoto = photoLoaded && watermarkReady;
 
   const watermarkPositionClass =
     position === 'center'
@@ -59,6 +60,7 @@ const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = memo(({
 
   // Checar cache da watermark periodicamente até estar pronta
   useEffect(() => {
+    setWatermarkReady(preloadWatermark(watermarkSrc));
     if (isPurchased || watermarkReady) return;
     
     const interval = setInterval(() => {
@@ -179,14 +181,14 @@ const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = memo(({
       onContextMenu={(e) => e.preventDefault()}
       onDragStart={(e) => e.preventDefault()}
     >
-      {/* Skeleton enquanto carrega */}
-      {!photoLoaded && (
+      {/* Skeleton enquanto foto + marca d'água não estiverem prontas */}
+      {!canRevealPhoto && (
         <div className="absolute inset-0 bg-muted animate-pulse flex items-center justify-center">
           <div className="w-8 h-8 border-2 border-muted-foreground/30 border-t-primary rounded-full animate-spin" />
         </div>
       )}
       
-      {/* Foto - aparece assim que carregar (watermark renderiza junto) */}
+      {/* Foto só aparece junto com a marca d'água */}
       <img 
         src={currentSrc} 
         alt={alt} 
@@ -207,7 +209,7 @@ const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = memo(({
           WebkitTouchCallout: 'none',
           userSelect: 'none',
           pointerEvents: 'none',
-          opacity: photoLoaded ? 1 : 0,
+          opacity: canRevealPhoto ? 1 : 0,
           transition: 'opacity 0.2s ease-in-out'
         }}
       />
@@ -219,7 +221,7 @@ const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = memo(({
           alt=""
           className={`pointer-events-none absolute z-10 ${watermarkPositionClass} ${watermarkClassName}`}
           style={{ 
-            opacity: photoLoaded ? opacity : 0,
+            opacity: canRevealPhoto ? opacity : 0,
             objectFit: position === 'full' ? 'cover' : 'contain',
             WebkitUserSelect: 'none',
             WebkitTouchCallout: 'none',
