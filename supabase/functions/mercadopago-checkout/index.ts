@@ -209,7 +209,12 @@ serve(async (req) => {
         return errorResponse('Sessão expirada. Faça login novamente.', 401);
       }
 
-      if (!coupon?.coupon_id || !coupon?.code) {
+      if (!coupon?.coupon_id || !coupon?.code || typeof coupon.code !== 'string') {
+        return errorResponse('Cupom obrigatório para compra gratuita', 400);
+      }
+
+      const normalizedCouponCode = coupon.code.trim().toUpperCase();
+      if (!normalizedCouponCode) {
         return errorResponse('Cupom obrigatório para compra gratuita', 400);
       }
 
@@ -252,7 +257,7 @@ serve(async (req) => {
       // Validar cupom server-side
       const { data: freeCouponValidation } = await supabaseAdmin
         .rpc('validate_coupon', {
-          p_code: coupon.code,
+          p_code: normalizedCouponCode,
           p_user_id: buyerId,
           p_purchase_amount: freeSubtotalAfterProg,
         });
@@ -266,6 +271,16 @@ serve(async (req) => {
       const freeCouponId = freeCouponValidation[0].coupon_id;
       const freeFinalTotal = Number((freeSubtotalAfterProg - freeCouponDiscount).toFixed(2));
 
+      // Segurança: o cupom informado no request deve ser exatamente o cupom validado no banco
+      if (!freeCouponId || freeCouponId !== coupon.coupon_id) {
+        console.error('🚨 BLOQUEADO: cupom do request diverge do cupom validado', {
+          requestCouponId: coupon.coupon_id,
+          validatedCouponId: freeCouponId,
+          buyerId,
+        });
+        return errorResponse('Cupom inválido para esta compra.', 400);
+      }
+
       // SEGURANÇA: o cupom DEVE cobrir 100% do valor
       if (freeFinalTotal > 0) {
         console.error('🚨 BLOQUEADO: cupom não cobre 100% do valor para compra gratuita', {
@@ -276,7 +291,7 @@ serve(async (req) => {
 
       console.log('✅ Cupom cobre 100%:', { freeSubtotal, freeProgressiveAmount, freeSubtotalAfterProg, freeCouponDiscount });
 
-      // Criar purchases como completed (service role bypassa RLS)
+      // Criar purchases como pending e só concluir após registrar o uso do cupom
       const freePurchaseIds: string[] = [];
       const freeExternalRef = `free_coupon_${Date.now().toString(36)}_${buyerId.slice(0, 8)}`;
 
@@ -288,7 +303,7 @@ serve(async (req) => {
             buyer_id: buyerId,
             photographer_id: freePhoto.photographer_id,
             amount: 0.01, // Mínimo simbólico para triggers funcionarem
-            status: 'completed',
+            status: 'pending',
             stripe_payment_intent_id: freeExternalRef,
             progressive_discount_percentage: freeProgressivePercent,
             progressive_discount_amount: Number(freePhoto.price) || 0,
@@ -310,9 +325,10 @@ serve(async (req) => {
         return errorResponse('Não foi possível processar as fotos', 500);
       }
 
-      // Registrar uso do cupom
+      // Registrar uso do cupom para TODAS as purchases
+      let couponUsesInserted = 0;
       for (const fpId of freePurchaseIds) {
-        await supabaseAdmin
+        const { error: couponUseError } = await supabaseAdmin
           .from('coupon_uses')
           .insert({
             coupon_id: freeCouponId,
@@ -322,7 +338,37 @@ serve(async (req) => {
             discount_amount: freeCouponDiscount / freePhotoCount,
             final_amount: 0,
           });
+
+        if (couponUseError) {
+          console.error('🚨 Falha ao registrar uso do cupom na free_purchase:', couponUseError);
+          await supabaseAdmin
+            .from('purchases')
+            .delete()
+            .in('id', freePurchaseIds);
+          return errorResponse('Não foi possível confirmar o cupom desta compra. Tente novamente.', 500);
+        }
+
+        couponUsesInserted++;
       }
+
+      if (couponUsesInserted !== freePurchaseIds.length) {
+        console.error('🚨 BLOQUEADO: nem todas as purchases tiveram uso de cupom registrado', {
+          couponUsesInserted,
+          purchases: freePurchaseIds.length,
+          buyerId,
+        });
+        await supabaseAdmin
+          .from('purchases')
+          .delete()
+          .in('id', freePurchaseIds);
+        return errorResponse('Não foi possível confirmar o cupom desta compra.', 500);
+      }
+
+      // Somente aqui a compra é realmente liberada
+      await supabaseAdmin
+        .from('purchases')
+        .update({ status: 'completed' })
+        .in('id', freePurchaseIds);
 
       // O trigger 'increment_coupon_usage' no coupon_uses já incrementa current_uses automaticamente
 

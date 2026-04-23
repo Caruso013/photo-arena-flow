@@ -55,6 +55,42 @@ const Cart = () => {
   // Total final
   const finalTotal = Math.max(0, subtotalAfterProgressiveDiscount - couponDiscountAmount);
 
+  const revalidateAppliedCoupon = async () => {
+    if (!user || !appliedCoupon?.valid || !appliedCoupon.coupon_id || !appliedCoupon.code) {
+      return appliedCoupon;
+    }
+
+    const { data, error } = await (supabase.rpc as any)('validate_coupon', {
+      p_code: appliedCoupon.code,
+      p_user_id: user.id,
+      p_purchase_amount: subtotalAfterProgressiveDiscount,
+    });
+
+    if (error || !data?.[0]) {
+      throw new Error(error?.message || 'Não foi possível validar o cupom no checkout.');
+    }
+
+    const result = data[0] as CouponValidationResult;
+
+    if (!result.valid) {
+      setAppliedCoupon(null);
+      toast({
+        title: 'Cupom inválido',
+        description: result.message || 'O cupom não é mais válido para esta compra.',
+        variant: 'destructive',
+      });
+      return null;
+    }
+
+    const refreshedCoupon: CouponValidationResult = {
+      ...result,
+      code: appliedCoupon.code,
+    };
+
+    setAppliedCoupon(refreshedCoupon);
+    return refreshedCoupon;
+  };
+
   // Não redirecionar automaticamente - deixar usuário ver carrinho mesmo deslogado
   // O redirecionamento acontece apenas ao tentar finalizar a compra
 
@@ -65,14 +101,31 @@ const Cart = () => {
       return;
     }
 
+    let couponForCheckout = appliedCoupon;
+    if (appliedCoupon?.valid) {
+      try {
+        couponForCheckout = await revalidateAppliedCoupon();
+      } catch (error: any) {
+        toast({
+          title: 'Erro ao validar cupom',
+          description: error?.message || 'Tente aplicar o cupom novamente.',
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
+    const checkoutCouponDiscount = couponForCheckout?.valid ? couponForCheckout.discount_amount : 0;
+    const checkoutFinalTotal = Math.max(0, subtotalAfterProgressiveDiscount - checkoutCouponDiscount);
+
     // Se o total é zero E há um cupom válido, processar compra gratuita
-    if (finalTotal <= 0 && appliedCoupon?.valid && appliedCoupon.coupon_id) {
-      await handleFreeCheckout();
+    if (checkoutFinalTotal <= 0 && couponForCheckout?.valid && couponForCheckout.coupon_id) {
+      await handleFreeCheckout(couponForCheckout);
       return;
     }
 
     // Bloquear checkout com valor zero SEM cupom válido
-    if (finalTotal <= 0) {
+    if (checkoutFinalTotal <= 0) {
       toast({
         title: "Erro",
         description: "Não é permitido finalizar compra com valor R$ 0,00.",
@@ -84,8 +137,8 @@ const Cart = () => {
     setShowPayment(true);
   };
 
-  const handleFreeCheckout = async () => {
-    if (!user || !appliedCoupon?.valid || !appliedCoupon.coupon_id) return;
+  const handleFreeCheckout = async (coupon: CouponValidationResult) => {
+    if (!user || !coupon?.valid || !coupon.coupon_id) return;
 
     // Verificar sessão antes de chamar
     const { data: { session } } = await supabase.auth.getSession();
@@ -110,9 +163,9 @@ const Cart = () => {
           })),
           buyer: { email: user.email },
           coupon: {
-            coupon_id: appliedCoupon.coupon_id,
-            code: appliedCoupon.code,
-            amount: appliedCoupon.discount_amount,
+            coupon_id: coupon.coupon_id,
+            code: coupon.code,
+            amount: coupon.discount_amount,
           },
           discount: progressiveDiscountPercent > 0 ? {
             percentage: progressiveDiscountPercent,
