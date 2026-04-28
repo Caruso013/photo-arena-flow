@@ -1301,8 +1301,19 @@ const Campaign = () => {
             {/* Área da foto com swipe */}
             <div 
               {...swipeHandlers}
-              className="relative flex items-center justify-center flex-1 touch-pan-y"
+              className="relative flex items-center justify-center flex-1 touch-pan-y overflow-hidden bg-black"
             >
+              {viewingPhotoIndex !== null && photos[viewingPhotoIndex] && (
+                <div className="absolute inset-0 scale-110 blur-2xl opacity-30">
+                  <img
+                    src={photos[viewingPhotoIndex].watermarked_url}
+                    alt=""
+                    className="h-full w-full object-cover"
+                    aria-hidden="true"
+                  />
+                </div>
+              )}
+
               {/* Botão Anterior */}
               <Button
                 variant="ghost"
@@ -1317,13 +1328,13 @@ const Campaign = () => {
               {/* Imagem */}
               {viewingPhotoIndex !== null && photos[viewingPhotoIndex] && (
                 <AntiScreenshotProtection>
-                  <div className="w-full h-full flex items-center justify-center">
+                  <div className="relative z-10 w-full h-full flex items-center justify-center px-4 sm:px-8 py-4">
                     <WatermarkedPhoto
                       src={photos[viewingPhotoIndex].watermarked_url}
                       alt={getPhotoName(photos[viewingPhotoIndex], viewingPhotoIndex)}
                       position="full"
                       opacity={0.85}
-                      imgClassName="w-full h-full object-contain"
+                      imgClassName="w-auto h-full max-w-full object-contain rounded-lg shadow-2xl"
                       loading="eager"
                       displaySize="large"
                     />
