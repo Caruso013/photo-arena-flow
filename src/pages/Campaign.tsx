@@ -1322,10 +1322,10 @@ const Campaign = () => {
                       src={photos[viewingPhotoIndex].watermarked_url}
                       alt={getPhotoName(photos[viewingPhotoIndex], viewingPhotoIndex)}
                       position="full"
-                      opacity={0.35}
+                      opacity={0.85}
                       imgClassName="w-full max-h-[75vh] sm:max-h-[80vh] object-contain rounded-lg"
                       loading="eager"
-                      displaySize="original"
+                      displaySize="large"
                     />
                   </div>
                 </AntiScreenshotProtection>
