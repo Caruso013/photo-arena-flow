@@ -1334,7 +1334,7 @@ const Campaign = () => {
                       alt={getPhotoName(photos[viewingPhotoIndex], viewingPhotoIndex)}
                       position="full"
                       opacity={0.85}
-                      imgClassName="w-auto h-full max-w-full object-contain rounded-lg shadow-2xl"
+                      imgClassName="w-full h-auto max-w-full max-h-[calc(100vh-180px)] object-contain rounded-lg shadow-2xl"
                       loading="eager"
                       displaySize="large"
                     />
