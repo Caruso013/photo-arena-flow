@@ -1026,7 +1026,7 @@ const Campaign = () => {
                       <img 
                         src={getTransformedImageUrl(subEvent.cover_image_url || albumPreviews[subEvent.id], 'thumbnail')} 
                         alt={subEvent.title}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-contain bg-black/10 p-2"
                       />
                       <div className="absolute inset-0 bg-black/20" />
                     </div>
@@ -1091,7 +1091,7 @@ const Campaign = () => {
                           alt={getPhotoName(photo, index)}
                           position="full"
                           opacity={0.85}
-                          imgClassName="w-full h-full object-cover"
+                          imgClassName="w-full h-full object-contain bg-black/5 p-1"
                           loading={index < 4 ? "eager" : "lazy"}
                           displaySize="thumbnail"
                         />
@@ -1402,6 +1402,7 @@ const Campaign = () => {
               price: selectedPhoto.price,
               image_url: selectedPhoto.thumbnail_url || selectedPhoto.watermarked_url
             }}
+            eventTitle={campaign?.title || 'Evento'}
             onPaymentSuccess={handlePaymentSuccess}
           />
         )}

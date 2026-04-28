@@ -13,7 +13,6 @@ import { CreditCard, Loader2, ShoppingCart, ArrowLeft, AlertCircle, Percent, Tag
 import { formatCurrency } from '@/lib/utils';
 import { useProgressiveDiscount, getNextDiscountThreshold } from '@/hooks/useProgressiveDiscount';
 import TransparentCheckout from '@/components/checkout/TransparentCheckout';
-import WatermarkedPhoto from '@/components/WatermarkedPhoto';
 
 declare global {
   interface Window {
@@ -28,6 +27,7 @@ interface Photo {
   image_url?: string;
   watermarked_url?: string;
   thumbnail_url?: string;
+  campaign_id?: string;
   progressive_discount_enabled?: boolean;
 }
 
@@ -38,6 +38,7 @@ interface PaymentModalProps {
   photos?: Photo[]; // Multiple photos (cart)
   onPaymentSuccess?: (paymentData: any) => void;
   appliedCoupon?: any; // Optional coupon validation result
+  eventTitle?: string;
 }
 
 export default function PaymentModal({ 
@@ -46,7 +47,8 @@ export default function PaymentModal({
   photo, 
   photos,
   onPaymentSuccess,
-  appliedCoupon
+  appliedCoupon,
+  eventTitle,
 }: PaymentModalProps) {
   const { user, profile } = useAuth();
   const { toast } = useToast();
@@ -65,6 +67,7 @@ export default function PaymentModal({
   
   // Estado para controlar checkout transparente (novo) vs checkout pro (antigo)
   const [useTransparentCheckout, setUseTransparentCheckout] = useState(true);
+  const [campaignTitles, setCampaignTitles] = useState<Record<string, string>>({});
 
   // Bloquear organizações de fazer compras
   useEffect(() => {
@@ -106,6 +109,57 @@ export default function PaymentModal({
   
   // Próximo threshold de desconto
   const nextThreshold = getNextDiscountThreshold(totalItems);
+  const campaignIdsKey = itemsToProcess
+    .map((item) => item.campaign_id)
+    .filter((campaignId): campaignId is string => Boolean(campaignId))
+    .join(',');
+
+  useEffect(() => {
+    const campaignIds = Array.from(
+      new Set(
+        itemsToProcess
+          .map((item) => item.campaign_id)
+          .filter((campaignId): campaignId is string => Boolean(campaignId))
+      )
+    );
+
+    if (campaignIds.length === 0) {
+      setCampaignTitles({});
+      return;
+    }
+
+    let active = true;
+
+    const loadCampaignTitles = async () => {
+      const { data } = await supabase
+        .from('campaigns')
+        .select('id, title')
+        .in('id', campaignIds);
+
+      if (!active) return;
+
+      const titleMap = (data || []).reduce<Record<string, string>>((acc, campaign) => {
+        acc[campaign.id] = campaign.title || 'Evento';
+        return acc;
+      }, {});
+
+      setCampaignTitles(titleMap);
+    };
+
+    loadCampaignTitles();
+
+    return () => {
+      active = false;
+    };
+  }, [campaignIdsKey]);
+
+  const getItemEventTitle = (item: Photo) => {
+    if (item.campaign_id && campaignTitles[item.campaign_id]) {
+      return campaignTitles[item.campaign_id];
+    }
+
+    return eventTitle || 'Evento';
+  };
 
   const handleInputChange = (field: string, value: string) => {
     // Só remove caracteres não-numéricos para campos numéricos (phone e document)
@@ -289,20 +343,21 @@ export default function PaymentModal({
             </div>
 
             {totalItems === 1 ? (
-              <div className="flex items-center gap-4 p-4 bg-muted rounded-lg">
-                <div className="w-16 h-16 overflow-hidden rounded">
-                  <WatermarkedPhoto
-                    src={itemsToProcess[0].watermarked_url || itemsToProcess[0].thumbnail_url || itemsToProcess[0].image_url || ''}
-                    alt={itemsToProcess[0].title || 'Foto'}
-                    imgClassName="w-full h-full object-cover rounded"
-                    displaySize="thumbnail"
-                  />
-                </div>
-                <div className="flex-1">
-                  <h4 className="font-medium">{itemsToProcess[0].title || 'Foto'}</h4>
-                  <p className="text-2xl font-bold text-primary">
-                    {formatCurrency(totalPrice)}
-                  </p>
+              <div className="p-4 bg-muted rounded-lg space-y-2">
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">Resumo</div>
+                <div className="space-y-1">
+                  <div className="text-sm">
+                    <span className="font-medium text-muted-foreground">Evento:</span>{' '}
+                    <span>{getItemEventTitle(itemsToProcess[0])}</span>
+                  </div>
+                  <div className="text-sm">
+                    <span className="font-medium text-muted-foreground">Foto:</span>{' '}
+                    <span>{itemsToProcess[0].title || 'Sem título'}</span>
+                  </div>
+                  <div className="text-sm">
+                    <span className="font-medium text-muted-foreground">Valor:</span>{' '}
+                    <span className="font-semibold text-primary">{formatCurrency(totalPrice)}</span>
+                  </div>
                 </div>
               </div>
             ) : (
@@ -313,18 +368,16 @@ export default function PaymentModal({
                 </div>
                 <div className="max-h-48 overflow-y-auto space-y-2">
                   {itemsToProcess.map((item, index) => (
-                    <div key={index} className="flex items-center gap-3 p-2 bg-muted rounded">
-                      <div className="w-12 h-12 overflow-hidden rounded flex-shrink-0">
-                        <WatermarkedPhoto
-                          src={item.watermarked_url || item.thumbnail_url || item.image_url || ''}
-                          alt={item.title || 'Foto'}
-                          imgClassName="w-full h-full object-cover rounded"
-                          displaySize="thumbnail"
-                        />
+                    <div key={index} className="p-3 bg-muted rounded space-y-1">
+                      <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                        {getItemEventTitle(item)}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{item.title || 'Foto'}</p>
-                        <p className="text-sm font-bold text-primary">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">{item.title || 'Sem título'}</p>
+                          <p className="text-xs text-muted-foreground">Foto</p>
+                        </div>
+                        <p className="text-sm font-semibold text-primary whitespace-nowrap">
                           {formatCurrency(item.price || 0)}
                         </p>
                       </div>
