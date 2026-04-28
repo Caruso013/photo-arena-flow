@@ -285,9 +285,9 @@ const MyFavorites = () => {
 
       {/* Modal de visualização com navegação */}
       <Dialog open={viewingIndex !== null} onOpenChange={(open) => !open && setViewingIndex(null)}>
-        <DialogContent className="max-w-[98vw] sm:max-w-5xl w-[98vw] p-0 gap-0 bg-black/95">
+        <DialogContent className="max-w-[100vw] sm:max-w-[100vw] w-[100vw] h-[100vh] sm:h-[100vh] p-0 gap-0 bg-black flex flex-col">
           {currentViewingPhoto && (
-            <div className="relative flex flex-col h-[90vh] sm:h-auto">
+            <div className="relative flex flex-col h-full">
               {/* Header com fechar */}
               <div className="flex items-center justify-between p-3 sm:p-4 bg-black/50 text-white">
                 <span className="text-sm sm:text-base font-medium truncate flex-1">

@@ -1279,7 +1279,7 @@ const Campaign = () => {
 
         {/* Modal de Visualização de Foto com Navegação e Swipe */}
         <Dialog open={viewingPhotoIndex !== null} onOpenChange={(open) => !open && setViewingPhotoIndex(null)}>
-          <DialogContent className="max-w-[98vw] sm:max-w-5xl w-[98vw] p-0 gap-0 bg-black/95 border-0">
+          <DialogContent className="max-w-[100vw] sm:max-w-[100vw] w-[100vw] h-[100vh] sm:h-[100vh] p-0 gap-0 bg-black border-0 flex flex-col">
             {/* Header */}
             <div className="flex items-center justify-between p-3 sm:p-4 bg-black/50 text-white">
               <DialogTitle className="text-sm sm:text-base truncate flex-1 text-white">
@@ -1301,7 +1301,7 @@ const Campaign = () => {
             {/* Área da foto com swipe */}
             <div 
               {...swipeHandlers}
-              className="relative flex items-center justify-center min-h-[50vh] sm:min-h-[60vh] touch-pan-y"
+              className="relative flex items-center justify-center flex-1 touch-pan-y"
             >
               {/* Botão Anterior */}
               <Button
@@ -1317,13 +1317,13 @@ const Campaign = () => {
               {/* Imagem */}
               {viewingPhotoIndex !== null && photos[viewingPhotoIndex] && (
                 <AntiScreenshotProtection>
-                  <div className="px-4 sm:px-8 py-4 w-full flex items-center justify-center">
+                  <div className="w-full h-full flex items-center justify-center">
                     <WatermarkedPhoto
                       src={photos[viewingPhotoIndex].watermarked_url}
                       alt={getPhotoName(photos[viewingPhotoIndex], viewingPhotoIndex)}
                       position="full"
                       opacity={0.85}
-                      imgClassName="w-full max-h-[75vh] sm:max-h-[80vh] object-contain rounded-lg"
+                      imgClassName="w-full h-full object-contain"
                       loading="eager"
                       displaySize="large"
                     />
