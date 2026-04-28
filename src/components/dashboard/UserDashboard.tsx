@@ -347,7 +347,7 @@ const UserDashboard = () => {
                         <img
                           src={purchase.signedUrl || purchase.photo.thumbnail_url || purchase.photo.watermarked_url}
                           alt="Foto comprada - sem marca d'água"
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                          className="w-full h-full object-contain group-hover:scale-100 transition-transform"
                           loading="lazy"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;

@@ -33,7 +33,7 @@ const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = memo(({
   src,
   alt = '',
   watermarkSrc = '/watermark_front.png',
-  imgClassName = 'w-full h-full object-cover',
+  imgClassName = 'w-full h-full object-contain',
   watermarkClassName = '',
   position = 'full',
   opacity = 0.85,

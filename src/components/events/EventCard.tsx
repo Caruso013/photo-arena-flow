@@ -125,7 +125,7 @@ export const EventCard: React.FC<EventCardProps> = ({ campaign, index }) => {
                 <img
                   src={getTransformedImageUrl(campaign.cover_image_url, 'medium')}
                   alt={campaign.title}
-                  className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500 bg-black/15 p-3"
+                  className="w-full h-full object-contain transition-transform duration-500 bg-black/15 p-3"
                   loading="lazy"
                   onError={(e) => {
                     e.currentTarget.style.display = 'none';

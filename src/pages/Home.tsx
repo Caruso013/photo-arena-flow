@@ -248,7 +248,7 @@ const Home = () => {
                       <img
                         src={getTransformedImageUrl(campaign.cover_image_url, 'medium')}
                         alt={campaign.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        className="w-full h-full object-contain group-hover:scale-100 transition-transform duration-500 p-2"
                         loading="lazy"
                         onError={(e) => {
                           e.currentTarget.style.display = 'none';
@@ -339,10 +339,10 @@ const Home = () => {
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_30%,hsl(var(--primary)/0.15),transparent_50%)]" />
                     <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2">
                       {org.logo_url ? (
-                        <img 
-                          src={org.logo_url} 
-                          alt={org.name} 
-                          className="h-20 w-20 rounded-2xl object-cover border-4 border-background shadow-lg group-hover:shadow-xl transition-shadow"
+                        <img
+                          src={org.logo_url}
+                          alt={org.name}
+                          className="h-20 w-20 rounded-2xl object-contain border-4 border-background shadow-lg group-hover:shadow-xl transition-shadow"
                         />
                       ) : (
                         <div className="h-20 w-20 rounded-2xl bg-background border-4 border-background shadow-lg flex items-center justify-center group-hover:shadow-xl transition-shadow">
