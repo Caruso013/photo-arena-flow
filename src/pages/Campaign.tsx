@@ -97,7 +97,6 @@ interface SubEvent {
 interface Photo {
   id: string;
   title: string | null;
-  original_url: string;
   watermarked_url: string;
   thumbnail_url: string | null;
   price: number;
@@ -427,7 +426,7 @@ const Campaign = () => {
       // Depois buscar as fotos
       let query = supabase
         .from('photos')
-        .select('id, title, original_url, watermarked_url, thumbnail_url, price, is_available, is_featured, sub_event_id')
+        .select('id, title, watermarked_url, thumbnail_url, price, is_available, is_featured, sub_event_id')
         .eq('campaign_id', campaign.id)
         .eq('is_available', true)
         .range(from, to)

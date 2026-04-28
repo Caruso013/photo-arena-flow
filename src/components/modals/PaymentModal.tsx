@@ -13,6 +13,7 @@ import { CreditCard, Loader2, ShoppingCart, ArrowLeft, AlertCircle, Percent, Tag
 import { formatCurrency } from '@/lib/utils';
 import { useProgressiveDiscount, getNextDiscountThreshold } from '@/hooks/useProgressiveDiscount';
 import TransparentCheckout from '@/components/checkout/TransparentCheckout';
+import WatermarkedPhoto from '@/components/WatermarkedPhoto';
 
 declare global {
   interface Window {
@@ -289,11 +290,14 @@ export default function PaymentModal({
 
             {totalItems === 1 ? (
               <div className="flex items-center gap-4 p-4 bg-muted rounded-lg">
-                <img 
-                  src={itemsToProcess[0].thumbnail_url || itemsToProcess[0].watermarked_url} 
-                  alt={itemsToProcess[0].title || 'Foto'}
-                  className="w-16 h-16 object-cover rounded"
-                />
+                <div className="w-16 h-16 overflow-hidden rounded">
+                  <WatermarkedPhoto
+                    src={itemsToProcess[0].watermarked_url || itemsToProcess[0].thumbnail_url || itemsToProcess[0].image_url || ''}
+                    alt={itemsToProcess[0].title || 'Foto'}
+                    imgClassName="w-full h-full object-cover rounded"
+                    displaySize="thumbnail"
+                  />
+                </div>
                 <div className="flex-1">
                   <h4 className="font-medium">{itemsToProcess[0].title || 'Foto'}</h4>
                   <p className="text-2xl font-bold text-primary">
@@ -310,11 +314,14 @@ export default function PaymentModal({
                 <div className="max-h-48 overflow-y-auto space-y-2">
                   {itemsToProcess.map((item, index) => (
                     <div key={index} className="flex items-center gap-3 p-2 bg-muted rounded">
-                      <img 
-                        src={item.thumbnail_url || item.watermarked_url} 
-                        alt={item.title || 'Foto'}
-                        className="w-12 h-12 object-cover rounded"
-                      />
+                      <div className="w-12 h-12 overflow-hidden rounded flex-shrink-0">
+                        <WatermarkedPhoto
+                          src={item.watermarked_url || item.thumbnail_url || item.image_url || ''}
+                          alt={item.title || 'Foto'}
+                          imgClassName="w-full h-full object-cover rounded"
+                          displaySize="thumbnail"
+                        />
+                      </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{item.title || 'Foto'}</p>
                         <p className="text-sm font-bold text-primary">
