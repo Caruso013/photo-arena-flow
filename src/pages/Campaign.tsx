@@ -1317,15 +1317,15 @@ const Campaign = () => {
               {/* Imagem */}
               {viewingPhotoIndex !== null && photos[viewingPhotoIndex] && (
                 <AntiScreenshotProtection>
-                  <div className="px-14 sm:px-20 py-4">
+                  <div className="px-4 sm:px-8 py-4 w-full flex items-center justify-center">
                     <WatermarkedPhoto
                       src={photos[viewingPhotoIndex].watermarked_url}
                       alt={getPhotoName(photos[viewingPhotoIndex], viewingPhotoIndex)}
                       position="full"
-                      opacity={0.85}
-                      imgClassName="w-full max-h-[55vh] sm:max-h-[70vh] object-contain rounded-lg"
+                      opacity={0.35}
+                      imgClassName="w-full max-h-[75vh] sm:max-h-[80vh] object-contain rounded-lg"
                       loading="eager"
-                      displaySize="large"
+                      displaySize="original"
                     />
                   </div>
                 </AntiScreenshotProtection>

@@ -321,7 +321,9 @@ const MyFavorites = () => {
                   <WatermarkedPhoto
                     src={currentViewingPhoto.watermarked_url}
                     alt={currentViewingPhoto.title || 'Foto'}
-                    imgClassName="max-h-[70vh] sm:max-h-[75vh] w-auto object-contain mx-auto"
+                    opacity={0.35}
+                    displaySize="original"
+                    imgClassName="max-h-[75vh] sm:max-h-[80vh] w-auto object-contain mx-auto"
                   />
                 </div>
 
