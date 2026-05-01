@@ -773,15 +773,23 @@ const Campaign = () => {
       <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
         {/* Campaign Header */}
         <div className="mb-6 sm:mb-8">
-          <div className="relative rounded-xl overflow-hidden mb-4 sm:mb-6">
+          <div className="relative h-56 sm:h-72 md:h-80 rounded-xl overflow-hidden mb-4 sm:mb-6 bg-muted">
             {campaign.cover_image_url ? (
-              <img
-                src={getTransformedImageUrl(campaign.cover_image_url, 'large')}
-                alt={campaign.title}
-                className="w-full h-56 sm:h-72 md:h-80 object-cover"
-              />
+              <>
+                <img
+                  src={getTransformedImageUrl(campaign.cover_image_url, 'large')}
+                  alt=""
+                  aria-hidden="true"
+                  className="absolute inset-0 h-full w-full scale-110 object-cover blur-xl opacity-40"
+                />
+                <img
+                  src={getTransformedImageUrl(campaign.cover_image_url, 'large')}
+                  alt={campaign.title}
+                  className="relative h-full w-full object-contain"
+                />
+              </>
             ) : (
-              <div className="w-full h-56 sm:h-72 md:h-80 bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center">
+              <div className="w-full h-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center">
                 <Camera className="h-12 w-12 sm:h-16 sm:w-16 text-white" />
               </div>
             )}
@@ -1091,7 +1099,7 @@ const Campaign = () => {
                           alt={getPhotoName(photo, index)}
                           position="full"
                           opacity={0.85}
-                          imgClassName="w-full h-full object-cover"
+                          imgClassName="w-full h-full object-contain"
                           loading={index < 4 ? "eager" : "lazy"}
                           displaySize="thumbnail"
                         />
