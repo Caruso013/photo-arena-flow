@@ -773,15 +773,15 @@ const Campaign = () => {
       <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
         {/* Campaign Header */}
         <div className="mb-6 sm:mb-8">
-          <div className="relative rounded-xl overflow-hidden mb-4 sm:mb-6">
+          <div className="relative rounded-xl overflow-hidden mb-4 sm:mb-6 bg-gradient-to-br from-slate-900 to-slate-700">
             {campaign.cover_image_url ? (
               <img
                 src={getTransformedImageUrl(campaign.cover_image_url, 'large')}
                 alt={campaign.title}
-                className="w-full h-48 sm:h-64 object-cover"
+                className="w-full h-56 sm:h-72 md:h-80 object-contain"
               />
             ) : (
-              <div className="w-full h-48 sm:h-64 bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center">
+              <div className="w-full h-56 sm:h-72 md:h-80 bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center">
                 <Camera className="h-12 w-12 sm:h-16 sm:w-16 text-white" />
               </div>
             )}
