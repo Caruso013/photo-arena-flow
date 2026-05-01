@@ -203,13 +203,15 @@ const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = memo(({
         className={imgClassName}
         loading={loading}
         decoding="async"
-        crossOrigin="anonymous"
         draggable={false}
         onLoad={() => setPhotoLoaded(true)}
         onError={() => {
           // Fallback para URL original se a otimizada falhar
           if (currentSrc !== src) {
             setCurrentSrc(src);
+          } else {
+            // Mesmo com erro, libera para não travar a UI
+            setPhotoLoaded(true);
           }
         }}
         style={{
