@@ -773,12 +773,12 @@ const Campaign = () => {
       <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
         {/* Campaign Header */}
         <div className="mb-6 sm:mb-8">
-          <div className="relative rounded-xl overflow-hidden mb-4 sm:mb-6 bg-gradient-to-br from-slate-900 to-slate-700">
+          <div className="relative rounded-xl overflow-hidden mb-4 sm:mb-6">
             {campaign.cover_image_url ? (
               <img
                 src={getTransformedImageUrl(campaign.cover_image_url, 'large')}
                 alt={campaign.title}
-                className="w-full h-56 sm:h-72 md:h-80 object-contain"
+                className="w-full h-56 sm:h-72 md:h-80 object-cover"
               />
             ) : (
               <div className="w-full h-56 sm:h-72 md:h-80 bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center">
@@ -1085,13 +1085,13 @@ const Campaign = () => {
                 <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-1.5 sm:gap-4">
                   {photos.map((photo, index) => (
                     <Card key={photo.id} className="overflow-hidden hover:shadow-lg transition-shadow group">
-                      <div className="aspect-square bg-gradient-subtle relative">
+                      <div className="aspect-square bg-muted relative overflow-hidden">
                         <WatermarkedPhoto
                           src={photo.thumbnail_url || photo.watermarked_url}
                           alt={getPhotoName(photo, index)}
                           position="full"
                           opacity={0.85}
-                          imgClassName="w-full h-full object-contain bg-black/5 p-1"
+                          imgClassName="w-full h-full object-cover"
                           loading={index < 4 ? "eager" : "lazy"}
                           displaySize="thumbnail"
                         />
