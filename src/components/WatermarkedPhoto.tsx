@@ -49,7 +49,16 @@ const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = memo(({
   // Watermark usa cache global - não bloqueia mais o render
   const [watermarkReady, setWatermarkReady] = useState(() => preloadWatermark(watermarkSrc));
   const [photoLoaded, setPhotoLoaded] = useState(false);
-  const canRevealPhoto = photoLoaded && watermarkReady;
+  const [forceReveal, setForceReveal] = useState(false);
+  const canRevealPhoto = (photoLoaded && watermarkReady) || forceReveal;
+
+  // Failsafe: se demorar mais de 6s, libera a foto mesmo sem confirmação de load
+  // (evita carregamento "infinito" quando o evento onLoad não dispara em iOS/Safari)
+  useEffect(() => {
+    if (canRevealPhoto) return;
+    const timeout = setTimeout(() => setForceReveal(true), 6000);
+    return () => clearTimeout(timeout);
+  }, [canRevealPhoto, currentSrc]);
 
   const watermarkPositionClass =
     position === 'center'
