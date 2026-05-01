@@ -1085,13 +1085,13 @@ const Campaign = () => {
                 <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-1.5 sm:gap-4">
                   {photos.map((photo, index) => (
                     <Card key={photo.id} className="overflow-hidden hover:shadow-lg transition-shadow group">
-                      <div className="aspect-square bg-gradient-subtle relative">
+                      <div className="aspect-square bg-muted relative overflow-hidden">
                         <WatermarkedPhoto
                           src={photo.thumbnail_url || photo.watermarked_url}
                           alt={getPhotoName(photo, index)}
                           position="full"
                           opacity={0.85}
-                          imgClassName="w-full h-full object-contain bg-black/5 p-1"
+                          imgClassName="w-full h-full object-cover"
                           loading={index < 4 ? "eager" : "lazy"}
                           displaySize="thumbnail"
                         />
