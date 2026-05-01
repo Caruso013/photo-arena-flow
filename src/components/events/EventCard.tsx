@@ -119,13 +119,20 @@ export const EventCard: React.FC<EventCardProps> = ({ campaign, index }) => {
     >
       <Card className="overflow-hidden cursor-pointer border-2 transition-all duration-300 hover:border-primary/50 hover:shadow-2xl hover:-translate-y-2 active:scale-[0.98] backdrop-blur-sm bg-card/80">
         <Link to={campaignLink}>
-          <div className="aspect-[16/10] bg-gradient-dark relative overflow-hidden">
+          <div className="aspect-[16/10] bg-muted relative overflow-hidden">
             {campaign.cover_image_url ? (
               <>
                 <img
                   src={getTransformedImageUrl(campaign.cover_image_url, 'medium')}
+                  alt=""
+                  aria-hidden="true"
+                  className="absolute inset-0 h-full w-full scale-110 object-cover blur-xl opacity-40 transition-opacity duration-500 group-hover:opacity-50"
+                  loading="lazy"
+                />
+                <img
+                  src={getTransformedImageUrl(campaign.cover_image_url, 'medium')}
                   alt={campaign.title}
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  className="relative w-full h-full object-contain"
                   loading="lazy"
                   onError={(e) => {
                     e.currentTarget.style.display = 'none';
