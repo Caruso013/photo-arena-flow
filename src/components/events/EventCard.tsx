@@ -119,7 +119,7 @@ export const EventCard: React.FC<EventCardProps> = ({ campaign, index }) => {
     >
       <Card className="overflow-hidden cursor-pointer border-2 transition-all duration-300 hover:border-primary/50 hover:shadow-2xl hover:-translate-y-2 active:scale-[0.98] backdrop-blur-sm bg-card/80">
         <Link to={campaignLink}>
-          <div className="aspect-[4/5] bg-gradient-dark relative overflow-hidden">
+          <div className="aspect-[16/10] bg-gradient-dark relative overflow-hidden">
             {campaign.cover_image_url ? (
               <>
                 <img
