@@ -170,7 +170,6 @@ const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = memo(({
           className={imgClassName}
           loading={loading}
           decoding="async"
-          crossOrigin="anonymous"
         />
       </div>
     );
