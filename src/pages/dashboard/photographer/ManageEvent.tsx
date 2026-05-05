@@ -978,7 +978,7 @@ const ManageEvent = () => {
                   />
                   {!canEditPrice && (
                     <p className="text-xs text-muted-foreground">
-                      O valor da foto foi definido pelo administrador e não pode ser alterado.
+                      Após o upload, somente o administrador pode alterar o valor da foto.
                     </p>
                   )}
                 </div>
