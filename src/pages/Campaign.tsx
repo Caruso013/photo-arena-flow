@@ -1093,21 +1093,13 @@ const Campaign = () => {
                 <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-1.5 sm:gap-4">
                   {photos.map((photo, index) => (
                     <Card key={photo.id} className="overflow-hidden hover:shadow-lg transition-shadow group">
-                      <div className="aspect-[3/2] bg-muted relative overflow-hidden">
-                        {/* Fundo desfocado para preencher sem zoom */}
-                        <img
-                          src={getTransformedImageUrl(photo.thumbnail_url || photo.watermarked_url, 'tiny')}
-                          alt=""
-                          aria-hidden="true"
-                          className="absolute inset-0 h-full w-full scale-110 object-cover blur-xl opacity-40"
-                          loading="lazy"
-                        />
+                      <div className="aspect-[3/4] bg-muted relative overflow-hidden">
                         <WatermarkedPhoto
                           src={photo.thumbnail_url || photo.watermarked_url}
                           alt={getPhotoName(photo, index)}
                           position="full"
                           opacity={0.85}
-                          imgClassName="relative w-full h-full object-contain"
+                          imgClassName="w-full h-full object-cover"
                           loading={index < 4 ? "eager" : "lazy"}
                           displaySize="thumbnail"
                         />
