@@ -110,7 +110,9 @@ const ManageEvent = () => {
   const [editPhotoPrice, setEditPhotoPrice] = useState('');
   const [savingEvent, setSavingEvent] = useState(false);
   const isOwner = campaign?.photographer_id === user?.id;
-  const canEditPrice = isAdmin || isOwner; // Photographer can't edit price if admin created the event
+  // Apenas o ADMIN pode alterar o preço após o upload do fotógrafo
+  const priceAlreadyDefined = campaign?.photo_price_display != null && campaign.photo_price_display > 0;
+  const canEditPrice = isAdmin || (isOwner && !priceAlreadyDefined);
 
   useEffect(() => {
     if (id && user) {
