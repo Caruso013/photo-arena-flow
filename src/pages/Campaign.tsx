@@ -785,7 +785,7 @@ const Campaign = () => {
                 <img
                   src={getTransformedImageUrl(campaign.cover_image_url, 'large')}
                   alt={campaign.title}
-                  className="relative h-full w-full object-contain"
+                  className="relative h-full w-full object-cover"
                 />
               </>
             ) : (
