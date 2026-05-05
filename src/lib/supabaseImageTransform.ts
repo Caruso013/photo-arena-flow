@@ -1,8 +1,7 @@
 /**
  * Supabase Storage Image Transformations
- * Usa o endpoint nativo /render/image/ do Supabase para servir imagens otimizadas.
- * Isso evita buscar o arquivo original por um proxy intermediário e reduz o volume
- * transferido em listagens, cards e previews.
+ * Neste momento, o app serve a URL original para evitar recortes, zoom e
+ * reamostragem das imagens em telas de fotos e capas.
  * 
  * Documentação: https://supabase.com/docs/guides/storage/serving/image-transformations
  */
@@ -68,15 +67,7 @@ export function getTransformedImageUrl(
 ): string {
   if (!originalUrl) return '';
 
-  const config = TRANSFORM_CONFIGS[size];
-  if (!config) return originalUrl;
-
-  // Only optimize Supabase storage URLs
-  if (!originalUrl.includes('supabase.co')) {
-    return originalUrl;
-  }
-
-  return buildSupabaseRenderUrl(originalUrl, config) || originalUrl;
+  return originalUrl;
 }
 
 /**

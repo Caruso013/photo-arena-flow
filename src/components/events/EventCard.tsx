@@ -126,7 +126,7 @@ export const EventCard: React.FC<EventCardProps> = ({ campaign, index }) => {
                   src={getTransformedImageUrl(campaign.cover_image_url, 'medium')}
                   alt=""
                   aria-hidden="true"
-                  className="absolute inset-0 h-full w-full scale-110 object-cover blur-xl opacity-40 transition-opacity duration-500 group-hover:opacity-50"
+                  className="absolute inset-0 h-full w-full object-cover blur-xl opacity-40 transition-opacity duration-500 group-hover:opacity-50"
                   loading="lazy"
                 />
                 <img

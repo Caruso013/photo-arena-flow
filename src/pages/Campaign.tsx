@@ -780,7 +780,7 @@ const Campaign = () => {
                   src={getTransformedImageUrl(campaign.cover_image_url, 'large')}
                   alt=""
                   aria-hidden="true"
-                  className="absolute inset-0 h-full w-full scale-110 object-cover blur-xl opacity-40"
+                  className="absolute inset-0 h-full w-full object-cover blur-xl opacity-40"
                 />
                 <img
                   src={getTransformedImageUrl(campaign.cover_image_url, 'large')}
@@ -1099,9 +1099,9 @@ const Campaign = () => {
                           alt={getPhotoName(photo, index)}
                           position="full"
                           opacity={0.85}
-                          imgClassName="w-full h-full object-cover"
+                          imgClassName="w-full h-full object-contain"
                           loading={index < 4 ? "eager" : "lazy"}
-                          displaySize="thumbnail"
+                          displaySize="original"
                         />
                         
                         {/* Botão Destaque (apenas para fotógrafos) */}
