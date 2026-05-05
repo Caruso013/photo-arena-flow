@@ -46,11 +46,12 @@ const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = memo(({
   const containerRef = useRef<HTMLDivElement>(null);
   const longPressTimer = useRef<number | null>(null);
   
-  // Watermark usa cache global - não bloqueia mais o render
-  const [watermarkReady, setWatermarkReady] = useState(() => preloadWatermark(watermarkSrc));
+  // Watermark DEVE carregar ANTES da foto ficar visível
+  const [watermarkReady, setWatermarkReady] = useState(false);
   const [photoLoaded, setPhotoLoaded] = useState(false);
   const [forceReveal, setForceReveal] = useState(false);
-  const canRevealPhoto = (photoLoaded && watermarkReady) || forceReveal;
+  // Foto só fica visível quando WATERMARK está pronta (não quando foto carrega)
+  const canRevealPhoto = watermarkReady;
 
   // Failsafe: se demorar mais de 6s, libera a foto mesmo sem confirmação de load
   // (evita carregamento "infinito" quando o evento onLoad não dispara em iOS/Safari)
@@ -67,20 +68,28 @@ const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = memo(({
       ? 'right-2 bottom-2 w-16 h-16'
       : 'inset-0 w-full h-full'; // position === 'full'
 
-  // Checar cache da watermark periodicamente até estar pronta
+  // Carregamento eager e prioritário da watermark
   useEffect(() => {
-    setWatermarkReady(preloadWatermark(watermarkSrc));
-    if (isPurchased || watermarkReady) return;
+    if (isPurchased) return;
     
-    const interval = setInterval(() => {
-      if (preloadWatermark(watermarkSrc)) {
-        setWatermarkReady(true);
-        clearInterval(interval);
-      }
-    }, 100);
-    
-    return () => clearInterval(interval);
-  }, [watermarkSrc, isPurchased, watermarkReady]);
+    // Forçar carregamento eager da watermark
+    const img = new Image();
+    img.onload = () => {
+      watermarkCache[watermarkSrc] = true;
+      setWatermarkReady(true);
+    };
+    img.onerror = () => {
+      // Mesmo com erro, marca como pronto para não travar
+      watermarkCache[watermarkSrc] = true;
+      setWatermarkReady(true);
+    };
+    img.src = watermarkSrc;
+
+    // Checar se já está em cache
+    if (preloadWatermark(watermarkSrc)) {
+      setWatermarkReady(true);
+    }
+  }, [watermarkSrc, isPurchased]);
 
   // Reset photo loaded state when src changes
   useEffect(() => {
@@ -189,14 +198,14 @@ const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = memo(({
       onContextMenu={(e) => e.preventDefault()}
       onDragStart={(e) => e.preventDefault()}
     >
-      {/* Skeleton enquanto foto + marca d'água não estiverem prontas */}
+      {/* Skeleton enquanto watermark não estiver pronta */}
       {!canRevealPhoto && (
         <div className="absolute inset-0 bg-muted animate-pulse flex items-center justify-center">
           <div className="w-8 h-8 border-2 border-muted-foreground/30 border-t-primary rounded-full animate-spin" />
         </div>
       )}
       
-      {/* Foto só aparece junto com a marca d'água */}
+      {/* Foto só aparece quando watermark está pronta */}
       <img 
         src={currentSrc} 
         alt={alt} 
@@ -220,23 +229,23 @@ const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = memo(({
           userSelect: 'none',
           pointerEvents: 'none',
           opacity: canRevealPhoto ? 1 : 0,
-          transition: 'opacity 0.2s ease-in-out'
+          transition: 'opacity 0.1s ease-in-out'
         }}
       />
 
-      {/* watermark overlay - renderiza sempre (já está em cache) */}
+      {/* Watermark overlay - renderiza quando watermark está pronta */}
       {watermarkReady && (
         <img
           src={watermarkSrc}
           alt=""
           className={`pointer-events-none absolute z-10 ${watermarkPositionClass} ${watermarkClassName}`}
           style={{ 
-            opacity: canRevealPhoto ? opacity : 0,
+            opacity: opacity,
             objectFit: position === 'full' ? 'cover' : 'contain',
             WebkitUserSelect: 'none',
             WebkitTouchCallout: 'none',
             userSelect: 'none',
-            transition: 'opacity 0.2s ease-in-out'
+            transition: 'opacity 0.1s ease-in-out'
           }}
           loading="eager"
           decoding="async"

@@ -142,8 +142,7 @@ const Campaign = () => {
   // Paginação
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  // Reduzido de 50 para 24 para carregamento mais rápido
-  const PHOTOS_PER_PAGE = 24;
+  const PHOTOS_PER_PAGE = 50;
   
   // Estado para foto selecionada no modal com navegação
   const [viewingPhotoIndex, setViewingPhotoIndex] = useState<number | null>(null);
