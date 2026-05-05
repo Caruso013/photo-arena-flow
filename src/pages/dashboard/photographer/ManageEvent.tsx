@@ -961,7 +961,7 @@ const ManageEvent = () => {
                     Preço da Foto (R$)
                     {!canEditPrice && (
                       <span className="text-xs text-muted-foreground ml-2">
-                        (definido pelo admin)
+                        (somente admin)
                       </span>
                     )}
                   </Label>
