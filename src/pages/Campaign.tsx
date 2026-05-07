@@ -173,6 +173,21 @@ const Campaign = () => {
     delta: 50,
   });
 
+  // Botão voltar do navegador (mobile) fecha o visualizador
+  useEffect(() => {
+    if (viewingPhotoIndex === null) return;
+    window.history.pushState({ photoViewer: true }, '');
+    const handlePopState = () => setViewingPhotoIndex(null);
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      // Se ainda existe o estado do viewer, removê-lo ao fechar programaticamente
+      if (window.history.state?.photoViewer) {
+        window.history.back();
+      }
+    };
+  }, [viewingPhotoIndex !== null]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
