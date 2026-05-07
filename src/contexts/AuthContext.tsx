@@ -111,15 +111,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         // Fire and forget - não await, não controla loading
         if (session?.user) {
-          fetchProfile(session.user.id).then(profileData => {
-            if (isMounted) {
-              setProfile(profileData);
-            }
-          }).catch(() => {
-            if (isMounted) {
-              setProfile(null);
-            }
-          });
+          // Só refazer fetch do perfil se for um evento relevante.
+          // TOKEN_REFRESHED em background NÃO deve sobrescrever o perfil
+          // já carregado, pois falhas transitórias de rede zerariam o estado.
+          if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+            fetchProfile(session.user.id).then(profileData => {
+              if (isMounted && profileData) {
+                setProfile(profileData);
+              }
+              // Se vier null por erro transitório, mantém o perfil atual
+            }).catch(() => {
+              // Não limpar profile em erros de background
+            });
+          }
         } else {
           setProfile(null);
         }
