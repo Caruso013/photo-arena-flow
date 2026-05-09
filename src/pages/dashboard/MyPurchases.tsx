@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Progress } from '@/components/ui/progress';
 import { downloadOriginalPhoto, downloadMultiplePhotos } from '@/lib/photoDownload';
+import { getSecurePhotoDownloadUrl } from '@/lib/securePhotoDownload';
 interface Purchase {
   id: string;
   amount: number;
@@ -109,17 +110,25 @@ const MyPurchases = () => {
     }
   };
 
-  const handleDownload = useCallback(async (url: string, fileName: string, purchaseId?: string) => {
+  const handleDownload = useCallback(async (photoId: string, fileName: string, purchaseId?: string) => {
     try {
       if (purchaseId) setDownloadingId(purchaseId);
       
-      if (!url) {
-        toast.error('URL da foto não encontrada');
+      if (!photoId) {
+        toast.error('ID da foto não encontrada');
         return;
       }
 
-      // Usar a função de download otimizada que baixa direto para o dispositivo
-      await downloadOriginalPhoto(url, fileName);
+      // ✅ NOVO: Obter URL segura do backend (validado no servidor)
+      const secureUrl = await getSecurePhotoDownloadUrl(photoId);
+      
+      if (!secureUrl) {
+        // Toast de erro já foi exibido pela função
+        return;
+      }
+
+      // Usar a URL segura para download
+      await downloadOriginalPhoto(secureUrl, fileName);
       
     } catch (error) {
       console.error('Erro ao baixar foto:', error);
@@ -137,22 +146,36 @@ const MyPurchases = () => {
     
     try {
       const completedPurchases = purchases.filter(p => p.status === 'completed');
+      const totalPhotos = completedPurchases.length;
       
-      // Usar a função otimizada para múltiplos downloads
-      const photosToDownload = completedPurchases.map((p, index) => ({
-        photo_url: p.photo.original_url,
-        photo_id: p.photo.id,
-      }));
+      // ✅ NOVO: Usar download seguro para cada foto
+      let successCount = 0;
       
-      // Atualizar progresso durante o download
-      const updateProgress = setInterval(() => {
-        setDownloadProgress(prev => Math.min(prev + 10, 90));
-      }, 500);
+      for (let i = 0; i < completedPurchases.length; i++) {
+        const purchase = completedPurchases[i];
+        
+        // Obter URL segura do backend
+        const secureUrl = await getSecurePhotoDownloadUrl(purchase.photo.id);
+        
+        if (secureUrl) {
+          const fileName = `${user?.email?.split('@')[0] || 'foto'}_${i + 1}.jpg`;
+          await downloadOriginalPhoto(secureUrl, fileName);
+          successCount++;
+        }
+        
+        // Atualizar progresso
+        setDownloadProgress(Math.round(((i + 1) / totalPhotos) * 100));
+        
+        // Delay entre downloads
+        if (i < completedPurchases.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 600));
+        }
+      }
       
-      await downloadMultiplePhotos(photosToDownload, user?.email?.split('@')[0] || 'foto');
-      
-      clearInterval(updateProgress);
-      setDownloadProgress(100);
+      if (successCount > 0) {
+        toast.success(`${successCount} de ${totalPhotos} fotos baixadas!`, { duration: 3000 });
+      } else {\n        toast.error('Nenhuma foto foi baixada. Tente novamente.');
+      }
       
     } catch (error) {
       console.error('Erro no download em lote:', error);
@@ -313,7 +336,7 @@ const MyPurchases = () => {
                       <Button
                         size="sm"
                         className="w-full gap-2 min-h-[44px]"
-                        onClick={() => handleDownload(purchase.photo.original_url, `foto-${purchase.photo.id}.jpg`, purchase.id)}
+                        onClick={() => handleDownload(purchase.photo.id, `foto-${purchase.photo.id}.jpg`, purchase.id)}
                         disabled={downloadingId === purchase.id}
                       >
                         {downloadingId === purchase.id ? (
