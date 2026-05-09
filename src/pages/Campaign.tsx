@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSwipeable } from 'react-swipeable';
 import { useAuth } from '@/contexts/AuthContext';
@@ -171,6 +171,27 @@ const Campaign = () => {
     trackTouch: true,
     delta: 50,
   });
+
+  // Voltar do navegador / swipe-back do iPhone fecha o visualizador sem sair da página
+  const closedByPopRef = useRef(false);
+  useEffect(() => {
+    if (viewingPhotoIndex === null) return;
+    closedByPopRef.current = false;
+    // Empilha entrada dedicada para o viewer; back/swipe-back consome essa entrada
+    window.history.pushState({ photoViewer: true }, '');
+    const handlePopState = () => {
+      closedByPopRef.current = true;
+      setViewingPhotoIndex(null);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      // Se foi fechado pelo X/Esc (não pelo popstate), remove a entrada extra do histórico
+      if (!closedByPopRef.current && window.history.state?.photoViewer) {
+        window.history.back();
+      }
+    };
+  }, [viewingPhotoIndex !== null]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Keyboard navigation
   useEffect(() => {
@@ -1286,9 +1307,12 @@ const Campaign = () => {
 
         {/* Modal de Visualização de Foto com Navegação e Swipe */}
         <Dialog open={viewingPhotoIndex !== null} onOpenChange={(open) => !open && setViewingPhotoIndex(null)}>
-          <DialogContent className="max-w-[100vw] sm:max-w-[100vw] w-[100vw] h-[100vh] sm:h-[100vh] p-0 gap-0 bg-black border-0 flex flex-col">
-            {/* Header */}
-            <div className="flex items-center justify-between p-3 sm:p-4 bg-black/50 text-white">
+          <DialogContent className="max-w-[100vw] sm:max-w-[100vw] w-[100vw] h-[100vh] sm:h-[100vh] p-0 gap-0 bg-black border-0 flex flex-col [&>button.absolute]:hidden">
+            {/* Header com safe-area para iPhone (notch) */}
+            <div
+              className="flex items-center justify-between gap-2 px-3 sm:px-4 py-2 sm:py-3 bg-black/70 text-white relative z-50"
+              style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top))' }}
+            >
               <DialogTitle className="text-sm sm:text-base truncate flex-1 text-white">
                 {viewingPhotoIndex !== null && photos[viewingPhotoIndex] 
                   ? getPhotoName(photos[viewingPhotoIndex], viewingPhotoIndex)
@@ -1298,10 +1322,11 @@ const Campaign = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="text-white hover:bg-white/20 h-9 w-9"
+                aria-label="Fechar"
+                className="relative text-white bg-white/25 hover:bg-white/35 active:bg-white/50 h-12 w-12 rounded-full border-2 border-white/60 shadow-xl flex-shrink-0 after:absolute after:-inset-3 after:content-['']"
                 onClick={() => setViewingPhotoIndex(null)}
               >
-                <X className="h-5 w-5" />
+                <X className="h-7 w-7" strokeWidth={3} />
               </Button>
             </div>
             
