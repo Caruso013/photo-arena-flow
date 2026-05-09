@@ -1324,10 +1324,10 @@ const Campaign = () => {
                 variant="ghost"
                 size="icon"
                 aria-label="Fechar"
-                className="text-white bg-white/20 hover:bg-white/30 active:bg-white/40 h-11 w-11 rounded-full border border-white/40 shadow-lg flex-shrink-0"
+                className="relative text-white bg-white/25 hover:bg-white/35 active:bg-white/50 h-12 w-12 rounded-full border-2 border-white/60 shadow-xl flex-shrink-0 after:absolute after:-inset-3 after:content-['']"
                 onClick={() => setViewingPhotoIndex(null)}
               >
-                <X className="h-6 w-6" strokeWidth={2.5} />
+                <X className="h-7 w-7" strokeWidth={3} />
               </Button>
             </div>
             
