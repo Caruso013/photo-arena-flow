@@ -1302,9 +1302,12 @@ const Campaign = () => {
 
         {/* Modal de Visualização de Foto com Navegação e Swipe */}
         <Dialog open={viewingPhotoIndex !== null} onOpenChange={(open) => !open && setViewingPhotoIndex(null)}>
-          <DialogContent className="max-w-[100vw] sm:max-w-[100vw] w-[100vw] h-[100vh] sm:h-[100vh] p-0 gap-0 bg-black border-0 flex flex-col">
-            {/* Header */}
-            <div className="flex items-center justify-between p-3 sm:p-4 bg-black/50 text-white">
+          <DialogContent className="max-w-[100vw] sm:max-w-[100vw] w-[100vw] h-[100vh] sm:h-[100vh] p-0 gap-0 bg-black border-0 flex flex-col [&>button.absolute]:hidden">
+            {/* Header com safe-area para iPhone (notch) */}
+            <div
+              className="flex items-center justify-between gap-2 px-3 sm:px-4 py-2 sm:py-3 bg-black/70 text-white relative z-50"
+              style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top))' }}
+            >
               <DialogTitle className="text-sm sm:text-base truncate flex-1 text-white">
                 {viewingPhotoIndex !== null && photos[viewingPhotoIndex] 
                   ? getPhotoName(photos[viewingPhotoIndex], viewingPhotoIndex)
@@ -1314,10 +1317,11 @@ const Campaign = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="text-white hover:bg-white/20 h-9 w-9"
+                aria-label="Fechar"
+                className="text-white bg-white/20 hover:bg-white/30 active:bg-white/40 h-11 w-11 rounded-full border border-white/40 shadow-lg flex-shrink-0"
                 onClick={() => setViewingPhotoIndex(null)}
               >
-                <X className="h-5 w-5" />
+                <X className="h-6 w-6" strokeWidth={2.5} />
               </Button>
             </div>
             
