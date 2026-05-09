@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSwipeable } from 'react-swipeable';
 import { useAuth } from '@/contexts/AuthContext';
@@ -173,16 +173,22 @@ const Campaign = () => {
     delta: 50,
   });
 
-  // Botão voltar do navegador (mobile) fecha o visualizador
+  // Voltar do navegador / swipe-back do iPhone fecha o visualizador sem sair da página
+  const closedByPopRef = useRef(false);
   useEffect(() => {
     if (viewingPhotoIndex === null) return;
+    closedByPopRef.current = false;
+    // Empilha entrada dedicada para o viewer; back/swipe-back consome essa entrada
     window.history.pushState({ photoViewer: true }, '');
-    const handlePopState = () => setViewingPhotoIndex(null);
+    const handlePopState = () => {
+      closedByPopRef.current = true;
+      setViewingPhotoIndex(null);
+    };
     window.addEventListener('popstate', handlePopState);
     return () => {
       window.removeEventListener('popstate', handlePopState);
-      // Se ainda existe o estado do viewer, removê-lo ao fechar programaticamente
-      if (window.history.state?.photoViewer) {
+      // Se foi fechado pelo X/Esc (não pelo popstate), remove a entrada extra do histórico
+      if (!closedByPopRef.current && window.history.state?.photoViewer) {
         window.history.back();
       }
     };
@@ -1318,10 +1324,10 @@ const Campaign = () => {
                 variant="ghost"
                 size="icon"
                 aria-label="Fechar"
-                className="text-white bg-white/20 hover:bg-white/30 active:bg-white/40 h-11 w-11 rounded-full border border-white/40 shadow-lg flex-shrink-0"
+                className="relative text-white bg-white/25 hover:bg-white/35 active:bg-white/50 h-12 w-12 rounded-full border-2 border-white/60 shadow-xl flex-shrink-0 after:absolute after:-inset-3 after:content-['']"
                 onClick={() => setViewingPhotoIndex(null)}
               >
-                <X className="h-6 w-6" strokeWidth={2.5} />
+                <X className="h-7 w-7" strokeWidth={3} />
               </Button>
             </div>
             
