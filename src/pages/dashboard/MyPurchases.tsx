@@ -174,7 +174,8 @@ const MyPurchases = () => {
       
       if (successCount > 0) {
         toast.success(`${successCount} de ${totalPhotos} fotos baixadas!`, { duration: 3000 });
-      } else {\n        toast.error('Nenhuma foto foi baixada. Tente novamente.');
+      } else {
+        toast.error('Nenhuma foto foi baixada. Tente novamente.');
       }
       
     } catch (error) {
