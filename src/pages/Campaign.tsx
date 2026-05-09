@@ -173,16 +173,22 @@ const Campaign = () => {
     delta: 50,
   });
 
-  // Botão voltar do navegador (mobile) fecha o visualizador
+  // Voltar do navegador / swipe-back do iPhone fecha o visualizador sem sair da página
+  const closedByPopRef = useRef(false);
   useEffect(() => {
     if (viewingPhotoIndex === null) return;
+    closedByPopRef.current = false;
+    // Empilha entrada dedicada para o viewer; back/swipe-back consome essa entrada
     window.history.pushState({ photoViewer: true }, '');
-    const handlePopState = () => setViewingPhotoIndex(null);
+    const handlePopState = () => {
+      closedByPopRef.current = true;
+      setViewingPhotoIndex(null);
+    };
     window.addEventListener('popstate', handlePopState);
     return () => {
       window.removeEventListener('popstate', handlePopState);
-      // Se ainda existe o estado do viewer, removê-lo ao fechar programaticamente
-      if (window.history.state?.photoViewer) {
+      // Se foi fechado pelo X/Esc (não pelo popstate), remove a entrada extra do histórico
+      if (!closedByPopRef.current && window.history.state?.photoViewer) {
         window.history.back();
       }
     };
