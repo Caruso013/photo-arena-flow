@@ -10,6 +10,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { formatCampaignDate, parseCampaignDate } from '@/lib/eventDate';
 
 export interface EventOption {
   id: string;
@@ -45,8 +46,8 @@ export const SearchableEventSelect: React.FC<SearchableEventSelectProps> = ({
     now.setHours(0, 0, 0, 0);
     
     return [...events].sort((a, b) => {
-      const dateA = a.event_date ? new Date(a.event_date) : null;
-      const dateB = b.event_date ? new Date(b.event_date) : null;
+      const dateA = parseCampaignDate(a.event_date);
+      const dateB = parseCampaignDate(b.event_date);
       
       // Eventos sem data vão para o final
       if (!dateA && !dateB) return 0;
@@ -83,13 +84,11 @@ export const SearchableEventSelect: React.FC<SearchableEventSelectProps> = ({
       // Buscar por data formatada (ex: "31/01", "janeiro")
       let dateMatch = false;
       if (event.event_date) {
-        try {
-          const date = new Date(event.event_date);
+        const date = parseCampaignDate(event.event_date);
+        if (date) {
           const formattedDate = format(date, 'dd/MM/yyyy', { locale: ptBR });
           const monthName = format(date, 'MMMM', { locale: ptBR });
           dateMatch = formattedDate.includes(query) || monthName.toLowerCase().includes(query);
-        } catch {
-          dateMatch = false;
         }
       }
       
@@ -103,12 +102,7 @@ export const SearchableEventSelect: React.FC<SearchableEventSelectProps> = ({
   // Formatar data do evento
   const formatEventDate = (dateStr?: string | null) => {
     if (!dateStr) return null;
-    try {
-      const date = new Date(dateStr);
-      return format(date, "dd/MM/yyyy", { locale: ptBR });
-    } catch {
-      return null;
-    }
+    return formatCampaignDate(dateStr, 'dd/MM/yyyy');
   };
 
   // Verificar se o evento é futuro
@@ -116,7 +110,8 @@ export const SearchableEventSelect: React.FC<SearchableEventSelectProps> = ({
     if (!dateStr) return true;
     const now = new Date();
     now.setHours(0, 0, 0, 0);
-    const eventDate = new Date(dateStr);
+    const eventDate = parseCampaignDate(dateStr);
+    if (!eventDate) return true;
     return eventDate.getTime() >= now.getTime();
   };
 

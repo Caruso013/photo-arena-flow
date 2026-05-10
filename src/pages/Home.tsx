@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getTransformedImageUrl } from '@/lib/supabaseImageTransform';
+import { formatCampaignDate } from '@/lib/eventDate';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -279,7 +280,7 @@ const Home = () => {
                       {campaign.event_date && (
                         <div className="flex items-center gap-2 text-muted-foreground">
                           <Calendar className="h-4 w-4" />
-                          {new Date(campaign.event_date).toLocaleDateString('pt-BR')}
+                          {formatCampaignDate(campaign.event_date) || ''}
                         </div>
                       )}
                       {campaign.location && (

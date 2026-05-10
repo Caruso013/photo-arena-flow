@@ -28,6 +28,7 @@ import {
   SheetClose,
 } from "@/components/ui/sheet";
 import { useIsMobile } from '@/hooks/use-mobile';
+import { formatCampaignDate } from '@/lib/eventDate';
 
 interface SubEvent {
   id: string;
@@ -169,7 +170,7 @@ export const EventCard: React.FC<EventCardProps> = ({ campaign, index }) => {
                 </div>
                 <div className="flex items-center gap-2 bg-black/40 backdrop-blur-sm rounded-full px-3 py-1.5 w-fit">
                   <Calendar className="h-3.5 w-3.5 flex-shrink-0" />
-                  <span className="font-medium">{new Date(campaign.event_date).toLocaleDateString('pt-BR')}</span>
+                  <span className="font-medium">{formatCampaignDate(campaign.event_date) || ''}</span>
                 </div>
               </div>
             </div>

@@ -12,6 +12,7 @@ import { PullToRefreshIndicator } from '@/components/ui/PullToRefreshIndicator';
 import { useHapticFeedback } from '@/hooks/useHapticFeedback';
 import { resilientQuery } from '@/lib/supabaseResilience';
 import { Input } from '@/components/ui/input';
+import { parseCampaignDate } from '@/lib/eventDate';
 import {
   Pagination,
   PaginationContent,
@@ -139,27 +140,35 @@ const Events = () => {
     
     if (filters.dateFrom) {
       filtered = filtered.filter(
-        (campaign) => new Date(campaign.event_date) >= new Date(filters.dateFrom)
+        (campaign) => {
+          const campaignDate = parseCampaignDate(campaign.event_date);
+          const fromDate = parseCampaignDate(filters.dateFrom);
+          return !!campaignDate && !!fromDate && campaignDate >= fromDate;
+        }
       );
     }
     if (filters.dateTo) {
       filtered = filtered.filter(
-        (campaign) => new Date(campaign.event_date) <= new Date(filters.dateTo)
+        (campaign) => {
+          const campaignDate = parseCampaignDate(campaign.event_date);
+          const toDate = parseCampaignDate(filters.dateTo);
+          return !!campaignDate && !!toDate && campaignDate <= toDate;
+        }
       );
     }
 
     filtered.sort((a, b) => {
       switch (filters.sortBy) {
         case 'date':
-          return new Date(a.event_date).getTime() - new Date(b.event_date).getTime();
+          return (parseCampaignDate(a.event_date)?.getTime() || 0) - (parseCampaignDate(b.event_date)?.getTime() || 0);
         case 'title':
           return a.title.localeCompare(b.title);
         case 'recent':
         default: {
           const now = new Date();
           now.setHours(0, 0, 0, 0);
-          const dateA = new Date(a.event_date || '1970-01-01');
-          const dateB = new Date(b.event_date || '1970-01-01');
+          const dateA = parseCampaignDate(a.event_date) || new Date('1970-01-01T00:00:00');
+          const dateB = parseCampaignDate(b.event_date) || new Date('1970-01-01T00:00:00');
           const isFutureA = dateA.getTime() >= now.getTime();
           const isFutureB = dateB.getTime() >= now.getTime();
           

@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { toast } from '@/components/ui/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import { formatCampaignDate } from '@/lib/eventDate';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import PaymentModal from '@/components/modals/PaymentModal';
 import WatermarkedPhoto from '@/components/WatermarkedPhoto';
@@ -821,8 +822,8 @@ const Campaign = () => {
                   {campaign.event_date && (
                     <div className="flex items-center gap-1">
                       <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
-                      <span className="hidden sm:inline">{new Date(campaign.event_date).toLocaleDateString('pt-BR')}</span>
-                      <span className="sm:hidden">{new Date(campaign.event_date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</span>
+                      <span className="hidden sm:inline">{formatCampaignDate(campaign.event_date) || ''}</span>
+                      <span className="sm:hidden">{formatCampaignDate(campaign.event_date, 'dd/MM') || ''}</span>
                     </div>
                   )}
                   {campaign.location && (
