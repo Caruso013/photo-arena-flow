@@ -109,7 +109,7 @@ describe('Sistema de Download Seguro - Integração', () => {
 /**
  * TESTES MANUAIS (Executar no navegador)
  * 
- * 1️⃣ TESTE DE AUTENTICAÇÃO
+ * 1) TESTE DE AUTENTICAÇÃO
  * ✅ Abra DevTools → Console
  * ✅ Execute:
  *   const { getSecurePhotoDownloadUrl } = await import('@/lib/securePhotoDownload');
@@ -117,19 +117,19 @@ describe('Sistema de Download Seguro - Integração', () => {
  *   console.log(url);
  * ✅ Resultado esperado: URL assinada ou null + toast de erro
  * 
- * 2️⃣ TESTE DE RATE LIMIT
+ * 2) TESTE DE RATE LIMIT
  * ✅ Compre 5+ fotos diferentes
  * ✅ Tente fazer 6 downloads em 1 minuto
  * ✅ Resultado esperado: 5º sucesso, 6º falha (rate limit)
  * 
- * 3️⃣ TESTE DE EXPIRAÇÃO
+ * 3) TESTE DE EXPIRAÇÃO
  * ✅ Baixe uma foto
  * ✅ Capture a URL do DevTools
  * ✅ Aguarde 2 minutos
  * ✅ Tente acessar a URL em nova aba
  * ✅ Resultado esperado: 403 Forbidden (URL expirada)
  * 
- * 4️⃣ TESTE DE COMPARTILHAMENTO
+ * 4) TESTE DE COMPARTILHAMENTO
  * ✅ Usuário A: Baixe uma foto
  * ✅ Usuário A: Capture URL do DevTools
- * ✅ Usuário A: Compartilhe URL em grupo WhatsApp\n * ✅ Usuário B: Tente acessar URL imediatamente\n * ✅ Resultado esperado: 403 Forbidden (não tem JWT)\n * \n * 5️⃣ TESTE DE AUDITORIA\n * ✅ Faça alguns downloads\n * ✅ Supabase Console → SQL Editor\n * ✅ Execute: SELECT * FROM photo_downloads ORDER BY downloaded_at DESC LIMIT 10;\n * ✅ Resultado esperado: Ver todos os downloads com IP, User-Agent, timestamp\n */\n
+ * ✅ Usuário A: Compartilhe URL em grupo WhatsApp\n * ✅ Usuário B: Tente acessar URL imediatamente\n * ✅ Resultado esperado: 403 Forbidden (não tem JWT)\n * \n * 5) TESTE DE AUDITORIA\n * ✅ Faça alguns downloads\n * ✅ Supabase Console → SQL Editor\n * ✅ Execute: SELECT * FROM photo_downloads ORDER BY downloaded_at DESC LIMIT 10;\n * ✅ Resultado esperado: Ver todos os downloads com IP, User-Agent, timestamp\n */\n
