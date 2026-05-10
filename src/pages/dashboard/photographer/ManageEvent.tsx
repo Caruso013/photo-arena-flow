@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
+import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
   ArrowLeft, 
   Calendar, 
   MapPin, 
@@ -543,7 +544,7 @@ const ManageEvent = () => {
             {campaign.event_date && (
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
-                <span>{new Date(campaign.event_date).toLocaleDateString('pt-BR')}</span>
+                <span>{formatEventDate(campaign.event_date)}</span>
               </div>
             )}
             {campaign.location && (

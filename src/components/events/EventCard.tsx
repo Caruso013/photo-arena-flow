@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { 
+import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
   Camera, 
   MapPin, 
   Calendar, 
@@ -169,7 +170,7 @@ export const EventCard: React.FC<EventCardProps> = ({ campaign, index }) => {
                 </div>
                 <div className="flex items-center gap-2 bg-black/40 backdrop-blur-sm rounded-full px-3 py-1.5 w-fit">
                   <Calendar className="h-3.5 w-3.5 flex-shrink-0" />
-                  <span className="font-medium">{new Date(campaign.event_date).toLocaleDateString('pt-BR')}</span>
+                  <span className="font-medium">{formatEventDate(campaign.event_date)}</span>
                 </div>
               </div>
             </div>

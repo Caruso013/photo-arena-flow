@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
 import { 
+import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
   ArrowLeft, 
   Users, 
   CheckCircle2, 
@@ -203,7 +204,7 @@ const EventAttendance = () => {
                 <span className="flex items-center gap-1">
                   <Calendar className="h-4 w-4" />
                   {campaign.event_date 
-                    ? format(new Date(campaign.event_date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
+                    ? format((parseLocalDate(campaign.event_date) || new Date(0)), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
                     : 'Data não definida'
                   }
                 </span>

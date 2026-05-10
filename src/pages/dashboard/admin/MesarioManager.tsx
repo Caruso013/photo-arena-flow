@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
+import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
   UserCheck, Plus, Trash2, Copy, Clock, QrCode, RefreshCw, AlertTriangle, 
   CheckCircle, MessageCircle, KeyRound, UserPlus, Power, PowerOff
 } from 'lucide-react';
@@ -384,7 +385,7 @@ const MesarioManager: React.FC = () => {
                     <SelectContent>
                       {campaigns.map(c => (
                         <SelectItem key={c.id} value={c.id}>
-                          {c.title} {c.event_date && `(${format(new Date(c.event_date), 'dd/MM/yyyy', { locale: ptBR })})`}
+                          {c.title} {c.event_date && `(${format((parseLocalDate(c.event_date) || new Date(0)), 'dd/MM/yyyy', { locale: ptBR })})`}
                         </SelectItem>
                       ))}
                     </SelectContent>

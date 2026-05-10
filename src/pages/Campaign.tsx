@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import {
+import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -821,8 +822,8 @@ const Campaign = () => {
                   {campaign.event_date && (
                     <div className="flex items-center gap-1">
                       <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
-                      <span className="hidden sm:inline">{new Date(campaign.event_date).toLocaleDateString('pt-BR')}</span>
-                      <span className="sm:hidden">{new Date(campaign.event_date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</span>
+                      <span className="hidden sm:inline">{formatEventDate(campaign.event_date)}</span>
+                      <span className="sm:hidden">{formatEventDate(campaign.event_date, { day: '2-digit', month: '2-digit' })}</span>
                     </div>
                   )}
                   {campaign.location && (

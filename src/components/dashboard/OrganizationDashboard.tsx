@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/components/ui/use-toast';
 import { 
+import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
   Building2, 
   Camera, 
   Users, 
@@ -398,7 +399,7 @@ const OrganizationDashboard = () => {
                             <h4 className="font-medium">{campaign.title}</h4>
                             <p className="text-sm text-muted-foreground">{campaign.location}</p>
                             <p className="text-sm text-muted-foreground">
-                              {campaign.event_date ? new Date(campaign.event_date).toLocaleDateString() : 'Data não definida'}
+                              {campaign.event_date ? formatEventDate(campaign.event_date) : 'Data não definida'}
                             </p>
                             <div className="flex justify-between items-center">
                               <Badge variant={campaign.is_active ? 'default' : 'secondary'}>

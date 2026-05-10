@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/components/ui/use-toast';
 import { 
+import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
   CheckCircle2, 
   XCircle, 
   Calendar, 
@@ -323,7 +324,7 @@ export const ApplicationsManager = () => {
                             <div className="flex items-center gap-2 text-sm">
                               <Calendar className="h-4 w-4 text-muted-foreground" />
                               <span>
-                                {new Date(app.campaigns.event_date).toLocaleDateString('pt-BR')}
+                                {formatEventDate(app.campaigns.event_date)}
                               </span>
                             </div>
                           )}
