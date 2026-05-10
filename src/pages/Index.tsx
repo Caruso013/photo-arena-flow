@@ -9,6 +9,7 @@ import { Link } from 'react-router-dom';
 import MainLayout from '@/components/layout/MainLayout';
 import { logger } from '@/lib/logger';
 import { handleError } from '@/lib/errorHandler';
+import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
 
 interface Campaign {
   id: string;
@@ -289,7 +290,7 @@ const Index = () => {
                             </div>
                             <div className="flex items-center gap-1 flex-shrink-0">
                               <Calendar className="h-3 w-3" />
-                              <span>{new Date(campaign.event_date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</span>
+                              <span>{formatEventDate(campaign.event_date, { day: '2-digit', month: '2-digit' })}</span>
                             </div>
                           </div>
                         </div>

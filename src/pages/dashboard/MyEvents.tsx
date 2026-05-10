@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 import { SkeletonCard } from '@/components/ui/skeleton-card';
 import { useToast } from '@/hooks/use-toast';
 import {
+import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -148,7 +149,7 @@ const MyEvents = () => {
                   </div>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Calendar className="h-4 w-4" />
-                    <span>{new Date(campaign.event_date).toLocaleDateString('pt-BR')}</span>
+                    <span>{formatEventDate(campaign.event_date)}</span>
                   </div>
                   <div className="flex gap-2">
                     <Link to={campaign.short_code ? `/E/${campaign.short_code}` : `/campaign/${campaign.id}`} className="flex-1">

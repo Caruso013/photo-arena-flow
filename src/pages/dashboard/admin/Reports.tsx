@@ -11,6 +11,7 @@ import { toast } from '@/components/ui/use-toast';
 import { formatCurrency } from '@/lib/utils';
 import { ActiveCartsViewer } from '@/components/dashboard/ActiveCartsViewer';
 import * as XLSX from 'xlsx';
+import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
 
 const AdminReports = () => {
   const { profile } = useAuth();
@@ -129,7 +130,7 @@ const AdminReports = () => {
           'ID': c.id,
           'Título': c.title,
           'Local': c.location || 'N/A',
-          'Data': c.event_date ? new Date(c.event_date).toLocaleDateString('pt-BR') : 'N/A',
+          'Data': c.event_date ? formatEventDate(c.event_date) : 'N/A',
           'Organização': c.organization?.name || 'N/A',
           'Status': c.is_active ? 'Ativo' : 'Inativo',
           'Criado em': new Date(c.created_at).toLocaleDateString('pt-BR'),

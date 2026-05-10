@@ -7,6 +7,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from '@/components/ui/use-toast';
 import { Gift, AlertCircle, Check, RefreshCw } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
+import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
 
 interface Campaign {
   id: string;
@@ -265,7 +266,7 @@ const ProgressiveDiscountManager = () => {
                   </div>
                   {campaign.event_date && (
                     <p className="text-xs text-muted-foreground">
-                      Data: {new Date(campaign.event_date).toLocaleDateString('pt-BR')}
+                      Data: {formatEventDate(campaign.event_date)}
                     </p>
                   )}
                 </div>

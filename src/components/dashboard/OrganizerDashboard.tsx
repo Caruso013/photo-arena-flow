@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DollarSign, Camera, BarChart3, Calendar } from 'lucide-react';
 import DashboardLayout from './DashboardLayout';
+import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
 
 interface Campaign {
   id: string;
@@ -315,7 +316,7 @@ const OrganizerDashboard = () => {
                   {campaigns.map((campaign) => (
                     <TableRow key={campaign.id}>
                       <TableCell className="font-medium">{campaign.title}</TableCell>
-                      <TableCell>{campaign.event_date ? new Date(campaign.event_date).toLocaleDateString() : '-'}</TableCell>
+                      <TableCell>{campaign.event_date ? formatEventDate(campaign.event_date) : '-'}</TableCell>
                       <TableCell>{campaign.location || '-'}</TableCell>
                       <TableCell className="text-center">
                         <Badge variant="outline">{campaign.photos_count}</Badge>

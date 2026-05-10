@@ -14,6 +14,7 @@ import { backgroundUploadService } from '@/lib/backgroundUploadService';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { usePhotographerPix } from '@/hooks/usePhotographerPix';
 import { SearchableEventSelect, EventOption } from '@/components/modals/SearchableEventSelect';
+import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
 
 interface Campaign {
   id: string;
@@ -152,7 +153,7 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
         if (!c || !c.is_active) return false;
         if (!c.event_date) return true;
 
-        const eventDate = new Date(c.event_date);
+        const eventDate = (parseLocalDate(c.event_date) || new Date(0));
         if (Number.isNaN(eventDate.getTime())) return true;
 
         // Eventos futuros sempre OK

@@ -8,6 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/use-toast';
 import { 
+import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
   Camera, Edit, Power, PowerOff, MapPin, Calendar, Trash2, 
   ClipboardList, Search, UserCheck, Loader2
 } from 'lucide-react';
@@ -218,7 +219,7 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({
                           <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{campaign.location}</span>
                         )}
                         {campaign.event_date && (
-                          <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />{new Date(campaign.event_date).toLocaleDateString('pt-BR')}</span>
+                          <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />{formatEventDate(campaign.event_date)}</span>
                         )}
                         <span className="flex items-center gap-1"><UserCheck className="h-3.5 w-3.5" />{campaignStats.photographers} fotógrafo{campaignStats.photographers !== 1 ? 's' : ''}</span>
                       </div>

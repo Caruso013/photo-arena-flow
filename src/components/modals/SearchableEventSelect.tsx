@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import {
+import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -45,8 +46,8 @@ export const SearchableEventSelect: React.FC<SearchableEventSelectProps> = ({
     now.setHours(0, 0, 0, 0);
     
     return [...events].sort((a, b) => {
-      const dateA = a.event_date ? new Date(a.event_date) : null;
-      const dateB = b.event_date ? new Date(b.event_date) : null;
+      const dateA = a.event_date ? (parseLocalDate(a.event_date) || new Date(0)) : null;
+      const dateB = b.event_date ? (parseLocalDate(b.event_date) || new Date(0)) : null;
       
       // Eventos sem data vão para o final
       if (!dateA && !dateB) return 0;
@@ -84,7 +85,7 @@ export const SearchableEventSelect: React.FC<SearchableEventSelectProps> = ({
       let dateMatch = false;
       if (event.event_date) {
         try {
-          const date = new Date(event.event_date);
+          const date = (parseLocalDate(event.event_date) || new Date(0));
           const formattedDate = format(date, 'dd/MM/yyyy', { locale: ptBR });
           const monthName = format(date, 'MMMM', { locale: ptBR });
           dateMatch = formattedDate.includes(query) || monthName.toLowerCase().includes(query);

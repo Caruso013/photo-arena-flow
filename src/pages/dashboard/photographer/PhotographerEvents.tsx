@@ -12,6 +12,7 @@ import CreateEventDialog from '@/components/modals/CreateEventDialog';
 import { copyShareLink } from '@/lib/shareUtils';
 import { formatCurrency } from '@/lib/utils';
 import {
+import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -98,7 +99,7 @@ const PhotographerEvents = () => {
 
       // Combinar e ordenar
       const allCampaigns = [...(ownedCampaigns || []), ...assignedCampaigns]
-        .sort((a, b) => new Date(b.event_date || '1970-01-01').getTime() - new Date(a.event_date || '1970-01-01').getTime());
+        .sort((a, b) => (parseLocalDate(b.event_date || '1970-01-01') || new Date(0)).getTime() - (parseLocalDate(a.event_date || '1970-01-01') || new Date(0)).getTime());
       
       const campaignsWithCount = allCampaigns.map(campaign => ({
         ...campaign,
@@ -320,7 +321,7 @@ const PhotographerEvents = () => {
                 <div className="space-y-2 text-sm text-muted-foreground">
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4" />
-                    <span>{new Date(campaign.event_date).toLocaleDateString('pt-BR')}</span>
+                    <span>{formatEventDate(campaign.event_date)}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <MapPin className="h-4 w-4" />

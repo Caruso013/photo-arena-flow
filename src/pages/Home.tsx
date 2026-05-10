@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Camera, Search, MapPin, Calendar, ArrowRight, Star, Sparkles, Building2 } from 'lucide-react';
 import MainLayout from '@/components/layout/MainLayout';
 import { resilientQuery } from '@/lib/supabaseResilience';
+import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
 
 interface FeaturedCampaign {
   id: string;
@@ -279,7 +280,7 @@ const Home = () => {
                       {campaign.event_date && (
                         <div className="flex items-center gap-2 text-muted-foreground">
                           <Calendar className="h-4 w-4" />
-                          {new Date(campaign.event_date).toLocaleDateString('pt-BR')}
+                          {formatEventDate(campaign.event_date)}
                         </div>
                       )}
                       {campaign.location && (
