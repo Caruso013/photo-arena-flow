@@ -6,11 +6,11 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import {
-import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
 
 export interface EventOption {
   id: string;

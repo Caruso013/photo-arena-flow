@@ -10,7 +10,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
-import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
   ArrowLeft, 
   Calendar, 
   MapPin, 
@@ -47,6 +46,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import UploadPhotoModal from '@/components/modals/UploadPhotoModal';
+import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
 
 interface Campaign {
   id: string;

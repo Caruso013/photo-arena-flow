@@ -12,7 +12,6 @@ import CreateEventDialog from '@/components/modals/CreateEventDialog';
 import { copyShareLink } from '@/lib/shareUtils';
 import { formatCurrency } from '@/lib/utils';
 import {
-import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -23,6 +22,7 @@ import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
 
 interface Campaign {
   id: string;
