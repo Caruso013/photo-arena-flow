@@ -9,7 +9,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
-import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
   UserCheck, Plus, Trash2, Copy, Clock, QrCode, RefreshCw, AlertTriangle, 
   CheckCircle, MessageCircle, KeyRound, UserPlus, Power, PowerOff
 } from 'lucide-react';
@@ -18,6 +17,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { format, differenceInHours, differenceInMinutes } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
 
 interface MesarioSession {
   id: string;

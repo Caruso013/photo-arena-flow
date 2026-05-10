@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/components/ui/use-toast';
 import { 
-import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
   CheckCircle2, 
   XCircle, 
   Calendar, 
@@ -20,6 +19,7 @@ import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
   Phone
 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
 
 interface Organization {
   id: string;

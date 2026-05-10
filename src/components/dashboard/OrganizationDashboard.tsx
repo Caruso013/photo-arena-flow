@@ -10,7 +10,6 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/components/ui/use-toast';
 import { 
-import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
   Building2, 
   Camera, 
   Users, 
@@ -24,6 +23,7 @@ import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
   FileText
 } from 'lucide-react';
 import DashboardLayout from './DashboardLayout';
+import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
 
 interface Organization {
   id: string;

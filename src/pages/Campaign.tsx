@@ -11,7 +11,6 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import {
-import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -61,6 +60,7 @@ import { FaceRecognitionModal } from '@/components/FaceRecognitionModal';
 import EditEventModal from '@/components/modals/EditEventModal';
 import { useHapticFeedback } from '@/hooks/useHapticFeedback';
 import { getTransformedImageUrl } from '@/lib/supabaseImageTransform';
+import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
 
 interface Campaign {
   id: string;

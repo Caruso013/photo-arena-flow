@@ -8,7 +8,6 @@ import { Link } from 'react-router-dom';
 import { SkeletonCard } from '@/components/ui/skeleton-card';
 import { useToast } from '@/hooks/use-toast';
 import {
-import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -19,6 +18,7 @@ import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
 
 interface Campaign {
   id: string;

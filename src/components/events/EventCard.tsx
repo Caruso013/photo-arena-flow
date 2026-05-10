@@ -5,7 +5,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { 
-import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
   Camera, 
   MapPin, 
   Calendar, 
@@ -29,6 +28,7 @@ import {
   SheetClose,
 } from "@/components/ui/sheet";
 import { useIsMobile } from '@/hooks/use-mobile';
+import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
 
 interface SubEvent {
   id: string;

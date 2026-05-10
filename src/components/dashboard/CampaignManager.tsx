@@ -8,7 +8,6 @@ import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/use-toast';
 import { 
-import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
   Camera, Edit, Power, PowerOff, MapPin, Calendar, Trash2, 
   ClipboardList, Search, UserCheck, Loader2
 } from 'lucide-react';
@@ -17,6 +16,7 @@ import CreateCampaignModal from '../modals/CreateCampaignModal';
 import EditEventModal from '../modals/EditEventModal';
 import { CampaignPhotographersManager } from './CampaignPhotographersManager';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
 
 interface Campaign {
   id: string;

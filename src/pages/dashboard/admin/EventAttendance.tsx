@@ -9,7 +9,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
 import { 
-import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
   ArrowLeft, 
   Users, 
   CheckCircle2, 
@@ -22,6 +21,7 @@ import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import CreateMesarioModal from '@/components/organization/CreateMesarioModal';
+import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
 
 interface Campaign {
   id: string;
