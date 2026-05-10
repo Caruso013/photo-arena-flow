@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Search, Camera, ShoppingCart, Download, FileImage } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { PhotographerApplicationForm } from './PhotographerApplicationForm';
+import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
 
 interface Campaign {
   id: string;
@@ -246,7 +247,7 @@ const UserDashboard = () => {
                     </CardDescription>
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1 text-xs sm:text-sm text-muted-foreground mb-3">
                       <span className="truncate max-w-full">{campaign.location}</span>
-                      <span className="flex-shrink-0">{new Date(campaign.event_date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</span>
+                      <span className="flex-shrink-0">{formatEventDate(campaign.event_date, { day: '2-digit', month: '2-digit' })}</span>
                     </div>
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                       <span className="text-xs sm:text-sm truncate">Por: {campaign.photographer?.full_name}</span>

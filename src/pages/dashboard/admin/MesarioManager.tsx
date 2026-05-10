@@ -17,6 +17,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { format, differenceInHours, differenceInMinutes } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
 
 interface MesarioSession {
   id: string;
@@ -384,7 +385,7 @@ const MesarioManager: React.FC = () => {
                     <SelectContent>
                       {campaigns.map(c => (
                         <SelectItem key={c.id} value={c.id}>
-                          {c.title} {c.event_date && `(${format(new Date(c.event_date), 'dd/MM/yyyy', { locale: ptBR })})`}
+                          {c.title} {c.event_date && `(${format((parseLocalDate(c.event_date) || new Date(0)), 'dd/MM/yyyy', { locale: ptBR })})`}
                         </SelectItem>
                       ))}
                     </SelectContent>

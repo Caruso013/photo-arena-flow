@@ -21,6 +21,7 @@ import {
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import CreateMesarioModal from '@/components/organization/CreateMesarioModal';
+import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
 
 interface Campaign {
   id: string;
@@ -203,7 +204,7 @@ const EventAttendance = () => {
                 <span className="flex items-center gap-1">
                   <Calendar className="h-4 w-4" />
                   {campaign.event_date 
-                    ? format(new Date(campaign.event_date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
+                    ? format((parseLocalDate(campaign.event_date) || new Date(0)), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
                     : 'Data não definida'
                   }
                 </span>

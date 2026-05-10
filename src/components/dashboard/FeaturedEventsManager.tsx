@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { Star, Calendar, MapPin, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
 
 interface Campaign {
   id: string;
@@ -187,7 +188,7 @@ export const FeaturedEventsManager = () => {
                         <div className="flex items-center gap-1.5">
                           <Calendar className="h-3.5 w-3.5" />
                           <span>
-                            {new Date(campaign.event_date).toLocaleDateString('pt-BR', {
+                            {formatEventDate(campaign.event_date, {
                               day: '2-digit',
                               month: 'short',
                               year: 'numeric'

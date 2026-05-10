@@ -46,6 +46,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import UploadPhotoModal from '@/components/modals/UploadPhotoModal';
+import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
 
 interface Campaign {
   id: string;
@@ -543,7 +544,7 @@ const ManageEvent = () => {
             {campaign.event_date && (
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
-                <span>{new Date(campaign.event_date).toLocaleDateString('pt-BR')}</span>
+                <span>{formatEventDate(campaign.event_date)}</span>
               </div>
             )}
             {campaign.location && (

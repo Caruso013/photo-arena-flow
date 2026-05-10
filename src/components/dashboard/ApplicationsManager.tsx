@@ -19,6 +19,7 @@ import {
   Phone
 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
 
 interface Organization {
   id: string;
@@ -323,7 +324,7 @@ export const ApplicationsManager = () => {
                             <div className="flex items-center gap-2 text-sm">
                               <Calendar className="h-4 w-4 text-muted-foreground" />
                               <span>
-                                {new Date(app.campaigns.event_date).toLocaleDateString('pt-BR')}
+                                {formatEventDate(app.campaigns.event_date)}
                               </span>
                             </div>
                           )}
