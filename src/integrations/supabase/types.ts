@@ -569,6 +569,66 @@ export type Database = {
         }
         Relationships: []
       }
+      face_processing_jobs: {
+        Row: {
+          attempts: number
+          created_at: string
+          id: string
+          last_error: string | null
+          photo_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          photo_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          photo_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      face_search_logs: {
+        Row: {
+          campaign_id: string | null
+          created_at: string
+          id: string
+          matches_count: number
+          sub_event_id: string | null
+          threshold: number | null
+          user_id: string | null
+        }
+        Insert: {
+          campaign_id?: string | null
+          created_at?: string
+          id?: string
+          matches_count?: number
+          sub_event_id?: string | null
+          threshold?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          campaign_id?: string | null
+          created_at?: string
+          id?: string
+          matches_count?: number
+          sub_event_id?: string | null
+          threshold?: number | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       favorites: {
         Row: {
           created_at: string
@@ -1098,6 +1158,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      photo_face_embeddings: {
+        Row: {
+          bbox: Json | null
+          campaign_id: string
+          confidence: number | null
+          created_at: string
+          embedding: string
+          face_index: number
+          id: string
+          photo_id: string
+          sub_event_id: string | null
+        }
+        Insert: {
+          bbox?: Json | null
+          campaign_id: string
+          confidence?: number | null
+          created_at?: string
+          embedding: string
+          face_index?: number
+          id?: string
+          photo_id: string
+          sub_event_id?: string | null
+        }
+        Update: {
+          bbox?: Json | null
+          campaign_id?: string
+          confidence?: number | null
+          created_at?: string
+          embedding?: string
+          face_index?: number
+          id?: string
+          photo_id?: string
+          sub_event_id?: string | null
+        }
+        Relationships: []
       }
       photographer_applications: {
         Row: {
@@ -2197,6 +2293,7 @@ export type Database = {
       }
       cleanup_old_webhook_logs: { Args: never; Returns: undefined }
       current_user_is_admin: { Args: never; Returns: boolean }
+      delete_user_face_search_data: { Args: never; Returns: number }
       generate_mesario_access_code: { Args: never; Returns: string }
       generate_short_code: { Args: never; Returns: string }
       get_buyer_name_for_photographer: {
@@ -2247,6 +2344,19 @@ export type Database = {
       is_organization_owner: {
         Args: { _org_id: string; _user_id: string }
         Returns: boolean
+      }
+      match_faces_in_album: {
+        Args: {
+          p_campaign_id: string
+          p_embedding: string
+          p_limit?: number
+          p_sub_event_id: string
+          p_threshold?: number
+        }
+        Returns: {
+          photo_id: string
+          similarity: number
+        }[]
       }
       repair_missing_revenue_shares: {
         Args: never
