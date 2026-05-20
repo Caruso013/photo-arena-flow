@@ -43,26 +43,42 @@ serve(async (req) => {
     const arrayBuffer = await imageBlob.arrayBuffer();
     const base64Image = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
 
-    // NOTA: Esta é uma implementação simplificada
-    // Em produção, você integraria com um serviço real de ML
-    // como AWS Rekognition, Azure Face API, ou Google Cloud Vision
-    
-    // Para demo, retornamos sucesso sem processar
-    // Na versão de produção, processar com ML real aqui
-    console.log(`Foto ${photo_id} marcada para processamento (${imageBlob.size} bytes)`);
+      // Em vez de processar aqui, enfileiramos um job para um worker dedicado
+      console.log(`Criando job de processamento facial para foto ${photo_id} (${imageBlob.size} bytes)`);
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        photo_id,
-        message: 'Foto agendada para processamento facial',
-        faces_detected: 0,
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
+      const { data: job, error: jobError } = await supabaseClient
+        .from('face_processing_jobs')
+        .insert([
+          {
+            photo_id,
+            payload: {
+              image_url: imageUrl,
+              thumbnail_url: photo.thumbnail_url || null,
+            },
+            status: 'pending',
+          },
+        ])
+        .select('*')
+        .limit(1)
+        .single();
+
+      if (jobError) {
+        console.error('Erro ao criar job:', jobError);
+        throw jobError;
       }
-    );
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          photo_id,
+          job_id: job.id,
+          message: 'Foto enfileirada para processamento facial',
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      );
 
   } catch (error) {
     console.error('Erro ao processar foto:', error);
