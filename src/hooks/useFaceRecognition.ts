@@ -286,40 +286,59 @@ export const useFaceRecognition = () => {
       // Configuração otimizada
       const optimizedConfig = getOptimizedConfig();
       const BATCH_SIZE = optimizedConfig.batchSize;
+      const MAX_PHOTOS = optimizedConfig.maxPhotosToProcess || 150;
       
+      // Limitar número de fotos a processar para evitar buscas infinitas
+      const photosToProcess = photos.slice(0, MAX_PHOTOS);
+
       // Usar busca progressiva: primeiro threshold alto, depois relaxar
       const thresholds = [0.7, 0.6, 0.55]; // Tentar com diferentes níveis
       const matches: FaceMatch[] = [];
       let processedCount = 0;
       let currentThreshold = 0;
 
-      // Função para processar uma foto
+      // Helper: carregar imagem e desenhar em canvas reduzido (inputSize)
+      const loadImageToCanvas = async (imageUrl: string, targetSize: number): Promise<HTMLCanvasElement | null> => {
+        try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 7000);
+          const resp = await fetch(imageUrl, { signal: controller.signal, mode: 'cors' });
+          clearTimeout(timeout);
+          if (!resp.ok) throw new Error('Falha no download da imagem');
+          const blob = await resp.blob();
+
+          const bitmap = await createImageBitmap(blob);
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return null;
+
+          // Calcular proporção mantendo aspecto
+          const ratio = Math.min(targetSize / bitmap.width, targetSize / bitmap.height);
+          const w = Math.max(1, Math.round(bitmap.width * ratio));
+          const h = Math.max(1, Math.round(bitmap.height * ratio));
+          canvas.width = w;
+          canvas.height = h;
+          ctx.drawImage(bitmap, 0, 0, w, h);
+          bitmap.close();
+          return canvas;
+        } catch (err) {
+          return null;
+        }
+      };
+
+      // Função para processar uma foto (usa canvas reduzido)
       const processPhoto = async (photo: any, threshold: number): Promise<FaceMatch | null> => {
         try {
-          const img = document.createElement('img');
-          img.crossOrigin = 'anonymous';
-          
           const imageUrl = photo.thumbnail_url || photo.watermarked_url;
-          img.src = imageUrl;
-          
-          await Promise.race([
-            new Promise<void>((resolve, reject) => {
-              img.onload = () => resolve();
-              img.onerror = () => reject(new Error('Falha ao carregar'));
-            }),
-            new Promise<never>((_, reject) => 
-              setTimeout(() => reject(new Error('Timeout')), 8000)
-            )
-          ]);
-          
-          const photoResults = await detectFaces(img);
+          const canvas = await loadImageToCanvas(imageUrl, optimizedConfig.inputSize || 160);
+          if (!canvas) return null;
+
+          const photoResults = await detectFaces(canvas);
 
           if (photoResults && photoResults.length > 0) {
             for (const result of photoResults) {
               const similarity = calculateSimilarity(userDescriptor, result.descriptor);
-
               if (similarity > threshold) {
-                img.remove();
                 return {
                   photo_id: photo.id,
                   similarity: similarity,
@@ -330,48 +349,69 @@ export const useFaceRecognition = () => {
             }
           }
 
-          img.remove();
           return null;
         } catch (error) {
           return null;
         }
       };
 
+      // Concurrency runner for a batch with early exit support
+      const runWithConcurrency = async (items: any[], fn: (item: any) => Promise<FaceMatch | null>, concurrency: number, stopIfFound = (m: FaceMatch[]) => false) => {
+        const results: FaceMatch[] = [];
+        let idx = 0;
+        const workers: Promise<void>[] = [];
+
+        const worker = async () => {
+          while (idx < items.length) {
+            const i = idx++;
+            const res = await fn(items[i]);
+            if (res) {
+              // prevent duplicates
+              if (!results.find(r => r.photo_id === res.photo_id)) results.push(res);
+            }
+            processedCount++;
+            if (processedCount % 10 === 0) {
+              console.log(`🔄 ${processedCount}/${photosToProcess.length} fotos (${results.length} matches)`);
+            }
+            if (stopIfFound(results)) break;
+          }
+        };
+
+        for (let w = 0; w < concurrency; w++) {
+          workers.push(worker());
+        }
+
+        await Promise.all(workers);
+        return results;
+      };
+
       // Busca progressiva com múltiplos thresholds
       for (const threshold of thresholds) {
         currentThreshold = threshold;
         console.log(`🎯 Tentando com threshold ${threshold}...`);
-        
-        // Processar em batches
-        for (let i = 0; i < photos.length; i += BATCH_SIZE) {
-          const batch = photos.slice(i, i + BATCH_SIZE);
-          const batchResults = await Promise.all(
-            batch.map(photo => processPhoto(photo, threshold))
-          );
-          
-          const validMatches = batchResults.filter((m): m is FaceMatch => m !== null);
-          
-          // Evitar duplicatas
-          for (const match of validMatches) {
-            if (!matches.find(m => m.photo_id === match.photo_id)) {
-              matches.push(match);
-            }
+
+        // Processar em batches (cada batch será processado com concorrência)
+        for (let i = 0; i < photosToProcess.length; i += BATCH_SIZE) {
+          const batch = photosToProcess.slice(i, i + BATCH_SIZE);
+
+          const batchMatches = await runWithConcurrency(batch, (p) => processPhoto(p, threshold), Math.max(1, BATCH_SIZE));
+
+          // Merge unique
+          for (const match of batchMatches) {
+            if (!matches.find(m => m.photo_id === match.photo_id)) matches.push(match);
           }
-          
-          processedCount += batch.length;
-          
-          // Log a cada 10 fotos
-          if (processedCount % 10 === 0) {
-            console.log(`🔄 ${processedCount}/${photos.length} fotos (${matches.length} matches)`);
-          }
-          
-          // Se já encontrou fotos suficientes com alta confiança, parar
+
+          // Early exit conditions
           if (matches.length >= 10 && threshold >= 0.65) {
             console.log(`✅ Encontradas ${matches.length} fotos com alta confiança. Parando busca.`);
             break;
           }
+          if (processedCount >= photosToProcess.length) {
+            console.log('ℹ️ Processamento atingiu o limite máximo de fotos a processar');
+            break;
+          }
         }
-        
+
         // Se encontrou fotos com threshold atual, não precisa relaxar mais
         if (matches.length >= 5 && threshold >= 0.6) {
           console.log(`✅ Suficientes matches com threshold ${threshold}`);
