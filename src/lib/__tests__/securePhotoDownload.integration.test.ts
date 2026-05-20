@@ -132,4 +132,13 @@ describe('Sistema de Download Seguro - Integração', () => {
  * 4) TESTE DE COMPARTILHAMENTO
  * ✅ Usuário A: Baixe uma foto
  * ✅ Usuário A: Capture URL do DevTools
- * ✅ Usuário A: Compartilhe URL em grupo WhatsApp\n * ✅ Usuário B: Tente acessar URL imediatamente\n * ✅ Resultado esperado: 403 Forbidden (não tem JWT)\n * \n * 5) TESTE DE AUDITORIA\n * ✅ Faça alguns downloads\n * ✅ Supabase Console → SQL Editor\n * ✅ Execute: SELECT * FROM photo_downloads ORDER BY downloaded_at DESC LIMIT 10;\n * ✅ Resultado esperado: Ver todos os downloads com IP, User-Agent, timestamp\n */\n
+ * ✅ Usuário A: Compartilhe URL em grupo WhatsApp
+ * ✅ Usuário B: Tente acessar URL imediatamente
+ * ✅ Resultado esperado: 403 Forbidden (não tem JWT)
+ * 
+ * 5) TESTE DE AUDITORIA
+ * ✅ Faça alguns downloads
+ * ✅ Supabase Console → SQL Editor
+ * ✅ Execute: SELECT * FROM photo_downloads ORDER BY downloaded_at DESC LIMIT 10;
+ * ✅ Resultado esperado: Ver todos os downloads com IP, User-Agent, timestamp
+ */
