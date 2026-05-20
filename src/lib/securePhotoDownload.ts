@@ -102,7 +102,7 @@ export async function getDownloadCountToday(): Promise<number> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return 0;
 
-    const { data, error, count } = await supabase
+    const { data, error, count } = await (supabase as any)
       .from('photo_downloads')
       .select('id', { count: 'exact' })
       .eq('user_id', user.id)
