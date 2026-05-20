@@ -752,12 +752,6 @@ const Campaign = () => {
           </Button>
           
           <div className="flex items-center gap-2">
-            {/* Botão Busca Facial com IA - TEMPORARIAMENTE DESATIVADO
-               Motivo: A tabela photo_face_descriptors está vazia (0 registros).
-               O sistema precisa pré-processar as fotos no upload antes de funcionar.
-               Para reativar: remover este comentário e descomentar o botão abaixo.
-            */}
-            {/* 
             <Button
               variant="default"
               size="sm"
@@ -773,7 +767,6 @@ const Campaign = () => {
                 <span className="relative inline-flex rounded-full h-3 w-3 bg-yellow-500"></span>
               </span>
             </Button>
-            */}
             
             <CartDrawer />
             <Camera className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
@@ -782,14 +775,11 @@ const Campaign = () => {
         </div>
       </header>
 
-      {/* Modal de Reconhecimento Facial - TEMPORARIAMENTE DESATIVADO */}
-      {/* 
       <FaceRecognitionModal
         open={showFaceRecognition}
         onOpenChange={setShowFaceRecognition}
         campaignId={campaign?.id}
       />
-      */}
 
       <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
         {/* Campaign Header */}

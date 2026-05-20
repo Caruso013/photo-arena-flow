@@ -104,7 +104,7 @@ npm run build
 
 VITE_SUPABASE_URL=https://your-project.supabase.co## Instalação e Configuração
 
-VITE_SUPABASE_ANON_KEY=your-anon-key
+VITE_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
 
 VITE_STRIPE_PUBLISHABLE_KEY=pk_test_...### Pré-requisitos
 
@@ -160,7 +160,7 @@ cp .env.example .env
 
 | Role | Pode |VITE_SUPABASE_URL=sua_url_supabase
 
-|------|------|VITE_SUPABASE_ANON_KEY=sua_chave_publica_supabase
+|------|------|VITE_SUPABASE_PUBLISHABLE_KEY=sua_chave_publica_supabase
 
 | **Admin** | Tudo - gerenciar organizações, usuários, fotógrafos, eventos |VITE_MERCADO_PAGO_PUBLIC_KEY=sua_chave_publica_mp
 

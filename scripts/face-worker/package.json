@@ -1,0 +1,12 @@
+{
+  "name": "stafotos-face-worker",
+  "version": "0.1.0",
+  "description": "Worker para processar jobs de reconhecimento facial (face_processing_jobs)",
+  "main": "worker.js",
+  "scripts": {
+    "start": "node worker.js"
+  },
+  "dependencies": {
+    "node-fetch": "^2.6.7"
+  }
+}

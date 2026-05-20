@@ -9,7 +9,10 @@ serve(async (req) => {
   }
 
   try {
-    const { descriptors, campaign_id, threshold = 0.6 } = await req.json()
+    const { descriptors, campaign_id, album_id, threshold = 0.6 } = await req.json()
+
+    // Prefer `album_id` if fornecido, compatível com nomenclaturas diferentes
+    const effectiveCampaignId = album_id || campaign_id;
 
     if (!descriptors || !Array.isArray(descriptors) || descriptors.length === 0) {
       throw new Error('Descritores faciais não fornecidos')
@@ -43,9 +46,9 @@ serve(async (req) => {
         )
       `)
 
-    if (campaign_id) {
-      // Se campaign_id fornecido, buscar apenas neste evento
-      query = query.eq('photos.campaign_id', campaign_id)
+    if (effectiveCampaignId) {
+      // Se campaign_id/album_id fornecido, buscar apenas neste evento
+      query = query.eq('photos.campaign_id', effectiveCampaignId)
     }
 
     const { data: photoDescriptors, error } = await query

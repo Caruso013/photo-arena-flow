@@ -35,6 +35,7 @@ export const FaceRecognitionModal: React.FC<FaceRecognitionModalProps> = ({
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const [showHelp, setShowHelp] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -93,20 +94,24 @@ export const FaceRecognitionModal: React.FC<FaceRecognitionModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-[600px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
-            <ScanFace className="h-4 w-4 sm:h-5 sm:w-5" />
+      <DialogContent className="w-[98vw] max-w-[640px] max-h-[92vh] overflow-y-auto p-4 sm:p-6">
+        <div className="relative">
+          <DialogTitle className="flex items-center justify-center gap-2 text-lg font-semibold">
+            <ScanFace className="h-5 w-5" />
             Reconhecimento Facial
           </DialogTitle>
-          <DialogDescription className="text-sm">
-            Posicione seu rosto na câmera para encontrar suas fotos automaticamente
-          </DialogDescription>
-        </DialogHeader>
+          <button
+            aria-label="Fechar"
+            onClick={() => onOpenChange(false)}
+            className="absolute top-2 right-2 p-2 rounded-md hover:bg-muted/60"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
 
-        <div className="space-y-4">
+        <div className="mt-3 space-y-3">
           {/* Visualização da câmera */}
-          <div className="relative bg-black rounded-lg overflow-hidden aspect-video">
+          <div className="relative bg-black rounded-lg overflow-hidden" style={{aspectRatio: '4/3'}}>
             <video
               ref={videoRef}
               autoPlay
@@ -116,19 +121,12 @@ export const FaceRecognitionModal: React.FC<FaceRecognitionModalProps> = ({
             />
             
             {!cameraActive && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/80">
-                <div className="text-center text-white p-6 max-w-sm">
-                  <Camera className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                  <p className="text-sm mb-4">
-                    {cameraError || 'Câmera desativada'}
-                  </p>
+              <div className="absolute inset-0 flex items-center justify-center bg-black/80 p-4">
+                <div className="text-center text-white p-4 max-w-xs">
+                  <Camera className="h-10 w-10 mx-auto mb-2 opacity-60" />
+                  <p className="text-sm mb-3">{cameraError || 'Câmera desativada'}</p>
                   {cameraError && (
-                    <Button
-                      onClick={handleStartCamera}
-                      variant="outline"
-                      size="sm"
-                      className="bg-white text-black hover:bg-gray-100"
-                    >
+                    <Button onClick={handleStartCamera} variant="ghost" size="sm" className="bg-white text-black">
                       Tentar Novamente
                     </Button>
                   )}
@@ -139,87 +137,61 @@ export const FaceRecognitionModal: React.FC<FaceRecognitionModalProps> = ({
             {isProcessing && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/60">
                 <div className="text-center text-white">
-                  <Loader2 className="h-12 w-12 mx-auto mb-3 animate-spin" />
-                  <p className="text-sm">Processando imagem...</p>
+                  <Loader2 className="h-10 w-10 mx-auto mb-2 animate-spin" />
+                  <p className="text-sm">Processando...</p>
                 </div>
               </div>
             )}
 
             {/* Guia de posicionamento facial - Responsivo */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="border-2 border-white/40 rounded-full w-48 h-48 sm:w-64 sm:h-64 flex items-center justify-center">
-                <div className="border-2 border-white/60 rounded-full w-40 h-40 sm:w-56 sm:h-56" />
+              <div className="border-2 border-white/40 rounded-lg w-40 h-40 sm:w-56 sm:h-56 flex items-center justify-center">
+                <div className="border-2 border-white/60 rounded-lg w-28 h-28 sm:w-44 sm:h-44" />
               </div>
             </div>
           </div>
 
           {/* Instruções */}
           <div className="bg-muted rounded-lg p-3 sm:p-4 space-y-2">
-            <h4 className="font-semibold text-sm flex items-center gap-2">
-              📸 Como obter melhores resultados:
-            </h4>
-            <ul className="text-xs sm:text-sm text-muted-foreground space-y-1">
-              <li>✓ Posicione seu rosto centralizado no círculo</li>
-              <li>✓ Use boa iluminação (evite contraluz)</li>
-              <li>✓ Remova óculos escuros, chapéus ou máscaras</li>
-              <li>✓ Mantenha o rosto visível e sem obstruções</li>
-              <li>✓ Fique a aproximadamente 50cm da câmera</li>
-            </ul>
-            
-            {/* Status da IA */}
-            <div className={`mt-3 p-2 sm:p-3 border rounded-md ${
-              modelsReady 
-                ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
-                : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
-            }`}>
-              <p className={`text-xs font-medium flex items-center gap-1 ${
-                modelsReady 
-                  ? 'text-green-900 dark:text-green-100'
-                  : 'text-yellow-900 dark:text-yellow-100'
-              }`}>
-                <span className="text-base">{modelsReady ? '✅' : '⏳'}</span> 
-                {modelsReady ? 'IA Pronta para Buscar!' : 'Carregando IA...'}
-              </p>
-              <p className={`text-xs mt-1 ${
-                modelsReady 
-                  ? 'text-green-800 dark:text-green-200'
-                  : 'text-yellow-800 dark:text-yellow-200'
-              }`}>
-                {modelsReady 
-                  ? 'Tecnologia de reconhecimento facial com detecção adaptativa e múltiplos níveis de confiança.'
-                  : 'Carregando modelos neurais de detecção facial... Aguarde alguns segundos.'}
-              </p>
+            <div className="flex items-start justify-between">
+              <h4 className="font-semibold text-sm">📸 Dicas rápidas</h4>
+              <div className="text-xs text-muted-foreground flex items-center gap-2">
+                <div className={`h-2 w-2 rounded-full ${modelsReady ? 'bg-green-500' : 'bg-yellow-500'}`} />
+                <span>{modelsReady ? 'Modelos prontos' : 'Carregando modelos'}</span>
+              </div>
             </div>
-            
+
+            <ul className="text-xs sm:text-sm text-muted-foreground space-y-1">
+              <li>• Mantenha o rosto centralizado</li>
+              <li>• Boa iluminação e sem obstruções</li>
+              <li>• Remova óculos escuros/chapéus</li>
+            </ul>
+
             {!cameraActive && (
-              <div className="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
-                <p className="text-xs font-medium text-yellow-900 dark:text-yellow-100 mb-2">
-                  ⚠️ Problemas com a câmera?
-                </p>
-                <ul className="text-xs text-yellow-800 dark:text-yellow-200 space-y-1">
-                  <li>1. Clique no ícone 🔒 ou 🎥 na barra de endereço</li>
-                  <li>2. Permita o acesso à câmera para este site</li>
-                  <li>3. Recarregue a página se necessário</li>
-                  <li>4. Use HTTPS (não HTTP) em produção</li>
-                </ul>
+              <div className="mt-2">
+                <button className="text-xs text-yellow-800 underline" onClick={() => setShowHelp(s => !s)}>
+                  {showHelp ? 'Ocultar ajuda' : 'Problemas com a câmera?'}
+                </button>
+                {showHelp && (
+                  <div className="mt-2 text-xs text-yellow-800 bg-yellow-50 p-2 rounded-md">
+                    <p>1. Clique no cadeado na barra de endereço → Permissões → Câmera → Permitir.</p>
+                    <p>2. Verifique configurações do SO e feche apps que usem a câmera.</p>
+                  </div>
+                )}
               </div>
             )}
           </div>
 
           {/* Resultados */}
           {matches.length > 0 && (
-            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
-              <p className="text-sm font-medium text-green-900 dark:text-green-100">
-                ✓ {matches.length} foto(s) encontrada(s)!
-              </p>
-              <p className="text-xs text-green-700 dark:text-green-300 mt-1">
-                Redirecionando para suas fotos...
-              </p>
+            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
+              <p className="text-sm font-medium text-green-900 dark:text-green-100">✓ {matches.length} foto(s) encontrada(s)!</p>
+              <p className="text-xs text-green-700 dark:text-green-300 mt-1">Redirecionando...</p>
             </div>
           )}
 
           {/* Ações */}
-          <div className="flex flex-col sm:flex-row gap-2">
+          <div className="flex flex-col gap-2">
             <Button
               variant="outline"
               className="flex-1 text-sm"
@@ -231,7 +203,7 @@ export const FaceRecognitionModal: React.FC<FaceRecognitionModalProps> = ({
             </Button>
             
             <Button
-              className="flex-1 text-sm"
+              className="w-full text-sm"
               onClick={handleScanFace}
               disabled={!cameraActive || isProcessing || !modelsReady}
             >
@@ -243,26 +215,20 @@ export const FaceRecognitionModal: React.FC<FaceRecognitionModalProps> = ({
               ) : !modelsReady ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Carregando IA...
+                  Carregando modelos...
                 </>
               ) : (
                 <>
                   <ScanFace className="h-4 w-4 mr-2" />
-                  <span className="hidden sm:inline">Buscar Minhas Fotos</span>
-                  <span className="sm:hidden">Buscar Fotos</span>
+                  <span className="inline">Buscar Minhas Fotos</span>
                 </>
               )}
             </Button>
           </div>
 
           {/* Aviso de privacidade */}
-          <div className="text-center">
-            <p className="text-xs text-muted-foreground">
-              🔒 Suas imagens são processadas localmente e não são armazenadas
-            </p>
-            <p className="text-xs text-muted-foreground/70 mt-1">
-              Tecnologia 100% segura e privada
-            </p>
+          <div className="text-center pt-1">
+            <p className="text-xs text-muted-foreground">🔒 Imagens processadas localmente — não armazenamos sua selfie.</p>
           </div>
         </div>
       </DialogContent>

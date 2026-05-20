@@ -79,7 +79,7 @@ cp .env.example .env
 
 # Configure as seguintes variáveis:
 VITE_SUPABASE_URL=sua_url_supabase
-VITE_SUPABASE_ANON_KEY=sua_chave_publica_supabase
+VITE_SUPABASE_PUBLISHABLE_KEY=sua_chave_publica_supabase
 VITE_MERCADO_PAGO_PUBLIC_KEY=sua_chave_publica_mp
 VITE_RESEND_API_KEY=sua_chave_resend
 ```

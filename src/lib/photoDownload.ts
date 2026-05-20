@@ -162,9 +162,15 @@ export async function downloadOriginalPhoto(originalUrl: string, fileName: strin
   
   try {
     toast.loading('Preparando download...', { id: currentToastId });
-    
-    const signedUrl = await getSignedPhotoUrl(originalUrl);
-    
+
+    // If caller already provided a signed URL (from backend), use it directly
+    let signedUrl: string | null = null;
+    if (originalUrl && /^https?:\/\//i.test(originalUrl) && (originalUrl.includes('token=') || originalUrl.includes('expires=') || originalUrl.includes('supabase.co'))) {
+      signedUrl = originalUrl;
+    } else {
+      signedUrl = await getSignedPhotoUrl(originalUrl);
+    }
+
     if (!signedUrl) {
       toast.error('Erro ao gerar link de download', { id: currentToastId });
       return;
