@@ -752,22 +752,25 @@ const Campaign = () => {
           </Button>
           
           <div className="flex items-center gap-2">
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => setShowFaceRecognition(true)}
-              className="gap-1 sm:gap-2 h-9 px-3 sm:px-4 text-xs sm:text-sm bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all relative group"
-              title="Encontre suas fotos automaticamente usando reconhecimento facial com inteligência artificial"
-            >
-              <ScanFace className="h-4 w-4 animate-pulse" />
-              <span className="hidden sm:inline font-semibold">Buscar com IA</span>
-              <span className="sm:hidden font-semibold">IA</span>
-              <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-yellow-500"></span>
-              </span>
-            </Button>
-            
+            {/* Reconhecimento facial temporariamente desativado */}
+            {false && (
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => setShowFaceRecognition(true)}
+                className="gap-1 sm:gap-2 h-9 px-3 sm:px-4 text-xs sm:text-sm bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all relative group"
+                title="Encontre suas fotos automaticamente usando reconhecimento facial com inteligência artificial"
+              >
+                <ScanFace className="h-4 w-4 animate-pulse" />
+                <span className="hidden sm:inline font-semibold">Buscar com IA</span>
+                <span className="sm:hidden font-semibold">IA</span>
+                <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-yellow-500"></span>
+                </span>
+              </Button>
+            )}
+
             <CartDrawer />
             <Camera className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
             <span className="font-semibold text-sm sm:text-base">STA Fotos</span>
@@ -775,11 +778,8 @@ const Campaign = () => {
         </div>
       </header>
 
-      <FaceRecognitionModal
-        open={showFaceRecognition}
-        onOpenChange={setShowFaceRecognition}
-        campaignId={campaign?.id}
-      />
+      {/* FaceRecognitionModal desativado temporariamente */}
+
 
       <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
         {/* Campaign Header */}
