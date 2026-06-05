@@ -53,7 +53,8 @@ const MesarioGameSelect = () => {
       let query = supabase
         .from('campaigns')
         .select('id, title, event_date, location, cover_image_url, event_start_time, event_end_time')
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .not('event_date', 'is', null);
 
       if (organizationId) {
         query = query.eq('organization_id', organizationId);
