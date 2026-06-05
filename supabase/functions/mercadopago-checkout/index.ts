@@ -851,11 +851,17 @@ function mapToNumericRecord(valuesById: Map<string, number>) {
   return numericRecord;
 }
 
+type FreeReleasePhoto = {
+  id: string;
+  price: number | string | null;
+  photographer_id?: string | null;
+};
+
 async function processFreeReleaseCheckout(params: {
   supabaseAdmin: any;
   corsHeaders: Record<string, string>;
   buyerId: string;
-  dbPhotos: any[];
+  dbPhotos: FreeReleasePhoto[];
   progressiveDiscountPercent: number;
   couponId: string;
   couponCode: string;
@@ -931,7 +937,7 @@ async function processFreeReleaseCheckout(params: {
   });
 }
 
-function allocateCouponUseOriginalAmounts(dbPhotos: any[], totalAmount: number): Map<string, number> | null {
+function allocateCouponUseOriginalAmounts(dbPhotos: FreeReleasePhoto[], totalAmount: number): Map<string, number> | null {
   const photoCount = dbPhotos.length;
   if (!photoCount || totalAmount <= 0) {
     return null;
