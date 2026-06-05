@@ -291,8 +291,20 @@ serve(async (req) => {
 
       console.log('✅ Cupom cobre 100%:', { freeSubtotal, freeProgressiveAmount, freeSubtotalAfterProg, freeCouponDiscount });
 
+      // Distribuir valor original (após desconto progressivo) por foto para registrar uso do cupom com precisão
+      const freeAllocatedAmountsByPhotoId = allocatePurchaseAmounts(freeDbPhotos, freeSubtotalAfterProg);
+      if (!freeAllocatedAmountsByPhotoId) {
+        console.error('🚨 BLOQUEADO: não foi possível distribuir valores da free_purchase', {
+          freeSubtotalAfterProg,
+          photos: freeDbPhotos.length,
+          buyerId,
+        });
+        return errorResponse('Não foi possível calcular os valores da compra gratuita.', 500);
+      }
+
       // Criar purchases como pending e só concluir após registrar o uso do cupom
       const freePurchaseIds: string[] = [];
+      const freePurchaseRecords: Array<{ purchaseId: string; photoId: string }> = [];
       const freeExternalRef = `free_coupon_${Date.now().toString(36)}_${buyerId.slice(0, 8)}`;
 
       for (const freePhoto of freeDbPhotos) {
@@ -318,6 +330,7 @@ serve(async (req) => {
         }
 
         freePurchaseIds.push(freePurchase.id);
+        freePurchaseRecords.push({ purchaseId: freePurchase.id, photoId: freePhoto.id });
         console.log(`🎁 Purchase gratuita criada: foto ${freePhoto.id}`);
       }
 
@@ -327,15 +340,29 @@ serve(async (req) => {
 
       // Registrar uso do cupom para TODAS as purchases
       let couponUsesInserted = 0;
-      for (const fpId of freePurchaseIds) {
+      for (const freeRecord of freePurchaseRecords) {
+        const perPhotoOriginalAmount = freeAllocatedAmountsByPhotoId.get(freeRecord.photoId);
+        if (!perPhotoOriginalAmount || perPhotoOriginalAmount <= 0) {
+          console.error('🚨 BLOQUEADO: valor original inválido na free_purchase', {
+            photoId: freeRecord.photoId,
+            perPhotoOriginalAmount,
+            buyerId,
+          });
+          await supabaseAdmin
+            .from('purchases')
+            .delete()
+            .in('id', freePurchaseIds);
+          return errorResponse('Não foi possível confirmar o valor das fotos desta compra.', 500);
+        }
+
         const { error: couponUseError } = await supabaseAdmin
           .from('coupon_uses')
           .insert({
             coupon_id: freeCouponId,
             user_id: buyerId,
-            purchase_id: fpId,
-            original_amount: freeSubtotal / freePhotoCount,
-            discount_amount: freeCouponDiscount / freePhotoCount,
+            purchase_id: freeRecord.purchaseId,
+            original_amount: perPhotoOriginalAmount,
+            discount_amount: perPhotoOriginalAmount,
             final_amount: 0,
           });
 
