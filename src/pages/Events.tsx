@@ -243,17 +243,18 @@ const Events = () => {
       const [campaignStats, subEventsData, fallbackCovers] = await Promise.all([
         resilientQuery(
           async () => {
-            const mergedData: any[] = [];
+            const chunkResults = await Promise.all(
+              campaignIdChunks.map(async (idsChunk) => {
+                const { data, error } = await supabase
+                  .from('campaigns_for_home')
+                  .select('id, photo_count, cover_image_url')
+                  .in('id', idsChunk);
 
-            for (const idsChunk of campaignIdChunks) {
-              const { data, error } = await supabase
-                .from('campaigns_for_home')
-                .select('id, photo_count, cover_image_url')
-                .in('id', idsChunk);
-
-              if (error) throw error;
-              if (data) mergedData.push(...data);
-            }
+                if (error) throw error;
+                return data || [];
+              })
+            );
+            const mergedData = chunkResults.flat();
 
             return { data: mergedData, error: null };
           },
@@ -261,18 +262,19 @@ const Events = () => {
         ),
         resilientQuery(
           async () => {
-            const mergedData: any[] = [];
+            const chunkResults = await Promise.all(
+              campaignIdChunks.map(async (idsChunk) => {
+                const { data, error } = await supabase
+                  .from('sub_events')
+                  .select('id, title, location, photo_count, campaign_id')
+                  .in('campaign_id', idsChunk)
+                  .order('created_at', { ascending: true });
 
-            for (const idsChunk of campaignIdChunks) {
-              const { data, error } = await supabase
-                .from('sub_events')
-                .select('id, title, location, photo_count, campaign_id')
-                .in('campaign_id', idsChunk)
-                .order('created_at', { ascending: true });
-
-              if (error) throw error;
-              if (data) mergedData.push(...data);
-            }
+                if (error) throw error;
+                return data || [];
+              })
+            );
+            const mergedData = chunkResults.flat();
 
             return { data: mergedData, error: null };
           },
@@ -284,19 +286,21 @@ const Events = () => {
               return { data: [], error: null };
             }
 
-            const mergedData: any[] = [];
-            for (const idsChunk of campaignIdChunksWithoutCover) {
-              const { data, error } = await supabase
-                .from('photos')
-                .select('campaign_id, watermarked_url')
-                .in('campaign_id', idsChunk)
-                .eq('is_available', true)
-                .not('watermarked_url', 'is', null)
-                .order('upload_sequence', { ascending: true });
+            const chunkResults = await Promise.all(
+              campaignIdChunksWithoutCover.map(async (idsChunk) => {
+                const { data, error } = await supabase
+                  .from('photos')
+                  .select('campaign_id, watermarked_url')
+                  .in('campaign_id', idsChunk)
+                  .eq('is_available', true)
+                  .not('watermarked_url', 'is', null)
+                  .order('upload_sequence', { ascending: true });
 
-              if (error) throw error;
-              if (data) mergedData.push(...data);
-            }
+                if (error) throw error;
+                return data || [];
+              })
+            );
+            const mergedData = chunkResults.flat();
 
             return { data: mergedData, error: null };
           },
