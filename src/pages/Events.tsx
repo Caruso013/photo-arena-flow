@@ -284,8 +284,7 @@ const Events = () => {
         sub_events: subEventsMap[campaign.id] || [],
       }));
 
-      const eligible = enriched.filter(c => (c.photo_count || 0) >= 5);
-      setCampaigns(eligible);
+      setCampaigns(enriched);
     } catch (error) {
       console.error('Error fetching campaigns:', error);
     } finally {
@@ -324,9 +323,6 @@ const Events = () => {
             </h1>
             <p className="text-sm md:text-base text-muted-foreground">
               Encontre fotos dos seus eventos esportivos favoritos
-            </p>
-            <p className="text-xs text-muted-foreground/70 mt-1">
-              ✨ Exibindo apenas eventos com 5 ou mais fotos disponíveis
             </p>
           </div>
 
