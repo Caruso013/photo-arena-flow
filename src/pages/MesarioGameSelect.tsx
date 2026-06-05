@@ -45,10 +45,10 @@ const MesarioGameSelect = () => {
 
     const parsed = JSON.parse(sessionData);
     setSession(parsed);
-    fetchAvailableGames(parsed.organization_id);
+    fetchAvailableEvents(parsed.organization_id);
   }, [navigate]);
 
-  const fetchAvailableGames = async (organizationId: string | null) => {
+  const fetchAvailableEvents = async (organizationId: string | null) => {
     try {
       let query = supabase
         .from('campaigns')
