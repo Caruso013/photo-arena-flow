@@ -292,14 +292,15 @@ serve(async (req) => {
       console.log('✅ Cupom cobre 100%:', { freeSubtotal, freeProgressiveAmount, freeSubtotalAfterProg, freeCouponDiscount });
 
       // Distribuir valor original (após desconto progressivo) por foto para registrar uso do cupom com precisão
-      const freeAllocatedAmountsByPhotoId = allocatePurchaseAmounts(freeDbPhotos, freeSubtotalAfterProg);
+      // sem depender da regra de cobrança mínima (R$ 0,01) usada nas purchases pagas.
+      const freeAllocatedAmountsByPhotoId = allocateCouponUseOriginalAmounts(freeDbPhotos, freeSubtotalAfterProg);
       if (!freeAllocatedAmountsByPhotoId) {
         console.error('🚨 BLOQUEADO: não foi possível distribuir valores da free_purchase', {
           freeSubtotalAfterProg,
           photos: freeDbPhotos.length,
           buyerId,
         });
-        return errorResponse('Não foi possível calcular os valores da compra gratuita.', 500);
+        return errorResponse('Não foi possível calcular os valores do cupom para esta compra.', 400);
       }
 
       // Criar purchases como pending e só concluir após registrar o uso do cupom
@@ -908,6 +909,43 @@ function allocatePurchaseAmounts(dbPhotos: any[], finalTotal: number): Map<strin
 
   if (!photoCount || totalCents < photoCount) {
     return null;
+  }
+
+  function allocateCouponUseOriginalAmounts(dbPhotos: any[], totalAmount: number): Map<string, number> | null {
+    const photoCount = dbPhotos.length;
+    if (!photoCount || totalAmount <= 0) {
+      return null;
+    }
+
+    const prices = dbPhotos.map((photo: any) => Number(photo.price) || 0);
+    const subtotal = prices.reduce((sum: number, price: number) => sum + price, 0);
+    if (subtotal <= 0) {
+      return null;
+    }
+
+    const allocation = new Map<string, number>();
+    let remaining = Number(totalAmount.toFixed(6));
+
+    for (let i = 0; i < dbPhotos.length; i++) {
+      const photo = dbPhotos[i];
+
+      // Última foto recebe o restante para evitar drift de arredondamento.
+      if (i === dbPhotos.length - 1) {
+        const lastAmount = Number(Math.max(remaining, 0).toFixed(6));
+        if (lastAmount <= 0) return null;
+        allocation.set(photo.id, lastAmount);
+        break;
+      }
+
+      const proportional = (prices[i] / subtotal) * totalAmount;
+      const allocated = Number(Math.max(proportional, 0).toFixed(6));
+      if (allocated <= 0) return null;
+
+      allocation.set(photo.id, allocated);
+      remaining = Number((remaining - allocated).toFixed(6));
+    }
+
+    return allocation;
   }
 
   const prices = dbPhotos.map((photo: any) => Number(photo.price) || 0);
