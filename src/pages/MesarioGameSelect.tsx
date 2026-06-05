@@ -60,7 +60,7 @@ const MesarioGameSelect = () => {
       }
 
       const { data, error } = await query
-        .order('event_date', { ascending: false, nullsFirst: false })
+        .order('event_date', { ascending: true, nullsFirst: false })
         .order('event_start_time', { ascending: true, nullsFirst: false });
 
       if (error) throw error;
