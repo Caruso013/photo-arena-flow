@@ -58,6 +58,16 @@ interface Campaign {
 }
 
 const PAGE_SIZE = 12;
+const IN_QUERY_BATCH_SIZE = 120;
+
+const chunkArray = <T,>(items: T[], chunkSize: number): T[][] => {
+  if (items.length === 0) return [];
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += chunkSize) {
+    chunks.push(items.slice(i, i + chunkSize));
+  }
+  return chunks;
+};
 
 const Events = () => {
   const { searchTerm } = useSearch();
@@ -224,34 +234,72 @@ const Events = () => {
       }
 
       const campaignIds = campaignsData.map(c => c.id);
+      const campaignIdChunks = chunkArray(campaignIds, IN_QUERY_BATCH_SIZE);
+      const campaignIdsWithoutCover = campaignsData
+        .filter(c => !c.cover_image_url)
+        .map(c => c.id);
+      const campaignIdChunksWithoutCover = chunkArray(campaignIdsWithoutCover, IN_QUERY_BATCH_SIZE);
 
       const [campaignStats, subEventsData, fallbackCovers] = await Promise.all([
         resilientQuery(
-          () => supabase
-            .from('campaigns_for_home')
-            .select('id, photo_count, cover_image_url')
-            .in('id', campaignIds),
+          async () => {
+            const mergedData: any[] = [];
+
+            for (const idsChunk of campaignIdChunks) {
+              const { data, error } = await supabase
+                .from('campaigns_for_home')
+                .select('id, photo_count, cover_image_url')
+                .in('id', idsChunk);
+
+              if (error) throw error;
+              if (data) mergedData.push(...data);
+            }
+
+            return { data: mergedData, error: null };
+          },
           'campaign-stats'
         ),
         resilientQuery(
-          () => supabase
-            .from('sub_events')
-            .select('id, title, location, photo_count, campaign_id')
-            .in('campaign_id', campaignIds)
-            .order('created_at', { ascending: true }),
+          async () => {
+            const mergedData: any[] = [];
+
+            for (const idsChunk of campaignIdChunks) {
+              const { data, error } = await supabase
+                .from('sub_events')
+                .select('id, title, location, photo_count, campaign_id')
+                .in('campaign_id', idsChunk)
+                .order('created_at', { ascending: true });
+
+              if (error) throw error;
+              if (data) mergedData.push(...data);
+            }
+
+            return { data: mergedData, error: null };
+          },
           'sub-events'
         ),
         resilientQuery(
-          () => supabase
-            .from('photos')
-            .select('campaign_id, watermarked_url')
-            .in('campaign_id', campaignIds.filter(id => {
-              const c = campaignsData.find(cd => cd.id === id);
-              return !c?.cover_image_url;
-            }))
-            .eq('is_available', true)
-            .not('watermarked_url', 'is', null)
-            .order('upload_sequence', { ascending: true }),
+          async () => {
+            if (campaignIdChunksWithoutCover.length === 0) {
+              return { data: [], error: null };
+            }
+
+            const mergedData: any[] = [];
+            for (const idsChunk of campaignIdChunksWithoutCover) {
+              const { data, error } = await supabase
+                .from('photos')
+                .select('campaign_id, watermarked_url')
+                .in('campaign_id', idsChunk)
+                .eq('is_available', true)
+                .not('watermarked_url', 'is', null)
+                .order('upload_sequence', { ascending: true });
+
+              if (error) throw error;
+              if (data) mergedData.push(...data);
+            }
+
+            return { data: mergedData, error: null };
+          },
           'fallback-covers'
         ),
       ]);
