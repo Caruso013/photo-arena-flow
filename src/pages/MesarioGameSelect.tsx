@@ -45,24 +45,23 @@ const MesarioGameSelect = () => {
 
     const parsed = JSON.parse(sessionData);
     setSession(parsed);
-    fetchTodaysGames(parsed.organization_id);
+    fetchAvailableGames(parsed.organization_id);
   }, [navigate]);
 
-  const fetchTodaysGames = async (organizationId: string | null) => {
+  const fetchAvailableGames = async (organizationId: string | null) => {
     try {
-        const today = format(new Date(), 'yyyy-MM-dd');
-
       let query = supabase
         .from('campaigns')
         .select('id, title, event_date, location, cover_image_url, event_start_time, event_end_time')
-        .eq('is_active', true)
-        .eq('event_date', today);
+        .eq('is_active', true);
 
       if (organizationId) {
         query = query.eq('organization_id', organizationId);
       }
 
-      const { data, error } = await query.order('event_start_time', { ascending: true });
+      const { data, error } = await query
+        .order('event_date', { ascending: false, nullsFirst: false })
+        .order('event_start_time', { ascending: true, nullsFirst: false });
 
       if (error) throw error;
       setGames(data || []);
@@ -137,7 +136,7 @@ const MesarioGameSelect = () => {
         <div className="text-center mb-5 sm:mb-6">
           <h1 className="text-xl sm:text-2xl font-bold mb-1">Qual seu jogo?</h1>
           <p className="text-muted-foreground text-xs sm:text-sm px-2">
-            Selecione o jogo de hoje para validar fotógrafos
+            Selecione o evento para validar fotógrafos
           </p>
           <Badge variant="outline" className="mt-2">
             <Calendar className="h-3 w-3 mr-1" />
@@ -156,9 +155,9 @@ const MesarioGameSelect = () => {
           <Card className="border-dashed">
             <CardContent className="text-center py-10 sm:py-12 px-4">
               <Calendar className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mx-auto mb-3 sm:mb-4" />
-              <h3 className="font-semibold mb-1 text-sm sm:text-base">Nenhum jogo hoje</h3>
+              <h3 className="font-semibold mb-1 text-sm sm:text-base">Nenhum evento disponível</h3>
               <p className="text-xs sm:text-sm text-muted-foreground">
-                Não há jogos agendados para hoje
+                Não há eventos disponíveis no momento
                 {session.organization ? ` na ${session.organization.name}` : ''}.
               </p>
             </CardContent>
