@@ -328,7 +328,7 @@ export const PhotographerEarnings = ({ days = 90 }: PhotographerEarningsProps) =
           </CardContent>
         </Card>
 
-        <Card className="border-2 border-red-500/30">
+        <Card className="border-2 border-blue-500/30">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <ImageIcon className="h-4 w-4 text-blue-600" />

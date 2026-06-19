@@ -33,7 +33,6 @@ const Footer = () => {
               <div><Link to="/faq" className="hover:text-primary transition-colors">Dúvidas frequentes</Link></div>
               <div><Link to="/contato" className="hover:text-primary transition-colors">Contato</Link></div>
               <div><Link to="/fotografos" className="hover:text-primary transition-colors">Seja Fotógrafo</Link></div>
-              <div><Link to="/admin" className="hover:text-primary transition-colors text-xs opacity-70">Área Admin</Link></div>
             </div>
           </div>
 
