@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { getTransformedImageUrl } from '@/lib/supabaseImageTransform';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
@@ -20,10 +21,17 @@ import {
   Clock,
   ClipboardList,
   Inbox,
+  QrCode,
+  ExternalLink,
+  Link2,
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import staLogo from '@/assets/sta-logo.png';
+import { QRCodeSVG } from 'qrcode.react';
+import { formatCurrency } from '@/lib/utils';
+import { copyShareLink, generateShareLink } from '@/lib/shareUtils';
+import { toast } from 'sonner';
 
 interface CampaignWithApplication {
   id: string;
@@ -43,6 +51,7 @@ interface CampaignWithApplication {
   organization?: { name: string; logo_url: string | null; primary_color: string | null } | null;
   my_application_status?: string | null;
   my_applied_at?: string | null;
+  revenue_total?: number;
 }
 
 export default function EventApplications() {
@@ -51,6 +60,38 @@ export default function EventApplications() {
   const [campaigns, setCampaigns] = useState<CampaignWithApplication[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [qrTarget, setQrTarget] = useState<CampaignWithApplication | null>(null);
+  const qrRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!qrTarget || !qrRef.current) return;
+
+    const svg = qrRef.current.querySelector('svg');
+    if (!svg) return;
+
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    const image = new Image();
+
+    image.onload = () => {
+      canvas.width = 512;
+      canvas.height = 512;
+      if (context) {
+        context.fillStyle = '#ffffff';
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      }
+
+      const downloadLink = document.createElement('a');
+      downloadLink.download = `qrcode-evento-${qrTarget.title.replace(/\s+/g, '-').toLowerCase()}.png`;
+      downloadLink.href = canvas.toDataURL('image/png');
+      downloadLink.click();
+      setQrTarget(null);
+    };
+
+    image.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+  }, [qrTarget]);
 
   useEffect(() => {
     if (!user) return;
@@ -80,6 +121,19 @@ export default function EventApplications() {
         .select('campaign_id, status, applied_at')
         .eq('photographer_id', user.id);
 
+      const { data: completedPurchases } = await supabase
+        .from('purchases')
+        .select('amount, photo_id, photos!inner(campaign_id)')
+        .eq('photographer_id', user.id)
+        .eq('status', 'completed');
+
+      const revenueMap: Record<string, number> = {};
+      (completedPurchases || []).forEach((purchase: any) => {
+        const campaignId = purchase.photos?.campaign_id;
+        if (!campaignId) return;
+        revenueMap[campaignId] = (revenueMap[campaignId] || 0) + Number(purchase.amount || 0);
+      });
+
       const appMap = new Map(
         myApplications?.map(a => [a.campaign_id, { status: a.status, applied_at: a.applied_at }]) || []
       );
@@ -91,6 +145,7 @@ export default function EventApplications() {
           organization: c.organizations as any,
           my_application_status: appMap.get(c.id)?.status || null,
           my_applied_at: appMap.get(c.id)?.applied_at || null,
+          revenue_total: revenueMap[c.id] || 0,
         }));
 
       setCampaigns(enriched);
@@ -119,7 +174,7 @@ export default function EventApplications() {
     <Card
       key={campaign.id}
       className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer group"
-      onClick={() => navigate(`/dashboard/photographer/apply/${campaign.id}`)}
+      onClick={() => navigate(`/dashboard/photographer/album-reports?campaign=${campaign.id}`)}
     >
       <div className="relative aspect-[16/10] bg-muted overflow-hidden">
         {campaign.cover_image_url ? (
@@ -191,6 +246,10 @@ export default function EventApplications() {
               <span className="text-emerald-600 dark:text-emerald-400 font-medium">Você ganha {campaign.photographer_percentage}%</span>
             </div>
           )}
+          <div className="flex items-center gap-2">
+            <DollarSign className="h-3.5 w-3.5 shrink-0 text-primary" />
+            <span className="font-medium text-foreground">Vendido {formatCurrency(campaign.revenue_total || 0)}</span>
+          </div>
         </div>
 
         {campaign.my_applied_at && (
@@ -199,7 +258,7 @@ export default function EventApplications() {
           </p>
         )}
 
-        <div className="flex items-center justify-between pt-2 border-t">
+        <div className="flex items-center justify-between pt-2 border-t gap-2">
           <div className="flex items-center gap-2">
             {campaign.organization?.logo_url ? (
               <img src={campaign.organization.logo_url} alt={campaign.organization.name} className="h-6 w-6 rounded-full object-cover" />
@@ -210,9 +269,46 @@ export default function EventApplications() {
               {campaign.organization?.name || 'STA Fotos'}
             </span>
           </div>
-          {campaign.available_slots != null && (
-            <Badge variant="outline" className="text-xs">{campaign.available_slots} vagas</Badge>
-          )}
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            {campaign.available_slots != null && (
+              <Badge variant="outline" className="text-xs">{campaign.available_slots} vagas</Badge>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              title="Copiar link"
+              onClick={async (e) => {
+                e.stopPropagation();
+                const copied = await copyShareLink(campaign);
+                if (copied) {
+                  toast.success('🔗 Link copiado!');
+                } else {
+                  toast.error('Erro ao copiar link');
+                }
+              }}
+            >
+              <Link2 className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              title="Baixar QR Code"
+              onClick={(e) => {
+                e.stopPropagation();
+                setQrTarget(campaign);
+              }}
+            >
+              <QrCode className="h-3.5 w-3.5" />
+            </Button>
+            <Button asChild size="sm" variant="outline" className="h-8 gap-1 text-xs" onClick={(e) => e.stopPropagation()}>
+              <Link to={`/dashboard/photographer/album-reports?campaign=${campaign.id}`}>
+                <ExternalLink className="h-3.5 w-3.5" />
+                Relatório
+              </Link>
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -293,6 +389,14 @@ export default function EventApplications() {
             )}
           </TabsContent>
         </Tabs>
+      )}
+
+      {qrTarget && (
+        <div className="absolute -left-[9999px] top-0">
+          <div ref={qrRef} className="bg-white p-4">
+            <QRCodeSVG value={generateShareLink(qrTarget)} size={256} includeMargin bgColor="#ffffff" fgColor="#000000" />
+          </div>
+        </div>
       )}
     </div>
   );

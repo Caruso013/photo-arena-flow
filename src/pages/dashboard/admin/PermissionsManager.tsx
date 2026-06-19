@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Users, ArrowLeft, Shield } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import AdminLayout from '@/components/dashboard/AdminLayout';
 
 const PermissionsManager = () => {
   const navigate = useNavigate();
@@ -50,7 +51,8 @@ const PermissionsManager = () => {
   };
 
   return (
-    <div className="container max-w-4xl py-8">
+    <AdminLayout>
+      <div className="container max-w-4xl py-8">
       <Button
         variant="ghost"
         className="mb-6"
@@ -117,6 +119,7 @@ const PermissionsManager = () => {
         </CardContent>
       </Card>
     </div>
+    </AdminLayout>
   );
 };
 

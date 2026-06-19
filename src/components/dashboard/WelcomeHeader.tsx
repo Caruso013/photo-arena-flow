@@ -17,7 +17,7 @@ const WelcomeHeader = ({
   userName,
   avatarUrl,
   icon: Icon,
-  gradient = 'from-primary via-primary/95 to-primary/80'
+  gradient = 'from-primary via-primary/95 to-primary/80',
 }: WelcomeHeaderProps) => {
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -27,27 +27,27 @@ const WelcomeHeader = ({
   };
 
   return (
-    <div className={`relative overflow-hidden rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 bg-gradient-to-br ${gradient} text-white shadow-xl sm:shadow-2xl`}>
-      <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS1vcGFjaXR5PSIwLjA1IiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-20"></div>
-      
-      <div className="relative z-10 flex items-center gap-3 sm:gap-6">
+    <div className={`relative overflow-hidden rounded-xl sm:rounded-2xl p-4 sm:p-5 lg:p-6 bg-gradient-to-br ${gradient} text-white shadow-xl sm:shadow-2xl`}>
+      <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQnIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS1vcGFjaXR5PSIwLjA1IiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-20"></div>
+
+      <div className="relative z-10 flex items-center gap-3 sm:gap-4 lg:gap-5">
         {(avatarUrl || Icon) && (
-          <Avatar className="h-12 w-12 sm:h-16 sm:w-16 lg:h-20 lg:w-20 border-2 sm:border-4 border-white/30 shadow-xl ring-2 sm:ring-4 ring-white/10 shrink-0">
-            {avatarUrl ? (
-              <AvatarImage src={avatarUrl} alt={userName || 'Avatar'} className="object-cover" />
-            ) : null}
-            <AvatarFallback className="text-lg sm:text-2xl bg-white/20 backdrop-blur-sm">
-              {Icon && <Icon className="h-6 w-6 sm:h-8 sm:w-8 lg:h-10 lg:w-10 text-white" />}
+          <Avatar className="h-10 w-10 sm:h-14 sm:w-14 lg:h-16 lg:w-16 border-2 sm:border-4 border-white/30 shadow-xl ring-2 sm:ring-4 ring-white/10 shrink-0">
+            {avatarUrl ? <AvatarImage src={avatarUrl} alt={userName || 'Avatar'} className="object-cover" /> : null}
+            <AvatarFallback className="text-base sm:text-xl bg-white/20 backdrop-blur-sm">
+              {Icon ? <Icon className="h-5 w-5 sm:h-7 sm:w-7 lg:h-8 lg:w-8 text-white" /> : null}
             </AvatarFallback>
           </Avatar>
         )}
 
         <div className="flex-1 min-w-0">
-          <p className="text-xs sm:text-sm lg:text-base opacity-90 mb-0.5 sm:mb-1">{getGreeting()}{userName ? `, ${userName}` : ''}!</p>
-          <h1 className="text-lg sm:text-2xl lg:text-4xl font-bold mb-0.5 sm:mb-2 drop-shadow-lg truncate">
+          <p className="text-[11px] sm:text-xs lg:text-sm opacity-90 mb-0.5">
+            {getGreeting()}{userName ? `, ${userName}` : ''}!
+          </p>
+          <h1 className="text-base sm:text-xl lg:text-2xl font-bold mb-0.5 sm:mb-1.5 drop-shadow-lg truncate">
             {title}
           </h1>
-          <p className="text-xs sm:text-sm lg:text-base opacity-90 max-w-2xl drop-shadow-md line-clamp-1 sm:line-clamp-none">
+          <p className="text-[11px] sm:text-sm lg:text-sm opacity-90 max-w-2xl drop-shadow-md line-clamp-2 sm:line-clamp-none">
             {subtitle}
           </p>
         </div>

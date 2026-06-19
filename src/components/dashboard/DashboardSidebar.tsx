@@ -19,6 +19,7 @@ import {
   Gift,
   Star,
   KeyRound,
+  Settings,
   ChevronLeft,
   Menu,
   Ticket,
@@ -26,6 +27,7 @@ import {
   UserCheck,
   ClipboardList,
   Trash2,
+  type LucideIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
@@ -33,6 +35,17 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/comp
 interface DashboardSidebarProps {
   isOpen: boolean;
   onToggle: () => void;
+}
+
+interface MenuItem {
+  title: string;
+  url: string;
+  icon: LucideIcon;
+}
+
+interface MenuSection {
+  label: string;
+  items: MenuItem[];
 }
 
 const DashboardSidebar = ({ isOpen, onToggle }: DashboardSidebarProps) => {
@@ -54,7 +67,7 @@ const DashboardSidebar = ({ isOpen, onToggle }: DashboardSidebarProps) => {
   });
 
   // Menu items por role - Principais funções na sidebar
-  const userItems = [
+  const userItems: MenuItem[] = [
     { title: 'Início', url: '/', icon: Home },
     { title: 'Eventos', url: '/events', icon: Calendar },
     { title: 'Minhas Compras', url: '/dashboard/purchases', icon: ShoppingCart },
@@ -64,7 +77,7 @@ const DashboardSidebar = ({ isOpen, onToggle }: DashboardSidebarProps) => {
     { title: 'Seja Fotógrafo', url: '/dashboard/photographer-application', icon: Camera },
   ];
 
-  const photographerItems = [
+  const photographerItems: MenuItem[] = [
     { title: 'Início', url: '/', icon: Home },
     { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
     { title: 'Meu QR Code', url: '/dashboard/photographer/qrcode', icon: QrCode },
@@ -82,31 +95,66 @@ const DashboardSidebar = ({ isOpen, onToggle }: DashboardSidebarProps) => {
     { title: 'Perfil', url: '/dashboard/profile', icon: UserCircle },
   ];
 
-  const adminItems = [
+  const adminItems: MenuItem[] = [
     { title: 'Início', url: '/', icon: Home },
     { title: 'Dashboard Admin', url: '/dashboard/admin', icon: LayoutDashboard },
     { title: 'Fotógrafos', url: '/dashboard/admin/photographers', icon: Camera },
     { title: 'Saldos Fotógrafos', url: '/dashboard/admin/photographer-balances', icon: DollarSign },
     { title: 'Usuários', url: '/dashboard/admin/users', icon: Users },
     { title: 'Eventos', url: '/dashboard/admin/events', icon: Calendar },
-    { title: 'Eventos em Destaque', url: '/dashboard/admin/featured-events', icon: Star },
     { title: 'Cupons', url: '/dashboard/admin/coupons', icon: Ticket },
     { title: 'Descontos Progressivos', url: '/dashboard/admin/progressive-discounts', icon: Gift },
     { title: 'Organizações', url: '/dashboard/admin/organizations', icon: Building2 },
     { title: 'Financeiro', url: '/dashboard/admin/financial', icon: DollarSign },
     { title: 'Relatórios', url: '/dashboard/admin/reports', icon: FileText },
     { title: 'Mesários', url: '/dashboard/admin/mesarios', icon: UserCheck },
-    { title: 'Cache', url: '/dashboard/admin/cache-management', icon: Database },
+    { title: 'Configurações', url: '/dashboard/admin/config/platform', icon: Settings },
   ];
 
   // Menu items para organizações - APENAS relatório de vendas
-  const organizationItems = [
+  const organizationItems: MenuItem[] = [
     { title: 'Início', url: '/', icon: Home },
     { title: 'Relatório de Vendas', url: '/dashboard/organization/revenue', icon: FileText },
     { title: 'Perfil', url: '/dashboard/profile', icon: UserCircle },
   ];
 
-  const getMenuItems = () => {
+  const adminSections: MenuSection[] = [
+    {
+      label: 'Visao Geral',
+      items: [
+        { title: 'Início', url: '/', icon: Home },
+        { title: 'Dashboard Admin', url: '/dashboard/admin', icon: LayoutDashboard },
+      ],
+    },
+    {
+      label: 'Operacao',
+      items: [
+        { title: 'Eventos', url: '/dashboard/admin/events', icon: Calendar },
+        { title: 'Fotógrafos', url: '/dashboard/admin/photographers', icon: Camera },
+        { title: 'Saldos Fotógrafos', url: '/dashboard/admin/photographer-balances', icon: DollarSign },
+        { title: 'Mesários', url: '/dashboard/admin/mesarios', icon: UserCheck },
+      ],
+    },
+    {
+      label: 'Comercial',
+      items: [
+        { title: 'Organizações', url: '/dashboard/admin/organizations', icon: Building2 },
+        { title: 'Cupons', url: '/dashboard/admin/coupons', icon: Ticket },
+        { title: 'Descontos Progressivos', url: '/dashboard/admin/progressive-discounts', icon: Gift },
+      ],
+    },
+    {
+      label: 'Administracao',
+      items: [
+        { title: 'Usuários', url: '/dashboard/admin/users', icon: Users },
+        { title: 'Financeiro', url: '/dashboard/admin/financial', icon: DollarSign },
+        { title: 'Relatórios', url: '/dashboard/admin/reports', icon: FileText },
+        { title: 'Configurações', url: '/dashboard/admin/config/platform', icon: Settings },
+      ],
+    },
+  ];
+
+  const getMenuItems = (): MenuItem[] => {
     const role = profile?.role;
     if (role === 'admin') {
       return adminItems;
@@ -121,6 +169,8 @@ const DashboardSidebar = ({ isOpen, onToggle }: DashboardSidebarProps) => {
   };
 
   const items = getMenuItems();
+  const isAdmin = profile?.role === 'admin';
+  const visibleSections = isAdmin ? adminSections : [];
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -190,47 +240,78 @@ const DashboardSidebar = ({ isOpen, onToggle }: DashboardSidebarProps) => {
           isOpen ? "p-2" : "p-1"
         )}>
           {/* Menu principal */}
-          {items.map((item) => (
-            isOpen ? (
-              <NavLink
-                key={item.title}
-                to={item.url}
-                end
-                onClick={handleNavItemClick}
-                className={({ isActive }) =>
-                  cn(
-                    'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors',
-                    isActive
-                      ? 'bg-primary text-primary-foreground font-medium'
-                      : 'hover:bg-muted active:bg-muted/80 text-muted-foreground hover:text-foreground'
-                  )
-                }
-              >
-                <item.icon className="h-4 w-4 shrink-0" />
-                <span className="truncate">{item.title}</span>
-              </NavLink>
-            ) : (
-              <Tooltip key={item.title}>
-                <TooltipTrigger asChild>
-                  <NavLink
-                    to={item.url}
-                    end
-                    className={({ isActive }) =>
-                      cn(
-                        'flex items-center justify-center p-2 rounded-md transition-colors mx-auto w-10 h-10',
-                        isActive
-                          ? 'bg-primary text-primary-foreground'
-                          : 'hover:bg-muted text-muted-foreground hover:text-foreground'
-                      )
-                    }
-                  >
-                    <item.icon className="h-4 w-4" />
-                  </NavLink>
-                </TooltipTrigger>
-                <TooltipContent side="right" sideOffset={8}>{item.title}</TooltipContent>
-              </Tooltip>
-            )
-          ))}
+          {isAdmin && isOpen ? (
+            <div className="space-y-4">
+              {visibleSections.map((section) => (
+                <div key={section.label} className="space-y-1">
+                  <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    {section.label}
+                  </p>
+                  {section.items.map((item) => (
+                    <NavLink
+                      key={`${section.label}-${item.title}`}
+                      to={item.url}
+                      end
+                      onClick={handleNavItemClick}
+                      className={({ isActive }) =>
+                        cn(
+                          'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors',
+                          isActive
+                            ? 'bg-primary text-primary-foreground font-medium'
+                            : 'hover:bg-muted active:bg-muted/80 text-muted-foreground hover:text-foreground'
+                        )
+                      }
+                    >
+                      <item.icon className="h-4 w-4 shrink-0" />
+                      <span className="truncate">{item.title}</span>
+                    </NavLink>
+                  ))}
+                </div>
+              ))}
+            </div>
+          ) : (
+            items.map((item) => (
+              isOpen ? (
+                <NavLink
+                  key={item.title}
+                  to={item.url}
+                  end
+                  onClick={handleNavItemClick}
+                  className={({ isActive }) =>
+                    cn(
+                      'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors',
+                      isActive
+                        ? 'bg-primary text-primary-foreground font-medium'
+                        : 'hover:bg-muted active:bg-muted/80 text-muted-foreground hover:text-foreground'
+                    )
+                  }
+                >
+                  <item.icon className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{item.title}</span>
+                </NavLink>
+              ) : (
+                <Tooltip key={item.title}>
+                  <TooltipTrigger asChild>
+                    <NavLink
+                      to={item.url}
+                      end
+                      className={({ isActive }) =>
+                        cn(
+                          'flex items-center justify-center p-2 rounded-md transition-colors mx-auto w-10 h-10',
+                          isActive
+                            ? 'bg-primary text-primary-foreground'
+                            : 'hover:bg-muted text-muted-foreground hover:text-foreground'
+                        )
+                      }
+                    >
+                      <item.icon className="h-4 w-4" />
+                    </NavLink>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" sideOffset={8}>{item.title}</TooltipContent>
+                </Tooltip>
+              )
+            ))
+          )}
         </nav>
         
         {/* Footer com botão de expandir apenas quando aberto */}

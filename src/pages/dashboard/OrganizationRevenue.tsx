@@ -1,10 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   DollarSign, 
@@ -20,8 +19,6 @@ import {
   BarChart3,
   Receipt,
   CalendarDays,
-  ImageIcon,
-  History
 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { formatCurrency } from '@/lib/utils';
@@ -85,6 +82,8 @@ interface AllTimeTotals {
   allSales: SaleData[];
 }
 
+const EVENTS_PAGE_SIZE = 5;
+
 const OrganizationRevenue = () => {
   const { user, profile } = useAuth();
   const [organization, setOrganization] = useState<OrganizationData | null>(null);
@@ -93,6 +92,7 @@ const OrganizationRevenue = () => {
   const [loading, setLoading] = useState(true);
   const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set());
   const [selectedCycle, setSelectedCycle] = useState<string>('0');
+  const [currentEventPage, setCurrentEventPage] = useState(1);
 
   useEffect(() => {
     if (!user) {
@@ -110,7 +110,7 @@ const OrganizationRevenue = () => {
     }
 
     fetchOrganizationData();
-  }, [user, profile]);
+  }, [user?.id, profile?.role]);
 
   const calculateCycles = (): Omit<CycleData, 'sales'>[] => {
     const now = new Date();
@@ -264,15 +264,15 @@ const OrganizationRevenue = () => {
       
       const [photographersResult, buyersResult] = await Promise.all([
         photographerIds.length > 0 
-          ? supabase.from('profiles').select('id, full_name').in('id', photographerIds)
+          ? supabase.from('profiles').select('id, full_name, email').in('id', photographerIds)
           : Promise.resolve({ data: [] }),
         buyerIds.length > 0 
-          ? supabase.from('profiles').select('id, full_name').in('id', buyerIds)
+          ? supabase.from('profiles').select('id, full_name, email').in('id', buyerIds)
           : Promise.resolve({ data: [] })
       ]);
       
-      const photographerMap = new Map((photographersResult.data || []).map(p => [p.id, p.full_name]));
-      const buyerMap = new Map((buyersResult.data || []).map(b => [b.id, b.full_name]));
+      const photographerMap = new Map((photographersResult.data || []).map(p => [p.id, p]));
+      const buyerMap = new Map((buyersResult.data || []).map(b => [b.id, b]));
 
       // Processar todas as vendas (usar data da compra para ciclos)
       const processedAllSales: SaleData[] = [];
@@ -281,10 +281,10 @@ const OrganizationRevenue = () => {
         if (!purchase) continue; // Skip if no purchase (shouldn't happen with !inner)
         
         const photographerName = sale.photographer_id 
-          ? (photographerMap.get(sale.photographer_id) || 'Fotógrafo')
+          ? (photographerMap.get(sale.photographer_id)?.full_name || photographerMap.get(sale.photographer_id)?.email || 'Fotógrafo')
           : null;
         const buyerName = purchase?.buyer_id 
-          ? (buyerMap.get(purchase.buyer_id) || 'Cliente')
+          ? (buyerMap.get(purchase.buyer_id)?.full_name || buyerMap.get(purchase.buyer_id)?.email?.split('@')[0] || 'Cliente')
           : null;
 
         // Calcular valor total da venda (soma de todas as partes)
@@ -412,6 +412,23 @@ const OrganizationRevenue = () => {
   // Use allTimeTotals from state instead of calculating from cycles
   const displayAllTimeRevenue = allTimeTotals.totalRevenue;
   const displayAllTimeSales = allTimeTotals.totalSales;
+  const currentCycleIndex = Number(selectedCycle);
+
+  const currentCycle = useMemo(() => cycles[currentCycleIndex] || cycles[0], [cycles, currentCycleIndex]);
+  const currentCycleSales = currentCycle?.sales || [];
+  const currentCycleRevenue = useMemo(() => getTotalRevenue(currentCycleSales), [currentCycleSales]);
+  const currentCycleEvents = useMemo(() => getEventRevenues(currentCycleSales), [currentCycleSales]);
+  const totalEventPages = Math.max(Math.ceil(currentCycleEvents.length / EVENTS_PAGE_SIZE), 1);
+  const paginatedEvents = useMemo(() => {
+    const start = (currentEventPage - 1) * EVENTS_PAGE_SIZE;
+    return currentCycleEvents.slice(start, start + EVENTS_PAGE_SIZE);
+  }, [currentCycleEvents, currentEventPage]);
+
+  useEffect(() => {
+    if (currentEventPage > totalEventPages) {
+      setCurrentEventPage(1);
+    }
+  }, [currentEventPage, totalEventPages]);
 
   if (loading) {
     return (
@@ -475,477 +492,318 @@ const OrganizationRevenue = () => {
     );
   }
 
-  const currentCycle = cycles[parseInt(selectedCycle)] || cycles[0];
-  const currentCycleSales = currentCycle?.sales || [];
-  const currentCycleRevenue = getTotalRevenue(currentCycleSales);
-  const currentCycleEvents = getEventRevenues(currentCycleSales);
-
   return (
-    <div className="space-y-8 pb-8">
-      {/* Header com Gradiente */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-background border p-6 md:p-8">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-        <div className="relative">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20">
-              <Building2 className="h-6 w-6 text-primary" />
+    <div className="space-y-6 pb-28 md:pb-0">
+      <div className="rounded-3xl border border-emerald-200/60 bg-gradient-to-r from-emerald-50 via-white to-sky-50 p-4 shadow-sm sm:p-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-2">
+            <div className="inline-flex w-fit items-center gap-2 rounded-full border border-emerald-200 bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800">
+              <Building2 className="h-3.5 w-3.5" />
+              Financeiro da organização
             </div>
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold tracking-tight">{organization.name}</h1>
-              <p className="text-muted-foreground">
-                Relatório Financeiro Transparente
+              <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">{organization.name}</h1>
+              <p className="mt-1 max-w-2xl text-sm text-muted-foreground sm:text-base">
+                Acompanhe repasses, eventos com vendas e o período de pagamento em uma visão mais direta.
               </p>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2 mt-4">
-            <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
-              <TrendingUp className="h-3 w-3 mr-1" />
-              Participação: {organization.admin_percentage}%
-            </Badge>
-            <Badge variant="outline" className="bg-background/50">
-              <History className="h-3 w-3 mr-1" />
-              Últimos 3 ciclos
-            </Badge>
+
+          <div className="rounded-2xl border bg-white/80 px-4 py-3 shadow-sm">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Participação da organização</p>
+            <p className="mt-1 text-2xl font-bold text-emerald-700">{organization.admin_percentage}%</p>
           </div>
         </div>
       </div>
 
-      {/* Resumo Geral - Todos os ciclos */}
-      <Card className="bg-gradient-to-r from-emerald-500/5 via-emerald-500/10 to-emerald-500/5 border-emerald-500/20">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <History className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-            Resumo dos Últimos 3 Meses
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="p-4 rounded-lg bg-background/50 border">
-              <p className="text-sm text-muted-foreground mb-1">Receita Total</p>
-              <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                {formatCurrency(displayAllTimeRevenue)}
-              </p>
-            </div>
-            <div className="p-4 rounded-lg bg-background/50 border">
-              <p className="text-sm text-muted-foreground mb-1">Total de Vendas</p>
-              <p className="text-2xl font-bold">{displayAllTimeSales}</p>
-            </div>
-            <div className="p-4 rounded-lg bg-background/50 border">
-              <p className="text-sm text-muted-foreground mb-1">Média por Ciclo</p>
-              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {formatCurrency(displayAllTimeRevenue / Math.max(cycles.length, 1))}
-              </p>
-            </div>
-            <div className="p-4 rounded-lg bg-background/50 border">
-              <p className="text-sm text-muted-foreground mb-1">Ciclos Analisados</p>
-              <p className="text-2xl font-bold">{cycles.length}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <Card className="border-emerald-200/70 bg-gradient-to-br from-emerald-50 to-white shadow-sm">
+          <CardHeader className="pb-2 sm:pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <DollarSign className="h-4 w-4 text-emerald-600" />
+              Receita total
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-emerald-700 sm:text-3xl">{formatCurrency(displayAllTimeRevenue)}</div>
+            <p className="mt-1 text-xs text-muted-foreground">Soma dos ciclos carregados</p>
+          </CardContent>
+        </Card>
 
-      {/* Tabs para alternar entre ciclos */}
-      <Tabs value={selectedCycle} onValueChange={setSelectedCycle} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 h-auto p-1">
+        <Card className="border-sky-200/70 bg-gradient-to-br from-sky-50 to-white shadow-sm">
+          <CardHeader className="pb-2 sm:pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <ShoppingCart className="h-4 w-4 text-sky-600" />
+              Total de vendas
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-sky-700 sm:text-3xl">{displayAllTimeSales}</div>
+            <p className="mt-1 text-xs text-muted-foreground">Compras concluídas com repasse</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-amber-200/70 bg-gradient-to-br from-amber-50 to-white shadow-sm">
+          <CardHeader className="pb-2 sm:pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <TrendingUp className="h-4 w-4 text-amber-600" />
+              Média por ciclo
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-amber-700 sm:text-3xl">
+              {formatCurrency(displayAllTimeRevenue / Math.max(cycles.length, 1))}
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">Referência para os ciclos exibidos</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-violet-200/70 bg-gradient-to-br from-violet-50 to-white shadow-sm">
+          <CardHeader className="pb-2 sm:pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <BarChart3 className="h-4 w-4 text-violet-600" />
+              Eventos no ciclo
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-violet-700 sm:text-3xl">{currentCycleEvents.length}</div>
+            <p className="mt-1 text-xs text-muted-foreground">Com vendas no ciclo ativo</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Tabs
+        value={selectedCycle}
+        onValueChange={(value) => {
+          setSelectedCycle(value);
+          setCurrentEventPage(1);
+          setExpandedEvents(new Set());
+        }}
+        className="space-y-6"
+      >
+        <TabsList className="flex h-auto w-full flex-wrap rounded-2xl border bg-card p-1">
           {cycles.map((cycle, index) => (
-            <TabsTrigger 
-              key={index} 
+            <TabsTrigger
+              key={index}
               value={index.toString()}
-              className="flex flex-col gap-1 py-3 px-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              className="flex min-w-[120px] flex-1 flex-col gap-1 rounded-xl px-3 py-3 data-[state=active]:bg-emerald-600 data-[state=active]:text-white"
             >
-              <span className="font-semibold text-sm">{cycle.label}</span>
-              <span className="text-xs opacity-80">
-                {formatCurrency(getTotalRevenue(cycle.sales))}
-              </span>
-              {cycle.isCurrentCycle && (
-                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 mt-1">
-                  Atual
-                </Badge>
-              )}
+              <span className="text-sm font-semibold">{cycle.label}</span>
+              <span className="text-xs opacity-80">{formatCurrency(getTotalRevenue(cycle.sales))}</span>
             </TabsTrigger>
           ))}
         </TabsList>
 
-        {cycles.map((cycle, cycleIndex) => (
-          <TabsContent key={cycleIndex} value={cycleIndex.toString()} className="space-y-6">
-            {/* Card de Ciclo de Pagamento */}
-            <Card className="overflow-hidden">
-              <div className="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border-b">
-                <CardHeader className="pb-4">
-                  <div className="flex items-center justify-between flex-wrap gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-amber-500/10">
-                        <CalendarDays className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                      </div>
-                      <div>
-                        <CardTitle className="text-lg">{cycle.label}</CardTitle>
-                        <CardDescription className="mt-0.5">
-                          {formatDate(cycle.cycleStart.toISOString())} até {formatDate(cycle.cycleEnd.toISOString())}
-                        </CardDescription>
-                      </div>
-                    </div>
-                    {cycle.isPast ? (
-                      <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20">
-                        ✓ Pago
-                      </Badge>
-                    ) : cycle.daysUntilPayment === 0 ? (
-                      <Badge className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 animate-pulse">
-                        Pagamento Hoje!
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="gap-1">
-                        <Clock className="h-3 w-3" />
-                        {cycle.daysUntilPayment} dias para pagamento
-                      </Badge>
-                    )}
-                  </div>
-                </CardHeader>
-              </div>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <div className="flex-1">
-                    <p className="text-sm text-muted-foreground mb-1">
-                      {cycle.isPast ? 'Pago em' : 'Pagamento previsto'}
-                    </p>
-                    <p className="text-xl font-semibold">
-                      {cycle.paymentDate.toLocaleDateString('pt-BR', { 
-                        day: '2-digit', 
-                        month: 'long',
-                        year: 'numeric'
-                      })}
-                    </p>
-                  </div>
-                  <Separator orientation="vertical" className="h-12" />
-                  <div className="flex-1 text-right">
-                    <p className="text-sm text-muted-foreground mb-1">
-                      {cycle.isPast ? 'Valor Recebido' : 'Valor a Receber'}
-                    </p>
-                    <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                      {formatCurrency(getTotalRevenue(cycle.sales))}
-                    </p>
-                  </div>
+        <TabsContent value={selectedCycle} className="space-y-6">
+          <Card className="shadow-sm">
+            <CardHeader className="border-b bg-gradient-to-r from-emerald-50 to-transparent p-4 sm:p-6">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2 text-xl sm:text-2xl">
+                    <CalendarDays className="h-5 w-5 text-emerald-600" />
+                    {currentCycle?.label || 'Ciclo'}
+                  </CardTitle>
+                  <CardDescription className="mt-1 text-sm sm:text-base">
+                    {currentCycle ? `${formatDate(currentCycle.cycleStart.toISOString())} até ${formatDate(currentCycle.cycleEnd.toISOString())}` : 'Sem período disponível'}
+                  </CardDescription>
                 </div>
-              </CardContent>
-            </Card>
 
-            {/* Cards de Métricas do Ciclo */}
-            <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
-              <Card className="relative overflow-hidden group hover:shadow-lg transition-all duration-300 hover:border-emerald-500/50">
-                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Receita do Ciclo</CardTitle>
-                  <div className="p-2 rounded-lg bg-emerald-500/10">
-                    <DollarSign className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">
-                    {formatCurrency(getTotalRevenue(cycle.sales))}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Sua participação neste ciclo
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="relative overflow-hidden group hover:shadow-lg transition-all duration-300 hover:border-blue-500/50">
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Fotos Vendidas</CardTitle>
-                  <div className="p-2 rounded-lg bg-blue-500/10">
-                    <ShoppingCart className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold">{cycle.sales.length}</div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Vendas concluídas
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="relative overflow-hidden group hover:shadow-lg transition-all duration-300 hover:border-purple-500/50">
-                <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Eventos</CardTitle>
-                  <div className="p-2 rounded-lg bg-purple-500/10">
-                    <BarChart3 className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold">{getEventRevenues(cycle.sales).length}</div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Com vendas no período
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Vendas por Evento */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5 text-primary" />
-                <h2 className="text-xl font-semibold">Vendas por Evento</h2>
+                {currentCycle && (
+                  currentCycle.isPast ? (
+                    <Badge className="border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50">
+                      Pago em {formatDate(currentCycle.paymentDate.toISOString())}
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="gap-1 border-amber-200 bg-amber-50 text-amber-700">
+                      <Clock className="h-3.5 w-3.5" />
+                      {currentCycle.daysUntilPayment === 0 ? 'Pagamento hoje' : `${currentCycle.daysUntilPayment} dias para pagamento`}
+                    </Badge>
+                  )
+                )}
               </div>
-              
-              {getEventRevenues(cycle.sales).length === 0 ? (
-                <Card className="border-dashed">
-                  <CardContent className="flex flex-col items-center justify-center py-16 gap-4">
-                    <div className="p-4 rounded-full bg-muted">
-                      <ImageIcon className="h-8 w-8 text-muted-foreground" />
-                    </div>
-                    <div className="text-center">
-                      <p className="font-medium">Nenhuma venda neste ciclo</p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        As vendas aparecerão aqui quando ocorrerem
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 xl:grid-cols-4 sm:p-6">
+              <div className="rounded-2xl border bg-muted/20 p-4">
+                <p className="text-sm text-muted-foreground">Pagamento</p>
+                <p className="mt-1 text-lg font-semibold">
+                  {currentCycle?.paymentDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }) || '—'}
+                </p>
+              </div>
+              <div className="rounded-2xl border bg-muted/20 p-4">
+                <p className="text-sm text-muted-foreground">Receita do ciclo</p>
+                <p className="mt-1 text-lg font-semibold text-emerald-700">{formatCurrency(currentCycleRevenue)}</p>
+              </div>
+              <div className="rounded-2xl border bg-muted/20 p-4">
+                <p className="text-sm text-muted-foreground">Vendas concluídas</p>
+                <p className="mt-1 text-lg font-semibold">{currentCycleSales.length}</p>
+              </div>
+              <div className="rounded-2xl border bg-muted/20 p-4">
+                <p className="text-sm text-muted-foreground">Eventos com vendas</p>
+                <p className="mt-1 text-lg font-semibold">{currentCycleEvents.length}</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-sm">
+            <CardHeader className="border-b bg-gradient-to-r from-sky-50 to-transparent p-4 sm:p-6">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2 text-xl sm:text-2xl">
+                    <BarChart3 className="h-5 w-5 text-sky-600" />
+                    Vendas por evento
+                  </CardTitle>
+                  <CardDescription className="mt-1 text-sm sm:text-base">
+                    Eventos mais recentes com detalhamento de comprador e fotógrafo
+                  </CardDescription>
+                </div>
+
+                {currentCycleEvents.length > 0 && (
+                  <div className="flex items-center gap-2 self-start lg:self-auto">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentEventPage((page) => Math.max(1, page - 1))}
+                      disabled={currentEventPage === 1}
+                    >
+                      Anterior
+                    </Button>
+                    <Badge variant="secondary">
+                      Página {currentEventPage} de {totalEventPages}
+                    </Badge>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentEventPage((page) => Math.min(totalEventPages, page + 1))}
+                      disabled={currentEventPage === totalEventPages}
+                    >
+                      Próxima
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="p-4 sm:p-6">
+              {currentCycleEvents.length === 0 ? (
+                <div className="rounded-2xl border border-dashed p-8 text-center text-muted-foreground">
+                  Nenhuma venda encontrada neste ciclo.
+                </div>
               ) : (
                 <div className="space-y-3">
-                  {getEventRevenues(cycle.sales).map((event) => (
-                    <Collapsible
-                      key={`${cycleIndex}-${event.campaignId}`}
-                      open={expandedEvents.has(`${cycleIndex}-${event.campaignId}`)}
-                      onOpenChange={() => toggleEventExpanded(`${cycleIndex}-${event.campaignId}`)}
-                    >
-                      <Card className="overflow-hidden transition-all duration-300 hover:shadow-md">
-                        <CollapsibleTrigger className="w-full text-left">
-                          <CardContent className="p-4 md:p-6">
-                            <div className="flex items-center justify-between gap-4">
-                              <div className="flex items-start gap-4 flex-1 min-w-0">
-                                <div className="p-3 rounded-xl bg-primary/10 shrink-0">
-                                  <Calendar className="h-5 w-5 text-primary" />
+                  <p className="text-sm text-muted-foreground">
+                    Mostrando {Math.min((currentEventPage - 1) * EVENTS_PAGE_SIZE + 1, currentCycleEvents.length)}-{Math.min(currentEventPage * EVENTS_PAGE_SIZE, currentCycleEvents.length)} de {currentCycleEvents.length} eventos
+                  </p>
+
+                  {paginatedEvents.map((event) => {
+                    const eventKey = `${selectedCycle}-${event.campaignId}`;
+                    const isOpen = expandedEvents.has(eventKey);
+
+                    return (
+                      <Collapsible
+                        key={eventKey}
+                        open={isOpen}
+                        onOpenChange={() => toggleEventExpanded(eventKey)}
+                      >
+                        <Card className="overflow-hidden rounded-2xl border shadow-sm">
+                          <CollapsibleTrigger className="w-full text-left">
+                            <CardContent className="p-4 sm:p-5">
+                              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                                <div className="flex items-start gap-3 min-w-0">
+                                  <div className="rounded-xl bg-primary/10 p-3">
+                                    <Calendar className="h-5 w-5 text-primary" />
+                                  </div>
+                                  <div className="min-w-0">
+                                    <h3 className="truncate text-base font-semibold sm:text-lg">{event.campaignTitle}</h3>
+                                    <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                                      {event.eventDate && <span>{formatDate(event.eventDate)}</span>}
+                                      <span>{event.salesCount} {event.salesCount === 1 ? 'venda' : 'vendas'}</span>
+                                    </div>
+                                  </div>
                                 </div>
-                                <div className="min-w-0 flex-1">
-                                  <h3 className="font-semibold text-lg truncate">{event.campaignTitle}</h3>
-                                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-sm text-muted-foreground">
-                                    {event.eventDate && (
-                                      <span className="flex items-center gap-1.5">
-                                        <CalendarDays className="h-3.5 w-3.5" />
-                                        {formatDate(event.eventDate)}
-                                      </span>
-                                    )}
-                                    <span className="flex items-center gap-1.5">
-                                      <ImageIcon className="h-3.5 w-3.5" />
-                                      {event.salesCount} {event.salesCount === 1 ? 'foto' : 'fotos'}
-                                    </span>
+
+                                <div className="flex items-center justify-between gap-3 lg:justify-end">
+                                  <div className="text-left lg:text-right">
+                                    <p className="text-xs text-muted-foreground">Sua receita</p>
+                                    <p className="text-xl font-bold text-emerald-700">{formatCurrency(event.totalRevenue)}</p>
+                                  </div>
+                                  <div className="rounded-lg bg-muted p-2">
+                                    {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                                   </div>
                                 </div>
                               </div>
-                              
-                              <div className="flex items-center gap-4">
-                                <div className="text-right">
-                                  <p className="text-xs text-muted-foreground mb-0.5">Sua receita</p>
-                                  <p className="text-xl md:text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                                    {formatCurrency(event.totalRevenue)}
-                                  </p>
-                                </div>
-                                <div className="p-2 rounded-lg bg-muted">
-                                  {expandedEvents.has(`${cycleIndex}-${event.campaignId}`) ? (
-                                    <ChevronUp className="h-4 w-4" />
-                                  ) : (
-                                    <ChevronDown className="h-4 w-4" />
-                                  )}
-                                </div>
+                            </CardContent>
+                          </CollapsibleTrigger>
+
+                          <CollapsibleContent>
+                            <div className="border-t bg-muted/20 p-4 sm:p-5">
+                              <div className="mb-4 flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                                <Receipt className="h-4 w-4" />
+                                Detalhes das vendas
                               </div>
-                            </div>
-                          </CardContent>
-                        </CollapsibleTrigger>
-                        
-                        <CollapsibleContent>
-                          <div className="border-t bg-muted/30">
-                            <div className="p-4 md:p-6">
-                              <div className="flex items-center gap-2 mb-4">
-                                <Receipt className="h-4 w-4 text-muted-foreground" />
-                                <h4 className="font-medium text-sm text-muted-foreground">
-                                  Detalhes das Vendas
-                                </h4>
-                              </div>
-                              
-                              <div className="rounded-lg border overflow-hidden bg-background">
+
+                              <div className="overflow-x-auto rounded-xl border bg-background">
                                 <Table>
                                   <TableHeader>
-                                    <TableRow className="bg-muted/50">
-                                      <TableHead className="font-semibold">Data/Hora</TableHead>
-                                      <TableHead className="font-semibold">
+                                    <TableRow className="bg-muted/40">
+                                      <TableHead>Data/Hora</TableHead>
+                                      <TableHead>
                                         <div className="flex items-center gap-1.5">
                                           <Camera className="h-3.5 w-3.5" />
                                           Fotógrafo
                                         </div>
                                       </TableHead>
-                                      <TableHead className="font-semibold">
+                                      <TableHead>
                                         <div className="flex items-center gap-1.5">
                                           <User className="h-3.5 w-3.5" />
-                                          Comprador
+                                          Cliente
                                         </div>
                                       </TableHead>
-                                      <TableHead className="text-right font-semibold">Valor Total</TableHead>
-                                      <TableHead className="text-right font-semibold">Sua Receita</TableHead>
+                                      <TableHead className="text-right">Valor total</TableHead>
+                                      <TableHead className="text-right">Sua receita</TableHead>
                                     </TableRow>
                                   </TableHeader>
                                   <TableBody>
                                     {event.sales.map((sale, index) => (
-                                      <TableRow 
-                                        key={sale.id}
-                                        className={index % 2 === 0 ? 'bg-background' : 'bg-muted/20'}
-                                      >
+                                      <TableRow key={sale.id} className={index % 2 === 0 ? 'bg-background' : 'bg-muted/10'}>
                                         <TableCell>
                                           <div>
                                             <p className="font-medium">{formatDate(sale.created_at)}</p>
                                             <p className="text-xs text-muted-foreground">{formatTime(sale.created_at)}</p>
                                           </div>
                                         </TableCell>
-                                        <TableCell>
-                                          <span className="text-sm">{sale.photographer_name || 'N/A'}</span>
-                                        </TableCell>
-                                        <TableCell>
-                                          <span className="text-sm">{sale.buyer_name || 'N/A'}</span>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                          <span className="text-sm text-muted-foreground">
-                                            {formatCurrency(sale.purchase_amount)}
-                                          </span>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                          <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                                            {formatCurrency(sale.organization_amount)}
-                                          </span>
-                                        </TableCell>
+                                        <TableCell>{sale.photographer_name || 'N/A'}</TableCell>
+                                        <TableCell>{sale.buyer_name || 'N/A'}</TableCell>
+                                        <TableCell className="text-right text-muted-foreground">{formatCurrency(sale.purchase_amount)}</TableCell>
+                                        <TableCell className="text-right font-semibold text-emerald-700">{formatCurrency(sale.organization_amount)}</TableCell>
                                       </TableRow>
                                     ))}
                                   </TableBody>
                                 </Table>
                               </div>
-                              
-                              {/* Resumo do Evento */}
-                              <div className="mt-4 p-4 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
-                                <div className="flex items-center justify-between">
-                                  <span className="text-sm text-muted-foreground">
-                                    Total do evento ({event.salesCount} {event.salesCount === 1 ? 'venda' : 'vendas'})
-                                  </span>
-                                  <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
-                                    {formatCurrency(event.totalRevenue)}
-                                  </span>
-                                </div>
-                              </div>
                             </div>
-                          </div>
-                        </CollapsibleContent>
-                      </Card>
-                    </Collapsible>
-                  ))}
+                          </CollapsibleContent>
+                        </Card>
+                      </Collapsible>
+                    );
+                  })}
                 </div>
               )}
-            </div>
-
-            {/* Histórico Completo do Ciclo */}
-            {cycle.sales.length > 0 && (
-              <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <Receipt className="h-5 w-5 text-primary" />
-                  <h2 className="text-xl font-semibold">Histórico Completo - {cycle.label}</h2>
-                </div>
-                
-                <Card>
-                  <CardContent className="p-0">
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="bg-muted/50">
-                            <TableHead className="font-semibold min-w-[120px]">Data</TableHead>
-                            <TableHead className="font-semibold min-w-[150px]">Evento</TableHead>
-                            <TableHead className="font-semibold min-w-[130px]">Fotógrafo</TableHead>
-                            <TableHead className="font-semibold min-w-[130px]">Comprador</TableHead>
-                            <TableHead className="text-right font-semibold min-w-[100px]">Valor Venda</TableHead>
-                            <TableHead className="text-right font-semibold min-w-[100px]">Sua Receita</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {cycle.sales.map((sale, index) => (
-                            <TableRow 
-                              key={sale.id}
-                              className={index % 2 === 0 ? 'bg-background' : 'bg-muted/20'}
-                            >
-                              <TableCell>
-                                <div>
-                                  <p className="font-medium">{formatDate(sale.created_at)}</p>
-                                  <p className="text-xs text-muted-foreground">{formatTime(sale.created_at)}</p>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div>
-                                  <p className="font-medium truncate max-w-[180px]">{sale.campaign_title}</p>
-                                  {sale.event_date && (
-                                    <p className="text-xs text-muted-foreground">
-                                      Evento: {formatDate(sale.event_date)}
-                                    </p>
-                                  )}
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-2">
-                                  <Camera className="h-3.5 w-3.5 text-muted-foreground" />
-                                  <span className="text-sm">{sale.photographer_name || 'N/A'}</span>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-2">
-                                  <User className="h-3.5 w-3.5 text-muted-foreground" />
-                                  <span className="text-sm">{sale.buyer_name || 'N/A'}</span>
-                                </div>
-                              </TableCell>
-                              <TableCell className="text-right">
-                                {formatCurrency(sale.purchase_amount)}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                                  {formatCurrency(sale.organization_amount)}
-                                </span>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                    
-                    {/* Rodapé com Total */}
-                    <div className="p-4 border-t bg-muted/30">
-                      <div className="flex items-center justify-between">
-                        <div className="text-sm text-muted-foreground">
-                          <span className="font-medium">{cycle.sales.length}</span> vendas neste ciclo
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm text-muted-foreground">Total:</span>
-                          <span className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
-                            {formatCurrency(getTotalRevenue(cycle.sales))}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-          </TabsContent>
-        ))}
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
 
-      {/* Rodapé com informações de transparência */}
-      <Card className="bg-muted/30 border-dashed">
-        <CardContent className="py-6">
-          <div className="flex items-start gap-4">
-            <div className="p-2 rounded-lg bg-primary/10">
+      <Card className="border-dashed bg-muted/20 shadow-sm">
+        <CardContent className="p-4 sm:p-6">
+          <div className="flex items-start gap-3">
+            <div className="rounded-xl bg-primary/10 p-2.5">
               <TrendingUp className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <h4 className="font-semibold mb-1">Transparência Total</h4>
-              <p className="text-sm text-muted-foreground">
-                Todas as vendas são registradas automaticamente e você pode acompanhar 
-                em tempo real o detalhamento de cada transação. O pagamento é realizado 
-                no dia 5 de cada mês referente ao ciclo anterior. Este relatório mostra 
-                os últimos 3 ciclos de pagamento para maior transparência.
+              <h4 className="font-semibold">Transparência de repasse</h4>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Cada venda concluída entra automaticamente no ciclo correspondente. Os valores exibidos mostram apenas compras finalizadas com repasse positivo para a organização.
               </p>
             </div>
           </div>

@@ -1,25 +1,16 @@
 import { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useSearch } from '@/contexts/SearchContext';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { ThemeToggle } from '@/components/layout/ThemeToggle';
-import { NotificationBell } from '@/components/layout/NotificationBell';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { 
-  Search, 
   User, 
   LogIn, 
   Menu, 
-  Home,
   Calendar,
-  Camera,
-  Info,
-  BookOpen,
-  HelpCircle,
-  Mail,
   ShoppingCart,
-  Briefcase
+  Briefcase,
+  Download,
 } from 'lucide-react';
 import {
   Sheet,
@@ -31,113 +22,38 @@ import {
 import { useCart } from '@/contexts/CartContext';
 
 const Header = () => {
-  const { user } = useAuth();
-  const { searchTerm, setSearchTerm } = useSearch();
+  const { user, profile } = useAuth();
   const { items } = useCart();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
-  const navigate = useNavigate();
 
-  const handleSearch = (value: string) => {
-    setSearchTerm(value);
-    // Redirecionar para página de eventos ao pesquisar
-    if (location.pathname !== '/events') {
-      navigate('/events');
-    }
-  };
+  const displayName = profile?.full_name?.trim() || user?.email?.split('@')[0] || 'Minha conta';
+  const initials = displayName
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('') || 'U';
 
-  // Navegação simplificada: 6 itens principais
+  // Navegação simplificada: apenas Eventos e Serviços
   const navItems = [
-    { to: '/', label: 'HOME', icon: Home },
     { to: '/events', label: 'EVENTOS', icon: Calendar },
     { to: '/servicos', label: 'SERVIÇOS', icon: Briefcase },
-    { to: '/highlights', label: 'DESTAQUES', icon: Camera },
-    { to: '/tutorial', label: 'COMO FUNCIONA', icon: BookOpen },
-    { to: '/contato', label: 'CONTATO', icon: Mail },
   ];
 
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <header className="bg-header text-header-foreground">
-      <div className="container mx-auto px-4 py-4">
-        <div className="flex items-center justify-between">
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <img 
-              src="/lovable-uploads/6fdfc5d2-230c-4142-bf7c-3a326e5e45a8.png" 
-              alt="STA Fotos - Página Inicial" 
-              className="h-8 md:h-10 w-auto cursor-pointer"
-              title="Voltar para página inicial"
-            />
-          </Link>
-
-          {/* Desktop Actions */}
-          <div className="hidden md:flex items-center gap-3">
-            <ThemeToggle />
-            <NotificationBell />
-            
-            {/* Cart Button */}
-            <Link to="/cart">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="relative gap-2 text-header-foreground hover:text-primary hover:bg-primary/10"
-              >
-                <ShoppingCart className="h-5 w-5" />
-                {items.length > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                    {items.length}
-                  </span>
-                )}
-              </Button>
-            </Link>
-            
-            {/* Search - Desktop */}
-            <div className="relative hidden lg:block">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-              <Input
-                placeholder="Pesquisar evento..."
-                value={searchTerm}
-                onChange={(e) => handleSearch(e.target.value)}
-                className="pl-10 bg-background/10 border-border text-foreground placeholder:text-muted-foreground w-64"
-              />
-            </div>
-
-            {/* Auth Buttons - Desktop */}
-            {user ? (
-              <Link to="/dashboard">
-                <Button variant="outline" size="sm" className="gap-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground">
-                  <User className="h-4 w-4" />
-                  <span>Dashboard</span>
-                </Button>
-              </Link>
-            ) : (
-              <>
-                <Link to="/auth">
-                  <Button variant="outline" size="sm" className="gap-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground">
-                    <User className="h-4 w-4" />
-                    <span>Cadastrar</span>
-                  </Button>
-                </Link>
-                <Link to="/auth">
-                  <Button size="sm" className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
-                    <LogIn className="h-4 w-4" />
-                    <span>Entrar</span>
-                  </Button>
-                </Link>
-              </>
-            )}
-          </div>
-
-          {/* Mobile Menu */}
+    <header className="sticky top-0 z-50 border-b border-amber-200/70 bg-white/95 text-slate-900 shadow-[0_1px_0_rgba(0,0,0,0.03)] backdrop-blur supports-[backdrop-filter]:bg-white/90">
+      <div className="container mx-auto flex h-20 items-center gap-4 px-4">
+          {/* Mobile Menu - esquerda */}
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <SheetTrigger asChild className="md:hidden">
-              <Button variant="ghost" size="icon" className="text-header-foreground">
+              <Button variant="ghost" size="icon" className="text-slate-700 hover:text-primary hover:bg-primary/10">
                 <Menu className="h-6 w-6" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="bg-header text-header-foreground w-[85vw] max-w-80">
+            <SheetContent side="right" className="bg-slate-50 text-slate-900 border-l border-slate-200/80 w-[85vw] max-w-80">
               <SheetHeader>
                 <SheetTitle className="text-primary">Menu</SheetTitle>
               </SheetHeader>
@@ -155,6 +71,14 @@ const Header = () => {
                         {items.length}
                       </span>
                     )}
+                  </Button>
+                </Link>
+
+                {/* Download Button Mobile */}
+                <Link to={user ? '/dashboard/purchases' : '/auth'} onClick={() => setMobileMenuOpen(false)}>
+                  <Button variant="outline" className="w-full gap-2 border-primary text-primary">
+                    <Download className="h-4 w-4" />
+                    Minhas fotos
                   </Button>
                 </Link>
 
@@ -184,7 +108,7 @@ const Header = () => {
                 )}
 
                 {/* Navigation Mobile */}
-                <div className="border-t border-white/10 pt-4 mt-2">
+                <div className="border-t border-slate-200/80 pt-4 mt-2">
                   {navItems.map((item) => {
                     const Icon = item.icon;
                     return (
@@ -195,7 +119,7 @@ const Header = () => {
                         className={`flex items-center gap-3 py-3 px-4 rounded-lg mb-1 transition-colors ${
                           isActive(item.to)
                             ? 'bg-primary text-primary-foreground font-medium'
-                            : 'hover:bg-white/10'
+                            : 'hover:bg-slate-100'
                         }`}
                       >
                         <Icon className="h-5 w-5" />
@@ -204,49 +128,116 @@ const Header = () => {
                     );
                   })}
                 </div>
-
-                {/* Search Mobile */}
-                <div className="border-t border-white/10 pt-4">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                    <Input
-                      placeholder="Pesquisar evento..."
-                      value={searchTerm}
-                      onChange={(e) => handleSearch(e.target.value)}
-                      className="pl-10 bg-background/10 border-border text-foreground placeholder:text-muted-foreground"
-                    />
-                  </div>
-                </div>
               </div>
             </SheetContent>
           </Sheet>
-        </div>
-      </div>
 
-      {/* Navigation - Desktop */}
-      <nav className="border-t border-white/10 hidden md:block">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-start space-x-6 py-3 text-sm">
+          {/* Logo */}
+          <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+            <img 
+              src="/sta-new-logo.png" 
+              alt="STA Fotos - Página Inicial" 
+              className="h-14 md:h-16 w-auto cursor-pointer"
+              title="Voltar para página inicial"
+            />
+          </Link>
+
+          <div className="ml-auto flex items-center gap-1 md:hidden">
+            <Link to={user ? '/dashboard/purchases' : '/auth'}>
+              <Button variant="ghost" size="icon" className="text-slate-700 hover:text-amber-700 hover:bg-amber-50" title="Minhas fotos">
+                <Download className="h-5 w-5" />
+              </Button>
+            </Link>
+            <Link to="/cart">
+              <Button variant="ghost" size="icon" className="relative text-slate-700 hover:text-amber-700 hover:bg-amber-50" title="Carrinho">
+                <ShoppingCart className="h-5 w-5" />
+                {items.length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-amber-500 text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center">
+                    {items.length > 9 ? '9+' : items.length}
+                  </span>
+                )}
+              </Button>
+            </Link>
+          </div>
+
+          <nav className="hidden md:flex items-center gap-1 lg:gap-2 text-[13px] font-medium text-slate-700">
             {navItems.map((item) => {
-              const Icon = item.icon;
+              const active = isActive(item.to);
               return (
                 <Link
                   key={item.to}
                   to={item.to}
-                  className={`flex items-center gap-2 transition-all duration-200 whitespace-nowrap px-3 py-1.5 rounded-md ${
-                    isActive(item.to)
-                      ? 'text-primary font-medium bg-primary/10'
-                      : 'hover:text-primary hover:bg-primary/5'
+                  className={`rounded-full px-3 py-2 transition-colors whitespace-nowrap ${
+                    active
+                      ? 'text-amber-700 bg-amber-100/70'
+                      : 'hover:text-amber-700 hover:bg-amber-50'
                   }`}
                 >
-                  <Icon className="h-4 w-4" />
                   {item.label}
                 </Link>
               );
             })}
+          </nav>
+
+          <div className="ml-auto hidden md:flex items-center gap-2 lg:gap-3">
+            <Link to={user ? '/dashboard/purchases' : '/auth'}>
+              <Button variant="ghost" size="sm" className="gap-2 text-slate-700 hover:text-amber-700 hover:bg-amber-50">
+                <Download className="h-4 w-4" />
+                <span className="hidden lg:inline">Minhas fotos</span>
+              </Button>
+            </Link>
+
+            <Link to="/cart">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="relative gap-2 text-slate-700 hover:text-amber-700 hover:bg-amber-50"
+              >
+                <ShoppingCart className="h-5 w-5" />
+                {items.length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-amber-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                    {items.length}
+                  </span>
+                )}
+              </Button>
+            </Link>
+
+            <div className="h-8 w-px bg-amber-200/80" />
+
+            {user ? (
+              <Link to="/dashboard">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-10 gap-2 rounded-full border-amber-300 bg-white px-2 pr-3 text-amber-700 shadow-sm hover:bg-amber-50 hover:text-amber-800"
+                >
+                  <Avatar className="h-7 w-7 border border-amber-200">
+                    <AvatarImage src={profile?.avatar_url || undefined} alt={displayName} />
+                    <AvatarFallback className="bg-amber-100 text-[11px] font-semibold text-amber-700">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="max-w-[140px] truncate text-sm font-medium">{displayName}</span>
+                </Button>
+              </Link>
+            ) : (
+              <>
+                <Link to="/auth">
+                  <Button variant="outline" size="sm" className="gap-2 border-amber-300 text-amber-700 hover:bg-amber-50 hover:text-amber-800">
+                    <User className="h-4 w-4" />
+                    <span>Cadastrar</span>
+                  </Button>
+                </Link>
+                <Link to="/auth">
+                  <Button size="sm" className="gap-2 bg-amber-500 text-white hover:bg-amber-600">
+                    <LogIn className="h-4 w-4" />
+                    <span>Entrar</span>
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
-      </nav>
     </header>
   );
 };

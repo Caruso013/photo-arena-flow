@@ -67,13 +67,14 @@ function maskPixKey(pixKey: string | null, type: string | null): string | null {
       return pixKey.replace(/(\d{3})\.(\d{3})\.(\d{3})-(\d{2})/, '***.$2.***-**');
     case 'cnpj':
       return pixKey.replace(/(\d{2})\.(\d{3})\.(\d{3})\/(\d{4})-(\d{2})/, '**.$2.***/$4-**');
-    case 'email':
+    case 'email': {
       const [local, domain] = pixKey.split('@');
       if (local && domain) {
         const maskedLocal = local.length > 2 ? local[0] + '***' + local[local.length - 1] : '***';
         return `${maskedLocal}@${domain}`;
       }
       return '***@***';
+    }
     case 'telefone':
       return pixKey.replace(/\((\d{2})\)\s?(\d{4,5})-?(\d{4})/, '(**) *****-$3');
     case 'aleatoria':

@@ -25,6 +25,42 @@ const TRANSFORM_CONFIGS: Record<TransformSize, TransformConfig | null> = {
 
 const SUPABASE_STORAGE_OBJECT_RE = /\/storage\/v1\/object\/(public|sign)\/([^/]+)\/(.+)$/;
 
+function getAdaptiveTransformConfig(baseConfig: TransformConfig): TransformConfig {
+  let width = baseConfig.width;
+  let quality = baseConfig.quality;
+
+  if (typeof navigator !== 'undefined') {
+    const connection = (navigator as Navigator & {
+      connection?: { effectiveType?: string; saveData?: boolean };
+      mozConnection?: { effectiveType?: string; saveData?: boolean };
+      webkitConnection?: { effectiveType?: string; saveData?: boolean };
+    }).connection
+      || (navigator as any).mozConnection
+      || (navigator as any).webkitConnection;
+
+    const effectiveType = connection?.effectiveType;
+
+    if (connection?.saveData) {
+      quality = Math.max(18, Math.round(quality * 0.7));
+      width = Math.max(120, Math.round(width * 0.85));
+    } else if (effectiveType === '4g') {
+      quality = Math.max(24, Math.round(quality * 0.88));
+    } else if (effectiveType === '3g') {
+      quality = Math.max(20, Math.round(quality * 0.75));
+      width = Math.max(120, Math.round(width * 0.82));
+    } else if (effectiveType === '2g' || effectiveType === 'slow-2g') {
+      quality = Math.max(16, Math.round(quality * 0.6));
+      width = Math.max(96, Math.round(width * 0.7));
+    }
+  }
+
+  return {
+    ...baseConfig,
+    width,
+    quality,
+  };
+}
+
 function buildSupabaseRenderUrl(originalUrl: string, config: TransformConfig): string | null {
   try {
     const url = new URL(originalUrl);
@@ -41,11 +77,15 @@ function buildSupabaseRenderUrl(originalUrl: string, config: TransformConfig): s
     const [, accessType, bucket, objectPath] = match;
     const renderUrl = new URL(`${url.origin}/storage/v1/render/image/${accessType}/${bucket}/${objectPath}`);
     const params = new URLSearchParams(url.search);
-    params.set('width', String(config.width));
-    params.set('quality', String(config.quality));
+    const adaptiveConfig = getAdaptiveTransformConfig(config);
 
-    if (config.format) {
-      params.set('format', config.format);
+    params.set('width', String(adaptiveConfig.width));
+    params.set('quality', String(adaptiveConfig.quality));
+    // Keep original framing to avoid the visual "zoom/crop" effect.
+    params.set('resize', 'contain');
+
+    if (adaptiveConfig.format) {
+      params.set('format', adaptiveConfig.format);
     }
 
     renderUrl.search = params.toString();
@@ -66,8 +106,14 @@ export function getTransformedImageUrl(
   size: TransformSize = 'medium'
 ): string {
   if (!originalUrl) return '';
+  const config = TRANSFORM_CONFIGS[size];
 
-  return originalUrl;
+  if (!config) {
+    return originalUrl;
+  }
+
+  const transformedUrl = buildSupabaseRenderUrl(originalUrl, config);
+  return transformedUrl || originalUrl;
 }
 
 /**

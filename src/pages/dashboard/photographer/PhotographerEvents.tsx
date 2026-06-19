@@ -9,6 +9,7 @@ import { Link } from 'react-router-dom';
 import { SkeletonCard } from '@/components/ui/skeleton-card';
 import { useToast } from '@/hooks/use-toast';
 import CreateEventDialog from '@/components/modals/CreateEventDialog';
+import UploadPhotoModal from '@/components/modals/UploadPhotoModal';
 import { copyShareLink } from '@/lib/shareUtils';
 import { formatCurrency } from '@/lib/utils';
 import {
@@ -43,6 +44,8 @@ const PhotographerEvents = () => {
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadCampaignId, setUploadCampaignId] = useState<string>('');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -253,12 +256,18 @@ const PhotographerEvents = () => {
     }
   };
 
-  const handleEventCreated = () => {
+  const handleEventCreated = (campaignId?: string, startUploadNow?: boolean) => {
     setShowCreateDialog(false);
     fetchMyCampaigns();
+    if (startUploadNow && campaignId) {
+      setUploadCampaignId(campaignId);
+      setShowUploadModal(true);
+    }
     toast({
       title: "Evento criado!",
-      description: "Seu evento foi criado com sucesso.",
+      description: startUploadNow
+        ? "Evento criado. Agora envie suas fotos e organize em pastas."
+        : "Seu evento foi criado com sucesso.",
     });
   };
 
@@ -407,6 +416,19 @@ const PhotographerEvents = () => {
         onClose={() => setShowCreateDialog(false)}
         onEventCreated={handleEventCreated}
       />
+
+      {showUploadModal && (
+        <UploadPhotoModal
+          onClose={() => {
+            setShowUploadModal(false);
+            setUploadCampaignId('');
+          }}
+          onUploadComplete={() => {
+            fetchMyCampaigns();
+          }}
+          initialCampaignId={uploadCampaignId}
+        />
+      )}
     </div>
   );
 };

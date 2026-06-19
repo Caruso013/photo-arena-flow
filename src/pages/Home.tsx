@@ -1,14 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getTransformedImageUrl } from '@/lib/supabaseImageTransform';
 import { formatCampaignDate } from '@/lib/eventDate';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Camera, Search, MapPin, Calendar, ArrowRight, Star, Sparkles, Building2 } from 'lucide-react';
+import { Camera, Search, MapPin, Calendar, ArrowRight, Star, Sparkles, Building2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
 import MainLayout from '@/components/layout/MainLayout';
 import { resilientQuery } from '@/lib/supabaseResilience';
+import { useSearch } from '@/contexts/SearchContext';
 
 interface FeaturedCampaign {
   id: string;
@@ -26,6 +28,7 @@ interface Organization {
   name: string;
   logo_url: string | null;
   description: string | null;
+  is_official_partner: boolean;
   event_count: number;
 }
 
@@ -33,40 +36,80 @@ const Home = () => {
   const navigate = useNavigate();
   const [featuredCampaigns, setFeaturedCampaigns] = useState<FeaturedCampaign[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [heroBannerUrl, setHeroBannerUrl] = useState<string>('');
   const [loading, setLoading] = useState(true);
+  const { setSearchTerm } = useSearch();
+  const [heroSearch, setHeroSearch] = useState('');
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const partnersCarouselRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    const onScroll = () => {
+      setShowScrollTop(window.scrollY > 300);
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+    };
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const scrollDown = () => {
+    window.scrollBy({ top: Math.round(window.innerHeight * 0.85), behavior: 'smooth' });
+  };
+
+  const scrollPartners = (direction: 'left' | 'right') => {
+    partnersCarouselRef.current?.scrollBy({
+      left: direction === 'left' ? -320 : 320,
+      behavior: 'smooth',
+    });
+  };
+
   const fetchData = async () => {
     try {
-      // Single batch: stats + campaigns + organizations
-      const [, campaignsData, orgsData] = await Promise.all([
-        resilientQuery(
-          () => supabase.from('campaigns').select('id', { count: 'exact', head: true }).eq('is_active', true),
-          'home-events-count'
-        ),
+      // Single batch: campaigns + organizations + home banner config
+      const [campaignsData, orgsData, heroBannerConfig] = await Promise.all([
         resilientQuery(
           () => supabase
             .from('campaigns')
             .select('id, title, description, event_date, location, cover_image_url, photographer_id, is_featured')
             .eq('is_active', true)
-            .order('is_featured', { ascending: false })
             .order('created_at', { ascending: false })
-            .limit(6),
+            .limit(8),
           'home-campaigns'
         ),
         resilientQuery(
           () => supabase
             .from('organizations')
-            .select('id, name, logo_url, description')
+            .select('id, name, logo_url, description, is_official_partner')
+            .eq('is_official_partner', true)
             .order('name'),
           'home-organizations'
         ),
+        resilientQuery(
+          () => supabase
+            .from('system_config' as any)
+            .select('value')
+            .eq('key', 'home_hero_banner')
+            .maybeSingle() as any,
+          'home-hero-banner'
+        ),
       ]);
 
-      // eventsCount not needed for display anymore
+      const configuredHeroUrl = (heroBannerConfig as any)?.data?.value?.url;
+      if (typeof configuredHeroUrl === 'string') {
+        setHeroBannerUrl(configuredHeroUrl);
+      }
 
       // Process organizations with event counts
       if (orgsData.data && orgsData.data.length > 0) {
@@ -159,50 +202,129 @@ const Home = () => {
 
   return (
     <MainLayout>
-      {/* Hero Section */}
-      <section className="relative overflow-hidden py-16 md:py-28">
-        <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/10 via-background to-yellow-600/5"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-yellow-500/20 via-transparent to-transparent"></div>
-        <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
-        
-        <div className="container mx-auto px-4 relative z-10">
-          <div className="max-w-4xl mx-auto text-center">
-            <div className="inline-block mb-6 px-5 py-2.5 bg-yellow-500/10 border border-yellow-500/30 rounded-full backdrop-blur-sm">
-              <span className="text-yellow-600 dark:text-yellow-400 font-semibold text-sm flex items-center gap-2">
-                <Sparkles className="h-4 w-4" />
-                Plataforma de Fotos Esportivas
-              </span>
+      {/* Partners / Parceiros - topo */}
+      {organizations.length > 0 && (
+        <section className="py-10">
+          <div className="container mx-auto px-4">
+            {/* Header */}
+            <div className="mb-6 flex items-center justify-between gap-4">
+              <div>
+                <h2 className="text-2xl md:text-3xl font-bold text-foreground">Organizações parceiras</h2>
+                <p className="text-sm md:text-base text-muted-foreground">
+                  Navegue pelas organizações em destaque e abra os eventos de cada parceira.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8 rounded-full border-primary/30 hover:bg-primary/10 hover:border-primary/60 transition-all"
+                  onClick={() => scrollPartners('left')}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8 rounded-full border-primary/30 hover:bg-primary/10 hover:border-primary/60 transition-all"
+                  onClick={() => scrollPartners('right')}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight text-foreground">
-              Encontre suas <span className="text-yellow-500">fotos</span> em segundos
-            </h1>
-            <p className="text-lg md:text-xl text-muted-foreground mb-8 leading-relaxed max-w-2xl mx-auto">
-              Acesse eventos esportivos e encontre todas as suas fotos de forma rápida e fácil
-            </p>
-            
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8">
-              <Button 
-                size="lg" 
-                className="gap-3 text-lg px-8 py-6 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 shadow-lg shadow-yellow-500/30 hover:shadow-xl hover:shadow-yellow-500/50 transition-all duration-300 hover:scale-105 w-full sm:w-auto"
-                onClick={() => navigate('/events')}
-              >
-                <Calendar className="h-6 w-6" />
-                Encontrar Minhas Fotos
-              </Button>
-              <Button 
-                size="lg" 
-                variant="outline"
-                className="gap-2 text-lg px-8 py-6 border-2 border-border hover:border-primary hover:bg-primary/5 transition-all duration-300 w-full sm:w-auto"
-                onClick={() => navigate('/events')}
-              >
-                <Calendar className="h-5 w-5" />
-                Ver Todos os Eventos
-              </Button>
+
+            {/* Carousel — scrollable on mobile, centered on desktop */}
+            <div
+              ref={partnersCarouselRef}
+              className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scroll-smooth
+                [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden
+                md:justify-center md:flex-wrap md:overflow-x-visible md:pb-0"
+            >
+              {organizations.slice(0, 8).map((org, index) => (
+                <button
+                  key={org.id}
+                  type="button"
+                  onClick={() => navigate(`/events?org=${org.id}`)}
+                  title={org.name}
+                  aria-label={`Abrir eventos da organização ${org.name}`}
+                  style={{ animationDelay: `${index * 60}ms` }}
+                  className="group flex-shrink-0 w-36 snap-start rounded-2xl border border-border/60 bg-card p-4
+                    flex flex-col items-center gap-3 shadow-sm
+                    transition-all duration-300 ease-out
+                    hover:-translate-y-2 hover:shadow-xl hover:border-primary/50 hover:shadow-primary/10
+                    animate-[fadeInUp_0.45s_ease_both]"
+                >
+                  {/* Logo container — square, centered */}
+                  <div className="relative w-full aspect-square rounded-xl border border-border/50 bg-white overflow-hidden
+                    flex items-center justify-center
+                    transition-all duration-300 group-hover:border-primary/40 group-hover:bg-primary/5">
+                    {/* shimmer */}
+                    <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/40 to-transparent pointer-events-none" />
+                    {org.logo_url ? (
+                      <img
+                        src={org.logo_url}
+                        alt={org.name}
+                        className="relative w-4/5 h-4/5 object-contain transition-transform duration-300 group-hover:scale-105"
+                      />
+                    ) : (
+                      <Building2 className="relative h-10 w-10 text-primary/60 transition-transform duration-300 group-hover:scale-110" />
+                    )}
+                  </div>
+
+                  {/* Name */}
+                  <p className="w-full text-center text-xs font-semibold leading-tight line-clamp-2
+                    text-muted-foreground group-hover:text-foreground transition-colors">
+                    {org.name}
+                  </p>
+                </button>
+              ))}
             </div>
-            
-            <p className="text-sm text-muted-foreground">
-              Encontre suas fotos nos melhores eventos esportivos
-            </p>
+          </div>
+        </section>
+      )}
+
+      {/* Hero Section with big centered search */}
+      <section className="relative">
+        <div className="container mx-auto px-4">
+          <div
+            className="rounded-none overflow-hidden h-44 sm:h-56 md:h-96 flex items-center justify-center"
+            style={{
+              backgroundImage: heroBannerUrl
+                ? `linear-gradient(rgba(0,0,0,0.22), rgba(0,0,0,0.12)), url(${heroBannerUrl})`
+                : featuredCampaigns[0]?.cover_image_url
+                ? `linear-gradient(rgba(0,0,0,0.22), rgba(0,0,0,0.12)), url(${getTransformedImageUrl(featuredCampaigns[0].cover_image_url, 'large')})`
+                : 'linear-gradient(180deg, rgba(250,245,230,0.9), rgba(250,245,230,0.9))',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+            }}
+          >
+            <div className="text-center w-full px-2">
+              <h1 className="text-2xl sm:text-3xl md:text-5xl font-extrabold text-white mb-4 md:mb-6 drop-shadow-lg leading-tight">Encontre suas Fotos</h1>
+              <div className="mx-auto w-full max-w-3xl px-2 sm:px-6">
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    setSearchTerm(heroSearch);
+                    navigate(`/events?search=${encodeURIComponent(heroSearch)}`);
+                  }}
+                >
+                  <div className="rounded-full p-1 bg-primary/10 border-2 sm:border-4 border-primary shadow-subtle">
+                    <div className="bg-card/95 rounded-full px-2 sm:px-4 py-2 sm:py-3">
+                      <div className="relative">
+                        <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4 sm:h-5 sm:w-5" />
+                        <Input
+                          placeholder="Procure pelo evento em que participou"
+                          value={heroSearch}
+                          onChange={(e) => setHeroSearch(e.target.value)}
+                          className="pl-10 sm:pl-12 pr-3 sm:pr-4 text-base sm:text-lg rounded-full border-0 bg-transparent"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </form>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -212,14 +334,14 @@ const Home = () => {
       <section className="py-20">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-foreground">Eventos em Destaque</h2>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-foreground">Últimos Eventos</h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Confira os últimos eventos e encontre suas fotos
+              Confira os eventos mais recentes e encontre suas fotos
             </p>
           </div>
 
           {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {[...Array(6)].map((_, i) => (
                 <Card key={i} className="overflow-hidden">
                   <div className="aspect-video bg-muted animate-pulse"></div>
@@ -237,11 +359,11 @@ const Home = () => {
               <p className="text-muted-foreground">Novos eventos serão adicionados em breve!</p>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {featuredCampaigns.map((campaign) => (
-                <Card 
-                  key={campaign.id} 
-                  className="overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer group"
+                <Card
+                  key={campaign.id}
+                  className="overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer group"
                   onClick={() => navigate(`/campaign/${campaign.id}`)}
                 >
                   <div className="aspect-video relative overflow-hidden bg-muted">
@@ -249,7 +371,7 @@ const Home = () => {
                       <img
                         src={getTransformedImageUrl(campaign.cover_image_url, 'medium')}
                         alt={campaign.title}
-                        className="w-full h-full object-contain group-hover:scale-100 transition-transform duration-500 p-2"
+                        className="w-full h-full object-cover group-hover:scale-105 transform transition-transform duration-500"
                         loading="lazy"
                         onError={(e) => {
                           e.currentTarget.style.display = 'none';
@@ -261,7 +383,7 @@ const Home = () => {
                       </div>
                     )}
                     <div className="absolute top-3 right-3">
-                      <Badge className="bg-background/90 backdrop-blur-sm">
+                      <Badge className="bg-background/90 backdrop-blur-sm text-foreground">
                         <Camera className="h-3 w-3 mr-1" />
                         {campaign.photo_count}
                       </Badge>
@@ -296,16 +418,16 @@ const Home = () => {
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+                ))}
             </div>
           )}
 
           <div className="text-center mt-12">
             <Button 
               size="lg" 
-              variant="outline"
+              variant="secondary"
               onClick={() => navigate('/events')}
-              className="gap-2"
+              className="gap-2 px-8 py-3 text-lg shadow-lg"
             >
               Ver Todos os Eventos
               <ArrowRight className="h-5 w-5" />
@@ -314,61 +436,93 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Organizations Section */}
-      {organizations.length > 0 && (
-        <section className="py-20 bg-muted/30">
-          <div className="container mx-auto px-4">
-            <div className="text-center mb-12">
-              <Badge variant="outline" className="mb-4 px-4 py-1 text-sm font-medium border-primary/30 text-primary">
-                <Building2 className="h-3.5 w-3.5 mr-1.5" />
-                Parceiros Oficiais
+            {/* Sobre nós */}
+      <section className="py-16">
+        <div className="container mx-auto px-4">
+          <div className="grid gap-8 lg:grid-cols-2 lg:items-center">
+            <div className="space-y-5">
+              <Badge variant="outline" className="px-4 py-1.5 w-fit border-primary/30 text-primary">
+                <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                Sobre nós
               </Badge>
-              <h2 className="text-3xl md:text-4xl font-bold mb-4 text-foreground">Organizações</h2>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                Confira os eventos das organizações parceiras
-              </p>
+              <div className="space-y-3">
+                <h2 className="text-3xl md:text-4xl font-bold text-foreground leading-tight">
+                  Fotografia esportiva com tecnologia, velocidade e propósito
+                </h2>
+                <p className="text-lg text-muted-foreground max-w-2xl">
+                  A STA nasceu para aproximar o futebol de base de uma experiência profissional de imagem, com entrega rápida, descoberta facilitada e um fluxo pensado para fotógrafos e compradores.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                <Button onClick={() => navigate('/sobre')} className="gap-2">
+                  Conhecer a STA
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+                <Button variant="outline" onClick={() => navigate('/fotografos')}>
+                  Quero ser fotógrafo
+                </Button>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {organizations.map((org) => (
-                <Card 
-                  key={org.id}
-                  className="overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer group border-border/50 hover:border-primary/40 hover:-translate-y-1"
-                  onClick={() => navigate(`/events?org=${org.id}`)}
-                >
-                  <div className="h-24 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent relative overflow-hidden">
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_30%,hsl(var(--primary)/0.15),transparent_50%)]" />
-                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2">
-                      {org.logo_url ? (
-                        <img
-                          src={org.logo_url}
-                          alt={org.name}
-                          className="h-20 w-20 rounded-2xl object-contain border-4 border-background shadow-lg group-hover:shadow-xl transition-shadow"
-                        />
-                      ) : (
-                        <div className="h-20 w-20 rounded-2xl bg-background border-4 border-background shadow-lg flex items-center justify-center group-hover:shadow-xl transition-shadow">
-                          <Building2 className="h-9 w-9 text-primary" />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <CardContent className="pt-14 pb-6 text-center">
-                    <h3 className="font-bold text-base text-foreground group-hover:text-primary transition-colors line-clamp-2 mb-2">
-                      {org.name}
-                    </h3>
-                    {org.description && (
-                      <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{org.description}</p>
-                    )}
-                    <Badge variant="secondary" className="text-xs">
-                      {org.event_count} {org.event_count === 1 ? 'evento' : 'eventos'}
-                    </Badge>
-                  </CardContent>
-                </Card>
-              ))}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Card className="border-primary/10 bg-card/90 shadow-sm">
+                <CardContent className="p-5 space-y-2">
+                  <Camera className="h-5 w-5 text-primary" />
+                  <h3 className="font-semibold text-lg">Experiência real</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Busca rápida por evento, fotos compradas e download simplificado.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="border-primary/10 bg-card/90 shadow-sm">
+                <CardContent className="p-5 space-y-2">
+                  <Star className="h-5 w-5 text-primary" />
+                  <h3 className="font-semibold text-lg">Entrega premium</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Navegação clara para atletas, famílias, fotógrafos e organizadores.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="border-primary/10 bg-card/90 shadow-sm sm:col-span-2">
+                <CardContent className="p-5 space-y-2">
+                  <Building2 className="h-5 w-5 text-primary" />
+                  <h3 className="font-semibold text-lg">Conexão com o esporte</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Um ecossistema completo para eventos, candidaturas, uploads e compra de fotos sem fricção.
+                  </p>
+                </CardContent>
+              </Card>
             </div>
           </div>
-        </section>
-      )}
+        </div>
+      </section>
+
+      <div className="fixed bottom-6 right-5 z-40 hidden md:flex flex-col gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          onClick={scrollDown}
+          className="h-10 w-10 rounded-full border-primary/30 bg-white/90 shadow-md backdrop-blur transition-all hover:-translate-y-0.5 hover:bg-primary/10"
+          title="Descer"
+        >
+          <ChevronDown className="h-5 w-5 text-primary" />
+        </Button>
+
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          onClick={scrollToTop}
+          className={`h-10 w-10 rounded-full border-primary/30 bg-white/90 shadow-md backdrop-blur transition-all hover:-translate-y-0.5 hover:bg-primary/10 ${showScrollTop ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
+          title="Subir"
+        >
+          <ChevronUp className="h-5 w-5 text-primary" />
+        </Button>
+      </div>
 
       <section className="py-20">
         <div className="container mx-auto px-4">

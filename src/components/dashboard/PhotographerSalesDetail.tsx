@@ -108,7 +108,7 @@ const PhotographerSalesDetail = ({ photographerId, photographerName, open, onClo
         };
       });
 
-      setSales(prev => pageNum === 0 ? records : [...prev, ...records]);
+      setSales(prev => pageNum === 0 ? records : records); // pagination replaces
     } catch (error) {
       console.error('Error fetching sales:', error);
       toast.error('Erro ao carregar vendas');
@@ -121,6 +121,20 @@ const PhotographerSalesDetail = ({ photographerId, photographerName, open, onClo
     const nextPage = page + 1;
     setPage(nextPage);
     fetchSales(nextPage);
+  };
+
+  const handlePrevPage = () => {
+    if (page === 0) return;
+    const prev = page - 1;
+    setPage(prev);
+    fetchSales(prev);
+  };
+
+  const handleNextPage = () => {
+    if (!hasMore) return;
+    const next = page + 1;
+    setPage(next);
+    fetchSales(next);
   };
 
   const exportToExcel = () => {
@@ -219,11 +233,17 @@ const PhotographerSalesDetail = ({ photographerId, photographerName, open, onClo
           )}
 
           {hasMore && sales.length > 0 && (
-            <div className="flex justify-center py-4">
-              <Button onClick={loadMore} variant="outline" size="sm" disabled={loading}>
-                {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                Carregar mais
-              </Button>
+            <div className="flex items-center justify-between py-4 px-2 border-t">
+              <p className="text-sm text-muted-foreground">Página {page + 1}{hasMore ? '' : ' (última)'}</p>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={handlePrevPage} disabled={page === 0 || loading}>
+                  Anterior
+                </Button>
+                <span className="text-sm font-medium px-1">{page + 1}</span>
+                <Button variant="outline" size="sm" onClick={handleNextPage} disabled={!hasMore || loading}>
+                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Próxima'}
+                </Button>
+              </div>
             </div>
           )}
         </ScrollArea>

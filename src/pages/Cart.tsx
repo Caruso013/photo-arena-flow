@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ShoppingCart, ArrowLeft, Trash2, ShoppingBag, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 const Cart = () => {
+  const round2 = (value: number) => Number(value.toFixed(2));
   const navigate = useNavigate();
   const { user } = useAuth();
   const haptic = useHapticFeedback();
@@ -28,6 +29,7 @@ const Cart = () => {
   const [showPayment, setShowPayment] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState<CouponValidationResult | null>(null);
   const [processingFree, setProcessingFree] = useState(false);
+  const freeCheckoutInFlightRef = useRef(false);
 
   // Calcular desconto progressivo
   // IMPORTANTE: Se pelo menos UMA foto do carrinho tem desconto progressivo habilitado,
@@ -38,7 +40,7 @@ const Cart = () => {
   );
   
   // Calcular preço médio por foto
-  const averagePrice = totalItems > 0 ? totalPrice / totalItems : 0;
+  const averagePrice = totalItems > 0 ? round2(totalPrice / totalItems) : 0;
   
   // Usar o hook para calcular o desconto
   const progressiveDiscount = useProgressiveDiscount(totalItems, averagePrice, hasDiscountEnabled);
@@ -50,10 +52,10 @@ const Cart = () => {
   const subtotalAfterProgressiveDiscount = progressiveDiscount.total;
 
   // Desconto do cupom
-  const couponDiscountAmount = appliedCoupon?.valid ? appliedCoupon.discount_amount : 0;
+  const couponDiscountAmount = appliedCoupon?.valid ? round2(appliedCoupon.discount_amount) : 0;
 
   // Total final
-  const finalTotal = Math.max(0, subtotalAfterProgressiveDiscount - couponDiscountAmount);
+  const finalTotal = round2(Math.max(0, subtotalAfterProgressiveDiscount - couponDiscountAmount));
 
   const revalidateAppliedCoupon = async () => {
     if (!user || !appliedCoupon?.valid || !appliedCoupon.coupon_id || !appliedCoupon.code) {
@@ -91,10 +93,37 @@ const Cart = () => {
     return refreshedCoupon;
   };
 
+  const getCheckoutErrorMessage = async (error: any) => {
+    if (error?.context instanceof Response) {
+      try {
+        const payload = await error.context.clone().json();
+        if (payload?.error) return payload.error;
+        if (payload?.message) return payload.message;
+        return JSON.stringify(payload);
+      } catch {
+        try {
+          const text = await error.context.clone().text();
+          if (text) return text;
+        } catch {
+          // Ignorar e cair nos fallbacks abaixo.
+        }
+      }
+    }
+
+    if (error?.context?.body) {
+      return typeof error.context.body === 'string'
+        ? error.context.body
+        : JSON.stringify(error.context.body);
+    }
+
+    return error?.message || 'Não foi possível processar a compra gratuita. Tente novamente.';
+  };
+
   // Não redirecionar automaticamente - deixar usuário ver carrinho mesmo deslogado
   // O redirecionamento acontece apenas ao tentar finalizar a compra
 
   const handleCheckout = async () => {
+    if (freeCheckoutInFlightRef.current) return;
     if (totalItems === 0) return;
     if (!user) {
       navigate("/auth");
@@ -138,7 +167,7 @@ const Cart = () => {
   };
 
   const handleFreeCheckout = async (coupon: CouponValidationResult) => {
-    if (!user || !coupon?.valid || !coupon.coupon_id) return;
+    if (freeCheckoutInFlightRef.current || !user || !coupon?.valid || !coupon.coupon_id) return;
 
     // Verificar sessão antes de chamar
     const { data: { session } } = await supabase.auth.getSession();
@@ -151,6 +180,7 @@ const Cart = () => {
       return;
     }
 
+  freeCheckoutInFlightRef.current = true;
     setProcessingFree(true);
     try {
       const { data, error } = await supabase.functions.invoke('mercadopago-checkout', {
@@ -189,15 +219,14 @@ const Cart = () => {
       }
     } catch (error: any) {
       console.error('Erro no checkout gratuito:', error);
-      const msg = error?.context?.body
-        ? (typeof error.context.body === 'string' ? error.context.body : JSON.stringify(error.context.body))
-        : error.message;
+      const msg = await getCheckoutErrorMessage(error);
       toast({
         title: "Erro ao processar",
         description: msg || "Não foi possível processar a compra gratuita. Tente novamente.",
         variant: "destructive",
       });
     } finally {
+      freeCheckoutInFlightRef.current = false;
       setProcessingFree(false);
     }
   };

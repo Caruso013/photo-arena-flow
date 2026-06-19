@@ -28,8 +28,8 @@ export const useFavorites = () => {
         .eq('user_id', user.id);
 
       if (error) throw error;
-      
-      setFavorites(new Set(data.map(f => f.photo_id)));
+      const favs = (data ?? []) as Array<{ photo_id?: string }>;
+      setFavorites(new Set(favs.map(f => f.photo_id).filter(Boolean) as string[]));
     } catch (error) {
       console.error('Error fetching favorites:', error);
     } finally {
@@ -50,13 +50,18 @@ export const useFavorites = () => {
           table: 'favorites',
           filter: `user_id=eq.${user.id}`
         },
-        (payload) => {
-          if (payload.eventType === 'INSERT') {
-            setFavorites(prev => new Set(prev).add((payload.new as any).photo_id));
-          } else if (payload.eventType === 'DELETE') {
-            setFavorites(prev => {
+        (payload: { eventType?: string; new?: unknown; old?: unknown }) => {
+          const eventType = payload.eventType ?? '';
+          if (eventType === 'INSERT') {
+            const newRec = payload.new as { photo_id?: string } | undefined;
+            const pid = newRec?.photo_id;
+            if (pid) setFavorites(prev => { const s = new Set(prev); s.add(pid); return s; });
+          } else if (eventType === 'DELETE') {
+            const oldRec = payload.old as { photo_id?: string } | undefined;
+            const pid = oldRec?.photo_id;
+            if (pid) setFavorites(prev => {
               const newSet = new Set(prev);
-              newSet.delete((payload.old as any).photo_id);
+              newSet.delete(pid);
               return newSet;
             });
           }
@@ -118,9 +123,10 @@ export const useFavorites = () => {
           toast.success('Adicionado aos favoritos');
           return true;
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const e = error as { message?: string };
         // Retry em caso de erro de rede
-        if (retryCount < maxRetries && (error?.message?.includes('fetch') || error?.message?.includes('network'))) {
+        if (retryCount < maxRetries && (e?.message?.includes?.('fetch') || e?.message?.includes?.('network'))) {
           retryCount++;
           await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
           return attemptToggle();
@@ -131,8 +137,9 @@ export const useFavorites = () => {
 
     try {
       return await attemptToggle();
-    } catch (error: any) {
-      console.error('Error toggling favorite:', error);
+    } catch (error: unknown) {
+      const e = error as { message?: string; code?: string };
+      console.error('Error toggling favorite:', e);
       
       // Reverter UI em caso de erro
       setFavorites(prev => {
@@ -145,11 +152,11 @@ export const useFavorites = () => {
         return newSet;
       });
       
-      const errorMsg = error?.message || 'Erro ao atualizar favoritos';
+      const errorMsg = e?.message || 'Erro ao atualizar favoritos';
       toast.error(errorMsg);
-      
+
       // Se erro for de autenticação, sugerir login
-      if (error?.code === 'PGRST116' || error?.message?.includes('JWT')) {
+      if (e?.code === 'PGRST116' || e?.message?.includes?.('JWT')) {
         toast.error('Sessão expirada. Faça login novamente.', {
           action: {
             label: 'Fazer Login',
@@ -157,7 +164,7 @@ export const useFavorites = () => {
           }
         });
       }
-      
+
       return isFavorited;
     }
   };

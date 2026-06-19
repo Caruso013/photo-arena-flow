@@ -24,6 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import AdminLayout from '@/components/dashboard/AdminLayout';
 
 interface CacheStats {
   table_name: string;
@@ -206,7 +207,8 @@ const CacheManagement = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <AdminLayout>
+      <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold mb-2">Gerenciamento de Cache</h1>
         <p className="text-muted-foreground">
@@ -447,6 +449,7 @@ const CacheManagement = () => {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+    </AdminLayout>
   );
 };
 

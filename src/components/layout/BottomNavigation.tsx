@@ -10,10 +10,10 @@ import {
   User,
   LogIn,
   LayoutDashboard,
-  Image,
-  Wallet,
-  UserCheck,
   DollarSign,
+  Menu,
+  QrCode,
+  UserCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -103,12 +103,6 @@ const BottomNavigation = () => {
 
   const photographerItems: NavItem[] = [
     {
-      icon: Home,
-      label: 'Início',
-      path: '/',
-      showBadge: false,
-    },
-    {
       icon: LayoutDashboard,
       label: 'Painel',
       path: '/dashboard',
@@ -118,23 +112,30 @@ const BottomNavigation = () => {
     {
       icon: Calendar,
       label: 'Eventos',
-      path: '/dashboard/events',
+      path: '/dashboard/photographer/events',
       showBadge: false,
-      matchPrefixes: ['/dashboard/events', '/dashboard/photographer/manage-event'],
+      matchPrefixes: ['/dashboard/photographer/events', '/dashboard/photographer/manage-event'],
     },
     {
-      icon: Image,
-      label: 'Fotos',
-      path: '/dashboard/photographer/manage-photos',
+      icon: DollarSign,
+      label: 'Financeiro',
+      path: '/dashboard/photographer/earnings',
       showBadge: false,
-      matchPrefixes: ['/dashboard/photos', '/dashboard/photographer/manage-photos', '/dashboard/photographer/featured'],
+      matchPrefixes: ['/dashboard/photographer/earnings', '/dashboard/photographer/payout', '/dashboard/financial'],
     },
     {
-      icon: Wallet,
-      label: 'Saques',
-      path: '/dashboard/photographer/payout',
+      icon: QrCode,
+      label: 'QrCode',
+      path: '/dashboard/photographer/qrcode',
       showBadge: false,
-      matchPrefixes: ['/dashboard/photographer/payout', '/dashboard/financial'],
+      matchPrefixes: ['/dashboard/photographer/qrcode'],
+    },
+    {
+      icon: Menu,
+      label: 'Menu',
+      path: '/dashboard/profile',
+      showBadge: false,
+      matchPrefixes: ['/dashboard/profile'],
     },
   ];
 

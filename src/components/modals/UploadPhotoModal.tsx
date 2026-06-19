@@ -34,9 +34,10 @@ interface SubEvent {
 interface UploadPhotoModalProps {
   onClose: () => void;
   onUploadComplete: () => void;
+  initialCampaignId?: string;
 }
 
-const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadComplete }) => {
+const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadComplete, initialCampaignId }) => {
   const { profile } = useAuth();
   const { hasPixKey, canUploadPhotos, loading: pixLoading } = usePhotographerPix();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -58,6 +59,15 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({ onClose, onUploadCo
   useEffect(() => {
     fetchCampaigns();
   }, []);
+
+  useEffect(() => {
+    if (!initialCampaignId || campaigns.length === 0 || selectedCampaign) return;
+
+    const campaignExists = campaigns.some(c => c.id === initialCampaignId);
+    if (campaignExists) {
+      setSelectedCampaign(initialCampaignId);
+    }
+  }, [initialCampaignId, campaigns, selectedCampaign]);
 
   useEffect(() => {
     if (selectedCampaign) {

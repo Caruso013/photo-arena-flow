@@ -23,6 +23,9 @@ interface DashboardLayoutProps {
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const { profile, signOut } = useAuth();
   const location = useLocation();
+  const isPhotographer = profile?.role === 'photographer';
+  const isClientUser = profile?.role === 'user';
+  const showSidebar = !isPhotographer && !isClientUser;
   
   // Estado do sidebar - iniciar expandido no desktop, fechado no mobile
   const [sidebarOpen, setSidebarOpen] = useState(() => {
@@ -55,28 +58,35 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
 
   return (
     <div className="min-h-screen flex w-full bg-background overflow-x-hidden">
-      <DashboardSidebar isOpen={sidebarOpen} onToggle={handleToggleSidebar} />
+      {showSidebar && <DashboardSidebar isOpen={sidebarOpen} onToggle={handleToggleSidebar} />}
       
       <div className="flex-1 flex flex-col min-w-0 w-full">
         {/* Header - Compacto no mobile */}
         <header className="border-b bg-card/95 backdrop-blur-sm sticky top-0 z-40">
           <div className="flex items-center justify-between px-3 py-2 md:px-4 md:py-3 gap-2">
             <div className="flex items-center gap-2 min-w-0 flex-shrink-0">
-              <Button 
-                variant="ghost" 
-                size="icon"
-                onClick={handleToggleSidebar}
-                className="md:hidden h-9 w-9 flex-shrink-0"
-              >
-                {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-              </Button>
+              {showSidebar && (
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={handleToggleSidebar}
+                  className="md:hidden h-9 w-9 flex-shrink-0"
+                >
+                  {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                </Button>
+              )}
               <Link to="/" className="hover:opacity-80 transition-opacity flex-shrink-0">
                 <img 
                   src="/lovable-uploads/6fdfc5d2-230c-4142-bf7c-3a326e5e45a8.png" 
                   alt="STA Fotos" 
-                  className="h-6 md:h-9 w-auto"
+                  className="h-8 md:h-11 w-auto"
                 />
               </Link>
+              {isPhotographer && (
+                <span className="hidden md:inline-flex items-center rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-semibold text-primary">
+                  Painel do Fotógrafo
+                </span>
+              )}
             </div>
 
             <div className="flex items-center gap-1.5 md:gap-2 flex-shrink-0">

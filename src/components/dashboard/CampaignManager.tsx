@@ -42,6 +42,9 @@ interface CampaignManagerProps {
   onRefresh: () => void;
   hasMore?: boolean;
   loadingMore?: boolean;
+  currentPage?: number;
+  onPrevPage?: () => void;
+  onNextPage?: () => void;
   onLoadMore?: () => void;
 }
 
@@ -53,7 +56,7 @@ interface CampaignStats {
 }
 
 export const CampaignManager: React.FC<CampaignManagerProps> = ({ 
-  campaigns, onRefresh, hasMore = false, loadingMore = false, onLoadMore 
+  campaigns, onRefresh, hasMore = false, loadingMore = false, currentPage = 0, onPrevPage, onNextPage, onLoadMore
 }) => {
   const navigate = useNavigate();
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -261,13 +264,22 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({
         </div>
       )}
 
-      {/* Load More */}
-      {hasMore && (
-        <div className="flex justify-center pt-4">
-          <Button variant="outline" onClick={onLoadMore} disabled={loadingMore} className="gap-2">
-            {loadingMore && <Loader2 className="h-4 w-4 animate-spin" />}
-            {loadingMore ? 'Carregando...' : 'Carregar mais eventos'}
-          </Button>
+      {/* Pagination */}
+      {(hasMore || currentPage > 0) && (
+        <div className="flex items-center justify-between pt-4 border-t">
+          <p className="text-sm text-muted-foreground">
+            Página {currentPage + 1}{hasMore ? '' : ' (última)'}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={onPrevPage} disabled={currentPage === 0 || loadingMore}>
+              Anterior
+            </Button>
+            <span className="text-sm font-medium px-2">{currentPage + 1}</span>
+            <Button variant="outline" size="sm" onClick={onNextPage} disabled={!hasMore || loadingMore} className="gap-2">
+              {loadingMore && <Loader2 className="h-4 w-4 animate-spin" />}
+              Próxima
+            </Button>
+          </div>
         </div>
       )}
 

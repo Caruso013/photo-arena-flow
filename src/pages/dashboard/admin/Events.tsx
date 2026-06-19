@@ -45,12 +45,7 @@ const AdminEvents = () => {
 
       const newData = data || [];
       setHasMore(newData.length === PAGE_SIZE);
-
-      if (reset) {
-        setCampaigns(newData);
-      } else {
-        setCampaigns(prev => [...prev, ...newData]);
-      }
+      setCampaigns(newData); // always replace for true pagination
       setPage(pageNum);
     } catch (error) {
       console.error('Error fetching campaigns:', error);
@@ -69,6 +64,14 @@ const AdminEvents = () => {
     if (!loadingMore && hasMore) {
       fetchCampaigns(page + 1, false);
     }
+  };
+
+  const handlePrevPage = () => {
+    if (page > 0) fetchCampaigns(page - 1, false);
+  };
+
+  const handleNextPage = () => {
+    if (hasMore) fetchCampaigns(page + 1, false);
   };
 
   if (profile?.role !== 'admin') {
@@ -130,7 +133,9 @@ const AdminEvents = () => {
               onRefresh={() => fetchCampaigns(0, true)} 
               hasMore={hasMore}
               loadingMore={loadingMore}
-              onLoadMore={handleLoadMore}
+              currentPage={page}
+              onPrevPage={handlePrevPage}
+              onNextPage={handleNextPage}
             />
           </TabsContent>
 

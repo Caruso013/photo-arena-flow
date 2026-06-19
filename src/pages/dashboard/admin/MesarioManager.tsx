@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { format, differenceInHours, differenceInMinutes } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
+import AdminLayout from '@/components/dashboard/AdminLayout';
 
 interface MesarioSession {
   id: string;
@@ -231,7 +232,8 @@ const MesarioManager: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <AdminLayout>
+      <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
@@ -469,6 +471,7 @@ const MesarioManager: React.FC = () => {
         </TabsContent>
       </Tabs>
     </div>
+    </AdminLayout>
   );
 };
 

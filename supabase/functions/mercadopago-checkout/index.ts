@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.0';
-import { corsHeaders } from '../_shared/cors.ts';
+import { corsHeaders } from '../_shared/cors';
 
 /**
  * Edge Function para processar pagamentos via Mercado Pago
@@ -291,34 +291,79 @@ serve(async (req) => {
 
       console.log('✅ Cupom cobre 100%:', { freeSubtotal, freeProgressiveAmount, freeSubtotalAfterProg, freeCouponDiscount });
 
-      // Distribuir valor original (após desconto progressivo) por foto para registrar uso do cupom com precisão
-      // sem depender da regra de cobrança mínima (R$ 0,01) usada nas purchases pagas.
-      const freeAllocatedAmountsByPhotoId = allocateCouponUseOriginalAmounts(freeDbPhotos, freeSubtotalAfterProg);
-      if (!freeAllocatedAmountsByPhotoId) {
-        console.error('🚨 BLOQUEADO: não foi possível distribuir valores da free_purchase', {
+      // Fluxo transacional/idempotente para free release (evita falhas em compras com muitas fotos)
+      const freeExternalRef = `FREE_RELEASE_${Date.now().toString(36)}_${buyerId.slice(0, 8)}`;
+
+      const allocatedCouponOriginalAmounts = allocatePurchaseAmounts(freeDbPhotos, freeSubtotalAfterProg);
+      if (!allocatedCouponOriginalAmounts) {
+        console.error('❌ Não foi possível distribuir os valores do cupom por foto no free release', {
           freeSubtotalAfterProg,
-          photos: freeDbPhotos.length,
-          buyerId,
+          photoCount: freeDbPhotos.length,
         });
-        return errorResponse('Não foi possível calcular os valores do cupom para esta compra.', 400);
+        return errorResponse('Não foi possível confirmar o cupom desta compra. Tente novamente.', 500);
       }
 
-      const freePhotoIdsSorted = freeDbPhotos.map((p: any) => p.id).sort().join(',');
-      const freeIdempotencyBase = `free_release|${buyerId}|${freePhotoIdsSorted}|${normalizedCouponCode}|${Number(freeSubtotalAfterProg).toFixed(2)}`;
-      const freeIdempotencyKey = await createIdempotencyKey(freeIdempotencyBase);
-      const freeExternalRef = `FREE_RELEASE:${freeIdempotencyKey}`;
+      const purchaseAmountsByPhoto: Record<string, number> = {};
+      const progressiveDiscountAmountsByPhoto: Record<string, number> = {};
+      const couponOriginalAmountsByPhoto: Record<string, number> = {};
 
-      return await processFreeReleaseCheckout({
-        supabaseAdmin,
-        corsHeaders,
-        buyerId,
-        dbPhotos: freeDbPhotos,
-        progressiveDiscountPercent: freeProgressivePercent,
+      for (const freePhoto of freeDbPhotos) {
+        const photoPrice = Number(freePhoto.price) || 0;
+        const photoAfterProgressive = allocatedCouponOriginalAmounts.get(freePhoto.id) ?? 0;
+
+        // Mantemos valor mínimo simbólico por foto para preservar consistência de triggers/relatórios
+        const symbolicAmount = 0.01;
+
+        purchaseAmountsByPhoto[freePhoto.id] = symbolicAmount;
+        // Mantemos a mesma semântica do checkout normal: o campo em purchases reflete o desconto total
+        // entre o preço original da foto e o valor simbólico cobrado no free release.
+        progressiveDiscountAmountsByPhoto[freePhoto.id] = Number((photoPrice - symbolicAmount).toFixed(2));
+        couponOriginalAmountsByPhoto[freePhoto.id] = photoAfterProgressive;
+      }
+
+      const { data: freeReleaseResult, error: freeReleaseError } = await (supabaseAdmin.rpc as any)(
+        'process_free_release_checkout',
+        {
+          p_buyer_id: buyerId,
+          p_photo_ids: freeDbPhotos.map((p: any) => p.id),
+          p_external_reference: freeExternalRef,
+          p_progressive_discount_percentage: freeProgressivePercent,
+          p_purchase_amounts_by_photo: purchaseAmountsByPhoto,
+          p_progressive_discount_amounts_by_photo: progressiveDiscountAmountsByPhoto,
+          p_coupon_id: freeCouponId,
+          p_coupon_original_amounts_by_photo: couponOriginalAmountsByPhoto,
+        },
+      );
+
+      if (freeReleaseError) {
+        console.error('❌ Erro no process_free_release_checkout:', freeReleaseError);
+        return errorResponse('Não foi possível processar a compra gratuita. Tente novamente.', 500);
+      }
+
+      const freeReleaseRow = Array.isArray(freeReleaseResult)
+        ? freeReleaseResult[0]
+        : freeReleaseResult;
+      const freePurchaseIds = (freeReleaseRow?.purchase_ids || []).filter(Boolean);
+
+      if (!Array.isArray(freePurchaseIds) || freePurchaseIds.length === 0) {
+        console.error('❌ process_free_release_checkout retornou sem purchase_ids:', freeReleaseResult);
+        return errorResponse('Não foi possível concluir a compra gratuita.', 500);
+      }
+
+      console.log('🎉 Compra gratuita concluída:', {
+        purchaseIds: freePurchaseIds,
         couponId: freeCouponId,
-        couponCode: normalizedCouponCode,
-        subtotalAfterProgressive: freeSubtotalAfterProg,
-        allocatedOriginalAmountsByPhotoId: freeAllocatedAmountsByPhotoId,
-        externalReference: freeExternalRef,
+        reused: Boolean(freeReleaseRow?.reused),
+      });
+
+      return new Response(JSON.stringify({
+        success: true,
+        purchaseIds: freePurchaseIds,
+        purchase_ids: freePurchaseIds,
+        status: 'approved',
+        free: true,
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
@@ -329,6 +374,11 @@ serve(async (req) => {
 
     if (!buyer || !buyer.email) {
       return errorResponse('Dados do comprador incompletos (email é obrigatório)', 400);
+    }
+
+    const cleanPhone = String(buyer?.phone || '').replace(/\D/g, '');
+    if (cleanPhone.length !== 10 && cleanPhone.length !== 11) {
+      return errorResponse('Dados do comprador incompletos (telefone é obrigatório)', 400);
     }
 
     // Compras precisam estar vinculadas a um usuário autenticado
@@ -412,61 +462,30 @@ serve(async (req) => {
     const rawFinalTotal = Number((subtotal - totalDiscount).toFixed(2));
     const finalTotal = Math.max(rawFinalTotal, 0);
 
-    // Se o valor final zerou, liberar compra gratuita sem chamar o MP.
+    if (validatedCouponId && serverCouponDiscountAmount >= subtotalAfterProgressive) {
+      console.error('🚨 BLOQUEADO: cupom zerando total da compra', {
+        subtotal,
+        subtotalAfterProgressive,
+        serverCouponDiscountAmount,
+        validatedCouponId,
+        buyerId,
+      });
+      return errorResponse('Este cupom zera o valor da compra e não é permitido.', 400);
+    }
+
+    // 🚨 SEGURANÇA CRÍTICA: bloquear qualquer checkout com total zerado
+    // (mesmo com cupom) para evitar liberação gratuita de fotos.
     if (finalTotal <= 0) {
-      if (!validatedCouponId || !coupon?.code || typeof coupon.code !== 'string') {
-        console.error('🚨 BLOQUEADO: total zerado sem cupom válido para free release', {
-          subtotal,
-          subtotalAfterProgressive,
-          serverCouponDiscountAmount,
-          finalTotal,
-          buyerId,
-        });
-        return errorResponse('Cupom válido é obrigatório para compra gratuita.', 400);
-      }
-
-      const normalizedCouponCode = coupon.code.trim().toUpperCase();
-      if (!normalizedCouponCode) {
-        return errorResponse('Cupom obrigatório para compra gratuita.', 400);
-      }
-
-      const allocatedOriginalAmountsByPhotoId = allocateCouponUseOriginalAmounts(dbPhotos, subtotalAfterProgressive);
-      if (!allocatedOriginalAmountsByPhotoId) {
-        console.error('🚨 BLOQUEADO: não foi possível distribuir valores do free release', {
-          subtotalAfterProgressive,
-          photos: dbPhotos.length,
-          buyerId,
-        });
-        return errorResponse('Não foi possível calcular os valores do cupom para esta compra.', 400);
-      }
-
-      const freePhotoIdsSorted = dbPhotos.map((p: any) => p.id).sort().join(',');
-      const freeIdempotencyBase = `free_release|${buyerId}|${freePhotoIdsSorted}|${normalizedCouponCode}|${Number(subtotalAfterProgressive).toFixed(2)}`;
-      const freeIdempotencyKey = await createIdempotencyKey(freeIdempotencyBase);
-      const freeExternalReference = `FREE_RELEASE:${freeIdempotencyKey}`;
-
-      console.log('🎁 Total zerado detectado, executando free release transacional:', {
+      console.error('🚨 BLOQUEADO: tentativa de checkout com valor zero', {
         subtotal,
         totalDiscount,
         finalTotal,
         buyerId,
         action,
-        validatedCouponId,
-        freeExternalReference,
+        hasCoupon: !!coupon,
+        hasValidatedCoupon: !!validatedCouponId,
       });
-
-      return await processFreeReleaseCheckout({
-        supabaseAdmin,
-        corsHeaders,
-        buyerId,
-        dbPhotos,
-        progressiveDiscountPercent: serverProgressiveDiscountPercent,
-        couponId: validatedCouponId,
-        couponCode: normalizedCouponCode,
-        subtotalAfterProgressive,
-        allocatedOriginalAmountsByPhotoId,
-        externalReference: freeExternalReference,
-      });
+      return errorResponse('Não é permitido finalizar compra com valor R$ 0,00.', 400);
     }
 
     // Segurança extra: evitar cenários de arredondamento que geram fotos com amount = 0
@@ -841,137 +860,6 @@ async function createIdempotencyKey(base: string) {
 
   // Mercado Pago aceita chaves alfanuméricas de tamanho limitado
   return `mp-${hashHex.substring(0, 56)}`;
-}
-
-function mapToNumericRecord(valuesById: Map<string, number>) {
-  const numericRecord: Record<string, number> = {};
-  valuesById.forEach((value, key) => {
-    numericRecord[key] = value;
-  });
-  return numericRecord;
-}
-
-type FreeReleasePhoto = {
-  id: string;
-  price: number | string | null;
-  photographer_id?: string | null;
-};
-
-async function processFreeReleaseCheckout(params: {
-  supabaseAdmin: any;
-  corsHeaders: Record<string, string>;
-  buyerId: string;
-  dbPhotos: FreeReleasePhoto[];
-  progressiveDiscountPercent: number;
-  couponId: string;
-  couponCode: string;
-  subtotalAfterProgressive: number;
-  allocatedOriginalAmountsByPhotoId: Map<string, number>;
-  externalReference: string;
-}) {
-  const {
-    supabaseAdmin,
-    corsHeaders,
-    buyerId,
-    dbPhotos,
-    progressiveDiscountPercent,
-    couponId,
-    couponCode,
-    subtotalAfterProgressive,
-    allocatedOriginalAmountsByPhotoId,
-    externalReference,
-  } = params;
-
-  const purchaseAmountsByPhoto = new Map<string, number>();
-  const progressiveDiscountAmountsByPhoto = new Map<string, number>();
-
-  for (const photo of dbPhotos) {
-    purchaseAmountsByPhoto.set(photo.id, 0.01);
-    progressiveDiscountAmountsByPhoto.set(photo.id, Number(photo.price) || 0);
-  }
-
-  const { data, error } = await supabaseAdmin.rpc('process_free_release_checkout', {
-    p_buyer_id: buyerId,
-    p_photo_ids: dbPhotos.map((photo: any) => photo.id),
-    p_external_reference: externalReference,
-    p_progressive_discount_percentage: progressiveDiscountPercent,
-    p_purchase_amounts_by_photo: mapToNumericRecord(purchaseAmountsByPhoto),
-    p_progressive_discount_amounts_by_photo: mapToNumericRecord(progressiveDiscountAmountsByPhoto),
-    p_coupon_id: couponId,
-    p_coupon_original_amounts_by_photo: mapToNumericRecord(allocatedOriginalAmountsByPhotoId),
-  });
-
-  if (error) {
-    console.error('❌ Erro no free release transacional:', error);
-    return errorResponse('Não foi possível confirmar o cupom desta compra. Tente novamente.', 500);
-  }
-
-  const resultRow = Array.isArray(data) ? data[0] : data;
-  const purchaseIds = resultRow?.purchase_ids || [];
-  const reused = !!resultRow?.reused;
-
-  if (!purchaseIds || purchaseIds.length === 0) {
-    console.error('❌ Free release sem purchase_ids:', data);
-    return errorResponse('Não foi possível processar as fotos.', 500);
-  }
-
-  console.log('🎉 Free release concluído:', {
-    purchaseIds,
-    couponId,
-    couponCode,
-    buyerId,
-    externalReference,
-    subtotalAfterProgressive,
-    reused,
-  });
-
-  return new Response(JSON.stringify({
-    success: true,
-    purchaseIds,
-    purchase_ids: purchaseIds,
-    status: 'approved',
-    free: true,
-    reused,
-  }), {
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
-}
-
-function allocateCouponUseOriginalAmounts(dbPhotos: FreeReleasePhoto[], totalAmount: number): Map<string, number> | null {
-  const photoCount = dbPhotos.length;
-  if (!photoCount || totalAmount <= 0) {
-    return null;
-  }
-
-  const prices = dbPhotos.map((photo: any) => Number(photo.price) || 0);
-  const subtotal = prices.reduce((sum: number, price: number) => sum + price, 0);
-  if (subtotal <= 0) {
-    return null;
-  }
-
-  const allocation = new Map<string, number>();
-  let remaining = Number(totalAmount.toFixed(6));
-
-  for (let i = 0; i < dbPhotos.length; i++) {
-    const photo = dbPhotos[i];
-
-    // Última foto recebe o restante para evitar drift de arredondamento.
-    if (i === dbPhotos.length - 1) {
-      const lastAmount = Number(Math.max(remaining, 0).toFixed(6));
-      if (lastAmount <= 0) return null;
-      allocation.set(photo.id, lastAmount);
-      break;
-    }
-
-    const proportional = (prices[i] / subtotal) * totalAmount;
-    const allocated = Number(Math.max(proportional, 0).toFixed(6));
-    if (allocated <= 0) return null;
-
-    allocation.set(photo.id, allocated);
-    remaining = Number((remaining - allocated).toFixed(6));
-  }
-
-  return allocation;
 }
 
 function allocatePurchaseAmounts(dbPhotos: any[], finalTotal: number): Map<string, number> | null {

@@ -58,11 +58,12 @@ export function useCoupons() {
 
       if (error) throw error;
       setCoupons((data || []) as Coupon[]);
-    } catch (error: any) {
-      console.error('Erro ao carregar cupons:', error);
+    } catch (error: unknown) {
+      const e = error as { message?: string };
+      console.error('Erro ao carregar cupons:', e);
       toast({
         title: 'Erro ao carregar cupons',
-        description: error.message,
+        description: e.message ?? 'Erro desconhecido',
         variant: 'destructive',
       });
     } finally {
@@ -94,11 +95,12 @@ export function useCoupons() {
 
       await fetchCoupons();
       return data;
-    } catch (error: any) {
-      console.error('Erro ao criar cupom:', error);
+    } catch (error: unknown) {
+      const e = error as { message?: string };
+      console.error('Erro ao criar cupom:', e);
       toast({
         title: 'Erro ao criar cupom',
-        description: error.message,
+        description: e.message ?? 'Erro desconhecido',
         variant: 'destructive',
       });
       throw error;
@@ -123,11 +125,12 @@ export function useCoupons() {
       });
 
       await fetchCoupons();
-    } catch (error: any) {
-      console.error('Erro ao atualizar cupom:', error);
+    } catch (error: unknown) {
+      const e = error as { message?: string };
+      console.error('Erro ao atualizar cupom:', e);
       toast({
         title: 'Erro ao atualizar cupom',
-        description: error.message,
+        description: e.message ?? 'Erro desconhecido',
         variant: 'destructive',
       });
       throw error;
@@ -148,11 +151,12 @@ export function useCoupons() {
       });
 
       await fetchCoupons();
-    } catch (error: any) {
-      console.error('Erro ao excluir cupom:', error);
+    } catch (error: unknown) {
+      const e = error as { message?: string };
+      console.error('Erro ao excluir cupom:', e);
       toast({
         title: 'Erro ao excluir cupom',
-        description: error.message,
+        description: e.message ?? 'Erro desconhecido',
         variant: 'destructive',
       });
       throw error;
@@ -169,7 +173,7 @@ export function useCoupons() {
     purchaseAmount: number
   ): Promise<CouponValidationResult> => {
     try {
-      const { data, error } = await (supabase.rpc as any)('validate_coupon', {
+      const { data, error } = await supabase.rpc('validate_coupon', {
         p_code: code,
         p_user_id: userId,
         p_purchase_amount: purchaseAmount,
@@ -177,15 +181,17 @@ export function useCoupons() {
 
       if (error) throw error;
 
-      // RPC retorna array com 1 resultado
-      const result = data[0] as CouponValidationResult;
+      const result = Array.isArray(data)
+        ? (data[0] as CouponValidationResult | undefined)
+        : (data as CouponValidationResult | undefined);
 
-      if (!result.valid) {
+      if (!result || !result.valid) {
         toast({
           title: 'Cupom inválido',
-          description: result.message,
+          description: result?.message ?? 'Cupom inválido',
           variant: 'destructive',
         });
+        return result ?? { valid: false, coupon_id: null, discount_amount: 0, message: 'Cupom inválido' };
       } else {
         toast({
           title: 'Cupom aplicado!',
@@ -194,11 +200,12 @@ export function useCoupons() {
       }
 
       return result;
-    } catch (error: any) {
-      console.error('Erro ao validar cupom:', error);
+    } catch (error: unknown) {
+      const e = error as { message?: string };
+      console.error('Erro ao validar cupom:', e);
       toast({
         title: 'Erro ao validar cupom',
-        description: error.message,
+        description: e.message ?? 'Erro desconhecido',
         variant: 'destructive',
       });
       return {
@@ -213,14 +220,15 @@ export function useCoupons() {
   const getCouponStats = async (): Promise<CouponStats[]> => {
     try {
       const { data, error } = await supabase
-        .from('coupon_stats' as any)
+        .from('coupon_stats')
         .select('*')
         .order('total_discount_given', { ascending: false });
 
       if (error) throw error;
       return (data as unknown as CouponStats[]) || [];
-    } catch (error: any) {
-      console.error('Erro ao carregar estatísticas:', error);
+    } catch (error: unknown) {
+      const e = error as { message?: string };
+      console.error('Erro ao carregar estatísticas:', e);
       return [];
     }
   };

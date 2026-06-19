@@ -33,3 +33,5 @@ test-local.cjs
 
 # Lock files (keep only one)
 bun.lockb
+.vercel
+.env*

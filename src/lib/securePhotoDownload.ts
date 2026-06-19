@@ -41,35 +41,55 @@ export async function getSecurePhotoDownloadUrl(photoId: string): Promise<string
 
     const endpoint = `${supabaseUrl}/functions/v1/generate-photo-download`;
 
-    // 3️⃣ Fazer requisição ao backend seguro
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${session.access_token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ photo_id: photoId }),
-    });
+    // 3️⃣ Fazer requisição ao backend seguro (com retry curto para webhook/propagação)
+    const maxAttempts = 3;
+    let response: Response | null = null;
+    let errorData: any = null;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ photo_id: photoId }),
+      });
+
+      if (response.ok) {
+        break;
+      }
+
+      try {
+        errorData = await response.json();
+      } catch {
+        errorData = { error: 'Erro desconhecido' };
+      }
+
+      // Compra pode estar em processamento por alguns segundos após pagamento aprovado
+      if (response.status === 409 && attempt < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, 1200 * attempt));
+        continue;
+      }
+
+      break;
+    }
 
     // 4️⃣ Validar resposta
-    if (!response.ok) {
-      const errorData = await response.json();
-      
-      if (response.status === 429) {
-        // Rate limit atingido
+    if (!response || !response.ok) {
+      if (response?.status === 429) {
         toast.error('⏰ Você atingiu o limite de downloads (25 por hora). Tente novamente mais tarde.');
-      } else if (response.status === 403) {
-        // Não comprou a foto
-        toast.error('❌ Você não comprou esta foto. Compre para fazer o download.');
-      } else if (response.status === 401) {
-        // Não autenticado
+      } else if (response?.status === 409) {
+        toast.error('⏳ Pagamento em processamento. Aguarde alguns segundos e tente novamente.');
+      } else if (response?.status === 403) {
+        toast.error('❌ Compra ainda não identificada para esta foto. Atualize e tente novamente.');
+      } else if (response?.status === 401) {
         toast.error('❌ Sua sessão expirou. Faça login novamente.');
       } else {
-        // Erro genérico
-        toast.error(errorData.error || '❌ Erro ao gerar link de download');
+        toast.error(errorData?.error || '❌ Erro ao gerar link de download');
       }
-      
-      console.error(`❌ Erro na geração de URL (${response.status}):`, errorData);
+
+      console.error(`❌ Erro na geração de URL (${response?.status ?? 'sem status'}):`, errorData);
       return null;
     }
 

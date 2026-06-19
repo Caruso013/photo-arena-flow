@@ -8,6 +8,7 @@ import { toast } from '@/components/ui/use-toast';
 import { Gift, AlertCircle, Check, RefreshCw } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
+import AdminLayout from '@/components/dashboard/AdminLayout';
 
 interface Campaign {
   id: string;
@@ -121,19 +122,22 @@ const ProgressiveDiscountManager = () => {
 
   if (loading && campaigns.length === 0) {
     return (
-      <div className="container max-w-6xl py-8">
-        <Card>
-          <CardContent className="p-8 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-4 text-muted-foreground">Carregando eventos...</p>
-          </CardContent>
-        </Card>
-      </div>
+      <AdminLayout>
+        <div className="container max-w-6xl py-8">
+          <Card>
+            <CardContent className="p-8 text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+              <p className="mt-4 text-muted-foreground">Carregando eventos...</p>
+            </CardContent>
+          </Card>
+        </div>
+      </AdminLayout>
     );
   }
 
   return (
-    <div className="container max-w-6xl py-8">
+    <AdminLayout>
+      <div className="container max-w-6xl py-8">
       <div className="mb-6">
         <h1 className="text-3xl font-bold flex items-center gap-2">
           <Gift className="h-8 w-8" />
@@ -296,6 +300,7 @@ const ProgressiveDiscountManager = () => {
         </CardContent>
       </Card>
     </div>
+    </AdminLayout>
   );
 };
 

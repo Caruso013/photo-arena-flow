@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,9 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from '@/components/ui/use-toast';
-import { Building2, Edit, Trash2, Plus, Key, Copy, Check, Upload, Palette, Image } from 'lucide-react';
+import { Building2, Edit, Trash2, Plus, Key, Copy, Check, Upload, Palette, Image, ShieldCheck } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 interface Organization {
@@ -16,6 +17,7 @@ interface Organization {
   name: string;
   description: string | null;
   admin_percentage: number;
+  is_official_partner?: boolean;
   logo_url: string | null;
   primary_color: string | null;
   created_at: string;
@@ -28,6 +30,7 @@ interface OrganizationManagerProps {
 }
 
 export const OrganizationManager: React.FC<OrganizationManagerProps> = ({ organizations, onRefresh }) => {
+  const [officialPartnerFeatureAvailable, setOfficialPartnerFeatureAvailable] = useState(true);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -41,9 +44,75 @@ export const OrganizationManager: React.FC<OrganizationManagerProps> = ({ organi
     name: '',
     description: '',
     admin_percentage: 30,
+    is_official_partner: false,
     logo_url: '',
     primary_color: '#D4AF37'
   });
+
+  const isMissingOfficialPartnerColumn = (error: any) => {
+    const message = String(error?.message || '');
+    return error?.code === 'PGRST204' && message.includes('is_official_partner');
+  };
+
+  useEffect(() => {
+    const checkOfficialPartnerFeature = async () => {
+      const { error } = await supabase
+        .from('organizations')
+        .select('id, is_official_partner')
+        .limit(1);
+
+      if (isMissingOfficialPartnerColumn(error)) {
+        setOfficialPartnerFeatureAvailable(false);
+      }
+    };
+
+    checkOfficialPartnerFeature();
+  }, []);
+
+  const handleToggleOfficialPartner = async (org: Organization, checked: boolean) => {
+    try {
+      if (!officialPartnerFeatureAvailable) {
+        toast({
+          title: 'Migration pendente',
+          description: 'A coluna is_official_partner ainda nao existe no banco.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const { error } = await supabase
+        .from('organizations')
+        .update({ is_official_partner: checked })
+        .eq('id', org.id);
+
+      if (error) throw error;
+
+      toast({
+        title: checked ? 'Parceiro oficial ativado' : 'Parceiro oficial removido',
+        description: `${org.name} ${checked ? 'agora aparece' : 'nao aparece mais'} na Home.`,
+      });
+
+      onRefresh();
+    } catch (error) {
+      console.error('Error toggling official partner:', error);
+
+      if (isMissingOfficialPartnerColumn(error)) {
+        setOfficialPartnerFeatureAvailable(false);
+        toast({
+          title: 'Migration pendente no Supabase',
+          description: 'Aplique as migrations e tente novamente para usar Parceiro Oficial.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      toast({
+        title: 'Erro ao atualizar parceiro oficial',
+        description: 'Nao foi possivel salvar a alteracao.',
+        variant: 'destructive',
+      });
+    }
+  };
 
   const generateCredentials = (orgName: string, createdAt?: string) => {
     let login = orgName
@@ -181,10 +250,20 @@ export const OrganizationManager: React.FC<OrganizationManagerProps> = ({ organi
 
   const handleCreate = async () => {
     try {
+      const createPayload = officialPartnerFeatureAvailable
+        ? formData
+        : {
+            name: formData.name,
+            description: formData.description,
+            admin_percentage: formData.admin_percentage,
+            logo_url: formData.logo_url,
+            primary_color: formData.primary_color,
+          };
+
       // 1. Criar organização
       const { data: orgData, error: orgError } = await supabase
         .from('organizations')
-        .insert([formData])
+        .insert([createPayload])
         .select()
         .single();
 
@@ -218,7 +297,7 @@ export const OrganizationManager: React.FC<OrganizationManagerProps> = ({ organi
       });
 
       setCreateDialogOpen(false);
-      setFormData({ name: '', description: '', admin_percentage: 30, logo_url: '', primary_color: '#D4AF37' });
+      setFormData({ name: '', description: '', admin_percentage: 30, is_official_partner: false, logo_url: '', primary_color: '#D4AF37' });
       onRefresh();
     } catch (error) {
       console.error('Error creating organization:', error);
@@ -234,9 +313,19 @@ export const OrganizationManager: React.FC<OrganizationManagerProps> = ({ organi
     if (!selectedOrg) return;
 
     try {
+      const editPayload = officialPartnerFeatureAvailable
+        ? formData
+        : {
+            name: formData.name,
+            description: formData.description,
+            admin_percentage: formData.admin_percentage,
+            logo_url: formData.logo_url,
+            primary_color: formData.primary_color,
+          };
+
       const { error } = await supabase
         .from('organizations')
-        .update(formData)
+        .update(editPayload)
         .eq('id', selectedOrg.id);
 
       if (error) throw error;
@@ -294,6 +383,7 @@ export const OrganizationManager: React.FC<OrganizationManagerProps> = ({ organi
       name: org.name,
       description: org.description || '',
       admin_percentage: org.admin_percentage,
+      is_official_partner: org.is_official_partner ?? false,
       logo_url: org.logo_url || '',
       primary_color: org.primary_color || '#D4AF37'
     });
@@ -365,6 +455,35 @@ export const OrganizationManager: React.FC<OrganizationManagerProps> = ({ organi
                     onChange={(e) => setFormData({ ...formData, admin_percentage: parseFloat(e.target.value) || 0 })}
                   />
                 </div>
+                <div className="rounded-xl border border-emerald-200/70 bg-gradient-to-r from-emerald-50 to-emerald-100/40 p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="create-official-partner" className="flex items-center gap-2 text-emerald-900">
+                        <ShieldCheck className="h-4 w-4" />
+                        Registrar como parceiro oficial
+                      </Label>
+                      <p className="text-xs text-emerald-700">
+                        Quando ativo, a organização aparece na seção Parceiros Oficiais da Home.
+                      </p>
+                    </div>
+                    <Switch
+                      id="create-official-partner"
+                      checked={formData.is_official_partner}
+                      disabled={!officialPartnerFeatureAvailable}
+                      onCheckedChange={(checked) => setFormData({ ...formData, is_official_partner: checked })}
+                    />
+                  </div>
+                  <div className="mt-3">
+                    <Badge variant="outline" className={formData.is_official_partner ? 'border-emerald-400 bg-emerald-100 text-emerald-800' : 'border-slate-300 bg-white text-slate-600'}>
+                      {formData.is_official_partner ? 'Status: Oficial' : 'Status: Não oficial'}
+                    </Badge>
+                    {!officialPartnerFeatureAvailable && (
+                      <p className="mt-2 text-[11px] text-amber-700">
+                        Recurso temporariamente indisponivel: aplique a migration da coluna is_official_partner no Supabase.
+                      </p>
+                    )}
+                  </div>
+                </div>
                 <Button onClick={handleCreate} className="w-full">
                   Criar Organização
                 </Button>
@@ -414,6 +533,11 @@ export const OrganizationManager: React.FC<OrganizationManagerProps> = ({ organi
                           >
                             {org.name}
                           </h4>
+                          {org.is_official_partner && (
+                            <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 border-emerald-200">
+                              Parceiro Oficial
+                            </Badge>
+                          )}
                           {org.primary_color && (
                             <div 
                               className="w-4 h-4 rounded-full border"
@@ -432,6 +556,27 @@ export const OrganizationManager: React.FC<OrganizationManagerProps> = ({ organi
                     </div>
                     
                     <div className="flex items-center gap-2">
+                      <div className={`min-w-[220px] rounded-xl border px-3 py-2.5 shadow-sm transition-colors ${org.is_official_partner ? 'border-emerald-300 bg-emerald-50/80' : 'border-slate-200 bg-slate-50/70'}`}>
+                        <div className="flex items-center justify-between gap-3">
+                          <Label htmlFor={`official-${org.id}`} className="cursor-pointer">
+                            <span className="flex items-center gap-1.5 text-xs font-semibold">
+                              <ShieldCheck className={`h-3.5 w-3.5 ${org.is_official_partner ? 'text-emerald-600' : 'text-slate-400'}`} />
+                              <span className={org.is_official_partner ? 'text-emerald-800' : 'text-slate-600'}>
+                                Parceiro Oficial
+                              </span>
+                            </span>
+                            <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                              {org.is_official_partner ? 'Visível na Home' : 'Oculto na Home'}
+                            </span>
+                          </Label>
+                          <Switch
+                            id={`official-${org.id}`}
+                            checked={Boolean(org.is_official_partner)}
+                            disabled={!officialPartnerFeatureAvailable}
+                            onCheckedChange={(checked) => handleToggleOfficialPartner(org, checked)}
+                          />
+                        </div>
+                      </div>
                       <div className="text-right mr-4">
                         <span className="text-lg font-bold text-primary">
                           {org.admin_percentage}%
@@ -581,6 +726,18 @@ export const OrganizationManager: React.FC<OrganizationManagerProps> = ({ organi
                 step="0.01"
                 value={formData.admin_percentage}
                 onChange={(e) => setFormData({ ...formData, admin_percentage: parseFloat(e.target.value) || 0 })}
+              />
+            </div>
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div>
+                <Label htmlFor="edit-official-partner">Parceiro oficial na Home</Label>
+                <p className="text-xs text-muted-foreground">Somente parceiros oficiais aparecem na secao da pagina inicial.</p>
+              </div>
+              <Switch
+                id="edit-official-partner"
+                checked={formData.is_official_partner}
+                disabled={!officialPartnerFeatureAvailable}
+                onCheckedChange={(checked) => setFormData({ ...formData, is_official_partner: checked })}
               />
             </div>
 

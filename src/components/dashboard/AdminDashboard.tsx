@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/lib/utils';
+import { Link } from 'react-router-dom';
 import { 
   Settings, 
   Building2, 
@@ -20,12 +21,11 @@ import {
   Clock,
   RefreshCw,
   CheckCircle,
-  Loader2
+  Loader2,
+  ArrowRight,
+  Sparkles,
+  SlidersHorizontal
 } from 'lucide-react';
-import AdminNavbar from './AdminNavbar';
-import WelcomeHeader from './WelcomeHeader';
-import MetricCard from './MetricCard';
-import QuickActions, { QuickAction } from './QuickActions';
 import RecentActivity, { ActivityItem } from './RecentActivity';
 import FinancialDashboard from './FinancialDashboard';
 import { OrganizationManager } from './OrganizationManager';
@@ -345,113 +345,150 @@ const AdminDashboard = () => {
     );
   }
 
-  const quickActions: QuickAction[] = [
-    {
-      icon: UserCheck,
-      label: 'Aprovar Fotógrafos',
-      description: `${stats.pendingApplications} pendentes`,
-      href: '/dashboard/admin/photographers',
-      badge: stats.pendingApplications > 0 ? stats.pendingApplications : undefined,
-    },
-    {
-      icon: DollarSign,
-      label: 'Pagamentos',
-      description: 'Gerenciar repasses',
-      href: '/dashboard/admin/financial',
-    },
-    {
-      icon: Building2,
-      label: 'Organizações',
-      description: `${organizations.length} cadastradas`,
-      href: '/dashboard/admin/organizations',
-    },
-    {
-      icon: Camera,
-      label: 'Eventos',
-      description: `${campaigns.filter(c => c.is_active).length} ativos`,
-      href: '/dashboard/admin/events',
-    },
-  ];
-
   return (
-    <div className="min-h-screen bg-background">
-      <AdminNavbar 
-        currentUser={{
-          id: user?.id || '',
-          email: user?.email || '',
-          full_name: profile?.full_name || undefined,
-          avatar_url: profile?.avatar_url || undefined
-        }}
-        pendingApplications={stats.pendingApplications}
-        eventApplications={[]}
-        onApplicationResponse={() => {}}
-      />
-      
-      <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-8 space-y-4 sm:space-y-8 pb-24 sm:pb-8">
-        {/* Welcome Header */}
-        <WelcomeHeader
-          title="Painel Administrativo"
-          subtitle="Gerencie a plataforma, fotógrafos, eventos e finanças"
-          userName={profile?.full_name || undefined}
-          avatarUrl={profile?.avatar_url || undefined}
-          icon={Shield}
-        />
+    <div className="space-y-6 pb-28 md:pb-0">
+      <div className="rounded-3xl border border-amber-200/60 bg-gradient-to-r from-amber-50 via-white to-yellow-50 p-4 shadow-sm sm:p-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-2">
+            <div className="inline-flex w-fit items-center gap-2 rounded-full border border-amber-200 bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
+              <Sparkles className="h-3.5 w-3.5" />
+              Painel administrativo
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+                Olá, {profile?.full_name || 'Admin'}
+              </h1>
+              <p className="mt-1 max-w-2xl text-sm text-muted-foreground sm:text-base">
+                Controle fotógrafos, eventos, usuários e finanças da plataforma em um só lugar.
+              </p>
+            </div>
+          </div>
 
-        {/* Metric Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
-          <MetricCard
-            title="Receita Total Bruta"
-            value={formatCurrency(stats.totalRevenue)}
-            subtitle="Todas as vendas"
-            icon={TrendingUp}
-            variant="primary"
-            loading={loading}
-          />
-          <MetricCard
-            title="Receita Plataforma"
-            value={formatCurrency(stats.platformRevenue)}
-            subtitle={`${stats.totalRevenue > 0 ? ((stats.platformRevenue / stats.totalRevenue) * 100).toFixed(1) : 0}% do total`}
-            icon={DollarSign}
-            variant="success"
-            loading={loading}
-          />
-          <MetricCard
-            title="Fotos Vendidas"
-            value={stats.photosSold}
-            subtitle="Compras completadas"
-            icon={Image}
-            variant="secondary"
-            loading={loading}
-          />
-          <MetricCard
-            title="Fotógrafos"
-            value={stats.photographerCount}
-            subtitle={stats.pendingApplications > 0 ? `${stats.pendingApplications} pendentes` : 'Ativos'}
-            icon={Camera}
-            variant="warning"
-            loading={loading}
-          />
-          <MetricCard
-            title="Repasses Pendentes"
-            value={formatCurrency(stats.pendingPayouts)}
-            subtitle="Aguardando aprovação"
-            icon={Clock}
-            variant="danger"
-            loading={loading}
-          />
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 lg:flex lg:flex-row">
+            <Button asChild variant="outline" className="w-full gap-2 rounded-xl border-amber-200 bg-white/80">
+              <Link to="/dashboard/admin/photographers">
+                <UserCheck className="h-4 w-4" />
+                Aprovações
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="w-full gap-2 rounded-xl border-amber-200 bg-white/80">
+              <Link to="/dashboard/admin/financial">
+                <DollarSign className="h-4 w-4" />
+                Financeiro
+              </Link>
+            </Button>
+            <Button asChild className="w-full gap-2 rounded-xl bg-amber-600 text-white hover:bg-amber-700">
+              <Link to="/dashboard/admin/config/platform">
+                <SlidersHorizontal className="h-4 w-4" />
+                Personalizar Home
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
         </div>
+      </div>
 
-        {/* Quick Actions */}
-        <QuickActions 
-          actions={quickActions} 
-          title="Ações Rápidas"
-          columns={4}
-        />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <Card className="border-amber-200/70 bg-gradient-to-br from-amber-50 to-white shadow-sm">
+          <CardHeader className="pb-2 sm:pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <TrendingUp className="h-4 w-4 text-amber-600" />
+              Receita Total Bruta
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-amber-700 sm:text-3xl">{formatCurrency(stats.totalRevenue)}</div>
+            <p className="mt-1 text-xs text-muted-foreground">Todas as vendas</p>
+          </CardContent>
+        </Card>
 
-        {/* Recent Activity and Reconciliation */}
-        <div className="grid lg:grid-cols-3 gap-4 sm:gap-6">
-          {/* Recent Activity */}
-          <div className="lg:col-span-1 space-y-4">
+        <Card className="border-emerald-200/70 bg-gradient-to-br from-emerald-50 to-white shadow-sm">
+          <CardHeader className="pb-2 sm:pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <DollarSign className="h-4 w-4 text-emerald-600" />
+              Receita Plataforma
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-emerald-700 sm:text-3xl">{formatCurrency(stats.platformRevenue)}</div>
+            <p className="mt-1 text-xs text-muted-foreground">{`${stats.totalRevenue > 0 ? ((stats.platformRevenue / stats.totalRevenue) * 100).toFixed(1) : 0}% do total`}</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-sky-200/70 bg-gradient-to-br from-sky-50 to-white shadow-sm">
+          <CardHeader className="pb-2 sm:pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <Image className="h-4 w-4 text-sky-600" />
+              Fotos Vendidas
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-sky-700 sm:text-3xl">{stats.photosSold}</div>
+            <p className="mt-1 text-xs text-muted-foreground">Compras completadas</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-violet-200/70 bg-gradient-to-br from-violet-50 to-white shadow-sm">
+          <CardHeader className="pb-2 sm:pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <Camera className="h-4 w-4 text-violet-600" />
+              Fotógrafos
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-violet-700 sm:text-3xl">{stats.photographerCount}</div>
+            <p className="mt-1 text-xs text-muted-foreground">{stats.pendingApplications > 0 ? `${stats.pendingApplications} pendentes` : 'Ativos'}</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-rose-200/70 bg-gradient-to-br from-rose-50 to-white shadow-sm">
+          <CardHeader className="pb-2 sm:pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <Clock className="h-4 w-4 text-rose-600" />
+              Repasses Pendentes
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-rose-700 sm:text-3xl">{formatCurrency(stats.pendingPayouts)}</div>
+            <p className="mt-1 text-xs text-muted-foreground">Aguardando aprovação</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Ações rápidas</h2>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <Button asChild variant="outline" className="h-auto justify-start rounded-xl p-4 text-left">
+            <Link to="/dashboard/admin/photographers">
+              <UserCheck className="mr-2 h-4 w-4" />
+              Aprovar fotógrafos ({stats.pendingApplications})
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="h-auto justify-start rounded-xl p-4 text-left">
+            <Link to="/dashboard/admin/events">
+              <Activity className="mr-2 h-4 w-4" />
+              Gerenciar eventos ({campaigns.filter((c) => c.is_active).length} ativos)
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="h-auto justify-start rounded-xl p-4 text-left">
+            <Link to="/dashboard/admin/organizations">
+              <Building2 className="mr-2 h-4 w-4" />
+              Organizações ({organizations.length})
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="h-auto justify-start rounded-xl p-4 text-left">
+            <Link to="/dashboard/admin/config/platform">
+              <SlidersHorizontal className="mr-2 h-4 w-4" />
+              Banner da Home e configurações
+            </Link>
+          </Button>
+        </div>
+      </div>
+
+      {/* Recent Activity and Reconciliation */}
+      <div className="grid lg:grid-cols-3 gap-4 sm:gap-6">
+        {/* Recent Activity */}
+        <div className="lg:col-span-1 space-y-4">
             {/* Botão de Reconciliação */}
             <Card className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border-blue-500/20">
               <CardContent className="p-4">
@@ -496,10 +533,10 @@ const AdminDashboard = () => {
               title="Últimas Vendas"
               emptyMessage="Nenhuma venda recente"
             />
-          </div>
+        </div>
 
-          {/* Management Tabs */}
-          <div className="lg:col-span-2">
+        {/* Management Tabs */}
+        <div className="lg:col-span-2">
             <Tabs defaultValue="photographer-apps" className="space-y-4">
               <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
                 <TabsList className="inline-flex w-auto min-w-full sm:grid sm:w-full sm:grid-cols-6 text-xs gap-0.5 h-auto sm:h-10 p-1">
@@ -585,12 +622,30 @@ const AdminDashboard = () => {
               </TabsContent>
 
               <TabsContent value="profile" className="space-y-4">
+                <Card className="border-amber-200/70 bg-gradient-to-r from-amber-50 to-white">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <SlidersHorizontal className="h-5 w-5 text-amber-600" />
+                      Personalização da Home
+                    </CardTitle>
+                    <CardDescription>
+                      Troque a imagem da seção "Encontre suas Fotos" direto nas configurações da plataforma.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Button asChild>
+                      <Link to="/dashboard/admin/config/platform">
+                        Abrir personalização
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </Link>
+                    </Button>
+                  </CardContent>
+                </Card>
                 <ProfileEditor />
               </TabsContent>
             </Tabs>
-          </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 };

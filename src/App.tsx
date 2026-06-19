@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
+import FloatingHelpChat from './components/layout/FloatingHelpChat';
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { SearchProvider } from "@/contexts/SearchContext";
@@ -60,7 +61,7 @@ const PhotographerApplication = lazy(() => import("./pages/dashboard/Photographe
 // Photographer routes (lazy)
 const PhotographerEvents = lazy(() => import("./pages/dashboard/photographer/PhotographerEvents"));
 const ManageEvent = lazy(() => import("./pages/dashboard/photographer/ManageEvent"));
-const PhotographerEarnings = lazy(() => import("./pages/dashboard/photographer/PhotographerEarnings"));
+const PhotographerFinancialDashboard = lazy(() => import("./components/dashboard/PhotographerFinancialDashboard"));
 const AlbumReports = lazy(() => import("./pages/dashboard/photographer/AlbumReports"));
 const PhotographerSettings = lazy(() => import("./pages/dashboard/photographer/PhotographerSettings"));
 const Goals = lazy(() => import("./pages/dashboard/photographer/Goals"));
@@ -180,7 +181,7 @@ const AppContent = () => {
             <Route path="photographer/photos" element={<MyPhotos />} />
             <Route path="photographer/featured" element={<FeaturedPhotos />} />
             <Route path="photographer/payout" element={<PayoutRequest />} />
-            <Route path="photographer/earnings" element={<PhotographerEarnings />} />
+            <Route path="photographer/earnings" element={<PhotographerFinancialDashboard />} />
             <Route path="photographer/album-reports" element={<AlbumReports />} />
             <Route path="photographer/goals" element={<Goals />} />
             <Route path="photographer/settings" element={<PhotographerSettings />} />
@@ -217,6 +218,7 @@ const AppContent = () => {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
+      <FloatingHelpChat />
     </BrowserRouter>
   );
 };
@@ -225,7 +227,7 @@ const App = () => {
   // 🔧 Se modo manutenção estiver ativo, exibir página de manutenção
   if (MAINTENANCE_MODE) {
     return (
-      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} forcedTheme="light">
         <MaintenanceMode />
       </ThemeProvider>
     );
@@ -234,7 +236,7 @@ const App = () => {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} forcedTheme="light">
           <TooltipProvider>
             <AuthProvider>
               <SearchProvider>

@@ -16,12 +16,13 @@ import { Calendar, MapPin, Loader2, Gift, Image as ImageIcon, FolderPlus } from 
 interface CreateEventDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onEventCreated: () => void;
+  onEventCreated: (campaignId?: string, startUploadNow?: boolean) => void;
 }
 
 export default function CreateEventDialog({ isOpen, onClose, onEventCreated }: CreateEventDialogProps) {
   const { profile } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [createAndUpload, setCreateAndUpload] = useState(false);
   const [currentTab, setCurrentTab] = useState('info');
   
   // Info form
@@ -144,12 +145,14 @@ export default function CreateEventDialog({ isOpen, onClose, onEventCreated }: C
 
       toast({
         title: "Sucesso!",
-        description: "Evento criado com sucesso! Você já pode fazer upload de fotos.",
+        description: createAndUpload
+          ? "Evento criado! Abrindo upload para você enviar fotos agora."
+          : "Evento criado com sucesso! Você já pode fazer upload de fotos.",
       });
 
       // Reset form
       resetForm();
-      onEventCreated();
+      onEventCreated(newCampaign?.id, createAndUpload);
     } catch (error: any) {
       console.error('Error creating campaign:', error);
       const errorMessage = error?.message || "Falha ao criar evento. Tente novamente.";
@@ -164,6 +167,7 @@ export default function CreateEventDialog({ isOpen, onClose, onEventCreated }: C
   };
 
   const resetForm = () => {
+    setCreateAndUpload(false);
     setFormData({
       title: '',
       description: '',
@@ -188,7 +192,7 @@ export default function CreateEventDialog({ isOpen, onClose, onEventCreated }: C
         <DialogHeader>
           <DialogTitle className="text-foreground">Criar Novo Evento</DialogTitle>
           <DialogDescription>
-            Preencha os dados do evento. Você poderá fazer upload de fotos após a criação.
+            Preencha os dados do evento. Você pode criar e já seguir para upload de fotos.
           </DialogDescription>
         </DialogHeader>
         
@@ -447,14 +451,29 @@ export default function CreateEventDialog({ isOpen, onClose, onEventCreated }: C
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? (
+            <Button
+              type="submit"
+              variant="secondary"
+              disabled={loading}
+              onClick={() => setCreateAndUpload(false)}
+            >
+              {loading && !createAndUpload ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   Criando...
                 </>
               ) : (
                 'Criar Evento'
+              )}
+            </Button>
+            <Button type="submit" disabled={loading} onClick={() => setCreateAndUpload(true)}>
+              {loading && createAndUpload ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Criando e abrindo upload...
+                </>
+              ) : (
+                'Criar e Subir Fotos'
               )}
             </Button>
           </div>

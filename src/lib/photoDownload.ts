@@ -165,7 +165,13 @@ export async function downloadOriginalPhoto(originalUrl: string, fileName: strin
 
     // If caller already provided a signed URL (from backend), use it directly
     let signedUrl: string | null = null;
-    if (originalUrl && /^https?:\/\//i.test(originalUrl) && (originalUrl.includes('token=') || originalUrl.includes('expires=') || originalUrl.includes('supabase.co'))) {
+    if (
+      originalUrl &&
+      /^https?:\/\//i.test(originalUrl) &&
+      (originalUrl.includes('token=') ||
+        originalUrl.includes('X-Amz-Signature=') ||
+        originalUrl.includes('X-Amz-Credential='))
+    ) {
       signedUrl = originalUrl;
     } else {
       signedUrl = await getSignedPhotoUrl(originalUrl);

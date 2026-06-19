@@ -51,7 +51,11 @@ interface CampaignEarnings {
   buyers: BuyerPurchase[];
 }
 
-export const PhotographerEarnings = () => {
+interface PhotographerEarningsProps {
+  days?: number;
+}
+
+export const PhotographerEarnings = ({ days = 90 }: PhotographerEarningsProps) => {
   const { user } = useAuth();
   const balance = usePhotographerBalance();
   const [earnings, setEarnings] = useState<CampaignEarnings[]>([]);
@@ -62,7 +66,7 @@ export const PhotographerEarnings = () => {
     if (user) {
       fetchEarnings();
     }
-  }, [user]);
+  }, [user, days]);
 
   const toggleBuyerExpanded = (buyerId: string) => {
     setExpandedBuyers(prev => {
@@ -108,6 +112,9 @@ export const PhotographerEarnings = () => {
       };
 
       // Buscar revenue_shares com informações de foto, campanha e comprador (COM PAGINAÇÃO)
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
+
       const revenueData = await fetchAllFromTable((from, to) =>
         supabase
           .from('revenue_shares')
@@ -131,6 +138,7 @@ export const PhotographerEarnings = () => {
             )
           `)
           .eq('photographer_id', user?.id)
+          .gte('created_at', startDate.toISOString())
           .range(from, to)
       );
 
@@ -320,7 +328,7 @@ export const PhotographerEarnings = () => {
           </CardContent>
         </Card>
 
-        <Card className="border-2 border-blue-500/30">
+        <Card className="border-2 border-red-500/30">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <ImageIcon className="h-4 w-4 text-blue-600" />

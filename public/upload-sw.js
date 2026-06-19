@@ -83,8 +83,8 @@ self.addEventListener('message', (event) => {
     if (event.data.payload.status === 'completed') {
       self.registration.showNotification('STA Fotos - Upload Concluído', {
         body: `${event.data.payload.count} foto(s) enviada(s) com sucesso!`,
-        icon: '/favicon.ico',
-        badge: '/favicon.ico',
+        icon: '/favicon.png',
+        badge: '/favicon.png',
         tag: 'upload-complete',
         requireInteraction: false,
         actions: [
@@ -97,8 +97,8 @@ self.addEventListener('message', (event) => {
     } else if (event.data.payload.status === 'error') {
       self.registration.showNotification('STA Fotos - Erro no Upload', {
         body: 'Algumas fotos falharam no upload. Clique para tentar novamente.',
-        icon: '/favicon.ico',
-        badge: '/favicon.ico',
+        icon: '/favicon.png',
+        badge: '/favicon.png',
         tag: 'upload-error',
         requireInteraction: true,
         actions: [

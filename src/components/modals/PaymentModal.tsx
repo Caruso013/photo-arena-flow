@@ -221,6 +221,17 @@ export default function PaymentModal({
       return;
     }
 
+    const hasValidPhone = buyerData.phone.length === 10 || buyerData.phone.length === 11;
+
+    if (!hasValidPhone) {
+      toast({
+        title: "Telefone obrigatório",
+        description: "Informe um telefone válido com DDD para continuar.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (itemsToProcess.length === 0 || !isFormValid()) {
       toast({
         title: "Dados incompletos",
@@ -490,6 +501,7 @@ export default function PaymentModal({
                   value={buyerData.phone}
                   onChange={(e) => handleInputChange('phone', e.target.value)}
                   placeholder="(11) 99999-9999"
+                  required
                   className={`min-h-[48px] ${buyerData.phone && buyerData.phone.length < 10 ? 'border-destructive' : ''}`}
                 />
                 {buyerData.phone && buyerData.phone.length < 10 && (

@@ -65,6 +65,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
+import AdminLayout from '@/components/dashboard/AdminLayout';
 
 // Gerar código aleatório
 const generateCouponCode = () => {
@@ -247,13 +248,15 @@ const CouponManagement = () => {
 
   if (loading) {
     return (
-      <div className="container max-w-7xl py-8">
-        <Card>
-          <CardContent className="p-8 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          </CardContent>
-        </Card>
-      </div>
+      <AdminLayout>
+        <div className="container max-w-7xl py-8">
+          <Card>
+            <CardContent className="p-8 text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+            </CardContent>
+          </Card>
+        </div>
+      </AdminLayout>
     );
   }
 
@@ -268,7 +271,8 @@ const CouponManagement = () => {
   );
 
   return (
-    <div className="container max-w-7xl py-8">
+    <AdminLayout>
+      <div className="container max-w-7xl py-8">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
@@ -808,6 +812,7 @@ const CouponManagement = () => {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+    </AdminLayout>
   );
 };
 

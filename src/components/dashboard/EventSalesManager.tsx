@@ -123,7 +123,7 @@ export const EventSalesManager = () => {
       if (pageNum === 0) {
         setSales(records);
       } else {
-        setSales(prev => [...prev, ...records]);
+        setSales(records); // pagination replaces, not appends
       }
     } catch (err) {
       console.error('Error fetching sales:', err);
@@ -134,6 +134,20 @@ export const EventSalesManager = () => {
   }, [selectedCampaign, startDate, endDate]);
 
   const loadMore = () => {
+    const next = page + 1;
+    setPage(next);
+    fetchSales(next);
+  };
+
+  const handlePrevPage = () => {
+    if (page === 0) return;
+    const prev = page - 1;
+    setPage(prev);
+    fetchSales(prev);
+  };
+
+  const handleNextPage = () => {
+    if (!hasMore) return;
     const next = page + 1;
     setPage(next);
     fetchSales(next);
@@ -258,14 +272,30 @@ export const EventSalesManager = () => {
               </Table>
             </div>
 
-            {hasMore && (
-              <div className="flex justify-center mt-4">
-                <Button variant="outline" onClick={loadMore} disabled={loading}>
-                  {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                  Carregar mais
+            <div className="flex items-center justify-between mt-4 pt-4 border-t">
+              <p className="text-sm text-muted-foreground">
+                Página {page + 1}{hasMore ? '' : ' (última)'}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePrevPage}
+                  disabled={page === 0 || loading}
+                >
+                  Anterior
+                </Button>
+                <span className="text-sm font-medium px-2">{page + 1}</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleNextPage}
+                  disabled={!hasMore || loading}
+                >
+                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Próxima'}
                 </Button>
               </div>
-            )}
+            </div>
           </>
         )}
       </CardContent>

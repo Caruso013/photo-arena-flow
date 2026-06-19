@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,7 +8,11 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from '@/components/ui/use-toast';
-import { Settings, AlertCircle, Save, Lock, Unlock, Link as LinkIcon, ArrowLeft } from 'lucide-react';
+import { Settings, AlertCircle, Save, Lock, Unlock, Link as LinkIcon, ArrowLeft, Image as ImageIcon, Upload, Trash2, Loader2 } from 'lucide-react';
+import AdminLayout from '@/components/dashboard/AdminLayout';
+
+const HERO_BANNER_CONFIG_KEY = 'home_hero_banner';
+const HERO_BANNER_BUCKET = 'campaign-covers';
 
 const PlatformConfig = () => {
   const navigate = useNavigate();
@@ -18,6 +22,10 @@ const PlatformConfig = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [generatingCodes, setGeneratingCodes] = useState(false);
+  const [uploadingBanner, setUploadingBanner] = useState(false);
+  const [currentHeroBannerUrl, setCurrentHeroBannerUrl] = useState('');
+  const [currentHeroBannerPath, setCurrentHeroBannerPath] = useState<string | null>(null);
+  const bannerInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchConfig();
@@ -50,6 +58,21 @@ const PlatformConfig = () => {
       if (variableData?.value) {
         setVariablePercentage(Number(variableData.value.value) || 0);
         setVariableEnabled(variableData.value.enabled !== false);
+      }
+
+      const { data: heroBannerData } = await supabase
+        .from('system_config' as any)
+        .select('value')
+        .eq('key', HERO_BANNER_CONFIG_KEY)
+        .maybeSingle() as any;
+
+      const heroUrl = heroBannerData?.value?.url;
+      const heroPath = heroBannerData?.value?.path;
+      if (typeof heroUrl === 'string') {
+        setCurrentHeroBannerUrl(heroUrl);
+      }
+      if (typeof heroPath === 'string') {
+        setCurrentHeroBannerPath(heroPath);
       }
     } catch (error) {
       console.error('Error fetching config:', error);
@@ -145,15 +168,136 @@ const PlatformConfig = () => {
     }
   };
 
+  const saveHeroBannerConfig = async (bannerUrl: string, bannerPath: string | null) => {
+    const { error } = await supabase
+      .from('system_config' as any)
+      .upsert(
+        {
+          key: HERO_BANNER_CONFIG_KEY,
+          value: {
+            url: bannerUrl,
+            path: bannerPath,
+            bucket: HERO_BANNER_BUCKET,
+          },
+          description: 'Banner principal da home definido pelo admin',
+          updated_at: new Date().toISOString(),
+        } as any,
+        { onConflict: 'key' }
+      ) as any;
+
+    if (error) throw error;
+  };
+
+  const removeBannerFile = async (path: string | null) => {
+    if (!path) return;
+
+    const { error } = await supabase.storage
+      .from(HERO_BANNER_BUCKET)
+      .remove([path]);
+
+    if (error) {
+      console.warn('Could not remove previous hero banner:', error);
+    }
+  };
+
+  const handleHeroBannerUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: 'Arquivo inválido',
+        description: 'Selecione uma imagem válida.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (file.size > 8 * 1024 * 1024) {
+      toast({
+        title: 'Arquivo muito grande',
+        description: 'A imagem deve ter no máximo 8MB.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setUploadingBanner(true);
+    try {
+      const extension = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const filePath = `admin/home-hero-${Date.now()}.${extension}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from(HERO_BANNER_BUCKET)
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true,
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: publicUrlData } = supabase.storage
+        .from(HERO_BANNER_BUCKET)
+        .getPublicUrl(filePath);
+
+      await saveHeroBannerConfig(publicUrlData.publicUrl, filePath);
+      await removeBannerFile(currentHeroBannerPath);
+
+      setCurrentHeroBannerUrl(publicUrlData.publicUrl);
+      setCurrentHeroBannerPath(filePath);
+
+      toast({
+        title: 'Banner atualizado!',
+        description: 'A nova imagem da home foi salva com sucesso.',
+      });
+    } catch (error) {
+      console.error('Error uploading hero banner:', error);
+      toast({
+        title: 'Erro no upload',
+        description: 'Não foi possível enviar a imagem do banner.',
+        variant: 'destructive',
+      });
+    } finally {
+      setUploadingBanner(false);
+      event.target.value = '';
+    }
+  };
+
+  const clearHeroBanner = async () => {
+    setUploadingBanner(true);
+    try {
+      await saveHeroBannerConfig('', null);
+      await removeBannerFile(currentHeroBannerPath);
+      setCurrentHeroBannerUrl('');
+      setCurrentHeroBannerPath(null);
+
+      toast({
+        title: 'Banner removido',
+        description: 'A home voltou para a imagem padrão dinâmica dos eventos.',
+      });
+    } catch (error) {
+      console.error('Error clearing hero banner:', error);
+      toast({
+        title: 'Erro ao remover',
+        description: 'Não foi possível remover o banner da home.',
+        variant: 'destructive',
+      });
+    } finally {
+      setUploadingBanner(false);
+    }
+  };
+
   if (loading) {
     return (
-      <div className="container max-w-4xl py-8">
-        <Card>
-          <CardContent className="p-8 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          </CardContent>
-        </Card>
-      </div>
+      <AdminLayout>
+        <div className="container max-w-4xl py-8">
+          <Card>
+            <CardContent className="p-8 text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+            </CardContent>
+          </Card>
+        </div>
+      </AdminLayout>
     );
   }
 
@@ -161,7 +305,8 @@ const PlatformConfig = () => {
   const availablePercentage = 100 - totalPercentage;
 
   return (
-    <div className="container max-w-4xl py-8">
+    <AdminLayout>
+      <div className="container max-w-4xl py-8">
       <Button
         variant="ghost"
         className="mb-6"
@@ -333,6 +478,93 @@ const PlatformConfig = () => {
         </CardContent>
       </Card>
 
+      <Card className="mt-6 border-[#D4AF37]/40">
+        <CardHeader className="rounded-t-xl bg-gradient-to-r from-[#D4AF37]/10 to-transparent border-b border-[#D4AF37]/20 pb-4">
+          <CardTitle className="flex items-center gap-2 text-[#B8860B]">
+            <ImageIcon className="h-5 w-5" />
+            Banner Principal da Home
+          </CardTitle>
+          <CardDescription>
+            Esta imagem aparece para <strong>todos os usuários</strong> na seção "Encontre suas Fotos". Somente administradores podem alterá-la.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4 pt-5">
+          <Alert className="border-[#D4AF37]/40 bg-[#D4AF37]/5">
+            <Lock className="h-4 w-4 text-[#B8860B]" />
+            <AlertDescription className="text-sm">
+              <strong>Exclusivo para Admins.</strong> A imagem definida aqui substitui a capa dinâmica dos eventos e fica fixada para todos os visitantes do site até que um novo banner seja enviado ou removido.
+            </AlertDescription>
+          </Alert>
+
+          <input
+            ref={bannerInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleHeroBannerUpload}
+          />
+
+          <div className="overflow-hidden rounded-xl border-2 border-dashed border-[#D4AF37]/30 bg-muted/20 transition-colors hover:border-[#D4AF37]/60">
+            {currentHeroBannerUrl ? (
+              <div className="relative">
+                <img
+                  src={currentHeroBannerUrl}
+                  alt="Banner atual da home"
+                  className="h-44 w-full object-cover md:h-56"
+                />
+                <div className="absolute bottom-2 left-2 rounded-md bg-black/60 px-2 py-1 text-xs text-white backdrop-blur-sm">
+                  Banner ativo — visível para todos os usuários
+                </div>
+              </div>
+            ) : (
+              <div className="flex h-44 w-full flex-col items-center justify-center gap-2 text-muted-foreground md:h-56">
+                <ImageIcon className="h-10 w-10 opacity-30" />
+                <p className="text-sm">Nenhum banner fixo definido</p>
+                <p className="text-xs opacity-60">A home usa a capa do último evento automaticamente</p>
+              </div>
+            )}
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            Proporção recomendada: <strong>1920 × 540 px</strong> (proporção 16:3) · Máximo 8 MB · JPG ou WebP
+          </p>
+
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Button
+              type="button"
+              onClick={() => bannerInputRef.current?.click()}
+              disabled={uploadingBanner}
+              className="gap-2 bg-[#D4AF37] text-black hover:bg-[#C19B2D]"
+            >
+              {uploadingBanner ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Enviando…
+                </>
+              ) : (
+                <>
+                  <Upload className="h-4 w-4" />
+                  {currentHeroBannerUrl ? 'Trocar imagem' : 'Enviar imagem'}
+                </>
+              )}
+            </Button>
+
+            {currentHeroBannerUrl && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={clearHeroBanner}
+                disabled={uploadingBanner}
+                className="gap-2 border-destructive/40 text-destructive hover:bg-destructive/5"
+              >
+                <Trash2 className="h-4 w-4" />
+                Remover banner fixo
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Card de Links Curtos */}
       <Card className="mt-6">
         <CardHeader>
@@ -375,6 +607,7 @@ const PlatformConfig = () => {
         </CardContent>
       </Card>
     </div>
+    </AdminLayout>
   );
 };
 

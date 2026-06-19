@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -18,7 +19,9 @@ import {
 import { Filter, X, ChevronDown } from 'lucide-react';
 
 interface EventFiltersProps {
+  filters: FilterState;
   onFilterChange: (filters: FilterState) => void;
+  onClearFilters: () => void;
 }
 
 export interface FilterState {
@@ -35,65 +38,39 @@ interface Organization {
   name: string;
 }
 
-export function EventFilters({ onFilterChange }: EventFiltersProps) {
+const buildActiveCount = (filters: FilterState) =>
+  [filters.location, filters.dateFrom, filters.dateTo, filters.photographer, filters.organizationId].filter(Boolean).length;
+
+export function EventFilters({ filters, onFilterChange, onClearFilters }: EventFiltersProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
-  const [filters, setFilters] = useState<FilterState>({
-    location: '',
-    dateFrom: '',
-    dateTo: '',
-    sortBy: 'recent',
-    photographer: '',
-    organizationId: '',
-  });
 
   useEffect(() => {
     const fetchOrgs = async () => {
-      const { data } = await supabase
-        .from('organizations')
-        .select('id, name')
-        .order('name');
+      const { data } = await supabase.from('organizations').select('id, name').order('name');
       if (data) setOrganizations(data);
     };
+
     fetchOrgs();
   }, []);
 
   const handleFilterChange = (key: keyof FilterState, value: string) => {
-    const newFilters = { ...filters, [key]: value };
-    setFilters(newFilters);
-    onFilterChange(newFilters);
+    onFilterChange({
+      ...filters,
+      [key]: value,
+    });
   };
 
-  const clearFilters = () => {
-    const emptyFilters: FilterState = {
-      location: '',
-      dateFrom: '',
-      dateTo: '',
-      sortBy: 'recent',
-      photographer: '',
-      organizationId: '',
-    };
-    setFilters(emptyFilters);
-    onFilterChange(emptyFilters);
-  };
-
-  const activeCount = [
-    filters.location,
-    filters.dateFrom,
-    filters.dateTo,
-    filters.photographer,
-    filters.organizationId,
-  ].filter(Boolean).length;
-
+  const activeCount = buildActiveCount(filters);
   const hasActiveFilters = activeCount > 0;
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen} className="mb-6">
-      <div className="flex items-center gap-2 mb-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
         <CollapsibleTrigger asChild>
-          <Button variant="outline" size="sm" className="gap-2">
+          <Button variant="outline" size="sm" className="gap-2 rounded-full border-border/70 bg-card shadow-sm">
             <Filter className="h-4 w-4" />
-            Filtros
+            Filtros avançados
             {hasActiveFilters && (
               <span className="rounded-full bg-primary text-primary-foreground px-2 py-0.5 text-xs font-semibold">
                 {activeCount}
@@ -104,24 +81,33 @@ export function EventFilters({ onFilterChange }: EventFiltersProps) {
         </CollapsibleTrigger>
 
         {hasActiveFilters && (
-          <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1 text-muted-foreground hover:text-foreground">
+          <Button variant="ghost" size="sm" onClick={onClearFilters} className="gap-1 rounded-full text-muted-foreground hover:text-foreground">
             <X className="h-3.5 w-3.5" />
-            Limpar
+            Limpar filtros
           </Button>
         )}
       </div>
 
       <CollapsibleContent>
-        <div className="rounded-xl border bg-card p-4 shadow-sm space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {/* Organização */}
+        <div className="rounded-3xl border border-border/70 bg-gradient-to-br from-card via-card to-primary/5 p-4 md:p-5 shadow-sm space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-foreground">Refinar resultados</p>
+              <p className="text-xs text-muted-foreground">Combine filtros para encontrar eventos mais rápido.</p>
+            </div>
+            <Badge variant="secondary" className="rounded-full px-3 py-1">
+              {activeCount} filtro(s) ativo(s)
+            </Badge>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-muted-foreground">Organização</Label>
               <Select
                 value={filters.organizationId}
                 onValueChange={(value) => handleFilterChange('organizationId', value === 'all' ? '' : value)}
               >
-                <SelectTrigger className="h-10">
+                <SelectTrigger className="h-11 rounded-xl bg-background">
                   <SelectValue placeholder="Todas as organizações" />
                 </SelectTrigger>
                 <SelectContent className="bg-popover z-50">
@@ -135,36 +121,33 @@ export function EventFilters({ onFilterChange }: EventFiltersProps) {
               </Select>
             </div>
 
-            {/* Fotógrafo */}
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-muted-foreground">Fotógrafo</Label>
               <Input
                 placeholder="Buscar por nome..."
                 value={filters.photographer}
                 onChange={(e) => handleFilterChange('photographer', e.target.value)}
-                className="h-10"
+                className="h-11 rounded-xl bg-background"
               />
             </div>
 
-            {/* Localização */}
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-muted-foreground">Localização</Label>
               <Input
                 placeholder="Ex: São Paulo"
                 value={filters.location}
                 onChange={(e) => handleFilterChange('location', e.target.value)}
-                className="h-10"
+                className="h-11 rounded-xl bg-background"
               />
             </div>
 
-            {/* Data de / até */}
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-muted-foreground">Data início</Label>
               <Input
                 type="date"
                 value={filters.dateFrom}
                 onChange={(e) => handleFilterChange('dateFrom', e.target.value)}
-                className="h-10"
+                className="h-11 rounded-xl bg-background"
               />
             </div>
 
@@ -174,18 +157,17 @@ export function EventFilters({ onFilterChange }: EventFiltersProps) {
                 type="date"
                 value={filters.dateTo}
                 onChange={(e) => handleFilterChange('dateTo', e.target.value)}
-                className="h-10"
+                className="h-11 rounded-xl bg-background"
               />
             </div>
 
-            {/* Ordenar */}
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-muted-foreground">Ordenar por</Label>
               <Select
                 value={filters.sortBy}
                 onValueChange={(value) => handleFilterChange('sortBy', value as FilterState['sortBy'])}
               >
-                <SelectTrigger className="h-10">
+                <SelectTrigger className="h-11 rounded-xl bg-background">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-popover z-50">
@@ -195,6 +177,20 @@ export function EventFilters({ onFilterChange }: EventFiltersProps) {
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            {filters.organizationId && (
+              <Badge variant="secondary" className="rounded-full px-3 py-1">Organização ativa</Badge>
+            )}
+            {filters.photographer && (
+              <Badge variant="secondary" className="rounded-full px-3 py-1">Fotógrafo: {filters.photographer}</Badge>
+            )}
+            {filters.location && (
+              <Badge variant="secondary" className="rounded-full px-3 py-1">Local: {filters.location}</Badge>
+            )}
+            {filters.dateFrom && <Badge variant="secondary" className="rounded-full px-3 py-1">De: {filters.dateFrom}</Badge>}
+            {filters.dateTo && <Badge variant="secondary" className="rounded-full px-3 py-1">Até: {filters.dateTo}</Badge>}
           </div>
         </div>
       </CollapsibleContent>

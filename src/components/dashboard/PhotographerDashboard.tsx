@@ -3,6 +3,7 @@ import { formatCurrency } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
@@ -16,9 +17,12 @@ import {
   Image,
   Target,
   User,
-  Wallet
+  Wallet,
+  ClipboardList,
+  ArrowRight,
+  DollarSign as DollarSignIcon
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { PixRequiredAlert } from '@/components/photographer/PixRequiredAlert';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import UploadPhotoModal from '@/components/modals/UploadPhotoModal';
@@ -51,6 +55,7 @@ interface Campaign {
 
 const PhotographerDashboard = () => {
   const { profile, user } = useAuth();
+  const navigate = useNavigate();
   const [chartDays, setChartDays] = useState(30);
   const { data: salesData, loading: loadingSales, refetch: refetchSales } = useSalesData(chartDays, user?.id);
   const balance = usePhotographerBalance();
@@ -59,6 +64,9 @@ const PhotographerDashboard = () => {
   const [recentSales, setRecentSales] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showUploadModal, setShowUploadModal] = useState(false);
+
+  const chartRevenue = salesData.reduce((sum, item) => sum + item.revenue, 0);
+  const chartSales = salesData.reduce((sum, item) => sum + item.sales, 0);
 
   const handlePeriodChange = (days: number) => {
     setChartDays(days);
@@ -204,6 +212,31 @@ const PhotographerDashboard = () => {
         {/* PIX Required Alert */}
         <PixRequiredAlert variant="banner" />
 
+        {/* Candidaturas para Eventos */}
+        <Card className="overflow-hidden border-amber-200/70 bg-gradient-to-r from-amber-50 via-white to-amber-50 shadow-sm">
+          <CardContent className="p-4 sm:p-5 lg:p-6">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="space-y-1.5">
+                <div className="inline-flex items-center gap-2 rounded-full border border-amber-300/60 bg-amber-100/70 px-3 py-1 text-xs font-semibold text-amber-800 w-fit">
+                  <ClipboardList className="h-3.5 w-3.5" />
+                  Candidaturas para Eventos
+                </div>
+                <h2 className="text-lg sm:text-xl font-bold text-foreground">Veja eventos disponíveis e acompanhe suas candidaturas</h2>
+                <p className="text-sm text-muted-foreground max-w-2xl">
+                  Entre na tela de candidaturas para copiar links, abrir o QR Code do evento e acessar o relatório individual.
+                </p>
+              </div>
+
+              <Button asChild className="gap-2 bg-amber-500 text-white hover:bg-amber-600 w-full lg:w-auto">
+                <Link to="/dashboard/photographer/applications">
+                  Abrir candidaturas
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Welcome Header */}
         <WelcomeHeader
           title="Painel do Fotógrafo 📸"
@@ -214,7 +247,7 @@ const PhotographerDashboard = () => {
         />
 
         {/* Metric Cards */}
-        <div className="grid grid-cols-2 gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
           <MetricCard
             title="Saldo Disponível"
             value={formatCurrency(balance.availableAmount)}
@@ -228,6 +261,14 @@ const PhotographerDashboard = () => {
             subtitle="Aguardando 12h"
             icon={CreditCard}
             variant="warning"
+          />
+          <MetricCard
+            title="Vendas do mês"
+            value={formatCurrency(chartRevenue)}
+            subtitle={`${chartSales} vendas nos últimos ${chartDays} dias`}
+            icon={DollarSignIcon}
+            variant="secondary"
+            loading={loadingSales}
           />
         </div>
 
@@ -289,11 +330,21 @@ const PhotographerDashboard = () => {
         <div className="grid lg:grid-cols-3 gap-4 sm:gap-6">
           {/* Recent Sales */}
           <div className="lg:col-span-1">
-            <RecentActivity 
-              activities={recentSales}
-              title="Últimas Vendas"
-              emptyMessage="Nenhuma venda ainda"
-            />
+            <div className="space-y-3 pb-20 md:pb-0">
+              <RecentActivity 
+                activities={recentSales}
+                title="Últimas Vendas"
+                emptyMessage="Nenhuma venda ainda"
+                maxItems={5}
+                maxPhotoPreviews={5}
+              />
+              <Button asChild variant="outline" className="w-full gap-2">
+                <Link to="/dashboard/photographer/earnings">
+                  Ver tudo
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
           </div>
 
           {/* Tabs */}

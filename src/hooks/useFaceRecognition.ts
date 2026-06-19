@@ -1,7 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
-import * as faceapi from 'face-api.js';
 import {
   detectFaces,
   calculateSimilarity,
@@ -23,9 +22,44 @@ interface FaceMatch {
   similarity: number;
   photo_url: string;
   campaign_id: string;
+  sub_event_id?: string | null;
 }
 
+interface PhotoRecord {
+  id: string;
+  watermarked_url?: string | null;
+  thumbnail_url?: string | null;
+  original_url?: string | null;
+  campaign_id?: string | null;
+  sub_event_id?: string | null;
+  created_at?: string;
+  is_available?: boolean;
+}
 let modelsLoaded = false;
+const CAMERA_DESCRIPTOR_CACHE_TTL_MS = 15000;
+let cachedCameraDescriptor: { value: number[]; capturedAt: number } | null = null;
+
+const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+
+const normalizeDescriptor = (descriptor: number[]): number[] => {
+  const norm = Math.sqrt(descriptor.reduce((sum, v) => sum + v * v, 0));
+  if (!norm || !Number.isFinite(norm)) return descriptor;
+  return descriptor.map((v) => v / norm);
+};
+
+const dedupeAndSortMatches = (input: FaceMatch[], limit: number): FaceMatch[] => {
+  const bestByPhoto = new Map<string, FaceMatch>();
+  for (const match of input) {
+    const existing = bestByPhoto.get(match.photo_id);
+    if (!existing || match.similarity > existing.similarity) {
+      bestByPhoto.set(match.photo_id, match);
+    }
+  }
+
+  return Array.from(bestByPhoto.values())
+    .sort((a, b) => b.similarity - a.similarity)
+    .slice(0, limit);
+};
 
 export const useFaceRecognition = () => {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -110,32 +144,32 @@ export const useFaceRecognition = () => {
       }
       
       return true;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Erro ao acessar câmera:', error);
-      
+
+      const e = error as { name?: string; message?: string };
       let errorMessage = "Permita o acesso à câmera para usar reconhecimento facial.";
       let errorTitle = "Erro ao acessar câmera";
-      
-      // Mensagens específicas por tipo de erro
-      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+
+      if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') {
         errorTitle = "Permissão negada";
         errorMessage = "Você negou o acesso à câmera. Clique no ícone de câmera na barra de endereço e permita o acesso.";
-      } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+      } else if (e.name === 'NotFoundError' || e.name === 'DevicesNotFoundError') {
         errorTitle = "Câmera não encontrada";
         errorMessage = "Nenhuma câmera foi detectada no seu dispositivo.";
-      } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+      } else if (e.name === 'NotReadableError' || e.name === 'TrackStartError') {
         errorTitle = "Câmera em uso";
         errorMessage = "A câmera já está sendo usada por outro aplicativo. Feche outros apps e tente novamente.";
-      } else if (error.name === 'OverconstrainedError') {
+      } else if (e.name === 'OverconstrainedError') {
         errorTitle = "Câmera incompatível";
         errorMessage = "Sua câmera não suporta as configurações necessárias.";
-      } else if (error.name === 'SecurityError') {
+      } else if (e.name === 'SecurityError') {
         errorTitle = "Erro de segurança";
         errorMessage = "Acesso à câmera bloqueado por política de segurança. Use HTTPS.";
-      } else if (error.message) {
-        errorMessage = error.message;
+      } else if (e.message) {
+        errorMessage = e.message;
       }
-      
+
       toast({
         title: errorTitle,
         description: errorMessage,
@@ -155,6 +189,12 @@ export const useFaceRecognition = () => {
       videoRef.current.srcObject = null;
     }
   }, []);
+
+  useEffect(() => {
+    return () => {
+      stopCamera();
+    };
+  }, [stopCamera]);
 
   // Capturar foto da câmera
   const capturePhoto = useCallback(async (): Promise<Blob | null> => {
@@ -195,16 +235,23 @@ export const useFaceRecognition = () => {
       console.log(`✅ ${results.length} rosto(s) detectado(s) (confiança média: ${Math.round(avgConfidence * 100)}%)`);
       
       return results;
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Erro ao detectar rostos:', error);
       return null;
     }
   }, [modelsReady]);
 
   // Buscar fotos similares por reconhecimento facial - OTIMIZADO
-  const findMyPhotos = useCallback(async (campaignId?: string): Promise<FaceMatch[]> => {
+  const findMyPhotos = useCallback(async (
+    options?: { campaignId?: string; subEventId?: string; threshold?: number; limit?: number }
+  ): Promise<FaceMatch[]> => {
     setIsProcessing(true);
     const startTime = Date.now();
+    const campaignId = options?.campaignId;
+    const subEventId = options?.subEventId;
+    const requestedThreshold = options?.threshold ?? 0.58;
+    const threshold = clamp(requestedThreshold, 0.45, 0.8);
+    const limit = clamp(options?.limit ?? 30, 1, 60);
     
     try {
       if (!modelsReady) {
@@ -215,10 +262,10 @@ export const useFaceRecognition = () => {
         throw new Error('Câmera não inicializada');
       }
 
-      if (!campaignId) {
+      if (!campaignId && !subEventId) {
         toast({
           title: "Erro",
-          description: "É necessário estar em um evento específico para usar reconhecimento facial.",
+          description: "É necessário estar em um evento ou álbum específico para usar reconhecimento facial.",
           variant: "destructive",
         });
         return [];
@@ -228,7 +275,7 @@ export const useFaceRecognition = () => {
       
       // Detectar rostos diretamente do vídeo
       const descriptors = await detectFacesFromSource(videoRef.current);
-      
+
       if (!descriptors || descriptors.length === 0) {
         console.error('❌ Nenhum rosto detectado na câmera');
         toast({
@@ -240,40 +287,146 @@ export const useFaceRecognition = () => {
       }
 
       console.log(`✅ ${descriptors.length} rosto(s) detectado(s) na sua câmera!`);
-      
-      // Melhorar confiança se baixa
-      if (descriptors[0].confidence < 0.7) {
+
+      const sortedFaces = [...descriptors].sort((a, b) => {
+        const areaA = (a.boundingBox?.width ?? 0) * (a.boundingBox?.height ?? 0);
+        const areaB = (b.boundingBox?.width ?? 0) * (b.boundingBox?.height ?? 0);
+        return (b.confidence + areaB / 100000) - (a.confidence + areaA / 100000);
+      });
+      const primaryFace = sortedFaces[0];
+
+      if (descriptors.length > 1) {
         toast({
-          title: "⚠️ Baixa confiança na detecção",
-          description: "A iluminação pode estar ruim. Buscaremos fotos mesmo assim...",
+          title: "Mais de um rosto detectado",
+          description: "Vamos usar automaticamente o rosto com melhor enquadramento.",
         });
       }
 
+      if (primaryFace.confidence < 0.65) {
+        toast({
+          title: "⚠️ Baixa confiança na detecção",
+          description: "A iluminação pode estar ruim. Vamos tentar mesmo assim.",
+        });
+      }
+
+      const now = Date.now();
+      const shouldReuseCachedDescriptor =
+        cachedCameraDescriptor && (now - cachedCameraDescriptor.capturedAt) < CAMERA_DESCRIPTOR_CACHE_TTL_MS;
+
+      const userDescriptor = shouldReuseCachedDescriptor
+        ? cachedCameraDescriptor!.value
+        : normalizeDescriptor(Array.from(primaryFace.descriptor));
+
+      if (!shouldReuseCachedDescriptor) {
+        cachedCameraDescriptor = { value: userDescriptor, capturedAt: now };
+      }
+
+      const invokeEdgeSearch = async (searchThreshold: number, searchLimit: number): Promise<FaceMatch[]> => {
+        const { data, error } = await supabase.functions.invoke('search-faces-in-album', {
+          body: {
+            embedding: userDescriptor,
+            campaign_id: campaignId ?? null,
+            sub_event_id: subEventId ?? null,
+            threshold: searchThreshold,
+            limit: searchLimit,
+          },
+        });
+
+        if (error) throw error;
+
+        const rawMatches = (data?.matches ?? []) as Array<Partial<PhotoRecord & { similarity?: number }>>;
+
+        const mapped: FaceMatch[] = rawMatches
+          .filter((photo) => !!photo.id)
+          .map((photo) => ({
+            photo_id: photo.id ?? '',
+            similarity: clamp(photo.similarity ?? 0, 0, 1),
+            photo_url: photo.thumbnail_url || photo.watermarked_url || photo.original_url || '',
+            campaign_id: photo.campaign_id ?? '',
+            sub_event_id: photo.sub_event_id ?? null,
+          }));
+
+        return dedupeAndSortMatches(mapped, searchLimit);
+      };
+
+      try {
+        toast({
+          title: "🔍 Buscando suas fotos...",
+          description: "Consultando o índice facial otimizado do evento.",
+        });
+
+        const strictMatches = await invokeEdgeSearch(threshold, limit);
+        let edgeMatches = strictMatches;
+
+        if (edgeMatches.length < Math.min(5, limit) && threshold > 0.5) {
+          const relaxedThreshold = clamp(threshold - 0.07, 0.48, 0.75);
+          const relaxedMatches = await invokeEdgeSearch(relaxedThreshold, clamp(limit * 2, 1, 80));
+          edgeMatches = dedupeAndSortMatches([...strictMatches, ...relaxedMatches], limit);
+        }
+
+        const topMatches = edgeMatches.slice(0, limit);
+
+        if (topMatches.length > 0) {
+          setMatches(topMatches);
+        }
+
+        const elapsedTime = ((Date.now() - startTime) / 1000).toFixed(1);
+
+        if (topMatches.length > 0) {
+          const avgConfidence = Math.round(
+            topMatches.reduce((sum, m) => sum + m.similarity, 0) / topMatches.length * 100
+          );
+          const highConfidenceCount = topMatches.filter(m => m.similarity > 0.75).length;
+
+          toast({
+            title: `✨ ${topMatches.length} foto(s) encontrada(s)!`,
+            description: highConfidenceCount > 0
+              ? `${highConfidenceCount} com alta confiança • ${elapsedTime}s de busca`
+              : `Confiança média: ${avgConfidence}% • ${elapsedTime}s`,
+            duration: 6000,
+          });
+
+          console.log(`✅ Busca otimizada concluída em ${elapsedTime}s: ${topMatches.length} fotos encontradas`);
+          return topMatches;
+        }
+
+        console.log('ℹ️ Busca por índice não retornou fotos, iniciando fallback local...');
+      } catch (edgeError) {
+        console.warn('⚠️ Busca otimizada indisponível, usando fallback local:', edgeError);
+      }
+
       toast({
-        title: "🔍 Buscando suas fotos...",
-        description: "Analisando fotos com inteligência artificial...",
+        title: "🔎 Buscando suas fotos...",
+        description: "Usando processamento local como fallback.",
       });
 
       console.log('🔎 Buscando fotos similares no banco de dados...');
 
-      // Converter descritor do usuário para array normal
-      const userDescriptor = Array.from(descriptors[0].descriptor);
+      // Converter descritor do usuário para array normal (reusar `userDescriptor` já definido acima)
+      // `userDescriptor` já foi criado antes ao tentar a função edge; não redeclaramos para evitar conflito
 
       // Buscar fotos do evento específico
       let query = supabase
         .from('photos')
-        .select('id, watermarked_url, thumbnail_url, campaign_id')
-        .eq('campaign_id', campaignId)
+        .select('id, watermarked_url, thumbnail_url, campaign_id, sub_event_id')
         .eq('is_available', true)
         .order('created_at', { ascending: false });
 
+      if (subEventId) {
+        query = query.eq('sub_event_id', subEventId);
+      } else if (campaignId) {
+        query = query.eq('campaign_id', campaignId);
+      }
+
       const { data: photos, error: photosError } = await query;
+
+      const photosList = (photos ?? []) as PhotoRecord[];
 
       if (photosError) {
         throw photosError;
       }
 
-      if (!photos || photos.length === 0) {
+      if (!photosList || photosList.length === 0) {
         toast({
           title: "Nenhuma foto encontrada",
           description: "Este evento ainda não possui fotos.",
@@ -281,15 +434,17 @@ export const useFaceRecognition = () => {
         return [];
       }
 
-      console.log(`📸 Total de ${photos.length} fotos no evento`);
+      console.log(`📸 Total de ${photosList.length} fotos no evento`);
 
       // Configuração otimizada
       const optimizedConfig = getOptimizedConfig();
       const BATCH_SIZE = optimizedConfig.batchSize;
-      const MAX_PHOTOS = optimizedConfig.maxPhotosToProcess || 150;
+      const MAX_PHOTOS = Math.min(optimizedConfig.maxPhotosToProcess || 120, 120);
+      const similarityCache = new Map<string, number>();
+      const concurrency = optimizedConfig.isLowEnd ? 2 : optimizedConfig.isMobile ? 3 : 4;
       
       // Limitar número de fotos a processar para evitar buscas infinitas
-      const photosToProcess = photos.slice(0, MAX_PHOTOS);
+      const photosToProcess = photosList.slice(0, MAX_PHOTOS);
 
       // Usar busca progressiva: primeiro threshold alto, depois relaxar
       const thresholds = [0.7, 0.6, 0.55]; // Tentar com diferentes níveis
@@ -327,36 +482,61 @@ export const useFaceRecognition = () => {
       };
 
       // Função para processar uma foto (usa canvas reduzido)
-      const processPhoto = async (photo: any, threshold: number): Promise<FaceMatch | null> => {
+      const processPhoto = async (photo: PhotoRecord, threshold: number): Promise<FaceMatch | null> => {
         try {
+          const cachedSimilarity = similarityCache.get(photo.id);
+          if (typeof cachedSimilarity === 'number') {
+            if (cachedSimilarity > threshold) {
+              return {
+                photo_id: photo.id,
+                similarity: cachedSimilarity,
+                photo_url: photo.watermarked_url || photo.thumbnail_url || '',
+                campaign_id: photo.campaign_id ?? '',
+                sub_event_id: photo.sub_event_id ?? null,
+              };
+            }
+            return null;
+          }
+
           const imageUrl = photo.thumbnail_url || photo.watermarked_url;
+          if (!imageUrl) {
+            similarityCache.set(photo.id, 0);
+            return null;
+          }
           const canvas = await loadImageToCanvas(imageUrl, optimizedConfig.inputSize || 160);
           if (!canvas) return null;
 
           const photoResults = await detectFaces(canvas);
+          let bestSimilarity = 0;
 
           if (photoResults && photoResults.length > 0) {
             for (const result of photoResults) {
               const similarity = calculateSimilarity(userDescriptor, result.descriptor);
-              if (similarity > threshold) {
-                return {
-                  photo_id: photo.id,
-                  similarity: similarity,
-                  photo_url: photo.watermarked_url || photo.thumbnail_url || '',
-                  campaign_id: photo.campaign_id
-                };
-              }
+              if (similarity > bestSimilarity) bestSimilarity = similarity;
             }
           }
 
+          similarityCache.set(photo.id, bestSimilarity);
+
+          if (bestSimilarity > threshold) {
+            return {
+              photo_id: photo.id,
+              similarity: bestSimilarity,
+              photo_url: photo.watermarked_url || photo.thumbnail_url || '',
+              campaign_id: photo.campaign_id ?? '',
+              sub_event_id: photo.sub_event_id ?? null,
+            };
+          }
+
           return null;
-        } catch (error) {
+        } catch (error: unknown) {
+          similarityCache.set(photo.id, 0);
           return null;
         }
       };
 
       // Concurrency runner for a batch with early exit support
-      const runWithConcurrency = async (items: any[], fn: (item: any) => Promise<FaceMatch | null>, concurrency: number, stopIfFound = (m: FaceMatch[]) => false) => {
+      const runWithConcurrency = async <T,>(items: T[], fn: (item: T) => Promise<FaceMatch | null>, concurrency: number, stopIfFound = (m: FaceMatch[]) => false) => {
         const results: FaceMatch[] = [];
         let idx = 0;
         const workers: Promise<void>[] = [];
@@ -394,7 +574,7 @@ export const useFaceRecognition = () => {
         for (let i = 0; i < photosToProcess.length; i += BATCH_SIZE) {
           const batch = photosToProcess.slice(i, i + BATCH_SIZE);
 
-          const batchMatches = await runWithConcurrency(batch, (p) => processPhoto(p, threshold), Math.max(1, BATCH_SIZE));
+          const batchMatches = await runWithConcurrency(batch, (p) => processPhoto(p, threshold), Math.max(1, Math.min(concurrency, BATCH_SIZE)));
 
           // Merge unique
           for (const match of batchMatches) {
@@ -423,7 +603,7 @@ export const useFaceRecognition = () => {
       matches.sort((a, b) => b.similarity - a.similarity);
 
       // Limitar a top 30 matches
-      const topMatches = matches.slice(0, 30);
+      const topMatches = matches.slice(0, limit);
       setMatches(topMatches);
 
       const elapsedTime = ((Date.now() - startTime) / 1000).toFixed(1);
@@ -452,11 +632,12 @@ export const useFaceRecognition = () => {
       console.log(`✅ Busca concluída em ${elapsedTime}s: ${topMatches.length} fotos encontradas`);
       return topMatches;
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Erro no reconhecimento facial:', error);
+      const e = error as { message?: string };
       toast({
         title: "Erro no reconhecimento facial",
-        description: error.message || "Tente novamente em alguns instantes.",
+        description: e.message || "Tente novamente em alguns instantes.",
         variant: "destructive",
       });
       return [];
@@ -502,18 +683,19 @@ export const useFaceRecognition = () => {
       });
 
       return true;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Erro ao registrar rosto:', error);
+      const e = error as { message?: string };
       toast({
         title: "Erro ao registrar rosto",
-        description: error.message || "Tente novamente em alguns instantes.",
+        description: e.message || "Tente novamente em alguns instantes.",
         variant: "destructive",
       });
       return false;
     } finally {
       setIsProcessing(false);
     }
-  }, [detectFaces, modelsReady]);
+  }, [detectFacesFromSource, modelsReady]);
 
   return {
     videoRef,

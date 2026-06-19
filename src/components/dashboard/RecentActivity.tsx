@@ -43,6 +43,7 @@ interface RecentActivityProps {
   title?: string;
   emptyMessage?: string;
   maxItems?: number;
+  maxPhotoPreviews?: number;
 }
 
 const typeColors = {
@@ -69,7 +70,8 @@ const RecentActivity = ({
   activities, 
   title = 'Atividade Recente', 
   emptyMessage = 'Nenhuma atividade recente',
-  maxItems = 10 
+  maxItems = 10,
+  maxPhotoPreviews = 5,
 }: RecentActivityProps) => {
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const displayedActivities = activities.slice(0, maxItems);
@@ -221,7 +223,7 @@ const RecentActivity = ({
                       {hasMultiplePhotos && activity.photos && activity.photos.length > 0 ? (
                         <div className="space-y-2">
                           <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                            {activity.photos.map((photo, idx) => (
+                            {activity.photos.slice(0, maxPhotoPreviews).map((photo, idx) => (
                               <div key={photo.id || idx} className="relative aspect-square rounded overflow-hidden bg-muted">
                                 <img
                                   src={photo.thumbnail_url || photo.watermarked_url}
@@ -233,6 +235,11 @@ const RecentActivity = ({
                                     target.style.display = 'none';
                                   }}
                                 />
+                                {idx === maxPhotoPreviews - 1 && activity.photos.length > maxPhotoPreviews && (
+                                  <div className="absolute inset-0 flex items-center justify-center bg-black/55 text-white">
+                                    <span className="text-sm font-semibold">+{activity.photos.length - maxPhotoPreviews}</span>
+                                  </div>
+                                )}
                               </div>
                             ))}
                           </div>

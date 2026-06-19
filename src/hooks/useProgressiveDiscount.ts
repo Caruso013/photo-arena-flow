@@ -24,7 +24,8 @@ export function useProgressiveDiscount(
   isEnabled: boolean = true
 ): ProgressiveDiscount {
   return useMemo(() => {
-    const subtotal = quantity * unitPrice;
+    const round2 = (value: number) => Number(value.toFixed(2));
+    const subtotal = round2(quantity * unitPrice);
     
     let discountPercentage = 0;
     
@@ -38,8 +39,8 @@ export function useProgressiveDiscount(
       }
     }
     
-    const discountAmount = subtotal * (discountPercentage / 100);
-    const total = subtotal - discountAmount;
+    const discountAmount = round2(subtotal * (discountPercentage / 100));
+    const total = round2(Math.max(0, subtotal - discountAmount));
     
     return {
       quantity,

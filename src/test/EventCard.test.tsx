@@ -83,13 +83,14 @@ describe('EventCard', () => {
     expect(campaignLink).toBeInTheDocument();
   });
 
-  it('deve exibir botão "Ver Fotos"', () => {
+  it('deve exibir identificação do fotógrafo no card', () => {
     const { getByText } = render(
       <BrowserRouter>
         <EventCard campaign={mockCampaign} index={0} />
       </BrowserRouter>
     );
 
-    expect(getByText('Ver Fotos')).toBeInTheDocument();
+    expect(getByText('Fotógrafo')).toBeInTheDocument();
+    expect(getByText('João Silva')).toBeInTheDocument();
   });
 });

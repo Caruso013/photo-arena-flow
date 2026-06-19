@@ -15,6 +15,7 @@ import { Plus, Calendar, MapPin, Loader2, Gift, Image as ImageIcon, FileText, Bu
 import { usePlatformPercentage } from '@/hooks/usePlatformPercentage';
 import { OrganizerSelector } from '@/components/events/OrganizerSelector';
 import { EventTermsEditor } from '@/components/events/EventTermsEditor';
+import UploadPhotoModal from '@/components/modals/UploadPhotoModal';
 
 interface CreateCampaignModalProps {
   organizationId?: string;
@@ -34,6 +35,9 @@ export default function CreateCampaignModal({
   const { percentage: platformPercentage, loading: loadingPercentage } = usePlatformPercentage();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [createAndUpload, setCreateAndUpload] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadCampaignId, setUploadCampaignId] = useState<string>('');
   const [currentTab, setCurrentTab] = useState('info');
   const [createdCampaignId, setCreatedCampaignId] = useState<string | null>(null);
   
@@ -187,13 +191,21 @@ export default function CreateCampaignModal({
 
       toast({
         title: "Sucesso!",
-        description: "Evento criado com sucesso!",
+        description: createAndUpload
+          ? "Evento criado! Abrindo upload para enviar fotos agora."
+          : "Evento criado com sucesso!",
       });
 
       // Reset form
+      const createdId = newCampaign?.id;
       resetForm();
       setOpen(false);
       onCampaignCreated();
+
+      if (createAndUpload && createdId) {
+        setUploadCampaignId(createdId);
+        setShowUploadModal(true);
+      }
     } catch (error: any) {
       console.error('Error creating campaign:', error);
       toast({
@@ -224,12 +236,14 @@ export default function CreateCampaignModal({
     setPreviewUrl('');
     setEventTerms(null);
     setEventTermsPdfUrl(null);
+    setCreateAndUpload(false);
     setAlbums([{ title: '', description: '' }]);
     setCurrentTab('info');
     setCreatedCampaignId(null);
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={(isOpen) => {
       setOpen(isOpen);
       if (!isOpen) resetForm();
@@ -526,8 +540,8 @@ export default function CreateCampaignModal({
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? (
+            <Button type="submit" variant="secondary" disabled={loading} onClick={() => setCreateAndUpload(false)}>
+              {loading && !createAndUpload ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   Criando...
@@ -536,9 +550,31 @@ export default function CreateCampaignModal({
                 'Criar Evento'
               )}
             </Button>
+            <Button type="submit" disabled={loading} onClick={() => setCreateAndUpload(true)}>
+              {loading && createAndUpload ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Criando e abrindo upload...
+                </>
+              ) : (
+                'Criar e Subir Fotos'
+              )}
+            </Button>
           </div>
         </form>
       </DialogContent>
     </Dialog>
+
+    {showUploadModal && (
+      <UploadPhotoModal
+        onClose={() => {
+          setShowUploadModal(false);
+          setUploadCampaignId('');
+        }}
+        onUploadComplete={onCampaignCreated}
+        initialCampaignId={uploadCampaignId}
+      />
+    )}
+    </>
   );
 }

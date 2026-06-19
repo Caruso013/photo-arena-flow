@@ -21,6 +21,7 @@ interface PhotographerBalance {
   pending_withdrawal: number;
   available_balance: number;
   total_sales: number;
+  balance_to_release: number;
 }
 
 const PhotographerBalances = () => {
@@ -110,6 +111,7 @@ const PhotographerBalances = () => {
             available_balance: 0,
             total_sales: 0,
             available_before_payouts: 0,
+            balance_to_release: 0,
           });
         }
 
@@ -125,6 +127,8 @@ const PhotographerBalances = () => {
         
         if (hoursSinceSale >= 1) {
           balance.available_before_payouts += amount;
+        } else {
+          balance.balance_to_release += amount;
         }
       });
 
@@ -150,11 +154,12 @@ const PhotographerBalances = () => {
         balance.available_balance = Math.round(balance.available_balance * 100) / 100;
         balance.total_withdrawn = Math.round(balance.total_withdrawn * 100) / 100;
         balance.pending_withdrawal = Math.round(balance.pending_withdrawal * 100) / 100;
+        balance.balance_to_release = Math.round(balance.balance_to_release * 100) / 100;
       });
 
       // Ordenar por saldo disponível
       const sortedBalances = Array.from(balanceMap.values())
-        .map(({ available_before_payouts, ...rest }) => rest) // Remove campo interno
+        .map(({ available_before_payouts, ...rest }) => rest as PhotographerBalance) // Remove campo interno
         .sort((a, b) => b.available_balance - a.available_balance);
 
       setBalances(sortedBalances);
@@ -195,7 +200,8 @@ const PhotographerBalances = () => {
     totalWithdrawn: acc.totalWithdrawn + b.total_withdrawn,
     pendingWithdrawal: acc.pendingWithdrawal + b.pending_withdrawal,
     availableBalance: acc.availableBalance + b.available_balance,
-  }), { totalEarned: 0, totalWithdrawn: 0, pendingWithdrawal: 0, availableBalance: 0 });
+    balanceToRelease: acc.balanceToRelease + b.balance_to_release,
+  }), { totalEarned: 0, totalWithdrawn: 0, pendingWithdrawal: 0, availableBalance: 0, balanceToRelease: 0 });
 
   if (profile?.role !== 'admin') {
     return (
@@ -221,7 +227,7 @@ const PhotographerBalances = () => {
         </div>
 
         {/* Cards de resumo */}
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-5">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -255,6 +261,19 @@ const PhotographerBalances = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-yellow-600">{formatCurrency(totals.pendingWithdrawal)}</div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-orange-200 bg-orange-50/50">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium flex items-center gap-2 text-orange-700">
+                <Clock className="h-4 w-4 text-orange-500" />
+                A Liberar (&lt;12h)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-orange-600">{formatCurrency(totals.balanceToRelease)}</div>
+              <p className="text-xs text-orange-500 mt-1">Vendas aguardando período de segurança</p>
             </CardContent>
           </Card>
 
@@ -311,6 +330,7 @@ const PhotographerBalances = () => {
                       <th className="pb-3 font-medium text-right">Total Ganho</th>
                       <th className="pb-3 font-medium text-right">Sacado</th>
                       <th className="pb-3 font-medium text-right">Pendente</th>
+                      <th className="pb-3 font-medium text-right text-orange-600">A Liberar</th>
                       <th className="pb-3 font-medium text-right">Disponível</th>
                     </tr>
                   </thead>
@@ -341,6 +361,13 @@ const PhotographerBalances = () => {
                             <Badge variant="outline" className="text-yellow-600">
                               {formatCurrency(balance.pending_withdrawal)}
                             </Badge>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </td>
+                        <td className="py-4 text-right">
+                          {balance.balance_to_release > 0 ? (
+                            <span className="font-medium text-orange-600">{formatCurrency(balance.balance_to_release)}</span>
                           ) : (
                             <span className="text-muted-foreground">-</span>
                           )}

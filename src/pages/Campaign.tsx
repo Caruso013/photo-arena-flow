@@ -24,11 +24,11 @@ import {
 import { toast } from '@/components/ui/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatCampaignDate } from '@/lib/eventDate';
-import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious, PaginationEllipsis } from '@/components/ui/pagination';
 import PaymentModal from '@/components/modals/PaymentModal';
 import WatermarkedPhoto from '@/components/WatermarkedPhoto';
 import AntiScreenshotProtection from '@/components/security/AntiScreenshotProtection';
-import { CartDrawer } from '@/components/cart/CartDrawer';
+import { FaceRecognitionModal } from '@/components/FaceRecognitionModal';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Calendar, 
@@ -36,7 +36,6 @@ import {
   Camera, 
   ArrowLeft, 
   Download,
-  Eye,
   ShoppingCart,
   User,
   Building2,
@@ -44,7 +43,6 @@ import {
   Folder,
   Image as ImageIcon,
   Heart,
-  ScanFace,
   Edit,
   Star,
   ChevronLeft,
@@ -54,13 +52,14 @@ import {
   Gift,
   Search,
   Mail,
-  Loader2
+  Loader2,
+  ScanFace
 } from 'lucide-react';
 import { useFavorites } from '@/hooks/useFavorites';
-import { FaceRecognitionModal } from '@/components/FaceRecognitionModal';
 import EditEventModal from '@/components/modals/EditEventModal';
 import { useHapticFeedback } from '@/hooks/useHapticFeedback';
 import { getTransformedImageUrl } from '@/lib/supabaseImageTransform';
+import MainLayout from '@/components/layout/MainLayout';
 
 interface Campaign {
   id: string;
@@ -123,12 +122,12 @@ const Campaign = () => {
   const [selectedSubEvent, setSelectedSubEvent] = useState<string | null>(null);
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showFaceRecognitionModal, setShowFaceRecognitionModal] = useState(false);
   const [showEditEventModal, setShowEditEventModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingPhotos, setLoadingPhotos] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
   const [albumPreviews, setAlbumPreviews] = useState<Record<string, string>>({});
-  const [showFaceRecognition, setShowFaceRecognition] = useState(false);
   const [deletingAlbum, setDeletingAlbum] = useState<string | null>(null);
   
   // Estados para liberar foto gratuitamente
@@ -147,6 +146,36 @@ const Campaign = () => {
   
   // Estado para foto selecionada no modal com navegação
   const [viewingPhotoIndex, setViewingPhotoIndex] = useState<number | null>(null);
+
+  const getViewerImageUrl = useCallback((photo: Photo) => {
+    return getTransformedImageUrl(photo.watermarked_url, 'large');
+  }, []);
+
+  const getVisiblePageNumbers = () => {
+    const items: Array<number | 'start-ellipsis' | 'end-ellipsis'> = [];
+    const start = Math.max(1, page - 5);
+    const end = Math.min(totalPages, page + 5);
+
+    if (start > 1) {
+      items.push(1);
+      if (start > 2) {
+        items.push('start-ellipsis');
+      }
+    }
+
+    for (let p = start; p <= end; p++) {
+      items.push(p);
+    }
+
+    if (end < totalPages) {
+      if (end < totalPages - 1) {
+        items.push('end-ellipsis');
+      }
+      items.push(totalPages);
+    }
+
+    return items;
+  };
 
   // Handlers para navegação de fotos com swipe
   const handlePrevPhoto = useCallback(() => {
@@ -737,51 +766,9 @@ const Campaign = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
-      {/* Header */}
-      <header className="border-b bg-white/95 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-3 sm:px-4 h-14 sm:h-16 flex items-center justify-between">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate('/events')}
-            className="gap-1 sm:gap-2 h-9 sm:h-10 text-xs sm:text-sm"
-          >
-            <ArrowLeft className="h-3 w-3 sm:h-4 sm:w-4" />
-            <span className="hidden sm:inline">Voltar</span>
-          </Button>
-          
-          <div className="flex items-center gap-2">
-            {/* Reconhecimento facial temporariamente desativado */}
-            {false && (
-              <Button
-                variant="default"
-                size="sm"
-                onClick={() => setShowFaceRecognition(true)}
-                className="gap-1 sm:gap-2 h-9 px-3 sm:px-4 text-xs sm:text-sm bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all relative group"
-                title="Encontre suas fotos automaticamente usando reconhecimento facial com inteligência artificial"
-              >
-                <ScanFace className="h-4 w-4 animate-pulse" />
-                <span className="hidden sm:inline font-semibold">Buscar com IA</span>
-                <span className="sm:hidden font-semibold">IA</span>
-                <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-yellow-500"></span>
-                </span>
-              </Button>
-            )}
-
-            <CartDrawer />
-            <Camera className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
-            <span className="font-semibold text-sm sm:text-base">STA Fotos</span>
-          </div>
-        </div>
-      </header>
-
-      {/* FaceRecognitionModal desativado temporariamente */}
-
-
-      <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
+    <MainLayout>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
+        <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
         {/* Campaign Header */}
         <div className="mb-6 sm:mb-8">
           <div className="relative h-56 sm:h-72 md:h-80 rounded-xl overflow-hidden mb-4 sm:mb-6 bg-muted">
@@ -960,30 +947,6 @@ const Campaign = () => {
             </p>
             
             <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
-              {/* Botão "Todas as Fotos" */}
-              <Card 
-                className={`cursor-pointer transition-all hover:shadow-lg ${
-                  selectedSubEvent === null ? 'ring-2 ring-primary' : ''
-                }`}
-                onClick={() => setSelectedSubEvent(null)}
-              >
-                <CardContent className="p-4 sm:p-6">
-                  <div className="flex flex-col items-center text-center gap-2 sm:gap-3">
-                    <div className={`p-3 sm:p-4 rounded-full ${
-                      selectedSubEvent === null ? 'bg-primary text-primary-foreground' : 'bg-muted'
-                    }`}>
-                      <ImageIcon className="h-6 w-6 sm:h-8 sm:w-8" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-sm sm:text-base">Todas as Fotos</h3>
-                      <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                        {totalPhotos} fotos
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
               {/* Álbuns/Pastas */}
               {subEvents.map((subEvent) => (
                 <Card 
@@ -1077,18 +1040,31 @@ const Campaign = () => {
             </div>
           </div>
         )}
-
-        {/* Photos Grid */}
         <div className="mb-6 sm:mb-8">
-          <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 flex items-center gap-2">
-            <ImageIcon className="h-5 w-5 sm:h-6 sm:w-6" />
-            <span className="truncate">
-              {selectedSubEvent 
-                ? `${subEvents.find(se => se.id === selectedSubEvent)?.title || 'Álbum'} (${photos.length})` 
-                : `Todas as Fotos (${photos.length})`
-              }
-            </span>
-          </h2>
+          <div className="mb-4 sm:mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+              <ImageIcon className="h-5 w-5 sm:h-6 sm:w-6" />
+              <span className="truncate">
+                {selectedSubEvent 
+                  ? `${subEvents.find(se => se.id === selectedSubEvent)?.title || 'Álbum'} (${photos.length})` 
+                  : `Fotos do Evento (${photos.length})`
+                }
+              </span>
+            </h2>
+
+            <Button
+              onClick={() => setShowFaceRecognitionModal(true)}
+              className="group relative overflow-hidden rounded-xl border-0 bg-gradient-to-r from-rose-500 via-orange-500 to-amber-500 px-4 py-2.5 text-white shadow-lg transition-all duration-300 hover:scale-[1.02] hover:from-rose-600 hover:via-orange-600 hover:to-amber-600 hover:shadow-xl"
+            >
+              <span className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.35),transparent_60%)] opacity-80 transition-opacity group-hover:opacity-100" />
+              <span className="relative flex items-center gap-2">
+                <span className="rounded-full bg-white/20 p-1.5 backdrop-blur-sm">
+                  <ScanFace className="h-4 w-4" />
+                </span>
+                <span className="text-sm font-semibold">Encontrar minhas fotos</span>
+              </span>
+            </Button>
+          </div>
 
           {photos.length === 0 ? (
             <Card className="p-8 sm:p-12 text-center">
@@ -1101,19 +1077,36 @@ const Campaign = () => {
           ) : (
             <>
               <AntiScreenshotProtection>
-                <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-1.5 sm:gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4">
                   {photos.map((photo, index) => (
-                    <Card key={photo.id} className="overflow-hidden hover:shadow-lg transition-shadow group">
-                      <div className="aspect-[3/4] bg-muted relative overflow-hidden">
+                    <Card
+                      key={photo.id}
+                      className="overflow-hidden hover:shadow-lg transition-shadow group cursor-zoom-in border-slate-200/80"
+                      onClick={() => setViewingPhotoIndex(index)}
+                    >
+                      <div className="bg-slate-100 relative overflow-hidden aspect-[3/4]">
                         <WatermarkedPhoto
-                          src={photo.thumbnail_url || photo.watermarked_url}
+                          src={photo.watermarked_url}
                           alt={getPhotoName(photo, index)}
                           position="full"
                           opacity={0.85}
                           imgClassName="w-full h-full object-contain"
                           loading={index < 4 ? "eager" : "lazy"}
-                          displaySize="original"
+                          displaySize="thumbnail"
                         />
+
+                        <Button
+                          size="sm"
+                          className="absolute bottom-2 left-2 z-20 h-8 px-2.5 gap-1.5 bg-amber-400/80 text-amber-950 hover:bg-amber-400/95 backdrop-blur-sm border border-amber-200/50 shadow-md"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            haptic.light();
+                            handleAddToCart(photo);
+                          }}
+                        >
+                          <ShoppingCart className="h-3.5 w-3.5" />
+                          <span className="text-[11px] font-semibold">Carrinho</span>
+                        </Button>
                         
                         {/* Botão Destaque (apenas para fotógrafos) */}
                         {isPhotographerOrAdmin && (
@@ -1181,18 +1174,6 @@ const Campaign = () => {
                           />
                         </Button>
 
-                        {/* Botão Ver Foto Maior - Sempre visível no mobile, hover no desktop */}
-                        <Button 
-                          size="sm" 
-                          variant="secondary" 
-                          className="absolute bottom-2 left-1/2 -translate-x-1/2 gap-1 h-8 sm:h-9 text-xs sm:text-sm z-20 shadow-lg sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
-                          onClick={() => setViewingPhotoIndex(index)}
-                        >
-                          <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
-                          Ver
-                        </Button>
-                        
-                        
                         {/* Overlay de hover sutil */}
                         <div className="absolute inset-0 bg-black/0 sm:group-hover:bg-black/10 transition-colors pointer-events-none" />
                       </div>
@@ -1206,33 +1187,7 @@ const Campaign = () => {
                             <span className="text-base sm:text-lg font-bold text-green-600 flex-shrink-0">
                               {formatCurrency(photo.price)}
                             </span>
-                            <div className="flex gap-1 sm:gap-2">
-                            <Button 
-                              size="sm" 
-                              variant={addedToCart === photo.id ? "default" : "outline"}
-                              onClick={() => handleAddToCart(photo)}
-                              className={`gap-1 h-8 sm:h-9 w-8 sm:w-auto px-2 sm:px-3 transition-all ${
-                                addedToCart === photo.id ? 'bg-green-600 hover:bg-green-700 scale-110' : ''
-                              }`}
-                              disabled={addedToCart === photo.id}
-                            >
-                              {addedToCart === photo.id ? (
-                                <svg className="h-3 w-3 sm:h-4 sm:w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                </svg>
-                              ) : (
-                                <ShoppingCart className="h-3 w-3 sm:h-4 sm:w-4" />
-                              )}
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              onClick={() => handleBuyPhoto(photo)}
-                              className="gap-1 h-8 sm:h-9 text-xs sm:text-sm px-2 sm:px-3"
-                            >
-                              <span className="hidden sm:inline">Comprar</span>
-                              <span className="sm:hidden">R$</span>
-                            </Button>
-                          </div>
+                            <span className="text-xs sm:text-sm text-muted-foreground">Clique para ampliar</span>
                         </div>
                         </div>
                       </CardContent>
@@ -1252,34 +1207,27 @@ const Campaign = () => {
                           className={page === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
                         />
                       </PaginationItem>
-                      
-                      {[...Array(totalPages)].map((_, i) => {
-                        const pageNum = i + 1;
-                        // Mostrar apenas algumas páginas
-                        if (
-                          pageNum === 1 ||
-                          pageNum === totalPages ||
-                          (pageNum >= page - 1 && pageNum <= page + 1)
-                        ) {
+
+                      {getVisiblePageNumbers().map((item, index) => {
+                        if (item === 'start-ellipsis' || item === 'end-ellipsis') {
                           return (
-                            <PaginationItem key={pageNum}>
-                              <PaginationLink
-                                onClick={() => setPage(pageNum)}
-                                isActive={page === pageNum}
-                                className="cursor-pointer"
-                              >
-                                {pageNum}
-                              </PaginationLink>
-                            </PaginationItem>
-                          );
-                        } else if (pageNum === page - 2 || pageNum === page + 2) {
-                          return (
-                            <PaginationItem key={pageNum}>
-                              <span className="px-4">...</span>
+                            <PaginationItem key={`${item}-${index}`}>
+                              <PaginationEllipsis />
                             </PaginationItem>
                           );
                         }
-                        return null;
+
+                        return (
+                          <PaginationItem key={item}>
+                            <PaginationLink
+                              onClick={() => setPage(item)}
+                              isActive={page === item}
+                              className="cursor-pointer"
+                            >
+                              {item}
+                            </PaginationLink>
+                          </PaginationItem>
+                        );
                       })}
                       
                       <PaginationItem>
@@ -1290,7 +1238,7 @@ const Campaign = () => {
                       </PaginationItem>
                     </PaginationContent>
                   </Pagination>
-                </div>
+                  </div>
               )}
             </>
           )}
@@ -1329,7 +1277,7 @@ const Campaign = () => {
               {viewingPhotoIndex !== null && photos[viewingPhotoIndex] && (
                 <div className="absolute inset-0 scale-110 blur-2xl opacity-30">
                   <img
-                    src={photos[viewingPhotoIndex].watermarked_url}
+                    src={getViewerImageUrl(photos[viewingPhotoIndex])}
                     alt=""
                     className="h-full w-full object-cover"
                     aria-hidden="true"
@@ -1359,7 +1307,7 @@ const Campaign = () => {
                       opacity={0.85}
                       imgClassName="w-full h-auto max-w-full max-h-[calc(100vh-180px)] object-contain rounded-lg shadow-2xl"
                       loading="eager"
-                      displaySize="large"
+                      displaySize="medium"
                     />
                   </div>
                 </AntiScreenshotProtection>
@@ -1391,36 +1339,29 @@ const Campaign = () => {
                   <span className="text-lg sm:text-xl font-bold text-white">
                     {formatCurrency(photos[viewingPhotoIndex].price)}
                   </span>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-10 sm:h-11 px-3 sm:px-4 gap-2 bg-white/10 border-white/20 text-white hover:bg-white/20"
-                      onClick={() => {
-                        haptic.medium();
-                        handleAddToCart(photos[viewingPhotoIndex!]);
-                      }}
-                    >
-                      <ShoppingCart className="h-4 w-4" />
-                      <span className="hidden sm:inline">Carrinho</span>
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="h-10 sm:h-11 px-4 sm:px-6 gap-2"
-                      onClick={() => {
-                        haptic.medium();
-                        handleBuyPhoto(photos[viewingPhotoIndex!]);
-                        setViewingPhotoIndex(null);
-                      }}
-                    >
-                      Comprar
-                    </Button>
-                  </div>
+                  <Button
+                    size="sm"
+                    className="h-10 sm:h-11 px-4 sm:px-6 gap-2 bg-yellow-400 text-black hover:bg-yellow-500 font-semibold"
+                    onClick={() => {
+                      haptic.medium();
+                      handleAddToCart(photos[viewingPhotoIndex!]);
+                    }}
+                  >
+                    <ShoppingCart className="h-4 w-4" />
+                    Adicionar ao carrinho
+                  </Button>
                 </>
               )}
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Payment Modal */}
+        <FaceRecognitionModal
+          open={showFaceRecognitionModal}
+          onOpenChange={setShowFaceRecognitionModal}
+          campaignId={campaign?.id}
+        />
 
         {/* Payment Modal */}
         {showPaymentModal && selectedPhoto && (
@@ -1587,6 +1528,7 @@ const Campaign = () => {
         </Dialog>
       </div>
     </div>
+    </MainLayout>
   );
 };
 

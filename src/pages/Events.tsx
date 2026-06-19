@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useSearch } from '@/contexts/SearchContext';
 import { useSearchParams } from 'react-router-dom';
@@ -59,6 +59,27 @@ interface Campaign {
 
 const PAGE_SIZE = 12;
 const IN_QUERY_BATCH_SIZE = 120;
+const MIN_PHOTOS_TO_SHOW_EVENT = 5;
+const EVENTS_VIEW_STORAGE_KEY = 'sta-events-view-state';
+
+const defaultFilters: FilterState = {
+  location: '',
+  dateFrom: '',
+  dateTo: '',
+  sortBy: 'recent',
+  photographer: '',
+  organizationId: '',
+};
+
+const readStoredEventsView = () => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(EVENTS_VIEW_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
 
 const chunkArray = <T,>(items: T[], chunkSize: number): T[][] => {
   if (items.length === 0) return [];
@@ -75,16 +96,18 @@ const Events = () => {
   const haptic = useHapticFeedback();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
-  const [localSearch, setLocalSearch] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [filters, setFilters] = useState<FilterState>({
-    location: '',
-    dateFrom: '',
-    dateTo: '',
-    sortBy: 'recent',
-    photographer: '',
-    organizationId: '',
+  const storedView = readStoredEventsView();
+  const [localSearch, setLocalSearch] = useState(() => {
+    return searchParams.get('search') || storedView?.localSearch || searchTerm || '';
   });
+  const [currentPage, setCurrentPage] = useState(() => storedView?.currentPage || 1);
+  const [filters, setFilters] = useState<FilterState>(() => ({
+    ...defaultFilters,
+    ...storedView?.filters,
+    photographer: searchParams.get('photographer') || storedView?.filters?.photographer || '',
+    organizationId: searchParams.get('org') || storedView?.filters?.organizationId || '',
+  }));
+  const didHydrateRef = useRef(false);
 
   const pullToRefresh = usePullToRefresh({
     onRefresh: async () => {
@@ -95,13 +118,30 @@ const Events = () => {
   });
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    localStorage.setItem(EVENTS_VIEW_STORAGE_KEY, JSON.stringify({
+      localSearch,
+      currentPage,
+      filters,
+    }));
+  }, [localSearch, currentPage, filters]);
+
+  useEffect(() => {
     const photographerId = searchParams.get('photographer');
     const orgId = searchParams.get('org');
-    if (photographerId) {
-      setFilters(prev => ({ ...prev, photographer: photographerId }));
+    const searchFromUrl = searchParams.get('search');
+
+    if (searchFromUrl && searchFromUrl !== localSearch) {
+      setLocalSearch(searchFromUrl);
     }
-    if (orgId) {
-      setFilters(prev => ({ ...prev, organizationId: orgId }));
+
+    if (photographerId || orgId) {
+      setFilters(prev => ({
+        ...prev,
+        photographer: photographerId || prev.photographer,
+        organizationId: orgId || prev.organizationId,
+      }));
     }
   }, [searchParams]);
 
@@ -194,8 +234,25 @@ const Events = () => {
   }, [campaigns, searchTerm, localSearch, filters]);
 
   useEffect(() => {
+    if (!didHydrateRef.current) {
+      didHydrateRef.current = true;
+      return;
+    }
+
     setCurrentPage(1);
   }, [localSearch, searchTerm, filters]);
+
+  const clearFilters = () => {
+    setFilters(defaultFilters);
+    setCurrentPage(1);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(EVENTS_VIEW_STORAGE_KEY, JSON.stringify({
+        localSearch,
+        currentPage: 1,
+        filters: defaultFilters,
+      }));
+    }
+  };
 
   const totalPages = Math.ceil(filteredCampaigns.length / PAGE_SIZE);
   const paginatedCampaigns = filteredCampaigns.slice(
@@ -336,7 +393,10 @@ const Events = () => {
         sub_events: subEventsMap[campaign.id] || [],
       }));
 
-      setCampaigns(enriched);
+      // Regra de vitrine: evento só aparece na página de eventos com mais de 5 fotos publicadas.
+      const eligibleCampaigns = enriched.filter((campaign) => (campaign.photo_count || 0) > MIN_PHOTOS_TO_SHOW_EVENT);
+
+      setCampaigns(eligibleCampaigns);
     } catch (error) {
       console.error('Error fetching campaigns:', error);
     } finally {
@@ -368,7 +428,7 @@ const Events = () => {
         progress={pullToRefresh.progress}
       />
       <section className="container mx-auto px-4 py-6 md:py-8">
-        <div className="mb-6 md:mb-8 space-y-4">
+        <div className="mb-6 md:mb-8 space-y-4 rounded-2xl border border-border/70 bg-card/85 p-4 md:p-6 shadow-sm backdrop-blur-sm">
           <div>
             <h1 className="text-3xl md:text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
               Todos os Eventos
@@ -405,7 +465,11 @@ const Events = () => {
                 </>
               )}
             </div>
-            <EventFilters onFilterChange={setFilters} />
+            <EventFilters
+              filters={filters}
+              onFilterChange={setFilters}
+              onClearFilters={clearFilters}
+            />
           </div>
         </div>
 

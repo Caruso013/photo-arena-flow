@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from '@/components/ui/use-toast';
 import { Bell, ArrowLeft, Save } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import AdminLayout from '@/components/dashboard/AdminLayout';
 
 const NotificationSettings = () => {
   const navigate = useNavigate();
@@ -40,7 +41,8 @@ const NotificationSettings = () => {
   };
 
   return (
-    <div className="container max-w-4xl py-8">
+    <AdminLayout>
+      <div className="container max-w-4xl py-8">
       <Button
         variant="ghost"
         className="mb-6"
@@ -173,6 +175,7 @@ const NotificationSettings = () => {
         </CardContent>
       </Card>
     </div>
+    </AdminLayout>
   );
 };
 

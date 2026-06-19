@@ -12,6 +12,13 @@ interface DownloadResponse {
   token: string;
 }
 
+type PurchaseRow = {
+  id: string;
+  status: string;
+  stripe_payment_intent_id: string | null;
+  created_at: string;
+};
+
 // Store rate limit info (em produção usar Redis/Supabase)
 const downloadAttempts: Record<string, { count: number; resetTime: number }> = {};
 
@@ -97,21 +104,86 @@ serve(async (req) => {
     }
 
     // 4️⃣ VALIDAR SE USUÁRIO COMPROU ESTA FOTO
-    const { data: purchase, error: purchaseError } = await supabase
+    const { data: purchaseRows, error: purchaseError } = await supabase
       .from('purchases')
-      .select('id, status')
+      .select('id, status, stripe_payment_intent_id, created_at')
       .eq('buyer_id', user.id)
       .eq('photo_id', photo_id)
-      .eq('status', 'completed')
-      .single();
+      .in('status', ['completed', 'pending'])
+      .order('created_at', { ascending: false })
+      .limit(1);
 
-    if (purchaseError || !purchase) {
+    if (purchaseError) {
+      console.log(`❌ Erro ao validar compra para usuário ${user.id} e foto ${photo_id}:`, purchaseError);
+      return new Response(
+        JSON.stringify({ error: 'Erro ao validar compra da foto' }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    if (!purchaseRows || purchaseRows.length === 0) {
       console.log(`❌ Usuário ${user.id} não comprou foto ${photo_id}`);
       return new Response(
         JSON.stringify({ error: 'Você não comprou esta foto' }),
         { 
           status: 403, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    let purchase = purchaseRows[0] as PurchaseRow;
+
+    if (purchase.status !== 'completed') {
+      const mpReference = purchase.stripe_payment_intent_id || '';
+      const mpAccessToken = Deno.env.get('MERCADOPAGO_ACCESS_TOKEN') || '';
+
+      if (mpReference.startsWith('mp:') && mpAccessToken) {
+        const mpPaymentId = mpReference.replace('mp:', '');
+        console.log(`🔎 Validando status no Mercado Pago para payment ${mpPaymentId}`);
+
+        try {
+          const mpResponse = await fetch(`https://api.mercadopago.com/v1/payments/${mpPaymentId}`, {
+            headers: { Authorization: `Bearer ${mpAccessToken}` },
+          });
+          const mpData = await mpResponse.json();
+
+          if (mpResponse.ok && mpData?.status === 'approved') {
+            await supabase
+              .from('purchases')
+              .update({ status: 'completed' })
+              .eq('buyer_id', user.id)
+              .eq('photo_id', photo_id)
+              .eq('stripe_payment_intent_id', mpReference)
+              .eq('status', 'pending');
+
+            purchase = { ...purchase, status: 'completed' };
+            console.log(`✅ Compra reconciliada em tempo real: ${purchase.id}`);
+          } else if (mpData?.status === 'pending' || mpData?.status === 'in_process') {
+            console.log(`⏳ Pagamento ainda em processamento para ${purchase.id}`);
+            return new Response(
+              JSON.stringify({ error: 'Pagamento em processamento. Tente novamente em alguns segundos.' }),
+              {
+                status: 409,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+              }
+            );
+          }
+        } catch (mpError) {
+          console.error('⚠️ Falha ao consultar Mercado Pago:', mpError);
+        }
+      }
+    }
+
+    if (purchase.status !== 'completed') {
+      return new Response(
+        JSON.stringify({ error: 'Pagamento ainda não confirmado para esta foto' }),
+        {
+          status: 409,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       );
     }

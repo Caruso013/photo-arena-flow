@@ -2,7 +2,7 @@
  * Hook para gerenciar metas do fotógrafo
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/components/ui/use-toast';
@@ -36,8 +36,43 @@ export function usePhotographerGoals() {
   });
   const [loading, setLoading] = useState(true);
 
+  const fetchProgress = useCallback(async (month: string) => {
+    if (!user) return;
+
+    try {
+      const startOfMonth = new Date(month);
+      const endOfMonth = new Date(startOfMonth);
+      endOfMonth.setMonth(endOfMonth.getMonth() + 1);
+
+      const { data: salesData } = await supabase
+        .from('purchases')
+        .select('amount')
+        .eq('photographer_id', user.id)
+        .eq('status', 'completed')
+        .gte('created_at', startOfMonth.toISOString())
+        .lt('created_at', endOfMonth.toISOString());
+
+      const salesRealized = salesData?.reduce((sum, s) => sum + Number(s.amount), 0) || 0;
+      const photosRealized = salesData?.length || 0;
+
+      const { data: photosData } = await supabase
+        .from('photos')
+        .select('campaign_id')
+        .eq('photographer_id', user.id)
+        .gte('created_at', startOfMonth.toISOString())
+        .lt('created_at', endOfMonth.toISOString());
+
+      const uniqueCampaigns = new Set(photosData?.map(p => p.campaign_id) || []);
+      const eventsRealized = uniqueCampaigns.size;
+
+      setProgress({ salesRealized, photosRealized, eventsRealized });
+    } catch (error) {
+      console.error('Error fetching progress:', error);
+    }
+  }, [user]);
+
   // Buscar metas do fotógrafo
-  const fetchGoals = async () => {
+  const fetchGoals = useCallback(async () => {
     if (!user) return;
 
     try {
@@ -57,9 +92,7 @@ export function usePhotographerGoals() {
       setCurrentGoal(current || null);
 
       // Calcular progresso do mês atual
-      if (current) {
-        await fetchProgress(currentMonth);
-      }
+      if (current) await fetchProgress(currentMonth);
     } catch (error) {
       console.error('Error fetching goals:', error);
       toast({
@@ -70,54 +103,10 @@ export function usePhotographerGoals() {
     } finally {
       setLoading(false);
     }
-  };
-
-  // Buscar progresso do mês
-  const fetchProgress = async (month: string) => {
-    if (!user) return;
-
-    try {
-      const startOfMonth = new Date(month);
-      const endOfMonth = new Date(startOfMonth);
-      endOfMonth.setMonth(endOfMonth.getMonth() + 1);
-
-      // Vendas realizadas no mês
-      const { data: salesData } = await supabase
-        .from('purchases')
-        .select('amount')
-        .eq('photographer_id', user.id)
-        .eq('status', 'completed')
-        .gte('created_at', startOfMonth.toISOString())
-        .lt('created_at', endOfMonth.toISOString());
-
-      const salesRealized = salesData?.reduce((sum, s) => sum + Number(s.amount), 0) || 0;
-
-      // Fotos vendidas no mês
-      const photosRealized = salesData?.length || 0;
-
-      // Eventos com fotos no mês (aproximado)
-      const { data: photosData } = await supabase
-        .from('photos')
-        .select('campaign_id')
-        .eq('photographer_id', user.id)
-        .gte('created_at', startOfMonth.toISOString())
-        .lt('created_at', endOfMonth.toISOString());
-
-      const uniqueCampaigns = new Set(photosData?.map(p => p.campaign_id) || []);
-      const eventsRealized = uniqueCampaigns.size;
-
-      setProgress({
-        salesRealized,
-        photosRealized,
-        eventsRealized
-      });
-    } catch (error) {
-      console.error('Error fetching progress:', error);
-    }
-  };
+  }, [user, fetchProgress]);
 
   // Criar ou atualizar meta
-  const saveGoal = async (goalData: Omit<PhotographerGoal, 'id' | 'photographer_id' | 'created_at' | 'updated_at'>) => {
+  const saveGoal = useCallback(async (goalData: Omit<PhotographerGoal, 'id' | 'photographer_id' | 'created_at' | 'updated_at'>) => {
     if (!user) return null;
 
     try {
@@ -141,19 +130,20 @@ export function usePhotographerGoals() {
 
       await fetchGoals();
       return data;
-    } catch (error: any) {
-      console.error('Error saving goal:', error);
+    } catch (error: unknown) {
+      const e = error as { message?: string };
+      console.error('Error saving goal:', e);
       toast({
         title: 'Erro ao salvar meta',
-        description: error.message || 'Não foi possível salvar a meta.',
+        description: e.message || 'Não foi possível salvar a meta.',
         variant: 'destructive'
       });
       return null;
     }
-  };
+  }, [user, fetchGoals]);
 
   // Deletar meta
-  const deleteGoal = async (goalId: string) => {
+  const deleteGoal = useCallback(async (goalId: string) => {
     try {
       const { error } = await supabase
         .from('photographer_goals')
@@ -168,19 +158,20 @@ export function usePhotographerGoals() {
       });
 
       await fetchGoals();
-    } catch (error: any) {
-      console.error('Error deleting goal:', error);
+    } catch (error: unknown) {
+      const e = error as { message?: string };
+      console.error('Error deleting goal:', e);
       toast({
         title: 'Erro ao excluir meta',
-        description: error.message || 'Não foi possível excluir a meta.',
+        description: e.message || 'Não foi possível excluir a meta.',
         variant: 'destructive'
       });
     }
-  };
+  }, [fetchGoals]);
 
   useEffect(() => {
     fetchGoals();
-  }, [user]);
+  }, [fetchGoals]);
 
   return {
     goals,

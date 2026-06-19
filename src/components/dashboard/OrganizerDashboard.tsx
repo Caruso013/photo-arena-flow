@@ -31,29 +31,35 @@ interface Stats {
 const OrganizerDashboard = () => {
   const { profile, user } = useAuth();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [organizationIds, setOrganizationIds] = useState<string[]>([]);
   const [stats, setStats] = useState<Stats>({
     totalCampaigns: 0,
     totalPhotos: 0,
     totalRevenue: 0,
     totalOrganizationRevenue: 0
   });
-  const [loading, setLoading] = useState(true);
+  const [loadingOrganizations, setLoadingOrganizations] = useState(true);
+  const [loadingStats, setLoadingStats] = useState(true);
+  const [loadingCampaigns, setLoadingCampaigns] = useState(true);
 
   useEffect(() => {
-    fetchData();
+    fetchOrganizationIds();
   }, []);
 
-  const fetchData = async () => {
-    await Promise.all([
-      fetchCampaigns(),
-      fetchStats()
-    ]);
-    setLoading(false);
-  };
+  useEffect(() => {
+    if (organizationIds.length > 0) {
+      fetchStats();
+      fetchCampaigns();
+    } else if (!loadingOrganizations) {
+      setLoadingStats(false);
+      setLoadingCampaigns(false);
+    }
+  }, [organizationIds, loadingOrganizations]);
 
-  const fetchCampaigns = async () => {
+  const fetchOrganizationIds = async () => {
     try {
-      // Buscar organizações do usuário
+      setLoadingOrganizations(true);
+
       const { data: orgMemberships } = await supabase
         .from('organization_members')
         .select('organization_id')
@@ -61,8 +67,22 @@ const OrganizerDashboard = () => {
         .eq('is_active', true);
 
       const orgIds = orgMemberships?.map(m => m.organization_id) || [];
+      setOrganizationIds(orgIds);
+    } catch (error) {
+      console.error('Error fetching organization ids:', error);
+      setOrganizationIds([]);
+      setLoadingStats(false);
+      setLoadingCampaigns(false);
+    } finally {
+      setLoadingOrganizations(false);
+    }
+  };
 
-      if (orgIds.length === 0) {
+  const fetchCampaigns = async () => {
+    try {
+      setLoadingCampaigns(true);
+
+      if (organizationIds.length === 0) {
         setCampaigns([]);
         return;
       }
@@ -71,7 +91,7 @@ const OrganizerDashboard = () => {
       const { data: campaignsData, error } = await supabase
         .from('campaigns')
         .select('*')
-        .in('organization_id', orgIds)
+        .in('organization_id', organizationIds)
         .order('event_date', { ascending: false });
 
       if (error) throw error;
@@ -84,23 +104,25 @@ const OrganizerDashboard = () => {
         return;
       }
 
-      // Fetch photo counts in batch
-      const { data: photoCountData } = await supabase
-        .from('photos')
-        .select('campaign_id')
-        .in('campaign_id', campaignIds)
-        .eq('is_available', true);
+      const [photoCountResult, revenueResult] = await Promise.all([
+        supabase
+          .from('photos')
+          .select('campaign_id')
+          .in('campaign_id', campaignIds)
+          .eq('is_available', true),
+        supabase
+          .from('revenue_shares')
+          .select('organization_amount, photographer_amount, platform_amount, purchase_id, purchases!inner(photo_id, photos!inner(campaign_id))')
+          .in('organization_id', organizationIds)
+      ]);
+
+      const photoCountData = photoCountResult.data;
+      const revenueData = revenueResult.data;
 
       const photoCountMap: Record<string, number> = {};
       (photoCountData || []).forEach((p: any) => {
         photoCountMap[p.campaign_id] = (photoCountMap[p.campaign_id] || 0) + 1;
       });
-
-      // Fetch revenue shares for all campaigns in batch
-      const { data: revenueData } = await supabase
-        .from('revenue_shares')
-        .select('organization_amount, photographer_amount, platform_amount, purchase_id, purchases!inner(photo_id, photos!inner(campaign_id))')
-        .in('organization_id', orgIds);
 
       // Group revenue by campaign
       const revenueMap: Record<string, { org: number; photographer: number; total: number; count: number }> = {};
@@ -130,20 +152,16 @@ const OrganizerDashboard = () => {
       setCampaigns(campaignsWithStats);
     } catch (error) {
       console.error('Error fetching campaigns:', error);
+    } finally {
+      setLoadingCampaigns(false);
     }
   };
 
   const fetchStats = async () => {
     try {
-      const { data: orgMemberships } = await supabase
-        .from('organization_members')
-        .select('organization_id')
-        .eq('user_id', user?.id)
-        .eq('is_active', true);
+      setLoadingStats(true);
 
-      const orgIds = orgMemberships?.map(m => m.organization_id) || [];
-
-      if (orgIds.length === 0) {
+      if (organizationIds.length === 0) {
         setStats({ totalCampaigns: 0, totalPhotos: 0, totalRevenue: 0, totalOrganizationRevenue: 0 });
         return;
       }
@@ -151,12 +169,12 @@ const OrganizerDashboard = () => {
       const { count: campaignsCount } = await supabase
         .from('campaigns')
         .select('*', { count: 'exact', head: true })
-        .in('organization_id', orgIds);
+        .in('organization_id', organizationIds);
 
       const { data: campaignsData } = await supabase
         .from('campaigns')
         .select('id')
-        .in('organization_id', orgIds);
+        .in('organization_id', organizationIds);
 
       const campaignIds = campaignsData?.map(c => c.id) || [];
 
@@ -173,7 +191,7 @@ const OrganizerDashboard = () => {
       let totalRevenue = 0;
       let organizationRevenue = 0;
 
-      if (orgIds.length > 0) {
+      if (organizationIds.length > 0) {
         // Paginate revenue_shares
         let allRevenue: any[] = [];
         let page = 0;
@@ -184,7 +202,7 @@ const OrganizerDashboard = () => {
           const { data } = await supabase
             .from('revenue_shares')
             .select('organization_amount, photographer_amount, platform_amount')
-            .in('organization_id', orgIds)
+            .in('organization_id', organizationIds)
             .range(page * pageSize, (page + 1) * pageSize - 1);
 
           if (data && data.length > 0) {
@@ -209,8 +227,12 @@ const OrganizerDashboard = () => {
       });
     } catch (error) {
       console.error('Error fetching stats:', error);
+    } finally {
+      setLoadingStats(false);
     }
   };
+
+  const loading = loadingOrganizations;
 
   if (loading) {
     return (
@@ -241,7 +263,7 @@ const OrganizerDashboard = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground mb-1">Eventos</p>
-                  <p className="text-3xl font-bold">{stats.totalCampaigns}</p>
+                  <p className="text-3xl font-bold">{loadingStats ? '—' : stats.totalCampaigns}</p>
                 </div>
                 <Calendar className="h-8 w-8 text-primary" />
               </div>
@@ -253,7 +275,7 @@ const OrganizerDashboard = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground mb-1">Fotos</p>
-                  <p className="text-3xl font-bold">{stats.totalPhotos}</p>
+                  <p className="text-3xl font-bold">{loadingStats ? '—' : stats.totalPhotos}</p>
                 </div>
                 <Camera className="h-8 w-8 text-blue-600" />
               </div>
@@ -265,7 +287,7 @@ const OrganizerDashboard = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground mb-1">Receita Total</p>
-                  <p className="text-3xl font-bold">{formatCurrency(stats.totalRevenue)}</p>
+                  <p className="text-3xl font-bold">{loadingStats ? 'Carregando...' : formatCurrency(stats.totalRevenue)}</p>
                 </div>
                 <BarChart3 className="h-8 w-8 text-green-600" />
               </div>
@@ -277,7 +299,7 @@ const OrganizerDashboard = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground mb-1">Sua Comissão</p>
-                  <p className="text-3xl font-bold">{formatCurrency(stats.totalOrganizationRevenue)}</p>
+                  <p className="text-3xl font-bold">{loadingStats ? 'Carregando...' : formatCurrency(stats.totalOrganizationRevenue)}</p>
                 </div>
                 <DollarSign className="h-8 w-8 text-amber-600" />
               </div>
@@ -294,10 +316,19 @@ const OrganizerDashboard = () => {
             {campaigns.length === 0 ? (
               <div className="text-center py-12">
                 <Calendar className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium mb-2">Nenhum evento ainda</h3>
-                <p className="text-muted-foreground">
-                  Aguarde o administrador vincular eventos à sua organização
-                </p>
+                {loadingCampaigns ? (
+                  <>
+                    <h3 className="text-lg font-medium mb-2">Carregando eventos...</h3>
+                    <p className="text-muted-foreground">Estamos buscando os dados da sua organização em segundo plano.</p>
+                  </>
+                ) : (
+                  <>
+                    <h3 className="text-lg font-medium mb-2">Nenhum evento ainda</h3>
+                    <p className="text-muted-foreground">
+                      Aguarde o administrador vincular eventos à sua organização
+                    </p>
+                  </>
+                )}
               </div>
             ) : (
               <Table>
@@ -332,6 +363,9 @@ const OrganizerDashboard = () => {
                   ))}
                 </TableBody>
               </Table>
+            )}
+            {loadingCampaigns && campaigns.length > 0 && (
+              <div className="mt-4 text-sm text-muted-foreground">Atualizando métricas dos eventos...</div>
             )}
           </CardContent>
         </Card>

@@ -4,7 +4,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Legend, Line, LineChart, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 import { formatCurrency } from '@/lib/utils';
-import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Camera, Calendar } from 'lucide-react';
+import { TrendingUp, DollarSign, ShoppingCart, Camera, Calendar } from 'lucide-react';
 
 interface SalesData {
   date: string;
@@ -59,18 +59,6 @@ export const SalesChart = ({
   const totalSales = data.reduce((sum, d) => sum + d.sales, 0);
   const avgTicket = totalSales > 0 ? totalRevenue / totalSales : 0;
 
-  // Calcular métricas do período anterior para comparação
-  const halfLength = Math.floor(data.length / 2);
-  const recentData = data.slice(halfLength);
-  const previousData = data.slice(0, halfLength);
-
-  const recentRevenue = recentData.reduce((sum, d) => sum + d.revenue, 0);
-  const previousRevenue = previousData.reduce((sum, d) => sum + d.revenue, 0);
-  const revenueChange = previousRevenue > 0 ? ((recentRevenue - previousRevenue) / previousRevenue) * 100 : 0;
-
-  const recentSales = recentData.reduce((sum, d) => sum + d.sales, 0);
-  const previousSales = previousData.reduce((sum, d) => sum + d.sales, 0);
-  const salesChange = previousSales > 0 ? ((recentSales - previousSales) / previousSales) * 100 : 0;
 
   const handlePeriodChange = (value: string) => {
     setPeriod(value);
@@ -85,17 +73,6 @@ export const SalesChart = ({
       case '90': return 'últimos 3 meses';
       default: return 'período selecionado';
     }
-  };
-
-  const TrendIndicator = ({ value, suffix = '' }: { value: number; suffix?: string }) => {
-    if (value === 0) return null;
-    const isPositive = value > 0;
-    return (
-      <div className={`flex items-center gap-1 text-xs ${isPositive ? 'text-green-600' : 'text-red-500'}`}>
-        {isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-        <span>{isPositive ? '+' : ''}{value.toFixed(1)}%{suffix}</span>
-      </div>
-    );
   };
 
   return (
@@ -127,15 +104,14 @@ export const SalesChart = ({
           <CardContent className="pt-6">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <DollarSign className="h-4 w-4 text-primary" />
-                <span className="text-sm text-muted-foreground">Receita Total</span>
+                <DollarSign className="h-4 w-4 text-amber-600" />
+                <span className="text-sm font-medium text-foreground/80">Receita Total</span>
               </div>
-              <TrendIndicator value={revenueChange} suffix=" vs anterior" />
             </div>
-            <div className="text-2xl font-bold text-primary">
+            <div className="text-2xl font-bold text-foreground">
               {formatCurrency(totalRevenue)}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-xs text-foreground/70 mt-1">
               {getPeriodLabel()}
             </p>
           </CardContent>
@@ -145,15 +121,14 @@ export const SalesChart = ({
           <CardContent className="pt-6">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <ShoppingCart className="h-4 w-4 text-accent" />
-                <span className="text-sm text-muted-foreground">Total de Vendas</span>
+                <ShoppingCart className="h-4 w-4 text-blue-600" />
+                <span className="text-sm font-medium text-foreground/80">Total de Vendas</span>
               </div>
-              <TrendIndicator value={salesChange} suffix=" vs anterior" />
             </div>
-            <div className="text-2xl font-bold text-accent">
+            <div className="text-2xl font-bold text-foreground">
               {totalSales}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-xs text-foreground/70 mt-1">
               fotos vendidas
             </p>
           </CardContent>
@@ -162,13 +137,13 @@ export const SalesChart = ({
         <Card className="border-secondary/20 bg-gradient-to-br from-secondary/5 to-transparent">
           <CardContent className="pt-6">
             <div className="flex items-center gap-2 mb-2">
-              <TrendingUp className="h-4 w-4 text-secondary" />
-              <span className="text-sm text-muted-foreground">Ticket Médio</span>
+              <TrendingUp className="h-4 w-4 text-emerald-600" />
+              <span className="text-sm font-medium text-foreground/80">Ticket Médio</span>
             </div>
-            <div className="text-2xl font-bold text-secondary">
+            <div className="text-2xl font-bold text-foreground">
               {formatCurrency(avgTicket)}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-xs text-foreground/70 mt-1">
               por venda
             </p>
           </CardContent>

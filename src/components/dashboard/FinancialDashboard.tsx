@@ -511,15 +511,15 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
       {/* Revenue Distribution Cards - Admin Only */}
       {userRole === 'admin' && (
         <div className="grid gap-4 grid-cols-1 md:grid-cols-4">
-          <Card className="border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-primary/10">
+          <Card className="border border-primary/25 bg-gradient-to-br from-primary/5 via-white to-primary/10 shadow-sm hover:shadow-md transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Receita Total Bruta</CardTitle>
-              <div className="p-2 bg-primary/20 rounded-lg">
+              <CardTitle className="text-sm font-medium text-foreground/90">Receita Total Bruta</CardTitle>
+              <div className="p-2.5 bg-primary/15 rounded-xl">
                 <DollarSign className="h-5 w-5 text-primary" />
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-primary">
+              <div className="text-3xl font-bold text-primary tracking-tight">
                 {formatCurrency(totalRevenue)}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
@@ -528,15 +528,15 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
             </CardContent>
           </Card>
 
-          <Card className="border-2 border-green-500/30 bg-gradient-to-br from-green-500/5 to-green-500/10">
+          <Card className="border border-green-500/30 bg-gradient-to-br from-green-500/5 via-white to-green-500/10 shadow-sm hover:shadow-md transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Receita STA (Plataforma)</CardTitle>
-              <div className="p-2 bg-green-500/20 rounded-lg">
+              <CardTitle className="text-sm font-medium text-foreground/90">Receita STA (Plataforma)</CardTitle>
+              <div className="p-2.5 bg-green-500/15 rounded-xl">
                 <TrendingUp className="h-5 w-5 text-green-600" />
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">
+              <div className="text-3xl font-bold text-green-600 tracking-tight">
                 {formatCurrency(platformRevenue)}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
@@ -545,15 +545,15 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
             </CardContent>
           </Card>
 
-          <Card className="border-2 border-blue-500/30 bg-gradient-to-br from-blue-500/5 to-blue-500/10">
+          <Card className="border border-blue-500/30 bg-gradient-to-br from-blue-500/5 via-white to-blue-500/10 shadow-sm hover:shadow-md transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Receita Fotógrafos</CardTitle>
-              <div className="p-2 bg-blue-500/20 rounded-lg">
+              <CardTitle className="text-sm font-medium text-foreground/90">Receita Fotógrafos</CardTitle>
+              <div className="p-2.5 bg-blue-500/15 rounded-xl">
                 <Camera className="h-5 w-5 text-blue-600" />
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-blue-600">
+              <div className="text-3xl font-bold text-blue-600 tracking-tight">
                 {formatCurrency(photographersRevenue)}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
@@ -562,15 +562,15 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
             </CardContent>
           </Card>
 
-          <Card className="border-2 border-amber-500/30 bg-gradient-to-br from-amber-500/5 to-amber-500/10">
+          <Card className="border border-amber-500/30 bg-gradient-to-br from-amber-500/5 via-white to-amber-500/10 shadow-sm hover:shadow-md transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Receita Organizações</CardTitle>
-              <div className="p-2 bg-amber-500/20 rounded-lg">
+              <CardTitle className="text-sm font-medium text-foreground/90">Receita Organizações</CardTitle>
+              <div className="p-2.5 bg-amber-500/15 rounded-xl">
                 <Users className="h-5 w-5 text-amber-600" />
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-amber-600">
+              <div className="text-3xl font-bold text-amber-600 tracking-tight">
                 {formatCurrency(organizationsRevenue)}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
@@ -584,15 +584,15 @@ const FinancialDashboard = ({ userRole, view = 'overview' }: FinancialDashboardP
       {/* Overview Cards */}
       <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
         {userRole === 'photographer' && (
-          <Card className="hover:shadow-lg transition-all hover:-translate-y-1 border-2 border-primary/20">
+          <Card className="border border-primary/25 bg-gradient-to-br from-primary/5 via-white to-primary/10 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Sua Receita Total</CardTitle>
-              <div className="p-2 bg-primary/10 rounded-lg">
+              <CardTitle className="text-sm font-medium text-foreground/90">Sua Receita Total</CardTitle>
+              <div className="p-2.5 bg-primary/15 rounded-xl">
                 <DollarSign className="h-5 w-5 text-primary" />
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl sm:text-3xl font-bold text-primary">
+              <div className="text-3xl sm:text-4xl font-bold text-primary tracking-tight">
                 {formatCurrency(totalRevenue)}
               </div>
               <p className="text-xs text-muted-foreground mt-2">

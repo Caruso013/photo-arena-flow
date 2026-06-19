@@ -2,11 +2,14 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency } from '@/lib/utils';
-import { Folder, DollarSign, Camera, TrendingUp, Image, ShoppingCart, Percent, BarChart3 } from 'lucide-react';
+import { Folder, DollarSign, Camera, TrendingUp, Image, ShoppingCart, Percent, BarChart3, PieChart as PieChartIcon, ChevronRight, Users, ScanSearch } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Link, useSearchParams } from 'react-router-dom';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 
 interface AlbumReport {
   album_id: string;
@@ -27,8 +30,12 @@ interface OverallMetrics {
   active_carts: number;
 }
 
+const PIE_COLORS = ['#F59E0B', '#3B82F6', '#10B981', '#8B5CF6', '#EF4444', '#14B8A6'];
+
 const AlbumReports = () => {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const campaignFilter = searchParams.get('campaign');
   const [albums, setAlbums] = useState<AlbumReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalRevenue, setTotalRevenue] = useState(0);
@@ -46,7 +53,7 @@ const AlbumReports = () => {
       fetchAlbumReports();
       fetchOverallMetrics();
     }
-  }, [user]);
+  }, [user, campaignFilter]);
 
   // Helper para paginação (evitar limite de 1000 registros do Supabase)
   const fetchAllFromTable = async (buildQuery: (from: number, to: number) => any) => {
@@ -78,10 +85,12 @@ const AlbumReports = () => {
               photos!purchases_photo_id_fkey(
                 sub_event_id,
                 price,
+                campaign_id,
                 sub_events:sub_events!photos_sub_event_id_fkey(
                   id,
                   title,
                   campaigns!sub_events_campaign_id_fkey(
+                    id,
                     title
                   )
                 )
@@ -92,12 +101,16 @@ const AlbumReports = () => {
           .range(from, to)
       );
 
+      const filteredRevenueData = campaignFilter
+        ? revenueData.filter((revenue: any) => revenue.purchases?.photos?.sub_events?.campaigns?.id === campaignFilter)
+        : revenueData;
+
       // Agrupar por álbum (com tracking de compradores únicos)
       const albumMap = new Map<string, AlbumReport & { buyers: Set<string> }>();
       let totalRev = 0;
       let totalPhotos = 0;
 
-      revenueData?.forEach((revenue: any) => {
+      filteredRevenueData?.forEach((revenue: any) => {
         const purchase = revenue.purchases;
         const photo = purchase?.photos;
         const subEvent = photo?.sub_events;
@@ -162,26 +175,36 @@ const AlbumReports = () => {
   const fetchOverallMetrics = async () => {
     try {
       // Buscar total de fotos enviadas pelo fotógrafo
-      const { count: totalPhotos } = await supabase
+      const photosQuery = supabase
         .from('photos')
         .select('*', { count: 'exact', head: true })
         .eq('photographer_id', user?.id);
+
+      if (campaignFilter) {
+        photosQuery.eq('campaign_id', campaignFilter);
+      }
+
+      const { count: totalPhotos } = await photosQuery;
 
       // Buscar vendas completadas (COM PAGINAÇÃO)
       const completedPurchases = await fetchAllFromTable((from, to) =>
         supabase
           .from('purchases')
-          .select('id, photo_id')
+          .select('id, photo_id, photos!inner(campaign_id)')
           .eq('photographer_id', user?.id)
           .eq('status', 'completed')
           .range(from, to)
       );
 
+      const filteredPurchases = campaignFilter
+        ? completedPurchases.filter((purchase: any) => purchase.photos?.campaign_id === campaignFilter)
+        : completedPurchases;
+
       // Contar fotos únicas vendidas
-      const uniquePhotosSold = new Set(completedPurchases?.map(p => p.photo_id) || []).size;
+      const uniquePhotosSold = new Set(filteredPurchases?.map((p: any) => p.photo_id) || []).size;
 
       // Calcular média de fotos por pedido (agrupando por buyer)
-      const purchasesByBuyer = completedPurchases?.reduce((acc: any, purchase) => {
+      const purchasesByBuyer = filteredPurchases?.reduce((acc: any, purchase) => {
         if (!acc[purchase.id]) acc[purchase.id] = [];
         acc[purchase.id].push(purchase);
         return acc;
@@ -189,7 +212,7 @@ const AlbumReports = () => {
 
       const totalOrders = Object.keys(purchasesByBuyer).length;
       const avgPhotosPerOrder = totalOrders > 0 
-        ? (completedPurchases?.length || 0) / totalOrders 
+        ? (filteredPurchases?.length || 0) / totalOrders 
         : 0;
 
       // Taxa de conversão
@@ -211,12 +234,12 @@ const AlbumReports = () => {
 
   if (loading) {
     return (
-      <div className="p-6 space-y-6">
+      <div className="space-y-6 p-3 sm:p-6">
         <Skeleton className="h-8 w-64" />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[...Array(3)].map((_, i) => (
+        <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+          {[...Array(4)].map((_, i) => (
             <Card key={i}>
-              <CardHeader>
+              <CardHeader className="pb-2">
                 <Skeleton className="h-4 w-24" />
               </CardHeader>
               <CardContent>
@@ -225,182 +248,213 @@ const AlbumReports = () => {
             </Card>
           ))}
         </div>
+        <Skeleton className="h-72 w-full rounded-2xl" />
       </div>
     );
   }
 
+  const topAlbums = albums.slice(0, 6);
+  const pieData = topAlbums.map((album) => ({
+    name: album.album_title,
+    value: album.total_revenue,
+  }));
+
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Relatórios por Álbum</h1>
-        <p className="text-muted-foreground mt-2">
-          Análise detalhada de vendas por álbum
-        </p>
-      </div>
+    <div className="space-y-6 p-3 sm:p-6">
+      <div className="space-y-3">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Relatórios por Álbum</h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-1">
+              Análise direta de vendas, compradores e receita por álbum.
+            </p>
+          </div>
+          {campaignFilter && (
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20">
+                Relatório individual do evento
+              </Badge>
+              <Button asChild variant="ghost" size="sm" className="h-9 px-3">
+                <Link to="/dashboard/photographer/album-reports">Limpar filtro</Link>
+              </Button>
+            </div>
+          )}
+        </div>
 
-      {/* Métricas Gerais - Estilo Instagram Analytics */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BarChart3 className="h-5 w-5" />
-            Métricas Gerais de Desempenho
-          </CardTitle>
-          <CardDescription>
-            Visão geral das suas fotos e vendas
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Linha 1 */}
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Fotos enviadas</p>
-              <p className="text-3xl font-bold">{metrics.total_photos_uploaded}</p>
-            </div>
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Vendas de fotos</p>
-              <p className="text-3xl font-bold">{totalPhotosSold}</p>
-            </div>
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Média de fotos por pedido</p>
-              <p className="text-3xl font-bold">{metrics.avg_photos_per_order.toFixed(2)}</p>
-            </div>
-
-            {/* Linha 2 */}
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Taxa de conversão</p>
-              <p className="text-3xl font-bold">{metrics.conversion_rate.toFixed(2)}%</p>
-            </div>
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Álbuns com vendas</p>
-              <p className="text-3xl font-bold">{albums.length}</p>
-            </div>
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Receita Total</p>
-              <p className="text-3xl font-bold text-primary">{formatCurrency(totalRevenue)}</p>
-            </div>
-
-            {/* Barra de progresso de envios */}
-            <div className="md:col-span-3 space-y-3 pt-4 border-t">
-              <p className="text-sm font-medium">% de envios convertidos em vendas</p>
-              <div className="flex items-center gap-4">
-                <div className="flex-1">
-                  <div className="flex justify-between text-xs mb-1">
-                    <span>Fotos: {metrics.total_photos_uploaded}</span>
-                    <span>Vendas: {metrics.total_photos_sold}</span>
+        <Card className="border-amber-200/60 bg-gradient-to-r from-amber-50 via-white to-blue-50">
+          <CardContent className="p-4 sm:p-5">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                  <ScanSearch className="h-4 w-4 text-primary" />
+                  Resumo visual
+                </div>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <div className="rounded-2xl border bg-white/90 p-3 shadow-sm">
+                    <p className="text-xs text-muted-foreground">Fotos enviadas</p>
+                    <p className="mt-1 text-xl sm:text-2xl font-bold">{metrics.total_photos_uploaded}</p>
+                  </div>
+                  <div className="rounded-2xl border bg-white/90 p-3 shadow-sm">
+                    <p className="text-xs text-muted-foreground">Fotos vendidas</p>
+                    <p className="mt-1 text-xl sm:text-2xl font-bold">{totalPhotosSold}</p>
+                  </div>
+                  <div className="rounded-2xl border bg-white/90 p-3 shadow-sm">
+                    <p className="text-xs text-muted-foreground">Álbuns com vendas</p>
+                    <p className="mt-1 text-xl sm:text-2xl font-bold">{albums.length}</p>
+                  </div>
+                  <div className="rounded-2xl border bg-white/90 p-3 shadow-sm">
+                    <p className="text-xs text-muted-foreground">Receita total</p>
+                    <p className="mt-1 text-lg sm:text-xl font-bold text-primary">{formatCurrency(totalRevenue)}</p>
+                  </div>
+                </div>
+                <div className="rounded-2xl border bg-white/90 p-4 shadow-sm">
+                  <div className="flex items-center justify-between gap-3 text-sm mb-2">
+                    <span className="font-medium">Conversão de envios em vendas</span>
+                    <span className="font-semibold text-primary">{metrics.conversion_rate.toFixed(1)}%</span>
                   </div>
                   <Progress value={metrics.conversion_rate} className="h-3" />
+                  <div className="mt-2 flex justify-between text-xs text-muted-foreground">
+                    <span>{metrics.total_photos_uploaded} fotos</span>
+                    <span>{metrics.total_photos_sold} vendidas</span>
+                  </div>
                 </div>
-                <Badge variant="secondary" className="text-lg px-4 py-2">
-                  {metrics.conversion_rate.toFixed(1)}%
-                </Badge>
+              </div>
+
+              <div className="rounded-2xl border bg-white/90 p-4 shadow-sm">
+                <div className="mb-3 flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                  <PieChartIcon className="h-4 w-4 text-primary" />
+                  Receita por álbum
+                </div>
+                {pieData.length > 0 ? (
+                  <div className="h-72 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={pieData}
+                          dataKey="value"
+                          nameKey="name"
+                          innerRadius={55}
+                          outerRadius={90}
+                          paddingAngle={2}
+                        >
+                          {pieData.map((_, index) => (
+                            <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(value: any) => formatCurrency(Number(value))} />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <div className="flex h-72 items-center justify-center rounded-2xl border border-dashed text-sm text-muted-foreground">
+                    Sem dados suficientes para o gráfico.
+                  </div>
+                )}
               </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
 
-      {/* Cards de Resumo por Álbum */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Receita Total (Álbuns)</CardTitle>
+          <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-sm font-medium">Receita total</CardTitle>
             <DollarSign className="h-5 w-5 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-primary">
-              {formatCurrency(totalRevenue)}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              De todos os álbuns
-            </p>
+            <div className="text-xl sm:text-2xl font-bold text-primary">{formatCurrency(totalRevenue)}</div>
+            <p className="text-xs text-muted-foreground mt-1">De todos os álbuns</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Fotos Vendidas (Álbuns)</CardTitle>
+          <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-sm font-medium">Fotos vendidas</CardTitle>
             <Camera className="h-5 w-5 text-accent-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalPhotosSold}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Total de vendas em álbuns
-            </p>
+            <div className="text-xl sm:text-2xl font-bold">{totalPhotosSold}</div>
+            <p className="text-xs text-muted-foreground mt-1">Total de vendas em álbuns</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Álbuns Ativos</CardTitle>
-            <Folder className="h-5 w-5 text-secondary-foreground" />
+          <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-sm font-medium">Compradores únicos</CardTitle>
+            <Users className="h-5 w-5 text-secondary-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{albums.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Com vendas registradas
-            </p>
+            <div className="text-xl sm:text-2xl font-bold">{albums.reduce((sum, album) => sum + album.unique_buyers, 0)}</div>
+            <p className="text-xs text-muted-foreground mt-1">Audiência que comprou</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-sm font-medium">Taxa de conversão</CardTitle>
+            <Percent className="h-5 w-5 text-secondary-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-xl sm:text-2xl font-bold">{metrics.conversion_rate.toFixed(1)}%</div>
+            <p className="text-xs text-muted-foreground mt-1">Envios convertidos</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Lista de Álbuns */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+        <CardHeader className="pb-3 sm:pb-4">
+          <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
             <Folder className="h-5 w-5" />
             Desempenho por Álbum
           </CardTitle>
           <CardDescription>
-            Receita e vendas detalhadas de cada álbum
+            Receitas e métricas principais de cada álbum.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3 sm:space-y-4">
           {albums.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">
-              Nenhum álbum com vendas ainda
-            </p>
+            <p className="text-muted-foreground text-center py-8">Nenhum álbum com vendas ainda</p>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {albums.map((album, index) => (
-                <Card key={album.album_id} className="p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
+                <Card key={album.album_id} className="overflow-hidden">
+                  <CardContent className="p-4 sm:p-5">
+                    <div className="flex flex-col gap-4">
+                      <div className="flex flex-wrap items-start gap-2">
                         {index < 3 && (
-                          <Badge variant={index === 0 ? 'default' : 'secondary'}>
+                          <Badge variant={index === 0 ? 'default' : 'secondary'} className="shrink-0">
                             <TrendingUp className="h-3 w-3 mr-1" />
                             #{index + 1}
                           </Badge>
                         )}
-                        <h3 className="font-semibold text-lg">{album.album_title}</h3>
+                        <div className="min-w-0 flex-1">
+                          <h3 className="font-semibold text-base sm:text-lg line-clamp-2">{album.album_title}</h3>
+                          <p className="text-xs sm:text-sm text-muted-foreground mt-1 line-clamp-1">{album.campaign_title}</p>
+                        </div>
                       </div>
-                      <p className="text-sm text-muted-foreground mb-3">
-                        {album.campaign_title}
-                      </p>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                        <div>
-                          <p className="text-muted-foreground">Fotos Vendidas</p>
-                          <p className="font-semibold">{album.photos_sold}</p>
+
+                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
+                        <div className="rounded-xl border bg-muted/30 p-3">
+                          <p className="text-xs text-muted-foreground">Fotos vendidas</p>
+                          <p className="mt-1 font-semibold text-base">{album.photos_sold}</p>
                         </div>
-                        <div>
-                          <p className="text-muted-foreground">Compradores</p>
-                          <p className="font-semibold">{album.unique_buyers}</p>
+                        <div className="rounded-xl border bg-muted/30 p-3">
+                          <p className="text-xs text-muted-foreground">Compradores</p>
+                          <p className="mt-1 font-semibold text-base">{album.unique_buyers}</p>
                         </div>
-                        <div>
-                          <p className="text-muted-foreground">Receita Total</p>
-                          <p className="font-semibold text-green-600">
-                            {formatCurrency(album.total_revenue)}
-                          </p>
+                        <div className="rounded-xl border bg-muted/30 p-3">
+                          <p className="text-xs text-muted-foreground">Receita</p>
+                          <p className="mt-1 font-semibold text-base text-green-600">{formatCurrency(album.total_revenue)}</p>
                         </div>
-                        <div>
-                          <p className="text-muted-foreground">Ticket Médio</p>
-                          <p className="font-semibold text-primary">
-                            {formatCurrency(album.avg_ticket)}
-                          </p>
+                        <div className="rounded-xl border bg-muted/30 p-3">
+                          <p className="text-xs text-muted-foreground">Ticket médio</p>
+                          <p className="mt-1 font-semibold text-base text-primary">{formatCurrency(album.avg_ticket)}</p>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </CardContent>
                 </Card>
               ))}
             </div>

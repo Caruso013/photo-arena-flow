@@ -258,6 +258,35 @@ html {
   }
 }
 
+/* Scrollbar refinada (desktop) */
+@media (min-width: 769px) {
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--primary) / 0.7) hsl(210 25% 94%);
+  }
+
+  ::-webkit-scrollbar {
+    width: 11px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: linear-gradient(180deg, hsl(210 25% 96%), hsl(210 20% 92%));
+    border-left: 1px solid hsl(var(--border));
+  }
+
+  ::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    background: linear-gradient(180deg, hsl(var(--primary)), hsl(var(--primary-light)));
+    min-height: 70px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, hsl(var(--primary-light)), hsl(var(--primary)));
+  }
+}
+
 /* Hide scrollbars on mobile but keep functionality */
 @media (max-width: 768px) {
   .hide-scrollbar {
