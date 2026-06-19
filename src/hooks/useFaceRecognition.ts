@@ -36,10 +36,9 @@ interface PhotoRecord {
   is_available?: boolean;
 }
 let modelsLoaded = false;
-const CAMERA_DESCRIPTOR_CACHE_TTL_MS = 15000;
-let cachedCameraDescriptor: { value: number[]; capturedAt: number } | null = null;
 
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const normalizeDescriptor = (descriptor: number[]): number[] => {
   const norm = Math.sqrt(descriptor.reduce((sum, v) => sum + v * v, 0));
@@ -59,6 +58,39 @@ const dedupeAndSortMatches = (input: FaceMatch[], limit: number): FaceMatch[] =>
   return Array.from(bestByPhoto.values())
     .sort((a, b) => b.similarity - a.similarity)
     .slice(0, limit);
+};
+
+const pickPrimaryFace = (faces: FaceDetectionResult[]): FaceDetectionResult => {
+  const sorted = [...faces].sort((a, b) => {
+    const areaA = (a.boundingBox?.width ?? 0) * (a.boundingBox?.height ?? 0);
+    const areaB = (b.boundingBox?.width ?? 0) * (b.boundingBox?.height ?? 0);
+    return (b.confidence + areaB / 100000) - (a.confidence + areaA / 100000);
+  });
+
+  return sorted[0];
+};
+
+const buildAveragedDescriptor = (samples: FaceDetectionResult[]): number[] => {
+  if (samples.length === 0) return [];
+
+  const descriptorLength = samples[0].descriptor.length;
+  const weighted = new Array(descriptorLength).fill(0);
+  let totalWeight = 0;
+
+  for (const sample of samples) {
+    const descriptor = Array.from(sample.descriptor);
+    const weight = clamp(sample.confidence, 0.4, 1);
+    totalWeight += weight;
+    for (let i = 0; i < descriptorLength; i++) {
+      weighted[i] += descriptor[i] * weight;
+    }
+  }
+
+  if (totalWeight <= 0) {
+    return normalizeDescriptor(Array.from(samples[0].descriptor));
+  }
+
+  return normalizeDescriptor(weighted.map((v) => v / totalWeight));
 };
 
 export const useFaceRecognition = () => {
@@ -288,43 +320,66 @@ export const useFaceRecognition = () => {
 
       console.log(`✅ ${descriptors.length} rosto(s) detectado(s) na sua câmera!`);
 
-      const sortedFaces = [...descriptors].sort((a, b) => {
-        const areaA = (a.boundingBox?.width ?? 0) * (a.boundingBox?.height ?? 0);
-        const areaB = (b.boundingBox?.width ?? 0) * (b.boundingBox?.height ?? 0);
-        return (b.confidence + areaB / 100000) - (a.confidence + areaA / 100000);
-      });
-      const primaryFace = sortedFaces[0];
+      const sampledFaces: FaceDetectionResult[] = [];
+      const frameDetections: FaceDetectionResult[][] = [descriptors];
 
-      if (descriptors.length > 1) {
+      const extraSamples = 2;
+      for (let i = 0; i < extraSamples; i++) {
+        await wait(180);
+        const nextDetections = await detectFacesFromSource(videoRef.current);
+        if (nextDetections && nextDetections.length > 0) {
+          frameDetections.push(nextDetections);
+        }
+      }
+
+      for (const detectionSet of frameDetections) {
+        const primary = pickPrimaryFace(detectionSet);
+        if (primary?.confidence >= 0.5) {
+          sampledFaces.push(primary);
+        }
+      }
+
+      if (frameDetections.some((d) => d.length > 1)) {
         toast({
           title: "Mais de um rosto detectado",
           description: "Vamos usar automaticamente o rosto com melhor enquadramento.",
         });
       }
 
-      if (primaryFace.confidence < 0.65) {
+      if (sampledFaces.length === 0) {
+        toast({
+          title: "Nenhum rosto válido detectado 😔",
+          description: "Aproxime o rosto, olhe para a câmera e tente novamente.",
+          variant: "destructive",
+        });
+        return [];
+      }
+
+      const bestSample = sampledFaces.reduce((best, current) =>
+        current.confidence > best.confidence ? current : best
+      );
+
+      if (bestSample.confidence < 0.65) {
         toast({
           title: "⚠️ Baixa confiança na detecção",
           description: "A iluminação pode estar ruim. Vamos tentar mesmo assim.",
         });
       }
 
-      const now = Date.now();
-      const shouldReuseCachedDescriptor =
-        cachedCameraDescriptor && (now - cachedCameraDescriptor.capturedAt) < CAMERA_DESCRIPTOR_CACHE_TTL_MS;
+      const bestDescriptor = normalizeDescriptor(Array.from(bestSample.descriptor));
+      const averagedDescriptor = buildAveragedDescriptor(sampledFaces);
+      const userSearchDescriptors = averagedDescriptor.length === 128
+        ? [bestDescriptor, averagedDescriptor]
+        : [bestDescriptor];
 
-      const userDescriptor = shouldReuseCachedDescriptor
-        ? cachedCameraDescriptor!.value
-        : normalizeDescriptor(Array.from(primaryFace.descriptor));
-
-      if (!shouldReuseCachedDescriptor) {
-        cachedCameraDescriptor = { value: userDescriptor, capturedAt: now };
-      }
-
-      const invokeEdgeSearch = async (searchThreshold: number, searchLimit: number): Promise<FaceMatch[]> => {
+      const invokeEdgeSearch = async (
+        descriptor: number[],
+        searchThreshold: number,
+        searchLimit: number
+      ): Promise<FaceMatch[]> => {
         const { data, error } = await supabase.functions.invoke('search-faces-in-album', {
           body: {
-            embedding: userDescriptor,
+            embedding: descriptor,
             campaign_id: campaignId ?? null,
             sub_event_id: subEventId ?? null,
             threshold: searchThreshold,
@@ -355,13 +410,29 @@ export const useFaceRecognition = () => {
           description: "Consultando o índice facial otimizado do evento.",
         });
 
-        const strictMatches = await invokeEdgeSearch(threshold, limit);
-        let edgeMatches = strictMatches;
+        const thresholdsToTry = [
+          threshold,
+          clamp(threshold - 0.06, 0.5, 0.78),
+          clamp(threshold - 0.11, 0.47, 0.75),
+        ];
 
-        if (edgeMatches.length < Math.min(5, limit) && threshold > 0.5) {
-          const relaxedThreshold = clamp(threshold - 0.07, 0.48, 0.75);
-          const relaxedMatches = await invokeEdgeSearch(relaxedThreshold, clamp(limit * 2, 1, 80));
-          edgeMatches = dedupeAndSortMatches([...strictMatches, ...relaxedMatches], limit);
+        let edgeMatches: FaceMatch[] = [];
+
+        for (const descriptor of userSearchDescriptors) {
+          for (let i = 0; i < thresholdsToTry.length; i++) {
+            const currentThreshold = thresholdsToTry[i];
+            const currentLimit = i === 0 ? limit : clamp(limit * 2, 1, 80);
+            const batchMatches = await invokeEdgeSearch(descriptor, currentThreshold, currentLimit);
+            edgeMatches = dedupeAndSortMatches([...edgeMatches, ...batchMatches], limit);
+
+            if (edgeMatches.length >= Math.min(limit, 8)) {
+              break;
+            }
+          }
+
+          if (edgeMatches.length >= Math.min(limit, 8)) {
+            break;
+          }
         }
 
         const topMatches = edgeMatches.slice(0, limit);
@@ -440,6 +511,7 @@ export const useFaceRecognition = () => {
       const optimizedConfig = getOptimizedConfig();
       const BATCH_SIZE = optimizedConfig.batchSize;
       const MAX_PHOTOS = Math.min(optimizedConfig.maxPhotosToProcess || 120, 120);
+      const userDescriptorsForMatching = userSearchDescriptors;
       const similarityCache = new Map<string, number>();
       const concurrency = optimizedConfig.isLowEnd ? 2 : optimizedConfig.isMobile ? 3 : 4;
       
@@ -511,8 +583,10 @@ export const useFaceRecognition = () => {
 
           if (photoResults && photoResults.length > 0) {
             for (const result of photoResults) {
-              const similarity = calculateSimilarity(userDescriptor, result.descriptor);
-              if (similarity > bestSimilarity) bestSimilarity = similarity;
+              for (const userDescriptor of userDescriptorsForMatching) {
+                const similarity = calculateSimilarity(userDescriptor, result.descriptor);
+                if (similarity > bestSimilarity) bestSimilarity = similarity;
+              }
             }
           }
 

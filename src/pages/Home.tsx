@@ -23,6 +23,8 @@ interface FeaturedCampaign {
   photographer_name: string;
 }
 
+const MIN_PHOTOS_TO_SHOW_HOME_EVENT = 5;
+
 interface Organization {
   id: string;
   name: string;
@@ -85,7 +87,7 @@ const Home = () => {
             .select('id, title, description, event_date, location, cover_image_url, photographer_id, is_featured')
             .eq('is_active', true)
             .order('created_at', { ascending: false })
-            .limit(8),
+            .limit(120),
           'home-campaigns'
         ),
         resilientQuery(
@@ -138,14 +140,13 @@ const Home = () => {
         const photographerIds = [...new Set(campaigns.map(c => c.photographer_id).filter(Boolean))] as string[];
 
         // Second batch: photo counts, photographer names, fallback covers
-        const [photoCounts, photographerProfiles, fallbackCovers] = await Promise.all([
+        const [campaignStats, photographerProfiles, fallbackCovers] = await Promise.all([
           resilientQuery(
             () => supabase
-              .from('photos')
-              .select('campaign_id')
-              .in('campaign_id', campaignIds)
-              .eq('is_available', true),
-            'home-photo-counts'
+              .from('campaigns_for_home')
+              .select('id, photo_count, cover_image_url')
+              .in('id', campaignIds),
+            'home-campaign-stats'
           ),
           photographerIds.length > 0
             ? resilientQuery(
@@ -169,8 +170,13 @@ const Home = () => {
         ]);
 
         const countMap: Record<string, number> = {};
-        (photoCounts.data || []).forEach((p: any) => {
-          countMap[p.campaign_id] = (countMap[p.campaign_id] || 0) + 1;
+        const coverMap: Record<string, string> = {};
+        (campaignStats.data || []).forEach((stat: any) => {
+          if (!stat?.id) return;
+          countMap[stat.id] = Number(stat.photo_count || 0);
+          if (stat.cover_image_url && !coverMap[stat.id]) {
+            coverMap[stat.id] = stat.cover_image_url;
+          }
         });
 
         const photographerMap: Record<string, string> = {};
@@ -178,18 +184,20 @@ const Home = () => {
           photographerMap[p.id] = p.full_name;
         });
 
-        const coverMap: Record<string, string> = {};
         (fallbackCovers.data || []).forEach((p: any) => {
           if (!coverMap[p.campaign_id]) coverMap[p.campaign_id] = p.watermarked_url;
         });
 
 
-        const campaignsWithDetails = campaigns.map(campaign => ({
-          ...campaign,
-          cover_image_url: campaign.cover_image_url || coverMap[campaign.id] || '',
-          photo_count: countMap[campaign.id] || 0,
-          photographer_name: (campaign.photographer_id && photographerMap[campaign.photographer_id]) || 'STA Fotos'
-        }));
+        const campaignsWithDetails = campaigns
+          .map(campaign => ({
+            ...campaign,
+            cover_image_url: campaign.cover_image_url || coverMap[campaign.id] || '',
+            photo_count: countMap[campaign.id] || 0,
+            photographer_name: (campaign.photographer_id && photographerMap[campaign.photographer_id]) || 'STA Fotos'
+          }))
+          .filter((campaign) => campaign.photo_count > MIN_PHOTOS_TO_SHOW_HOME_EVENT)
+          .slice(0, 8);
 
         setFeaturedCampaigns(campaignsWithDetails);
       }

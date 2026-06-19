@@ -26,7 +26,8 @@ import {
   Sparkles,
   SlidersHorizontal
 } from 'lucide-react';
-import RecentActivity, { ActivityItem } from './RecentActivity';
+import type { ActivityItem } from './RecentActivity';
+import LatestSalesPanel from './LatestSalesPanel';
 import FinancialDashboard from './FinancialDashboard';
 import { OrganizationManager } from './OrganizationManager';
 import { CampaignManager } from './CampaignManager';
@@ -528,8 +529,8 @@ const AdminDashboard = () => {
               </CardContent>
             </Card>
             
-            <RecentActivity 
-              activities={recentActivities}
+            <LatestSalesPanel 
+              sales={recentActivities}
               title="Últimas Vendas"
               emptyMessage="Nenhuma venda recente"
             />

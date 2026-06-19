@@ -12,7 +12,6 @@ import {
 import DashboardSidebar from './DashboardSidebar';
 import BottomNavigation from '@/components/layout/BottomNavigation';
 import { DynamicBreadcrumb } from '@/components/layout/DynamicBreadcrumb';
-import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { LogOut, Settings, User, Menu, X } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
@@ -90,8 +89,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
             </div>
 
             <div className="flex items-center gap-1.5 md:gap-2 flex-shrink-0">
-              <ThemeToggle />
-              
               {/* User Menu - Compacto no mobile */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

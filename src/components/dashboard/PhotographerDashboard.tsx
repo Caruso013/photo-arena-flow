@@ -35,7 +35,8 @@ import { useSalesData } from '@/hooks/useSalesData';
 import { usePhotographerBalance } from '@/hooks/usePhotographerBalance';
 import WelcomeHeader from './WelcomeHeader';
 import MetricCard from './MetricCard';
-import RecentActivity, { ActivityItem } from './RecentActivity';
+import type { ActivityItem } from './RecentActivity';
+import LatestSalesPanel from './LatestSalesPanel';
 
 interface Campaign {
   id: string;
@@ -331,12 +332,11 @@ const PhotographerDashboard = () => {
           {/* Recent Sales */}
           <div className="lg:col-span-1">
             <div className="space-y-3 pb-20 md:pb-0">
-              <RecentActivity 
-                activities={recentSales}
+              <LatestSalesPanel 
+                sales={recentSales}
                 title="Últimas Vendas"
                 emptyMessage="Nenhuma venda ainda"
                 maxItems={5}
-                maxPhotoPreviews={5}
               />
               <Button asChild variant="outline" className="w-full gap-2">
                 <Link to="/dashboard/photographer/earnings">
