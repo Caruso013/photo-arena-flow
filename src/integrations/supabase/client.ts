@@ -2,8 +2,12 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://gtpqppvyjrnnuhlsbpqd.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd0cHFwcHZ5anJubnVobHNicHFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ5NTQ3NjAsImV4cCI6MjA4MDMxNDc2MH0.PcfBYxqNBj_huHPDzrvOd0GHs3kiXe4jQN6g1qbAc68";
+// NOTA: a anon key é fixada aqui porque a variável de ambiente injetada pelo
+// painel ainda continha a chave antiga rotacionada no Supabase, causando 401
+// "Invalid API key" em todas as queries públicas. A anon key é pública por
+// design, então pode ficar no código.
+const SUPABASE_URL = "https://gtpqppvyjrnnuhlsbpqd.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd0cHFwcHZ5anJubnVobHNicHFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ5NTQ3NjAsImV4cCI6MjA4MDMxNDc2MH0.PcfBYxqNBj_huHPDzrvOd0GHs3kiXe4jQN6g1qbAc68";
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";

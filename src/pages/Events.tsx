@@ -386,12 +386,15 @@ const Events = () => {
         if (!coverMap[p.campaign_id]) coverMap[p.campaign_id] = p.watermarked_url;
       });
 
-      const enriched = campaignsData.map(campaign => ({
-        ...campaign,
-        cover_image_url: campaign.cover_image_url || coverMap[campaign.id] || '',
-        photo_count: countMap[campaign.id] || 0,
-        sub_events: subEventsMap[campaign.id] || [],
-      }));
+      const enriched = campaignsData
+        .map(campaign => ({
+          ...campaign,
+          cover_image_url: campaign.cover_image_url || coverMap[campaign.id] || '',
+          photo_count: countMap[campaign.id] || 0,
+          sub_events: subEventsMap[campaign.id] || [],
+        }))
+        // Esconde eventos com menos de 5 fotos disponíveis (regra de visibilidade)
+        .filter(c => (c.photo_count || 0) >= 5);
 
       // Regra de vitrine: evento só aparece na página de eventos com mais de 5 fotos publicadas.
       const eligibleCampaigns = enriched.filter((campaign) => (campaign.photo_count || 0) > MIN_PHOTOS_TO_SHOW_EVENT);
