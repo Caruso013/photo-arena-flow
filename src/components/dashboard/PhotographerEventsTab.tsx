@@ -68,56 +68,82 @@ const PhotographerEventsTab = () => {
 
     const svgData = new XMLSerializer().serializeToString(svg);
     const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
     const img = document.createElement('img');
 
     img.onload = () => {
-      canvas.width = 512;
-      canvas.height = 512;
+      try {
+        canvas.width = 512;
+        canvas.height = 512;
 
-      if (ctx) {
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        if (ctx) {
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        }
+
+        const link = document.createElement('a');
+        link.download = `qrcode-evento-${qrTarget.title.replace(/\s+/g, '-').toLowerCase()}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      } catch (error) {
+        console.error('Erro ao gerar QR Code:', error);
+        toast({
+          title: 'Erro ao baixar QR Code',
+          variant: 'destructive',
+        });
+      } finally {
+        setQrTarget(null);
       }
+    };
 
-      const link = document.createElement('a');
-      link.download = `qrcode-evento-${qrTarget.title.replace(/\s+/g, '-').toLowerCase()}.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
+    img.onerror = () => {
+      console.error('Erro ao carregar imagem do QR Code');
+      toast({
+        title: 'Erro ao gerar QR Code',
+        variant: 'destructive',
+      });
       setQrTarget(null);
     };
 
     img.src = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgData)))}`;
-  }, [qrTarget]);
+  }, [qrTarget, toast]);
 
   const fetchCampaigns = async () => {
     if (!user?.id) return;
 
     setLoading(true);
     try {
-      const { data: owned } = await supabase
+      // Fetch owned campaigns
+      const { data: owned, error: ownedError } = await supabase
         .from('campaigns')
         .select('id, title, short_code, event_date, location, cover_image_url, is_active, photographer_id, photos(count)')
         .eq('photographer_id', user.id)
         .order('event_date', { ascending: false, nullsFirst: false });
 
-      const { data: assigned } = await supabase
+      if (ownedError) throw ownedError;
+
+      // Fetch assigned campaigns
+      const { data: assigned, error: assignedError } = await supabase
         .from('campaign_photographers')
         .select('campaign_id')
         .eq('photographer_id', user.id)
         .eq('is_active', true);
+
+      if (assignedError) throw assignedError;
 
       const ownedIds = new Set((owned || []).map((c: any) => c.id));
       const assignedIds = (assigned || []).map((a: any) => a.campaign_id).filter((id: string) => !ownedIds.has(id));
 
       let assignedCampaigns: any[] = [];
       if (assignedIds.length > 0) {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from('campaigns')
           .select('id, title, short_code, event_date, location, cover_image_url, is_active, photographer_id, photos(count)')
           .in('id', assignedIds)
           .order('event_date', { ascending: false, nullsFirst: false });
+        
+        if (error) throw error;
         assignedCampaigns = data || [];
       }
 
@@ -129,20 +155,27 @@ const PhotographerEventsTab = () => {
           revenue_total: 0,
         }));
 
-      const revenueMap: Record<string, number> = {};
+      // Fetch revenue data only on desktop (performance optimization)
+      let revenueMap: Record<string, number> = {};
 
-      if (!isMobile) {
-        const { data: completedPurchases } = await supabase
+      if (!isMobile && campaignsBase.length > 0) {
+        const campaignIds = campaignsBase.map(c => c.id);
+        const { data: completedPurchases, error: revenueError } = await supabase
           .from('purchases')
           .select('amount, photos!inner(campaign_id)')
           .eq('photographer_id', user.id)
-          .eq('status', 'completed');
+          .eq('status', 'completed')
+          .in('photos.campaign_id', campaignIds);
 
-        (completedPurchases || []).forEach((purchase: any) => {
-          const campaignId = purchase.photos?.campaign_id;
-          if (!campaignId) return;
-          revenueMap[campaignId] = (revenueMap[campaignId] || 0) + Number(purchase.amount || 0);
-        });
+        if (revenueError) {
+          console.warn('Error fetching revenue:', revenueError);
+        } else {
+          (completedPurchases || []).forEach((purchase: any) => {
+            const campaignId = purchase.photos?.campaign_id;
+            if (!campaignId) return;
+            revenueMap[campaignId] = (revenueMap[campaignId] || 0) + Number(purchase.amount || 0);
+          });
+        }
       }
 
       const campaignsWithRevenue = campaignsBase.map((campaign: any) => ({
@@ -153,6 +186,11 @@ const PhotographerEventsTab = () => {
       setCampaigns(campaignsWithRevenue);
     } catch (error) {
       console.error('Error fetching campaigns:', error);
+      toast({
+        title: 'Erro ao carregar eventos',
+        description: 'Não foi possível carregar seus eventos. Tente novamente.',
+        variant: 'destructive',
+      });
     } finally {
       setLoading(false);
     }
@@ -167,6 +205,10 @@ const PhotographerEventsTab = () => {
   useEffect(() => {
     setCurrentPage(1);
   }, [search]);
+
+  const handleRetry = () => {
+    fetchCampaigns();
+  };
 
   const totalPages = Math.ceil(filtered.length / pageSize);
   const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
@@ -222,9 +264,18 @@ const PhotographerEventsTab = () => {
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Camera className="h-12 w-12 text-muted-foreground/50 mb-3" />
             <p className="text-muted-foreground font-medium">{search ? 'Nenhum evento encontrado' : 'Nenhum evento ainda'}</p>
-            <p className="text-xs text-muted-foreground/70 mt-1">
+            <p className="text-xs text-muted-foreground/70 mt-1 mb-4">
               {search ? 'Tente outra busca' : 'Crie seu primeiro evento para começar'}
             </p>
+            {search && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setSearch('')}
+              >
+                Limpar busca
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -239,7 +290,7 @@ const PhotographerEventsTab = () => {
               >
                 <CardContent className="p-0">
                   <div className="flex items-stretch">
-                      <div className="w-20 sm:w-28 flex-shrink-0 relative overflow-hidden bg-muted">
+                    <div className="w-20 sm:w-28 flex-shrink-0 relative overflow-hidden bg-muted">
                       {campaign.cover_image_url ? (
                         <img
                           src={getTransformedImageUrl(campaign.cover_image_url, 'thumbnail')}
@@ -247,6 +298,10 @@ const PhotographerEventsTab = () => {
                           className="h-full w-full object-cover"
                           loading="lazy"
                           decoding="async"
+                          onError={(e) => {
+                            // Fallback on image load error
+                            e.currentTarget.style.display = 'none';
+                          }}
                         />
                       ) : (
                         <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-primary/5">
@@ -255,84 +310,92 @@ const PhotographerEventsTab = () => {
                       )}
                     </div>
 
-                    <div className="flex-1 p-3 sm:p-4 flex flex-col justify-between min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h4 className="font-semibold text-sm sm:text-base text-foreground truncate">{campaign.title}</h4>
-                            {past ? (
-                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5">
-                                Encerrado
-                              </Badge>
-                            ) : (
-                              <Badge className="text-[10px] px-1.5 py-0 h-5 bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
-                                Ativo
-                              </Badge>
-                            )}
-                          </div>
+                    <div className="flex-1 p-2 sm:p-4 flex flex-col justify-between gap-2 min-w-0">
+                      {/* Title + Status Badge */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="font-semibold text-xs sm:text-base text-foreground truncate flex-1">{campaign.title}</h4>
+                        {past ? (
+                          <Badge variant="secondary" className="text-[8px] sm:text-[9px] px-1 py-0 h-4 sm:h-5 flex-shrink-0">
+                            Encerrado
+                          </Badge>
+                        ) : (
+                          <Badge className="text-[8px] sm:text-[9px] px-1 py-0 h-4 sm:h-5 bg-emerald-500/20 text-emerald-400 border-emerald-500/30 flex-shrink-0">
+                            Ativo
+                          </Badge>
+                        )}
+                      </div>
 
-                          <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs text-muted-foreground">
-                            <span className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
-                              {formatDate(campaign.event_date)}
-                            </span>
-                            {campaign.location && (
-                              <span className="flex items-center gap-1 truncate">
-                                <MapPin className="h-3 w-3" />
-                                {campaign.location}
-                              </span>
-                            )}
-                            <span className="flex items-center gap-1">
-                              <ImageIcon className="h-3 w-3" />
-                              {campaign.photo_count}
-                            </span>
-                            {!isMobile && (
-                              <span className="flex items-center gap-1 font-medium text-foreground">
-                                <DollarSign className="h-3 w-3" />
-                                Vendido {formatCurrency(campaign.revenue_total || 0)}
-                              </span>
-                            )}
-                          </div>
+                      {/* Revenue Badge - Full width on mobile, inline on desktop */}
+                      {campaign.revenue_total > 0 && (
+                        <div className="flex items-center gap-1 text-[9px] sm:text-xs font-semibold px-2 py-1 rounded-full bg-green-500/15 border border-green-500/30 text-green-700 w-fit">
+                          <DollarSign className="h-3 w-3 flex-shrink-0" />
+                          Vendido: {formatCurrency(campaign.revenue_total)}
                         </div>
+                      )}
 
-                        <div className="flex flex-wrap items-center gap-1 flex-shrink-0 justify-end md:flex-nowrap">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            title="Copiar link"
-                            onClick={async (e) => {
-                              e.stopPropagation();
-                              const copied = await copyShareLink(campaign);
-                              toast({
-                                title: copied ? '🔗 Link copiado!' : 'Erro ao copiar link',
-                                variant: copied ? 'default' : 'destructive',
-                              });
-                            }}
-                          >
-                            <Link2 className="h-3.5 w-3.5" />
-                          </Button>
+                      {/* Info Grid - Date, Location, Photos */}
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-2 gap-y-1 text-[10px] sm:text-xs text-muted-foreground">
+                        <span className="flex items-center gap-0.5 truncate">
+                          <Calendar className="h-3 w-3 flex-shrink-0" />
+                          <span className="truncate">{formatDate(campaign.event_date)}</span>
+                        </span>
+                        {campaign.location && (
+                          <span className="flex items-center gap-0.5 truncate sm:col-span-2 col-span-2">
+                            <MapPin className="h-3 w-3 flex-shrink-0" />
+                            <span className="truncate text-[11px]">{campaign.location}</span>
+                          </span>
+                        )}
+                        <span className="flex items-center gap-0.5">
+                          <ImageIcon className="h-3 w-3 flex-shrink-0" />
+                          {campaign.photo_count} foto{campaign.photo_count !== 1 ? 's' : ''}
+                        </span>
+                      </div>
 
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            title="Baixar QR Code"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setQrTarget(campaign);
-                            }}
-                          >
-                            <QrCode className="h-3.5 w-3.5" />
-                          </Button>
+                      {/* Action Buttons - Responsive Layout */}
+                      <div className="flex gap-1 items-center pt-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 flex-shrink-0"
+                          title="Copiar link do evento"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            const copied = await copyShareLink(campaign);
+                            toast({
+                              title: copied ? '🔗 Link copiado!' : 'Erro ao copiar link',
+                              variant: copied ? 'default' : 'destructive',
+                            });
+                          }}
+                        >
+                          <Link2 className="h-3 w-3" />
+                        </Button>
 
-                          <Button asChild size="sm" className="h-8 gap-1 text-xs">
-                            <Link to={`/dashboard/photographer/album-reports?campaign=${campaign.id}`} onClick={(e) => e.stopPropagation()}>
-                              <Settings className="h-3.5 w-3.5" />
-                              <span className="hidden sm:inline">Relatório</span>
-                            </Link>
-                          </Button>
-                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 flex-shrink-0"
+                          title="Baixar QR Code"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setQrTarget(campaign);
+                          }}
+                        >
+                          <QrCode className="h-3 w-3" />
+                        </Button>
+
+                        <Button 
+                          asChild 
+                          size="sm" 
+                          className="h-7 gap-0.5 text-[11px] sm:text-xs px-2 sm:px-3 flex-shrink-0"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Link to={`/dashboard/photographer/album-reports?campaign=${campaign.id}`}>
+                            <Settings className="h-3 w-3" />
+                            <span className="hidden sm:inline">Relatório</span>
+                          </Link>
+                        </Button>
+
+                        <div className="flex-1" />
                       </div>
                     </div>
                   </div>

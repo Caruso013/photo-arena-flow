@@ -112,9 +112,9 @@ const BottomNavigation = () => {
     {
       icon: Calendar,
       label: 'Eventos',
-      path: '/dashboard/photographer/events',
+      path: '/dashboard/photographer/album-reports',
       showBadge: false,
-      matchPrefixes: ['/dashboard/photographer/events', '/dashboard/photographer/manage-event'],
+      matchPrefixes: ['/dashboard/photographer/album-reports'],
     },
     {
       icon: DollarSign,
