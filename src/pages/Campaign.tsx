@@ -142,7 +142,7 @@ const Campaign = () => {
   // Paginação
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const PHOTOS_PER_PAGE = 50;
+  const PHOTOS_PER_PAGE = 66;
   
   // Estado para foto selecionada no modal com navegação
   const [viewingPhotoIndex, setViewingPhotoIndex] = useState<number | null>(null);
@@ -199,7 +199,7 @@ const Campaign = () => {
     preventScrollOnSwipe: true,
     trackMouse: false,
     trackTouch: true,
-    delta: 50,
+    delta: 66,
   });
 
   // Voltar do navegador / swipe-back do iPhone fecha o visualizador sem sair da página

@@ -64,21 +64,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
         <header className="border-b bg-card/95 backdrop-blur-sm sticky top-0 z-40">
           <div className="flex items-center justify-between px-3 py-2 md:px-4 md:py-3 gap-2">
             <div className="flex items-center gap-2 min-w-0 flex-shrink-0">
-              {showSidebar && (
-                <Button 
-                  variant="ghost" 
-                  size="icon"
-                  onClick={handleToggleSidebar}
-                  className="md:hidden h-9 w-9 flex-shrink-0"
-                >
-                  {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-                </Button>
-              )}
               <Link to="/" className="hover:opacity-80 transition-opacity flex-shrink-0">
                 <img 
                   src="/lovable-uploads/6fdfc5d2-230c-4142-bf7c-3a326e5e45a8.png" 
                   alt="STA Fotos" 
-                  className="h-8 md:h-11 w-auto"
+                  className="h-10 md:h-11 w-auto"
                 />
               </Link>
               {isPhotographer && (
@@ -89,6 +79,17 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
             </div>
 
             <div className="flex items-center gap-1.5 md:gap-2 flex-shrink-0">
+              {showSidebar && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleToggleSidebar}
+                  className="md:hidden h-9 w-9 flex-shrink-0"
+                  aria-label={sidebarOpen ? 'Fechar menu' : 'Abrir menu'}
+                >
+                  {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                </Button>
+              )}
               {/* User Menu - Compacto no mobile */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

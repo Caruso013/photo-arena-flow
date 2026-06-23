@@ -47,6 +47,7 @@ import {
 } from "@/components/ui/dialog";
 import UploadPhotoModal from '@/components/modals/UploadPhotoModal';
 import { parseLocalDate, formatEventDate } from "@/lib/dateUtils";
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface Campaign {
   id: string;
@@ -85,12 +86,17 @@ const ManageEvent = () => {
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
+  const photoPageSize = isMobile ? 12 : 24;
   const isAdmin = profile?.role === 'admin';
 
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [albums, setAlbums] = useState<Album[]>([]);
   const [photos, setPhotos] = useState<Photo[]>([]);
+  const [photoPage, setPhotoPage] = useState(1);
+  const [photoTotalCount, setPhotoTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [photosLoading, setPhotosLoading] = useState(true);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [selectedAlbum, setSelectedAlbum] = useState<string | null>(null);
   
@@ -123,9 +129,13 @@ const ManageEvent = () => {
 
   useEffect(() => {
     if (campaign) {
-      fetchPhotos();
+      fetchPhotos(photoPage);
     }
-  }, [campaign, selectedAlbum]);
+  }, [campaign, selectedAlbum, photoPage]);
+
+  useEffect(() => {
+    setPhotoPage(1);
+  }, [selectedAlbum, campaign?.id]);
 
   const fetchEventData = async () => {
     if (!id || !user) return;
@@ -197,10 +207,31 @@ const ManageEvent = () => {
     }
   };
 
-  const fetchPhotos = async () => {
+  const fetchPhotos = async (pageNum = 1) => {
     if (!campaign) return;
 
     try {
+      setPhotosLoading(true);
+
+      let countQuery = supabase
+        .from('photos')
+        .select('id', { count: 'exact', head: true })
+        .eq('campaign_id', campaign.id);
+
+      if (selectedAlbum) {
+        if (selectedAlbum === 'none') {
+          countQuery = countQuery.is('sub_event_id', null);
+        } else {
+          countQuery = countQuery.eq('sub_event_id', selectedAlbum);
+        }
+      }
+
+      const { count } = await countQuery;
+      setPhotoTotalCount(count || 0);
+
+      const from = (pageNum - 1) * photoPageSize;
+      const to = from + photoPageSize - 1;
+
       let query = supabase
         .from('photos')
         .select('id, title, watermarked_url, thumbnail_url, price, is_available, is_featured, sub_event_id, created_at')
@@ -208,10 +239,14 @@ const ManageEvent = () => {
         .order('created_at', { ascending: false });
 
       if (selectedAlbum) {
-        query = query.eq('sub_event_id', selectedAlbum);
+        if (selectedAlbum === 'none') {
+          query = query.is('sub_event_id', null);
+        } else {
+          query = query.eq('sub_event_id', selectedAlbum);
+        }
       }
 
-      const { data, error } = await query;
+      const { data, error } = await query.range(from, to);
 
       if (error) throw error;
       setPhotos(data || []);
@@ -222,6 +257,8 @@ const ManageEvent = () => {
         description: "Não foi possível carregar as fotos",
         variant: "destructive",
       });
+    } finally {
+      setPhotosLoading(false);
     }
   };
 
@@ -344,7 +381,7 @@ const ManageEvent = () => {
           : "A foto agora está visível na galeria",
       });
 
-      fetchPhotos();
+      fetchPhotos(photoPage);
     } catch (error: any) {
       console.error('Error toggling photo availability:', error);
       toast({
@@ -371,7 +408,7 @@ const ManageEvent = () => {
           : "A foto agora aparece na página inicial",
       });
 
-      fetchPhotos();
+      fetchPhotos(photoPage);
     } catch (error: any) {
       console.error('Error toggling featured:', error);
       toast({
@@ -417,7 +454,7 @@ const ManageEvent = () => {
         description: "A foto foi removida com sucesso",
       });
 
-      fetchPhotos();
+      fetchPhotos(photoPage);
       fetchEventData(); // Atualizar contadores
     } catch (error: any) {
       console.error('Error deleting photo:', error);
@@ -447,7 +484,7 @@ const ManageEvent = () => {
           : "Foto movida para 'Sem álbum'",
       });
 
-      fetchPhotos();
+      fetchPhotos(photoPage);
       fetchEventData();
     } catch (error: any) {
       console.error('Error moving photo:', error);
@@ -529,47 +566,59 @@ const ManageEvent = () => {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-5 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1">
-          <Button variant="ghost" size="sm" asChild className="mb-2">
+      <div className="flex flex-col gap-4 rounded-2xl border bg-card/80 p-4 shadow-sm backdrop-blur-sm lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex-1 min-w-0 space-y-3">
+          <Button variant="ghost" size="sm" asChild className="w-fit -ml-1">
             <Link to="/dashboard/photographer/events">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Voltar aos eventos
             </Link>
           </Button>
-          <h1 className="text-3xl font-bold">{campaign.title}</h1>
-          <div className="flex flex-wrap items-center gap-4 mt-2 text-muted-foreground">
+          <div className="space-y-2">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black leading-tight tracking-tight text-foreground break-words">
+              {campaign.title}
+            </h1>
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="secondary" className="rounded-full px-3 py-1 text-xs font-semibold">
+                {photos.length} fotos
+              </Badge>
+              <Badge variant="secondary" className="rounded-full px-3 py-1 text-xs font-semibold">
+                {albums.length} álbuns
+              </Badge>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-2 text-sm text-muted-foreground sm:grid-cols-2 xl:grid-cols-4">
             {campaign.event_date && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 rounded-xl bg-muted/50 px-3 py-2">
                 <Calendar className="h-4 w-4" />
                 <span>{formatEventDate(campaign.event_date)}</span>
               </div>
             )}
             {campaign.location && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 rounded-xl bg-muted/50 px-3 py-2">
                 <MapPin className="h-4 w-4" />
                 <span>{campaign.location}</span>
               </div>
             )}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 rounded-xl bg-muted/50 px-3 py-2">
               <ImageIcon className="h-4 w-4" />
               <span>{photos.length} fotos</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 rounded-xl bg-muted/50 px-3 py-2">
               <FolderOpen className="h-4 w-4" />
               <span>{albums.length} álbuns</span>
             </div>
           </div>
         </div>
 
-        <div className="flex gap-2">
-          <Button onClick={() => setShowUploadModal(true)} className="gap-2">
+        <div className="flex w-full flex-col gap-2 sm:flex-row lg:w-auto lg:flex-col xl:flex-row">
+          <Button onClick={() => setShowUploadModal(true)} className="gap-2 w-full sm:w-auto lg:w-full xl:w-auto">
             <Upload className="h-4 w-4" />
             Upload Fotos
           </Button>
-          <Button variant="outline" asChild className="gap-2">
+          <Button variant="outline" asChild className="gap-2 w-full sm:w-auto lg:w-full xl:w-auto">
             <Link to={campaign.short_code ? `/E/${campaign.short_code}` : `/campaign/${campaign.id}`} target="_blank">
               <Eye className="h-4 w-4" />
               Ver Galeria
@@ -578,8 +627,8 @@ const ManageEvent = () => {
         </div>
       </div>
 
-      <Tabs defaultValue="photos" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+      <Tabs defaultValue="photos" className="space-y-5 sm:space-y-6">
+        <TabsList className="grid w-full grid-cols-3 gap-1 rounded-2xl bg-muted/60 p-1">
           <TabsTrigger value="photos">
             <ImageIcon className="h-4 w-4 mr-2" />
             Fotos ({photos.length})
@@ -597,36 +646,47 @@ const ManageEvent = () => {
         {/* Tab: Fotos */}
         <TabsContent value="photos" className="space-y-4">
           {/* Filtro por álbum */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <Label>Filtrar por álbum:</Label>
-            <Button
-              variant={selectedAlbum === null ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setSelectedAlbum(null)}
-            >
-              Todas ({photos.length})
-            </Button>
-            <Button
-              variant={selectedAlbum === 'none' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setSelectedAlbum('none')}
-            >
-              Sem álbum
-            </Button>
-            {albums.map(album => (
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold">Filtrar por álbum</Label>
+            <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               <Button
-                key={album.id}
-                variant={selectedAlbum === album.id ? 'default' : 'outline'}
+                variant={selectedAlbum === null ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => setSelectedAlbum(album.id)}
+                onClick={() => setSelectedAlbum(null)}
+                className="whitespace-nowrap rounded-full"
               >
-                {album.title} ({album.photo_count})
+                Todas ({photos.length})
               </Button>
-            ))}
+              <Button
+                variant={selectedAlbum === 'none' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setSelectedAlbum('none')}
+                className="whitespace-nowrap rounded-full"
+              >
+                Sem álbum
+              </Button>
+              {albums.map(album => (
+                <Button
+                  key={album.id}
+                  variant={selectedAlbum === album.id ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSelectedAlbum(album.id)}
+                  className="whitespace-nowrap rounded-full"
+                >
+                  {album.title} ({album.photo_count})
+                </Button>
+              ))}
+            </div>
           </div>
 
           {/* Grid de fotos */}
-          {photos.length === 0 ? (
+          {photosLoading ? (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 sm:gap-4">
+              {Array.from({ length: photoPageSize }).map((_, i) => (
+                <SkeletonCard key={i} />
+              ))}
+            </div>
+          ) : photos.length === 0 ? (
             <Card className="p-12 text-center">
               <ImageIcon className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
               <h3 className="text-xl font-semibold mb-2">Nenhuma foto ainda</h3>
@@ -641,7 +701,7 @@ const ManageEvent = () => {
               )}
             </Card>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 sm:gap-4">
               {photos.map((photo) => (
                 <Card key={photo.id} className="overflow-hidden group">
                   <div className="aspect-square relative">
@@ -649,112 +709,216 @@ const ManageEvent = () => {
                       src={photo.thumbnail_url || photo.watermarked_url}
                       alt={photo.title || 'Foto'}
                       className="w-full h-full object-cover"
+                      loading="lazy"
+                      decoding="async"
                     />
-                    
-                    {/* Badges de status */}
+
                     <div className="absolute top-2 left-2 flex flex-col gap-1">
                       {photo.is_featured && (
-                        <Badge className="gap-1 bg-yellow-500">
+                        <Badge className="gap-1 bg-yellow-500 px-2 py-0.5 text-[10px] shadow-sm">
                           <Star className="h-3 w-3" />
                           Destaque
                         </Badge>
                       )}
                       {!photo.is_available && (
-                        <Badge variant="secondary" className="gap-1">
+                        <Badge variant="secondary" className="gap-1 px-2 py-0.5 text-[10px]">
                           <EyeOff className="h-3 w-3" />
                           Oculta
                         </Badge>
                       )}
                     </div>
 
-                    {/* Actions overlay */}
-                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                      <Button
-                        size="icon"
-                        variant="secondary"
-                        onClick={() => handleTogglePhotoAvailability(photo.id, photo.is_available)}
-                        title={photo.is_available ? 'Ocultar' : 'Publicar'}
-                      >
-                        {photo.is_available ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </Button>
-                      
-                      <Button
-                        size="icon"
-                        variant="secondary"
-                        onClick={() => handleToggleFeatured(photo.id, photo.is_featured)}
-                        title={photo.is_featured ? 'Remover destaque' : 'Destacar'}
-                      >
-                        <Star className={`h-4 w-4 ${photo.is_featured ? 'fill-yellow-500 text-yellow-500' : ''}`} />
-                      </Button>
-
-
-                      {/* Mover para álbum */}
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button size="icon" variant="secondary" title="Mover para álbum">
-                            <FolderOpen className="h-4 w-4" />
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Mover para álbum</DialogTitle>
-                            <DialogDescription>
-                              Escolha o álbum de destino para esta foto
-                            </DialogDescription>
-                          </DialogHeader>
-                          <div className="space-y-2">
+                    {isMobile ? (
+                      <div className="border-t bg-card p-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-[11px] font-medium truncate">{photo.title || 'Sem título'}</p>
+                            <p className="text-[10px] text-muted-foreground truncate">R$ {photo.price.toFixed(2)}</p>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
                             <Button
-                              variant="outline"
-                              className="w-full justify-start"
-                              onClick={() => handleMovePhoto(photo.id, null)}
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleTogglePhotoAvailability(photo.id, photo.is_available);
+                              }}
+                              title={photo.is_available ? 'Ocultar' : 'Publicar'}
                             >
-                              Sem álbum
+                              {photo.is_available ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                             </Button>
-                            {albums.map(album => (
+
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleToggleFeatured(photo.id, photo.is_featured);
+                              }}
+                              title={photo.is_featured ? 'Remover destaque' : 'Destacar'}
+                            >
+                              <Star className={`h-4 w-4 ${photo.is_featured ? 'fill-yellow-500 text-yellow-500' : ''}`} />
+                            </Button>
+
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button size="icon" variant="ghost" className="h-8 w-8" title="Mover para álbum">
+                                  <FolderOpen className="h-4 w-4" />
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>Mover para álbum</DialogTitle>
+                                  <DialogDescription>
+                                    Escolha o álbum de destino para esta foto
+                                  </DialogDescription>
+                                </DialogHeader>
+                                <div className="space-y-2">
+                                  <Button
+                                    variant="outline"
+                                    className="w-full justify-start"
+                                    onClick={() => handleMovePhoto(photo.id, null)}
+                                  >
+                                    Sem álbum
+                                  </Button>
+                                  {albums.map(album => (
+                                    <Button
+                                      key={album.id}
+                                      variant="outline"
+                                      className="w-full justify-start"
+                                      onClick={() => handleMovePhoto(photo.id, album.id)}
+                                      disabled={photo.sub_event_id === album.id}
+                                    >
+                                      {album.title}
+                                      {photo.sub_event_id === album.id && ' (atual)'}
+                                    </Button>
+                                  ))}
+                                </div>
+                              </DialogContent>
+                            </Dialog>
+
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  size="icon"
+                                  variant="destructive"
+                                  className="h-8 w-8"
+                                  disabled={deletingPhoto === photo.id}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Excluir foto?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Esta ação não pode ser desfeita. A foto será removida permanentemente.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDeletePhoto(photo.id)}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Excluir
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 p-2">
+                        <Button
+                          size="icon"
+                          variant="secondary"
+                          onClick={() => handleTogglePhotoAvailability(photo.id, photo.is_available)}
+                          title={photo.is_available ? 'Ocultar' : 'Publicar'}
+                        >
+                          {photo.is_available ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+
+                        <Button
+                          size="icon"
+                          variant="secondary"
+                          onClick={() => handleToggleFeatured(photo.id, photo.is_featured)}
+                          title={photo.is_featured ? 'Remover destaque' : 'Destacar'}
+                        >
+                          <Star className={`h-4 w-4 ${photo.is_featured ? 'fill-yellow-500 text-yellow-500' : ''}`} />
+                        </Button>
+
+                        {/* Mover para álbum */}
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button size="icon" variant="secondary" title="Mover para álbum">
+                              <FolderOpen className="h-4 w-4" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Mover para álbum</DialogTitle>
+                              <DialogDescription>
+                                Escolha o álbum de destino para esta foto
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-2">
                               <Button
-                                key={album.id}
                                 variant="outline"
                                 className="w-full justify-start"
-                                onClick={() => handleMovePhoto(photo.id, album.id)}
-                                disabled={photo.sub_event_id === album.id}
+                                onClick={() => handleMovePhoto(photo.id, null)}
                               >
-                                {album.title}
-                                {photo.sub_event_id === album.id && ' (atual)'}
+                                Sem álbum
                               </Button>
-                            ))}
-                          </div>
-                        </DialogContent>
-                      </Dialog>
+                              {albums.map(album => (
+                                <Button
+                                  key={album.id}
+                                  variant="outline"
+                                  className="w-full justify-start"
+                                  onClick={() => handleMovePhoto(photo.id, album.id)}
+                                  disabled={photo.sub_event_id === album.id}
+                                >
+                                  {album.title}
+                                  {photo.sub_event_id === album.id && ' (atual)'}
+                                </Button>
+                              ))}
+                            </div>
+                          </DialogContent>
+                        </Dialog>
 
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            size="icon"
-                            variant="destructive"
-                            disabled={deletingPhoto === photo.id}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Excluir foto?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Esta ação não pode ser desfeita. A foto será removida permanentemente.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleDeletePhoto(photo.id)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              size="icon"
+                              variant="destructive"
+                              disabled={deletingPhoto === photo.id}
                             >
-                              Excluir
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Excluir foto?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Esta ação não pode ser desfeita. A foto será removida permanentemente.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleDeletePhoto(photo.id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Excluir
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    )}
                   </div>
 
                   <CardContent className="p-3">
@@ -767,6 +931,32 @@ const ManageEvent = () => {
                   </CardContent>
                 </Card>
               ))}
+            </div>
+          )}
+
+          {photoTotalCount > photoPageSize && (
+            <div className="flex flex-col gap-3 rounded-2xl border bg-card p-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-muted-foreground">
+                Página {photoPage} de {Math.max(1, Math.ceil(photoTotalCount / photoPageSize))} • {photoTotalCount} foto(s)
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPhotoPage((p) => Math.max(1, p - 1))}
+                  disabled={photoPage === 1 || photosLoading}
+                >
+                  Anterior
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPhotoPage((p) => p + 1)}
+                  disabled={photoPage >= Math.max(1, Math.ceil(photoTotalCount / photoPageSize)) || photosLoading}
+                >
+                  Próxima
+                </Button>
+              </div>
             </div>
           )}
         </TabsContent>

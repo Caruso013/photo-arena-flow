@@ -236,7 +236,7 @@ export const useFaceRecognition = () => {
     canvas.width = videoRef.current.videoWidth;
     canvas.height = videoRef.current.videoHeight;
     
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) return null;
     
     ctx.drawImage(videoRef.current, 0, 0);
@@ -298,6 +298,15 @@ export const useFaceRecognition = () => {
         toast({
           title: "Erro",
           description: "É necessário estar em um evento ou álbum específico para usar reconhecimento facial.",
+          variant: "destructive",
+        });
+        return [];
+      }
+
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        toast({
+          title: "Sem internet",
+          description: "Reconhecimento facial precisa de conexão para consultar fotos do evento.",
           variant: "destructive",
         });
         return [];
@@ -479,7 +488,7 @@ export const useFaceRecognition = () => {
       // Buscar fotos do evento específico
       let query = supabase
         .from('photos')
-        .select('id, watermarked_url, thumbnail_url, campaign_id, sub_event_id')
+        .select('id, watermarked_url, thumbnail_url, original_url, campaign_id, sub_event_id')
         .eq('is_available', true)
         .order('created_at', { ascending: false });
 
@@ -536,7 +545,7 @@ export const useFaceRecognition = () => {
 
           const bitmap = await createImageBitmap(blob);
           const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
+          const ctx = canvas.getContext('2d', { willReadFrequently: true });
           if (!ctx) return null;
 
           // Calcular proporção mantendo aspecto
@@ -570,7 +579,7 @@ export const useFaceRecognition = () => {
             return null;
           }
 
-          const imageUrl = photo.thumbnail_url || photo.watermarked_url;
+          const imageUrl = photo.watermarked_url || photo.original_url || photo.thumbnail_url;
           if (!imageUrl) {
             similarityCache.set(photo.id, 0);
             return null;

@@ -46,13 +46,7 @@ const Header = () => {
   return (
     <header className="sticky top-0 z-50 border-b border-amber-200/70 bg-white/95 text-slate-900 shadow-[0_1px_0_rgba(0,0,0,0.03)] backdrop-blur supports-[backdrop-filter]:bg-white/90">
       <div className="container mx-auto flex h-20 items-center gap-4 px-4">
-          {/* Mobile Menu - esquerda */}
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-            <SheetTrigger asChild className="md:hidden">
-              <Button variant="ghost" size="icon" className="text-slate-700 hover:text-primary hover:bg-primary/10">
-                <Menu className="h-6 w-6" />
-              </Button>
-            </SheetTrigger>
             <SheetContent side="right" className="bg-slate-50 text-slate-900 border-l border-slate-200/80 w-[85vw] max-w-80">
               <SheetHeader>
                 <SheetTitle className="text-primary">Menu</SheetTitle>
@@ -130,7 +124,6 @@ const Header = () => {
                 </div>
               </div>
             </SheetContent>
-          </Sheet>
 
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
@@ -142,7 +135,7 @@ const Header = () => {
             />
           </Link>
 
-          <div className="ml-auto flex items-center gap-1 md:hidden">
+          <div className="flex items-center gap-1 md:hidden">
             <Link to={user ? '/dashboard/purchases' : '/auth'}>
               <Button variant="ghost" size="icon" className="text-slate-700 hover:text-amber-700 hover:bg-amber-50" title="Minhas fotos">
                 <Download className="h-5 w-5" />
@@ -159,6 +152,13 @@ const Header = () => {
               </Button>
             </Link>
           </div>
+
+          <SheetTrigger asChild className="ml-auto md:hidden">
+              <Button variant="ghost" size="icon" className="text-slate-700 hover:text-primary hover:bg-primary/10">
+                <Menu className="h-6 w-6" />
+              </Button>
+          </SheetTrigger>
+          </Sheet>
 
           <nav className="hidden md:flex items-center gap-1 lg:gap-2 text-[13px] font-medium text-slate-700">
             {navItems.map((item) => {

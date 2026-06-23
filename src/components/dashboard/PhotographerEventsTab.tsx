@@ -24,6 +24,8 @@ import { copyShareLink, generateShareLink } from '@/lib/shareUtils';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/lib/utils';
 import { QRCodeSVG } from 'qrcode.react';
+import { getTransformedImageUrl } from '@/lib/supabaseImageTransform';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface Campaign {
   id: string;
@@ -38,12 +40,12 @@ interface Campaign {
   revenue_total: number;
 }
 
-const PAGE_SIZE = 6;
-
 const PhotographerEventsTab = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
+  const pageSize = isMobile ? 4 : 6;
 
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
@@ -127,18 +129,21 @@ const PhotographerEventsTab = () => {
           revenue_total: 0,
         }));
 
-      const { data: completedPurchases } = await supabase
-        .from('purchases')
-        .select('amount, photos!inner(campaign_id)')
-        .eq('photographer_id', user.id)
-        .eq('status', 'completed');
-
       const revenueMap: Record<string, number> = {};
-      (completedPurchases || []).forEach((purchase: any) => {
-        const campaignId = purchase.photos?.campaign_id;
-        if (!campaignId) return;
-        revenueMap[campaignId] = (revenueMap[campaignId] || 0) + Number(purchase.amount || 0);
-      });
+
+      if (!isMobile) {
+        const { data: completedPurchases } = await supabase
+          .from('purchases')
+          .select('amount, photos!inner(campaign_id)')
+          .eq('photographer_id', user.id)
+          .eq('status', 'completed');
+
+        (completedPurchases || []).forEach((purchase: any) => {
+          const campaignId = purchase.photos?.campaign_id;
+          if (!campaignId) return;
+          revenueMap[campaignId] = (revenueMap[campaignId] || 0) + Number(purchase.amount || 0);
+        });
+      }
 
       const campaignsWithRevenue = campaignsBase.map((campaign: any) => ({
         ...campaign,
@@ -163,8 +168,8 @@ const PhotographerEventsTab = () => {
     setCurrentPage(1);
   }, [search]);
 
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
-  const paginated = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const totalPages = Math.ceil(filtered.length / pageSize);
+  const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const formatDate = (date?: string) => {
     if (!date) return 'Sem data';
@@ -234,13 +239,14 @@ const PhotographerEventsTab = () => {
               >
                 <CardContent className="p-0">
                   <div className="flex items-stretch">
-                    <div className="w-20 sm:w-28 flex-shrink-0 relative overflow-hidden bg-muted">
+                      <div className="w-20 sm:w-28 flex-shrink-0 relative overflow-hidden bg-muted">
                       {campaign.cover_image_url ? (
                         <img
-                          src={campaign.cover_image_url}
+                          src={getTransformedImageUrl(campaign.cover_image_url, 'thumbnail')}
                           alt={campaign.title}
-                          className="h-full w-full object-contain"
+                          className="h-full w-full object-cover"
                           loading="lazy"
+                          decoding="async"
                         />
                       ) : (
                         <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-primary/5">
@@ -280,14 +286,16 @@ const PhotographerEventsTab = () => {
                               <ImageIcon className="h-3 w-3" />
                               {campaign.photo_count}
                             </span>
-                            <span className="flex items-center gap-1 font-medium text-foreground">
-                              <DollarSign className="h-3 w-3" />
-                              Vendido {formatCurrency(campaign.revenue_total || 0)}
-                            </span>
+                            {!isMobile && (
+                              <span className="flex items-center gap-1 font-medium text-foreground">
+                                <DollarSign className="h-3 w-3" />
+                                Vendido {formatCurrency(campaign.revenue_total || 0)}
+                              </span>
+                            )}
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-1 flex-shrink-0">
+                        <div className="flex flex-wrap items-center gap-1 flex-shrink-0 justify-end md:flex-nowrap">
                           <Button
                             variant="ghost"
                             size="icon"

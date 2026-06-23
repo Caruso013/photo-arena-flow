@@ -230,7 +230,7 @@ const PhotographerDashboard = () => {
 
               <Button asChild className="gap-2 bg-amber-500 text-white hover:bg-amber-600 w-full lg:w-auto">
                 <Link to="/dashboard/photographer/applications">
-                  Abrir candidaturas
+                  Renda total feita no site
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
@@ -248,14 +248,23 @@ const PhotographerDashboard = () => {
         />
 
         {/* Metric Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+          <MetricCard
+            title="Renda total feita no site"
+            value={formatCurrency(balance.availableAmount + balance.pendingAmount)}
+            subtitle="Valor total acumulado no site"
+            icon={DollarSign}
+            variant="success"
+          />
+
           <MetricCard
             title="Saldo Disponível"
             value={formatCurrency(balance.availableAmount)}
             subtitle="Pronto para saque"
-            icon={DollarSign}
-            variant="success"
+            icon={Wallet}
+            variant="primary"
           />
+
           <MetricCard
             title="A Liberar"
             value={formatCurrency(balance.pendingAmount)}
@@ -263,6 +272,7 @@ const PhotographerDashboard = () => {
             icon={CreditCard}
             variant="warning"
           />
+
           <MetricCard
             title="Vendas do mês"
             value={formatCurrency(chartRevenue)}
