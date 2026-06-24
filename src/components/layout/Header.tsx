@@ -45,7 +45,7 @@ const Header = () => {
 
   return (
     <header className="sticky top-0 z-50 border-b border-amber-200/70 bg-white/95 text-slate-900 shadow-[0_1px_0_rgba(0,0,0,0.03)] backdrop-blur supports-[backdrop-filter]:bg-white/90">
-      <div className="container mx-auto flex h-20 items-center gap-4 px-4">
+      <div className="flex h-20 w-full items-center gap-3 pl-0 pr-3 sm:container sm:mx-auto sm:gap-4 sm:px-4">
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <SheetContent side="right" className="bg-slate-50 text-slate-900 border-l border-slate-200/80 w-[85vw] max-w-80">
               <SheetHeader>
@@ -126,16 +126,16 @@ const Header = () => {
             </SheetContent>
 
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+      <Link to="/" className="-ml-0.4 flex items-center transition-opacity hover:opacity-80 sm:ml-0">
             <img 
-              src="/sta-new-logo.png" 
+              src="/sta-new-logo.png?v=20260623" 
               alt="STA Fotos - Página Inicial" 
-              className="h-14 md:h-16 w-auto cursor-pointer"
+              className="h-[100px] w-auto max-w-[220px] object-contain cursor-pointer"
               title="Voltar para página inicial"
             />
           </Link>
 
-          <div className="flex items-center gap-1 md:hidden">
+          <div className="ml-auto flex items-center gap-1 md:hidden">
             <Link to={user ? '/dashboard/purchases' : '/auth'}>
               <Button variant="ghost" size="icon" className="text-slate-700 hover:text-amber-700 hover:bg-amber-50" title="Minhas fotos">
                 <Download className="h-5 w-5" />
@@ -151,13 +151,12 @@ const Header = () => {
                 )}
               </Button>
             </Link>
-          </div>
-
-          <SheetTrigger asChild className="ml-auto md:hidden">
-              <Button variant="ghost" size="icon" className="text-slate-700 hover:text-primary hover:bg-primary/10">
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="text-slate-700 hover:text-primary hover:bg-primary/10" aria-label="Abrir menu">
                 <Menu className="h-6 w-6" />
               </Button>
-          </SheetTrigger>
+            </SheetTrigger>
+          </div>
           </Sheet>
 
           <nav className="hidden md:flex items-center gap-1 lg:gap-2 text-[13px] font-medium text-slate-700">
