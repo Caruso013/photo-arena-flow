@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { getTransformedImageUrl } from '@/lib/supabaseImageTransform';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   MapPin,
   
@@ -32,6 +33,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { formatCurrency } from '@/lib/utils';
 import { copyShareLink, generateShareLink } from '@/lib/shareUtils';
 import { toast } from 'sonner';
+import { EventApplicationForm, type ApplicationFormData } from '@/components/events/EventApplicationForm';
 
 interface CampaignWithApplication {
   id: string;
@@ -47,6 +49,8 @@ interface CampaignWithApplication {
   photo_price_display: number | null;
   available_slots: number | null;
   organization_id: string | null;
+  event_terms?: string | null;
+  event_terms_pdf_url?: string | null;
   photographer_percentage?: number;
   organization?: { name: string; logo_url: string | null; primary_color: string | null } | null;
   my_application_status?: string | null;
@@ -56,11 +60,13 @@ interface CampaignWithApplication {
 
 export default function EventApplications() {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [campaigns, setCampaigns] = useState<CampaignWithApplication[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [qrTarget, setQrTarget] = useState<CampaignWithApplication | null>(null);
+  const [applicationTarget, setApplicationTarget] = useState<CampaignWithApplication | null>(null);
+  const [applicationMessage, setApplicationMessage] = useState('');
+  const [submittingApplication, setSubmittingApplication] = useState(false);
   const qrRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -109,6 +115,7 @@ export default function EventApplications() {
           cover_image_url, applications_open,
           event_start_time, event_end_time, photo_price_display,
           available_slots, organization_id, is_active, photographer_percentage,
+          event_terms, event_terms_pdf_url,
           organizations(name, logo_url, primary_color)
         `)
         .eq('is_active', true)
@@ -156,6 +163,59 @@ export default function EventApplications() {
     }
   };
 
+  const openApplicationModal = (campaign: CampaignWithApplication) => {
+    if (campaign.my_application_status) {
+      toast.info('Você já se candidatou para este evento.');
+      return;
+    }
+
+    if (!campaign.applications_open) {
+      toast.error('As inscrições para este evento estão encerradas.');
+      return;
+    }
+
+    setApplicationMessage('');
+    setApplicationTarget(campaign);
+  };
+
+  const handleApplicationSubmit = async (data: ApplicationFormData) => {
+    if (!user || !applicationTarget) return;
+
+    setSubmittingApplication(true);
+    try {
+      const { error } = await supabase.from('event_applications').insert({
+        campaign_id: applicationTarget.id,
+        photographer_id: user.id,
+        message: data.message || null,
+        city: data.city,
+        state: data.state,
+        has_vehicle: data.has_vehicle,
+        has_night_equipment: data.has_night_equipment,
+        whatsapp: data.whatsapp,
+        accepted_terms: data.accepted_terms,
+        accepted_terms_at: data.accepted_terms ? new Date().toISOString() : null,
+      });
+
+      if (error) {
+        if (error.code === '23505') {
+          toast.error('Você já se candidatou para este evento');
+        } else {
+          throw error;
+        }
+        return;
+      }
+
+      toast.success('Candidatura enviada com sucesso!');
+      setApplicationTarget(null);
+      await fetchCampaigns();
+    } catch (err) {
+      console.error('Erro ao enviar candidatura:', err);
+      toast.error('Erro ao enviar candidatura');
+    } finally {
+      setSubmittingApplication(false);
+    }
+  };
+
   const filtered = campaigns.filter(c =>
     c.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     c.location?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -174,7 +234,7 @@ export default function EventApplications() {
     <Card
       key={campaign.id}
       className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer group"
-      onClick={() => navigate(`/dashboard/photographer/album-reports?campaign=${campaign.id}`)}
+      onClick={() => openApplicationModal(campaign)}
     >
       <div className="relative aspect-[16/10] bg-muted overflow-hidden">
         {campaign.cover_image_url ? (
@@ -398,6 +458,33 @@ export default function EventApplications() {
           </div>
         </div>
       )}
+
+      <Dialog open={!!applicationTarget} onOpenChange={(open) => !open && setApplicationTarget(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Inscrição para evento</DialogTitle>
+            <DialogDescription>
+              {applicationTarget?.title || 'Preencha os dados para enviar sua candidatura.'}
+            </DialogDescription>
+          </DialogHeader>
+
+          {applicationTarget && (
+            <EventApplicationForm
+              campaign={{
+                id: applicationTarget.id,
+                title: applicationTarget.title,
+                event_terms: applicationTarget.event_terms || null,
+                event_terms_pdf_url: applicationTarget.event_terms_pdf_url || null,
+              }}
+              message={applicationMessage}
+              onMessageChange={setApplicationMessage}
+              onSubmit={handleApplicationSubmit}
+              isSubmitting={submittingApplication}
+              onCancel={() => setApplicationTarget(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

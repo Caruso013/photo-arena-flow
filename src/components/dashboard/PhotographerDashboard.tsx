@@ -230,7 +230,7 @@ const PhotographerDashboard = () => {
 
               <Button asChild className="gap-2 bg-amber-500 text-white hover:bg-amber-600 w-full lg:w-auto">
                 <Link to="/dashboard/photographer/applications">
-                  Renda total feita no site
+                  Candidaturas disponiveis
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
