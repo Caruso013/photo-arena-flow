@@ -335,7 +335,7 @@ const EditEventModal: React.FC<EditEventModalProps> = ({
                     <p className="font-medium mb-1">Tabela de descontos:</p>
                     <div className="flex justify-between"><span>• 2 a 4 fotos</span><span className="font-semibold">5% OFF</span></div>
                     <div className="flex justify-between"><span>• 5 a 9 fotos</span><span className="font-semibold">10% OFF</span></div>
-                    <div className="flex justify-between"><span>• 10 ou mais</span><span className="font-semibold">20% OFF</span></div>
+                    <div className="flex justify-between"><span>• 10+ fotos</span><span className="font-semibold">20% OFF</span></div>
                   </div>
                 </AlertDescription>
               </Alert>

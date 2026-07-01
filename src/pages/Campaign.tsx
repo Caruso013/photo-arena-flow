@@ -28,7 +28,6 @@ import { Pagination, PaginationContent, PaginationItem, PaginationLink, Paginati
 import PaymentModal from '@/components/modals/PaymentModal';
 import WatermarkedPhoto from '@/components/WatermarkedPhoto';
 import AntiScreenshotProtection from '@/components/security/AntiScreenshotProtection';
-import { FaceRecognitionModal } from '@/components/FaceRecognitionModal';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Calendar, 
@@ -53,7 +52,6 @@ import {
   Search,
   Mail,
   Loader2,
-  ScanFace
 } from 'lucide-react';
 import { useFavorites } from '@/hooks/useFavorites';
 import EditEventModal from '@/components/modals/EditEventModal';
@@ -122,7 +120,6 @@ const Campaign = () => {
   const [selectedSubEvent, setSelectedSubEvent] = useState<string | null>(null);
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [showFaceRecognitionModal, setShowFaceRecognitionModal] = useState(false);
   const [showEditEventModal, setShowEditEventModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingPhotos, setLoadingPhotos] = useState(false);
@@ -1051,19 +1048,6 @@ const Campaign = () => {
                 }
               </span>
             </h2>
-
-            <Button
-              onClick={() => setShowFaceRecognitionModal(true)}
-              className="group relative overflow-hidden rounded-xl border-0 bg-gradient-to-r from-rose-500 via-orange-500 to-amber-500 px-4 py-2.5 text-white shadow-lg transition-all duration-300 hover:scale-[1.02] hover:from-rose-600 hover:via-orange-600 hover:to-amber-600 hover:shadow-xl"
-            >
-              <span className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.35),transparent_60%)] opacity-80 transition-opacity group-hover:opacity-100" />
-              <span className="relative flex items-center gap-2">
-                <span className="rounded-full bg-white/20 p-1.5 backdrop-blur-sm">
-                  <ScanFace className="h-4 w-4" />
-                </span>
-                <span className="text-sm font-semibold">Encontrar minhas fotos</span>
-              </span>
-            </Button>
           </div>
 
           {photos.length === 0 ? (
@@ -1355,13 +1339,6 @@ const Campaign = () => {
             </div>
           </DialogContent>
         </Dialog>
-
-        {/* Payment Modal */}
-        <FaceRecognitionModal
-          open={showFaceRecognitionModal}
-          onOpenChange={setShowFaceRecognitionModal}
-          campaignId={campaign?.id}
-        />
 
         {/* Payment Modal */}
         {showPaymentModal && selectedPhoto && (

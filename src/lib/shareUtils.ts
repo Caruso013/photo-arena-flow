@@ -13,24 +13,42 @@ export interface Campaign {
  * Formato: sta.com/E/ABC123
  */
 export function generateShareLink(campaign: Campaign): string {
-  const baseUrl = window.location.origin + window.location.pathname.replace(/\/$/, '');
+  const origin = window.location.origin;
   
   if (campaign.short_code) {
-    return `${baseUrl}#/E/${campaign.short_code}`;
+    return `${origin}/E/${campaign.short_code}`;
   }
   
   // Fallback para ID se não houver código curto
-  return `${baseUrl}#/campaign/${campaign.id}`;
+  return `${origin}/campaign/${campaign.id}`;
 }
 
 /**
  * Copia o link de compartilhamento para o clipboard
+ * Usa Clipboard API quando disponível, com fallback para execCommand
  */
 export async function copyShareLink(campaign: Campaign): Promise<boolean> {
+  const link = generateShareLink(campaign);
   try {
-    const link = generateShareLink(campaign);
-    await navigator.clipboard.writeText(link);
-    return true;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(link);
+      return true;
+    }
+  } catch {
+    // fallthrough para método legado
+  }
+
+  // Fallback: textarea + execCommand (funciona em HTTP e contextos restritos)
+  try {
+    const el = document.createElement('textarea');
+    el.value = link;
+    el.style.cssText = 'position:fixed;left:-9999px;top:-9999px;opacity:0';
+    document.body.appendChild(el);
+    el.focus();
+    el.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(el);
+    return ok;
   } catch (error) {
     console.error('Erro ao copiar link:', error);
     return false;

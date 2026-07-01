@@ -106,7 +106,7 @@ const MyFavorites = () => {
       watermarked_url: photo.watermarked_url,
       thumbnail_url: photo.thumbnail_url,
       campaign_id: photo.campaigns?.id || '',
-      progressive_discount_enabled: photo.campaigns?.progressive_discount_enabled || false,
+      progressive_discount_enabled: photo.campaigns?.progressive_discount_enabled ?? true,
     });
   };
 

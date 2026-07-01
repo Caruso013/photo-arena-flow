@@ -72,7 +72,6 @@ const DashboardSidebar = ({ isOpen, onToggle }: DashboardSidebarProps) => {
     { title: 'Eventos', url: '/events', icon: Calendar },
     { title: 'Minhas Compras', url: '/dashboard/purchases', icon: ShoppingCart },
     { title: 'Favoritos', url: '/dashboard/favorites', icon: Heart },
-    { title: 'Backup Facial', url: '/dashboard/face-backup', icon: Database },
     { title: 'Perfil', url: '/dashboard/profile', icon: UserCircle },
     { title: 'Seja Fotógrafo', url: '/dashboard/photographer-application', icon: Camera },
   ];

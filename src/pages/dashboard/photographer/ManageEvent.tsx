@@ -1110,17 +1110,18 @@ const ManageEvent = () => {
         </TabsContent>
 
         {/* Tab: Configurações */}
-        <TabsContent value="settings" className="space-y-6">
+        <TabsContent value="settings" className="space-y-4">
+          {/* Informações gerais */}
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Settings className="h-5 w-5" />
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Settings className="h-4 w-4" />
                 Informações do Evento
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5 sm:col-span-2">
                   <Label htmlFor="edit-title">Título do Evento *</Label>
                   <Input
                     id="edit-title"
@@ -1129,7 +1130,7 @@ const ManageEvent = () => {
                     placeholder="Nome do evento"
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label htmlFor="edit-location">Localização</Label>
                   <Input
                     id="edit-location"
@@ -1138,7 +1139,7 @@ const ManageEvent = () => {
                     placeholder="Ex: São Paulo, SP"
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label htmlFor="edit-date">Data do Evento</Label>
                   <Input
                     id="edit-date"
@@ -1147,61 +1148,73 @@ const ManageEvent = () => {
                     onChange={(e) => setEditEventDate(e.target.value)}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-price">
-                    Preço da Foto (R$)
-                    {!canEditPrice && (
-                      <span className="text-xs text-muted-foreground ml-2">
-                        (somente admin)
-                      </span>
-                    )}
-                  </Label>
-                  <Input
-                    id="edit-price"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={editPhotoPrice}
-                    onChange={(e) => setEditPhotoPrice(e.target.value)}
-                    placeholder="10.00"
-                    disabled={!canEditPrice}
-                    className={!canEditPrice ? 'opacity-60 cursor-not-allowed' : ''}
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label htmlFor="edit-description">Descrição</Label>
+                  <Textarea
+                    id="edit-description"
+                    value={editDescription}
+                    onChange={(e) => setEditDescription(e.target.value)}
+                    placeholder="Descrição do evento..."
+                    rows={3}
                   />
-                  {!canEditPrice && (
-                    <p className="text-xs text-muted-foreground">
-                      Após o upload, somente o administrador pode alterar o valor da foto.
-                    </p>
-                  )}
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-description">Descrição</Label>
-                <Textarea
-                  id="edit-description"
-                  value={editDescription}
-                  onChange={(e) => setEditDescription(e.target.value)}
-                  placeholder="Descrição do evento..."
-                  rows={4}
-                />
-              </div>
-              <div className="flex justify-end">
-                <Button
-                  onClick={handleSaveEventSettings}
-                  disabled={savingEvent || !editTitle.trim()}
-                  className="gap-2"
-                >
-                  {savingEvent ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Salvando...
-                    </>
-                  ) : (
-                    'Salvar Alterações'
-                  )}
-                </Button>
               </div>
             </CardContent>
           </Card>
+
+          {/* Preço */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <span className="text-lg">💲</span>
+                Preço da Foto
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-price">
+                  Valor (R$)
+                  {!canEditPrice && (
+                    <span className="text-xs text-muted-foreground ml-2">(somente admin pode alterar)</span>
+                  )}
+                </Label>
+                <Input
+                  id="edit-price"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={editPhotoPrice}
+                  onChange={(e) => setEditPhotoPrice(e.target.value)}
+                  placeholder="10.00"
+                  disabled={!canEditPrice}
+                  className={!canEditPrice ? 'opacity-60 cursor-not-allowed' : ''}
+                />
+                {!canEditPrice && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                    ⚠️ Após o primeiro upload, somente o administrador pode alterar o valor.
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Salvar */}
+          <div className="flex justify-end">
+            <Button
+              onClick={handleSaveEventSettings}
+              disabled={savingEvent || !editTitle.trim()}
+              className="gap-2 w-full sm:w-auto"
+            >
+              {savingEvent ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                '✅ Salvar Alterações'
+              )}
+            </Button>
+          </div>
         </TabsContent>
       </Tabs>
 
