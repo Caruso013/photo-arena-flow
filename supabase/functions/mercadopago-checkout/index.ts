@@ -246,9 +246,9 @@ serve(async (req) => {
       const freeAllDiscount = freeCampaigns?.every((c: any) => c.progressive_discount_enabled !== false) ?? false;
       let freeProgressivePercent = 0;
       if (freeAllDiscount) {
-        if (freePhotoCount >= 5 && freePhotoCount <= 10) freeProgressivePercent = 5;
-        else if (freePhotoCount >= 11 && freePhotoCount <= 20) freeProgressivePercent = 10;
-        else if (freePhotoCount > 20) freeProgressivePercent = 15;
+        if (freePhotoCount >= 10) freeProgressivePercent = 20;
+        else if (freePhotoCount >= 5) freeProgressivePercent = 10;
+        else if (freePhotoCount >= 2) freeProgressivePercent = 5;
       }
 
       const freeProgressiveAmount = Number((freeSubtotal * freeProgressivePercent / 100).toFixed(2));
