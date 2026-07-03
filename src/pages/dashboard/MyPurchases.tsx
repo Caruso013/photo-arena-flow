@@ -55,7 +55,7 @@ const MyPurchases = () => {
           )
         `)
         .eq('buyer_id', user?.id)
-        .eq('status', 'completed') // Apenas compras confirmadas pelo webhook do Mercado Pago
+        .in('status', ['completed', 'approved'])
         .order('created_at', { ascending: false })
         .range(0, 99); // Limitar a 100 compras mais recentes
 
@@ -145,7 +145,7 @@ const MyPurchases = () => {
     setDownloadProgress(0);
     
     try {
-      const completedPurchases = purchases.filter(p => p.status === 'completed');
+      const completedPurchases = purchases.filter(p => p.status === 'completed' || p.status === 'approved');
       const totalPhotos = completedPurchases.length;
       
       // ✅ NOVO: Usar download seguro para cada foto
@@ -208,7 +208,7 @@ const MyPurchases = () => {
     if (purchases.length) buildSigned();
   }, [purchases]);
 
-  const completedCount = purchases.filter(p => p.status === 'completed').length;
+  const completedCount = purchases.filter(p => p.status === 'completed' || p.status === 'approved').length;
 
   return (
     <div className="space-y-6">

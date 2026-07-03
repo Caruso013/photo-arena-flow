@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CheckCircle2, Loader2, Download } from 'lucide-react';
 import { downloadOriginalPhoto } from '@/lib/photoDownload';
+import { getSecurePhotoDownloadUrl } from '@/lib/securePhotoDownload';
 
 interface Purchase {
   id: string;
@@ -55,7 +56,7 @@ export default function CheckoutSuccess() {
           .select(`*, photo:photos(id, watermarked_url, thumbnail_url, original_url, campaign:campaigns(title))`)
           .in('id', purchaseIds)
           .eq('buyer_id', user.id)
-          .eq('status', 'completed')
+          .in('status', ['completed', 'approved'])
           .order('created_at', { ascending: false });
         if (error) throw error;
         setPurchases(data || []);
@@ -71,10 +72,12 @@ export default function CheckoutSuccess() {
 
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
-  const handleDownload = async (url: string, fileName: string, photoId: string) => {
+  const handleDownload = async (_url: string, fileName: string, photoId: string) => {
     try {
       setDownloadingId(photoId);
-      await downloadOriginalPhoto(url, fileName);
+      const secureUrl = await getSecurePhotoDownloadUrl(photoId);
+      if (!secureUrl) return;
+      await downloadOriginalPhoto(secureUrl, fileName);
     } catch (error) {
       console.error('Erro ao baixar foto:', error);
     } finally {
@@ -155,10 +158,10 @@ export default function CheckoutSuccess() {
                     </div>
                   </div>
                   <div className="aspect-square relative bg-muted">
-                    {/* ✅ FOTO COMPRADA: mostra original SEM marca d'água */}
+                    {/* Preview da compra */}
                     <img
-                      src={purchase.photo?.original_url || purchase.photo?.thumbnail_url || ''}
-                      alt="Foto comprada - sem marca d'água"
+                      src={purchase.photo?.thumbnail_url || purchase.photo?.watermarked_url || purchase.photo?.original_url || ''}
+                      alt="Foto comprada"
                       className="w-full h-full object-cover"
                       loading="lazy"
                     />

@@ -430,9 +430,9 @@ serve(async (req) => {
 
     let serverProgressiveDiscountPercent = 0;
     if (allCampaignsHaveDiscount) {
-      if (photoCount >= 5 && photoCount <= 10) serverProgressiveDiscountPercent = 5;
-      else if (photoCount >= 11 && photoCount <= 20) serverProgressiveDiscountPercent = 10;
-      else if (photoCount > 20) serverProgressiveDiscountPercent = 15;
+      if (photoCount >= 10) serverProgressiveDiscountPercent = 20;
+      else if (photoCount >= 5) serverProgressiveDiscountPercent = 10;
+      else if (photoCount >= 2) serverProgressiveDiscountPercent = 5;
     }
 
     const serverProgressiveDiscountAmount = Number((subtotal * serverProgressiveDiscountPercent / 100).toFixed(2));
@@ -580,9 +580,9 @@ serve(async (req) => {
 
     const verifyAllDiscount = campaignsVerify?.every((c: any) => c.progressive_discount_enabled !== false) ?? false;
     if (verifyAllDiscount) {
-      if (photoCountVerify >= 5 && photoCountVerify <= 10) verifyDiscountPercent = 5;
-      else if (photoCountVerify >= 11 && photoCountVerify <= 20) verifyDiscountPercent = 10;
-      else if (photoCountVerify > 20) verifyDiscountPercent = 15;
+      if (photoCountVerify >= 10) verifyDiscountPercent = 20;
+      else if (photoCountVerify >= 5) verifyDiscountPercent = 10;
+      else if (photoCountVerify >= 2) verifyDiscountPercent = 5;
     }
 
     const verifyDiscountAmount = Number((subtotalVerify * verifyDiscountPercent / 100).toFixed(2));

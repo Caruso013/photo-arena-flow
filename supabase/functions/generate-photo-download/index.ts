@@ -109,7 +109,7 @@ serve(async (req) => {
       .select('id, status, stripe_payment_intent_id, created_at')
       .eq('buyer_id', user.id)
       .eq('photo_id', photo_id)
-      .in('status', ['completed', 'pending'])
+      .in('status', ['completed', 'approved', 'pending'])
       .order('created_at', { ascending: false })
       .limit(1);
 
@@ -136,6 +136,19 @@ serve(async (req) => {
     }
 
     let purchase = purchaseRows[0] as PurchaseRow;
+
+    if (purchase.status === 'approved') {
+      await supabase
+        .from('purchases')
+        .update({ status: 'completed' })
+        .eq('id', purchase.id)
+        .eq('buyer_id', user.id)
+        .eq('photo_id', photo_id)
+        .eq('status', 'approved');
+
+      purchase = { ...purchase, status: 'completed' };
+      console.log(`✅ Compra aprovada promovida para completed: ${purchase.id}`);
+    }
 
     if (purchase.status !== 'completed') {
       const mpReference = purchase.stripe_payment_intent_id || '';
