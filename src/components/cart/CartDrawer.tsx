@@ -27,7 +27,8 @@ export const CartDrawer = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   // Verificar se desconto progressivo está habilitado para os itens do carrinho
-  const progressiveDiscountEnabled = items.some(item => item.progressive_discount_enabled !== false);
+  // Desconto só é aplicado se TODAS as campanhas o permitirem (mesma regra do servidor)
+  const progressiveDiscountEnabled = items.length > 0 && items.every(item => item.progressive_discount_enabled !== false);
   
   // Calcular preço médio por foto
   const averagePrice = totalItems > 0 ? totalPrice / totalItems : 0;
