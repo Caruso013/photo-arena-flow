@@ -11,11 +11,12 @@ export interface ProgressiveDiscount {
 }
 
 /**
- * Desconto progressivo (regra oficial validada no servidor):
- *   - 5 a 10 fotos  → 5%
- *   - 11 a 20 fotos → 10%
- *   - 21+ fotos     → 15%
- * Menos de 5 fotos: sem desconto.
+ * Desconto progressivo (regra oficial exibida ao cliente e validada no servidor):
+ *   - 2 a 4 fotos  → 5%
+ *   - 5 a 9 fotos  → 10%
+ *   - 10+ fotos    → 20%
+ * Se a campanha tem progressive_discount_enabled=false, isEnabled deve vir false
+ * para evitar desconto rejeitado como fraude no servidor.
  */
 export function useProgressiveDiscount(
   quantity: number,
@@ -29,11 +30,11 @@ export function useProgressiveDiscount(
     let discountPercentage = 0;
 
     if (isEnabled) {
-      if (quantity > 20) {
-        discountPercentage = 15;
-      } else if (quantity >= 11) {
-        discountPercentage = 10;
+      if (quantity >= 10) {
+        discountPercentage = 20;
       } else if (quantity >= 5) {
+        discountPercentage = 10;
+      } else if (quantity >= 2) {
         discountPercentage = 5;
       }
     }
@@ -54,26 +55,25 @@ export function useProgressiveDiscount(
 }
 
 export function getDiscountMessage(quantity: number): string | null {
-  if (quantity > 20) {
-    return '🎉 Desconto de 15% aplicado! (21+ fotos)';
-  } else if (quantity >= 11) {
-    return '🎉 Desconto de 10% aplicado! (11-20 fotos)';
+  if (quantity >= 10) {
+    return '🎉 Desconto de 20% aplicado! (10+ fotos)';
   } else if (quantity >= 5) {
-    return '🎉 Desconto de 5% aplicado! (5-10 fotos)';
-  } else if (quantity >= 1) {
-    const faltam = 5 - quantity;
-    return `💡 Adicione mais ${faltam} foto${faltam > 1 ? 's' : ''} para ganhar 5% de desconto!`;
+    return '🎉 Desconto de 10% aplicado! (5-9 fotos)';
+  } else if (quantity >= 2) {
+    return '🎉 Desconto de 5% aplicado! (2-4 fotos)';
+  } else if (quantity === 1) {
+    return '💡 Adicione mais 1 foto para ganhar 5% de desconto!';
   }
   return null;
 }
 
 export function getNextDiscountThreshold(quantity: number): { threshold: number; percentage: number } | null {
-  if (quantity < 5) {
-    return { threshold: 5, percentage: 5 };
-  } else if (quantity < 11) {
-    return { threshold: 11, percentage: 10 };
-  } else if (quantity < 21) {
-    return { threshold: 21, percentage: 15 };
+  if (quantity < 2) {
+    return { threshold: 2, percentage: 5 };
+  } else if (quantity < 5) {
+    return { threshold: 5, percentage: 10 };
+  } else if (quantity < 10) {
+    return { threshold: 10, percentage: 20 };
   }
   return null;
 }
