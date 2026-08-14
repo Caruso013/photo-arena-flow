@@ -1,5 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { generateWatermarkedDisplayImage, BAKED_WATERMARK_PREFIX } from '@/lib/watermarkImage';
+import { compressImage } from '@/lib/imageOptimization';
 
 export interface UploadTask {
   id: string;
@@ -189,8 +191,8 @@ class BackgroundUploadService {
 
       // Gerar nomes de arquivo únicos
       const fileExt = task.file.name.split('.').pop();
-      const fileName = `${task.photographerId}/${Date.now()}_${task.id}.${fileExt}`;
-      const watermarkedFileName = `${task.photographerId}/watermarked_${Date.now()}_${task.id}.${fileExt}`;
+      const uploadStamp = Date.now();
+      const fileName = `${task.photographerId}/${uploadStamp}_${task.id}.${fileExt}`;
 
       // Simular progresso durante upload
       const progressInterval = setInterval(() => {
@@ -230,10 +232,38 @@ class BackgroundUploadService {
         task.progress = 50;
         this.notify();
 
-        // Upload watermarked version
+        // Gerar a versão pública de exibição ANTES do upload:
+        // redimensionada + marca d'água EMBUTIDA no pixel. Isso evita a cobrança
+        // de Storage Image Transformations (não precisamos mais de /render/image/)
+        // e impede que o original em alta fique acessível no bucket público.
+        let displayBlob: Blob;
+        let displayExt: string;
+        let watermarkBaked: boolean;
+        try {
+          const result = await generateWatermarkedDisplayImage(task.file);
+          displayBlob = result.blob;
+          displayExt = result.ext;
+          watermarkBaked = true;
+        } catch (watermarkErr) {
+          // Fallback seguro: se o "bake" falhar (ex.: formato exótico), ainda
+          // reduzimos o tamanho (nunca subimos o original de 2-5MB ao bucket
+          // público). Sem o prefixo `wmb_`, WatermarkedPhoto mantém a
+          // sobreposição de marca d'água na exibição.
+          console.warn('Falha ao embutir marca d\'água, usando resize sem marca:', watermarkErr);
+          displayBlob = await compressImage(task.file, 1600, 0.72);
+          displayExt = 'jpg';
+          watermarkBaked = false;
+        }
+
+        // Nome do arquivo público: prefixo `wmb_` sinaliza que a marca d'água já
+        // está embutida (WatermarkedPhoto não aplica a sobreposição de novo).
+        const watermarkedPrefix = watermarkBaked ? BAKED_WATERMARK_PREFIX : 'watermarked_';
+        const watermarkedFileName = `${task.photographerId}/${watermarkedPrefix}${uploadStamp}_${task.id}.${displayExt}`;
+
+        // Upload watermarked (display) version
         const { data: watermarkedData, error: watermarkedError } = await supabase.storage
           .from('photos-watermarked')
-          .upload(watermarkedFileName, task.file);
+          .upload(watermarkedFileName, displayBlob, { contentType: displayBlob.type });
 
         if (watermarkedError) throw watermarkedError;
 

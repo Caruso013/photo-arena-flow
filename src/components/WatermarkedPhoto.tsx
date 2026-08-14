@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState, memo } from 'react';
 import { getTransformedImageUrl, TransformSize } from '@/lib/supabaseImageTransform';
+import { isBakedWatermarkUrl } from '@/lib/watermarkImage';
 
 // Cache global da marca d'água - carrega UMA vez para todas as fotos
 const watermarkCache: Record<string, boolean> = {};
@@ -45,13 +46,18 @@ const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = memo(({
   const [currentSrc, setCurrentSrc] = useState(() => isPurchased ? src : getTransformedImageUrl(src, displaySize));
   const containerRef = useRef<HTMLDivElement>(null);
   const longPressTimer = useRef<number | null>(null);
-  
-  // Watermark DEVE carregar ANTES da foto ficar visível
+
+  // Imagem já com marca d'água EMBUTIDA no upload: não precisa da sobreposição
+  // nem de esperar o PNG carregar para revelar a foto.
+  const isBaked = !isPurchased && isBakedWatermarkUrl(src);
+
+  // Watermark DEVE carregar ANTES da foto ficar visível (apenas para fotos
+  // antigas, sem marca embutida).
   const [watermarkReady, setWatermarkReady] = useState(false);
   const [photoLoaded, setPhotoLoaded] = useState(false);
   const [forceReveal, setForceReveal] = useState(false);
-  // Foto só fica visível quando WATERMARK está pronta (não quando foto carrega)
-  const canRevealPhoto = watermarkReady;
+  // Foto fica visível quando a marca embutida existe OU quando o overlay carregou.
+  const canRevealPhoto = isBaked || watermarkReady;
 
   // Failsafe: se demorar mais de 6s, libera a foto mesmo sem confirmação de load
   // (evita carregamento "infinito" quando o evento onLoad não dispara em iOS/Safari)
@@ -70,8 +76,8 @@ const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = memo(({
 
   // Carregamento eager e prioritário da watermark
   useEffect(() => {
-    if (isPurchased) return;
-    
+    if (isPurchased || isBaked) return;
+
     // Forçar carregamento eager da watermark
     const img = new Image();
     img.onload = () => {
@@ -89,7 +95,7 @@ const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = memo(({
     if (preloadWatermark(watermarkSrc)) {
       setWatermarkReady(true);
     }
-  }, [watermarkSrc, isPurchased]);
+  }, [watermarkSrc, isPurchased, isBaked]);
 
   // Reset photo loaded state when src changes
   useEffect(() => {
@@ -233,8 +239,8 @@ const WatermarkedPhoto: React.FC<WatermarkedPhotoProps> = memo(({
         }}
       />
 
-      {/* Watermark overlay - renderiza quando watermark está pronta */}
-      {watermarkReady && (
+      {/* Watermark overlay - só para fotos antigas (sem marca embutida) */}
+      {!isBaked && watermarkReady && (
         <img
           src={watermarkSrc}
           alt=""
