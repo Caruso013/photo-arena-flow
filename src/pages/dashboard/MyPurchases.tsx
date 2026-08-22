@@ -192,7 +192,11 @@ const MyPurchases = () => {
       try {
         const entries = await Promise.all(
           purchases.map(async (purchase) => {
-            const imageUrl = purchase.photo?.thumbnail_url || purchase.photo?.watermarked_url || purchase.photo?.original_url || '';
+            // Foto comprada mostra o ORIGINAL sem marca d'água. O watermarked_url
+            // agora tem a marca embutida (não é mais o original limpo), então ele
+            // fica por último — a RLS de photos-original libera o comprador com
+            // compra 'completed' a assinar a URL do seu próprio original.
+            const imageUrl = purchase.photo?.original_url || purchase.photo?.thumbnail_url || purchase.photo?.watermarked_url || '';
             if (!imageUrl) return [purchase.id, ''] as const;
             const finalUrl = await getSignedDisplayUrl(imageUrl);
             return [purchase.id, finalUrl] as const;
