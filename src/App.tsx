@@ -9,7 +9,7 @@ import { CartProvider } from "@/contexts/CartContext";
 import { SearchProvider } from "@/contexts/SearchContext";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import UploadManager from "@/components/UploadManager";
-import InstagramBrowserModal from "@/components/InstagramBrowserModal";
+import { InstagramGateProvider } from "@/components/InstagramGate";
 import { useServiceWorker } from "@/hooks/useServiceWorker";
 import { useWebVitals } from "@/hooks/useWebVitals";
 import { lazy, Suspense } from "react";
@@ -235,13 +235,14 @@ const App = () => {
           <AuthProvider>
             <SearchProvider>
               <CartProvider>
-                <Toaster />
-                <Sonner />
-                <AppContent />
-                
-                {/* Upload Manager - sempre visível quando há uploads */}
-                <UploadManager />
-                <InstagramBrowserModal />
+                <InstagramGateProvider>
+                  <Toaster />
+                  <Sonner />
+                  <AppContent />
+
+                  {/* Upload Manager - sempre visível quando há uploads */}
+                  <UploadManager />
+                </InstagramGateProvider>
               </CartProvider>
             </SearchProvider>
           </AuthProvider>

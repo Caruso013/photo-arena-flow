@@ -14,9 +14,14 @@ import AdminLayout from '@/components/dashboard/AdminLayout';
 const HERO_BANNER_CONFIG_KEY = 'home_hero_banner';
 const HERO_BANNER_BUCKET = 'campaign-covers';
 
+// Taxa da plataforma: base fixa mínima + teto configurável.
+// A base é bloqueada; a parte variável permite chegar a 11% ou 12%.
+const FIXED_BASE = 9;
+const MAX_TOTAL = 12;
+
 const PlatformConfig = () => {
   const navigate = useNavigate();
-  const [fixedPercentage, setFixedPercentage] = useState(7); // Taxa fixa sempre 7%
+  const [fixedPercentage] = useState(FIXED_BASE); // Base fixa da plataforma
   const [variablePercentage, setVariablePercentage] = useState(0);
   const [variableEnabled, setVariableEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -51,14 +56,14 @@ const PlatformConfig = () => {
 
       if (variableError) throw variableError;
 
-      if (fixedData?.value?.value) {
-        setFixedPercentage(Number(fixedData.value.value));
-      }
-
-      if (variableData?.value) {
-        setVariablePercentage(Number(variableData.value.value) || 0);
-        setVariableEnabled(variableData.value.enabled !== false);
-      }
+      // `platform_percentage.value` guarda a TAXA TOTAL efetiva — é o que a
+      // função get_total_platform_percentage() retorna e o sistema aplica.
+      // Derivamos a parte variável a partir dela: total = base fixa + variável.
+      const storedTotal = Number(fixedData?.value?.value) || FIXED_BASE;
+      const derivedVariable = Math.max(0, Number((storedTotal - FIXED_BASE).toFixed(2)));
+      setVariablePercentage(derivedVariable);
+      setVariableEnabled(derivedVariable > 0);
+      void variableData; // registro legado mantido apenas para histórico
 
       const { data: heroBannerData } = await supabase
         .from('system_config' as any)
@@ -87,22 +92,24 @@ const PlatformConfig = () => {
   };
 
   const updateConfig = async () => {
-    // Validação: taxa variável 0% a 2% (para atingir máximo de 9% com os 7% fixos)
-    if (variablePercentage < 0 || variablePercentage > 2) {
+    const maxVariable = MAX_TOTAL - FIXED_BASE;
+    const totalPercentage = FIXED_BASE + (variableEnabled ? variablePercentage : 0);
+
+    // Validação: taxa variável de 0% até o teto (para chegar a 11%/12% total)
+    if (variablePercentage < 0 || variablePercentage > maxVariable) {
       toast({
         title: "Valor inválido",
-        description: "A taxa variável deve estar entre 0% e 2%",
+        description: `A taxa variável deve estar entre 0% e ${maxVariable}%`,
         variant: "destructive",
       });
       return;
     }
 
-    // Validação: taxa total entre 7% e 9%
-    const totalPercentage = fixedPercentage + (variableEnabled ? variablePercentage : 0);
-    if (totalPercentage < 7 || totalPercentage > 9) {
+    // Validação: taxa total entre a base fixa e o teto
+    if (totalPercentage < FIXED_BASE || totalPercentage > MAX_TOTAL) {
       toast({
         title: "Valor inválido",
-        description: "A taxa total da plataforma deve estar entre 7% e 9%",
+        description: `A taxa total da plataforma deve estar entre ${FIXED_BASE}% e ${MAX_TOTAL}%`,
         variant: "destructive",
       });
       return;
@@ -110,28 +117,43 @@ const PlatformConfig = () => {
 
     setSaving(true);
     try {
-      // Atualizar taxa variável
+      // Fonte da verdade: get_total_platform_percentage() lê platform_percentage.value.
+      // Gravamos a TAXA TOTAL efetiva ali para que a mudança valha de fato.
+      const { error: totalError } = await supabase
+        .from('system_config' as any)
+        .update({
+          value: {
+            value: totalPercentage,
+            min: FIXED_BASE,
+            max: MAX_TOTAL,
+            description: `Taxa total da plataforma (${FIXED_BASE}% fixo + até ${maxVariable}% variável)`,
+          },
+          updated_at: new Date().toISOString(),
+        })
+        .eq('key', 'platform_percentage');
+
+      if (totalError) throw totalError;
+
+      // Mantém o registro da parte variável em sincronia (histórico/exibição).
       const { error: variableError } = await supabase
         .from('system_config' as any)
         .update({
-          value: { 
-            value: variablePercentage, 
-            min: 0, 
-            max: 2,
+          value: {
+            value: variableEnabled ? variablePercentage : 0,
+            min: 0,
+            max: maxVariable,
             enabled: variableEnabled,
-            description: 'Taxa variável adicional (0% a 2%, para atingir até 9% total)'
+            description: `Taxa variável adicional (0% a ${maxVariable}%)`,
           },
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('key', 'variable_percentage');
 
       if (variableError) throw variableError;
 
-      const totalPercentage = fixedPercentage + (variableEnabled ? variablePercentage : 0);
-
       toast({
         title: "Configuração atualizada!",
-        description: `Taxa da plataforma: ${fixedPercentage}% fixo + ${variableEnabled ? variablePercentage : 0}% variável = ${totalPercentage}% total (entre 7% e 9%). Novos eventos usarão esta taxa.`,
+        description: `Taxa da plataforma: ${totalPercentage}% total. Novos eventos usarão esta taxa.`,
       });
     } catch (error) {
       console.error('Error updating config:', error);
@@ -301,6 +323,7 @@ const PlatformConfig = () => {
     );
   }
 
+  const maxVariable = MAX_TOTAL - FIXED_BASE;
   const totalPercentage = fixedPercentage + (variableEnabled ? variablePercentage : 0);
   const availablePercentage = 100 - totalPercentage;
 
@@ -339,7 +362,7 @@ const PlatformConfig = () => {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Lock className="h-5 w-5 text-muted-foreground" />
-                <Label className="text-base font-medium">Taxa Fixa (Bloqueada em 7%)</Label>
+                <Label className="text-base font-medium">Taxa Fixa (Bloqueada em {FIXED_BASE}%)</Label>
               </div>
               <span className="text-3xl font-bold text-primary">{fixedPercentage}%</span>
             </div>
@@ -373,14 +396,14 @@ const PlatformConfig = () => {
               <>
                   <div className="flex items-center justify-between pt-2">
                   <Label htmlFor="variable-percentage" className="text-sm font-medium">
-                    Percentual Variável (0% a 2%)
+                    Percentual Variável (0% a {maxVariable}%)
                   </Label>
                   <div className="flex items-center gap-3">
                     <Input
                       id="variable-percentage"
                       type="number"
                       min={0}
-                      max={2}
+                      max={maxVariable}
                       step={0.1}
                       value={variablePercentage}
                       onChange={(e) => setVariablePercentage(Number(e.target.value))}
@@ -396,7 +419,7 @@ const PlatformConfig = () => {
                   <input
                     type="range"
                     min={0}
-                    max={2}
+                    max={maxVariable}
                     step={0.1}
                     value={variablePercentage}
                     onChange={(e) => setVariablePercentage(Number(e.target.value))}
@@ -404,16 +427,16 @@ const PlatformConfig = () => {
                   />
                   <div className="flex justify-between text-xs text-muted-foreground">
                     <span>Mínimo: 0%</span>
-                    <span>Máximo: 2%</span>
+                    <span>Máximo: {maxVariable}%</span>
                   </div>
                 </div>
               </>
             )}
 
             <p className="text-sm text-muted-foreground">
-              {variableEnabled 
-                ? `Você pode ajustar a taxa variável de 0% a 2% para atingir até 9% total (7% fixo + até 2% variável).`
-                : 'Ative a taxa variável para ter controle adicional sobre a receita da plataforma (até 9% total).'}
+              {variableEnabled
+                ? `Você pode ajustar a taxa variável de 0% a ${maxVariable}% para atingir até ${MAX_TOTAL}% total (${FIXED_BASE}% fixo + até ${maxVariable}% variável).`
+                : `Ative a taxa variável para ter controle adicional sobre a receita da plataforma (até ${MAX_TOTAL}% total).`}
             </p>
           </div>
 
@@ -431,7 +454,7 @@ const PlatformConfig = () => {
           <Alert className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
             <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
             <AlertDescription className="text-blue-900 dark:text-blue-100">
-              <strong>Importante:</strong> A taxa da plataforma está limitada entre <strong>7% e 9%</strong>. 
+              <strong>Importante:</strong> A taxa da plataforma está limitada entre <strong>{FIXED_BASE}% e {MAX_TOTAL}%</strong>.
               Esta alteração afetará apenas <strong>NOVOS eventos</strong> criados após salvar. 
               Eventos existentes manterão suas taxas originais.
             </AlertDescription>

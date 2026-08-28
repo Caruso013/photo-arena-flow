@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { CreditCard, Loader2, ShoppingCart, ArrowLeft, AlertCircle, Percent, Tag } from 'lucide-react';
+import { useInstagramGate } from '@/components/InstagramGate';
 import { formatCurrency } from '@/lib/utils';
 import { useProgressiveDiscount, getNextDiscountThreshold } from '@/hooks/useProgressiveDiscount';
 import TransparentCheckout from '@/components/checkout/TransparentCheckout';
@@ -53,6 +54,7 @@ export default function PaymentModal({
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { requireExternalBrowser } = useInstagramGate();
   const [loading, setLoading] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
   const [preferenceId, setPreferenceId] = useState<string | null>(null);
@@ -210,6 +212,10 @@ export default function PaymentModal({
   }, [showCheckout, preferenceId]);
 
   const handlePayment = async () => {
+    // Instagram: pagamento não funciona no navegador interno.
+    // Só interrompe aqui, na hora de pagar — navegar/olhar segue liberado.
+    if (!requireExternalBrowser('payment')) return;
+
     if (!user) {
       toast({
         title: "Sessão expirada",
