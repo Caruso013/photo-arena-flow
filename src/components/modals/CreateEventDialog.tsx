@@ -11,6 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { usePlatformPercentage } from '@/hooks/usePlatformPercentage';
 import { Calendar, MapPin, Loader2, Gift, Image as ImageIcon, FolderPlus } from 'lucide-react';
 
 interface CreateEventDialogProps {
@@ -21,6 +22,7 @@ interface CreateEventDialogProps {
 
 export default function CreateEventDialog({ isOpen, onClose, onEventCreated }: CreateEventDialogProps) {
   const { profile } = useAuth();
+  const { percentage: platformPercentage } = usePlatformPercentage();
   const [loading, setLoading] = useState(false);
   const [createAndUpload, setCreateAndUpload] = useState(false);
   const [currentTab, setCurrentTab] = useState('info');
@@ -105,9 +107,9 @@ export default function CreateEventDialog({ isOpen, onClose, onEventCreated }: C
           description: formData.description || null,
           location: formData.location || null,
           event_date: formData.event_date || null,
-          photographer_percentage: 91,
+          photographer_percentage: 100 - platformPercentage,
           organization_percentage: 0,
-          platform_percentage: 9,
+          platform_percentage: platformPercentage,
           is_active: true,
           progressive_discount_enabled: formData.progressive_discount_enabled,
           photographer_id: profile?.id,

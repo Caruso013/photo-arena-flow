@@ -6,6 +6,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useFaceRecognition } from '@/hooks/useFaceRecognition';
+import { useInstagramGate } from '@/components/InstagramGate';
 import { Camera, Loader2, ScanFace, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -34,6 +35,7 @@ export const FaceRecognitionModal: React.FC<FaceRecognitionModalProps> = ({
   const [cameraError, setCameraError] = useState<string | null>(null);
   const navigate = useNavigate();
   const [showHelp, setShowHelp] = useState(false);
+  const { requireExternalBrowser } = useInstagramGate();
 
   useEffect(() => {
     if (open) {
@@ -48,6 +50,13 @@ export const FaceRecognitionModal: React.FC<FaceRecognitionModalProps> = ({
   }, [open]);
 
   const handleStartCamera = async () => {
+    // Instagram: a câmera não abre no navegador interno. Mostra o aviso
+    // (com passo a passo) e fecha este modal em vez de dar erro de câmera.
+    if (!requireExternalBrowser('camera')) {
+      onOpenChange(false);
+      return;
+    }
+
     setCameraError(null);
     const success = await startCamera();
     setCameraActive(success);

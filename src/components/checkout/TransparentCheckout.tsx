@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CreditCard, Lock, AlertCircle, Loader2, QrCode, Copy, CheckCircle } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { useInstagramGate } from '@/components/InstagramGate';
 import { supabase } from '@/integrations/supabase/client';
 
 // SDK do Mercado Pago types
@@ -71,6 +72,7 @@ export default function TransparentCheckout({
   onCancel,
 }: TransparentCheckoutProps) {
   const { toast } = useToast();
+  const { requireExternalBrowser } = useInstagramGate();
   const safeTotalAmount = Math.max(0, Number(totalAmount) || 0);
   const isZeroAmountCheckout = safeTotalAmount <= 0;
   const [loading, setLoading] = useState(false);
@@ -291,6 +293,8 @@ export default function TransparentCheckout({
 
   // Gerar PIX com retry automático
   const handleGeneratePix = async (retryAttempt = 0) => {
+    if (retryAttempt === 0 && !requireExternalBrowser('payment')) return;
+
     if (isZeroAmountCheckout) {
       const message = 'Não é permitido finalizar compra com valor R$ 0,00.';
       toast({ title: 'Compra bloqueada', description: message, variant: 'destructive' });
@@ -398,6 +402,8 @@ export default function TransparentCheckout({
   // Pagar com Cartão
   const handleCardPayment = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!requireExternalBrowser('payment')) return;
 
     if (isZeroAmountCheckout) {
       const message = 'Não é permitido finalizar compra com valor R$ 0,00.';
